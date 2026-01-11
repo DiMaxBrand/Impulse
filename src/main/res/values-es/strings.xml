@@ -806,7 +806,7 @@
     <string name="the_app_is_out_of_date">Estás usando una versión desactualizada de esta aplicación.</string>
     <string name="update">Actualizar</string>
     <string name="logged_in_with_another_device">Este teléfono está registrado en otro dispositivo.</string>
-    <string name="enter_your_name_instructions">Por favor, introduce tu nombre para dejar que las personas que no están en tu agenda de contactos sepan quien eres.</string>
+    <string name="enter_your_name_instructions">Por favor, introduce tu nombre para que las personas que no te tienen en su agenda de contactos sepan quién eres.</string>
     <string name="your_name">Tu nombre</string>
     <string name="enter_your_name">Introduce tu nombre</string>
     <string name="no_name_set_instructions">Usa este botón para establecer tu nombre.</string>
