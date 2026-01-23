@@ -905,7 +905,6 @@
     <string name="play_audio">Пусти снимак</string>
     <string name="add_contact_or_create_or_join_group_chat">Додај контакт, направи или се придружи у групну преписку, или пронађи канале</string>
     <string name="no_application_found">Није пронађена апликација</string>
-    <string name="invite_to_app">Позови на Conversations</string>
     <string name="unable_to_parse_invite">Није могуће ишчитати позивницу</string>
     <string name="could_not_disable_video">Није могуће искључити видео.</string>
     <string name="no_xmpp_adddress_found">Није пронађена XMPP адреса</string>

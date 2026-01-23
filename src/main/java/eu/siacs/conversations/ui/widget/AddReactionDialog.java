@@ -42,7 +42,7 @@ public class AddReactionDialog {
                 return Joiner.on("").join(Lists.transform(emojis, Emoji::getEmoji));
             };
 
-    public AddReactionDialog(final Message message, Consumer<Collection<String>> callback) {
+    public AddReactionDialog(final Message message, final Consumer<Collection<String>> callback) {
         this.message = message;
         this.callback = callback;
     }

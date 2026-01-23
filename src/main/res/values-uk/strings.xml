@@ -1005,7 +1005,6 @@
     <string name="encrypted_with_openpgp">Зашифровано за допомогою OpenPGP</string>
     <string name="not_encrypted">Не зашифровано</string>
     <string name="exit">Вийти</string>
-    <string name="invite_to_app">Запросити до Conversations</string>
     <string name="plain_text_document">Текстовий документ</string>
     <string name="no_xmpp_adddress_found">Не знайдено адреси XMPP</string>
     <string name="no_account_deactivated">Немає (вимкнено)</string>

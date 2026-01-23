@@ -933,7 +933,6 @@
     <string name="failed_deliveries">配信に失敗</string>
     <string name="more_options">更なるオプション</string>
     <string name="no_application_found">アプリケーションが見つかりません</string>
-    <string name="invite_to_app">Conversationsに招待</string>
     <string name="unable_to_parse_invite">招待を解析できません</string>
     <string name="server_does_not_support_easy_onboarding_invites">サーバーは招待の作成に対応していません</string>
     <string name="no_active_accounts_support_this">この機能をサポートするアクティブなアカウントがありません</string>

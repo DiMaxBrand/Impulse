@@ -902,7 +902,6 @@
     <string name="failed_deliveries">Lliuraments fallits</string>
     <string name="more_options">Més opcions</string>
     <string name="no_application_found">No s\'ha trobat cap aplicació</string>
-    <string name="invite_to_app">Convidar a Conversations</string>
     <string name="unable_to_parse_invite">No es pot processar la invitació</string>
     <string name="server_does_not_support_easy_onboarding_invites">El servidor no admet la generació d\'invitacions</string>
     <string name="no_active_accounts_support_this">Cap compte actiu admet aquesta funció</string>

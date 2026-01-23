@@ -984,7 +984,6 @@
     <string name="microphone_unavailable">O microfone está indisponível</string>
     <string name="backup_started_message">O backup foi iniciado. Receberá uma notificação quando for concluído.</string>
     <string name="no_application_found">Nenhuma aplicação encontrada</string>
-    <string name="invite_to_app">Convidar para o Conversations</string>
     <string name="unable_to_parse_invite">Impossível processar o convite</string>
     <string name="server_does_not_support_easy_onboarding_invites">O servidor não suporta geração de convites</string>
     <string name="search_all_conversations">Todas as conversas</string>

@@ -884,7 +884,6 @@
     <string name="failed_deliveries">無法傳遞</string>
     <string name="more_options">更多選項</string>
     <string name="no_application_found">找不到應用程式</string>
-    <string name="invite_to_app">邀請至 Conversations</string>
     <string name="unable_to_parse_invite">無法剖析邀請</string>
     <string name="server_does_not_support_easy_onboarding_invites">伺服器不支援產生邀請</string>
     <string name="no_active_accounts_support_this">沒有支援此功能的啟用中帳戶</string>

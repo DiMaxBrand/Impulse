@@ -738,7 +738,6 @@
     <string name="failed_deliveries">Dërgime të dështuara</string>
     <string name="more_options">Më tepër mundësi</string>
     <string name="no_application_found">S’u gjet aplikacion</string>
-    <string name="invite_to_app">Ftojeni te Conversations</string>
     <string name="unable_to_parse_invite">S’arrihet të analizohet ftesë</string>
     <string name="server_does_not_support_easy_onboarding_invites">Shërbyesi s’mbulon prodhim ftesash</string>
     <string name="no_active_accounts_support_this">Këtë veçori s’e mbulon ndonjë llogari aktive</string>

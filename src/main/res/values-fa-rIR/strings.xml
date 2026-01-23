@@ -587,7 +587,6 @@
     <string name="invite">دعوت</string>
     <string name="rtp_state_finding_device">یافتن دستگاه‌ها</string>
     <string name="user_has_left_conference">%1$s از گفتگوی گروهی رفت</string>
-    <string name="invite_to_app">دعوت به Conversations</string>
     <string name="done">انجام شد</string>
     <string name="missing_public_keys">کلید عمومی اطلاع‌رسانی نشده</string>
     <string name="verifying">در حال تأیید…</string>

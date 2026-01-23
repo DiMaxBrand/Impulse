@@ -1048,7 +1048,6 @@
     <string name="failed_deliveries">Vead kohaletoimetamisel</string>
     <string name="more_options">Täiendavad valikud</string>
     <string name="no_application_found">Rakendust ei leidunud</string>
-    <string name="invite_to_app">Kutsu kasutama Conversationsit</string>
     <string name="unable_to_enable_video">Video kasutuselevõtmine ei õnnestu.</string>
     <string name="could_not_disable_video">Video kasutuselt eemaldamine ei õnnestu.</string>
     <string name="unified_push_distributor">UnifiedPushi levitaja</string>

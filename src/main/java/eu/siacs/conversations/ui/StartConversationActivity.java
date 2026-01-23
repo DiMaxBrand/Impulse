@@ -772,12 +772,10 @@ public class StartConversationActivity extends XmppActivity
         getMenuInflater().inflate(R.menu.start_conversation, menu);
         AccountUtils.showHideMenuItems(menu);
         final MenuItem menuHideOffline = menu.findItem(R.id.action_hide_offline);
-        final MenuItem qrCodeScanMenuItem = menu.findItem(R.id.action_scan_qr_code);
         final MenuItem privacyPolicyMenuItem = menu.findItem(R.id.action_privacy_policy);
         privacyPolicyMenuItem.setVisible(
                 BuildConfig.PRIVACY_POLICY != null
                         && QuickConversationsService.isPlayStoreFlavor());
-        qrCodeScanMenuItem.setVisible(isCameraFeatureAvailable());
         if (QuickConversationsService.isQuicksy()) {
             menuHideOffline.setVisible(false);
         } else {
@@ -808,9 +806,6 @@ public class StartConversationActivity extends XmppActivity
         switch (item.getItemId()) {
             case android.R.id.home:
                 finish();
-                return true;
-            case R.id.action_scan_qr_code:
-                UriHandlerActivity.scan(this);
                 return true;
             case R.id.action_hide_offline:
                 mHideOfflineContacts = !item.isChecked();

@@ -951,7 +951,6 @@
     <string name="failed_deliveries">Mislykkede leverancer</string>
     <string name="more_options">Flere valg</string>
     <string name="no_application_found">Intet program fundet</string>
-    <string name="invite_to_app">Inviter til Conversations</string>
     <string name="unable_to_parse_invite">Kunne ikke analysere invitation</string>
     <string name="server_does_not_support_easy_onboarding_invites">Server understøtter ikke generering af invitationer</string>
     <string name="no_active_accounts_support_this">Ingen aktive konti understøtter denne funktion</string>

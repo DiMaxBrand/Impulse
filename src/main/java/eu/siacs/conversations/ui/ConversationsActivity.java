@@ -76,6 +76,7 @@ import eu.siacs.conversations.ui.util.ConversationMenuConfigurator;
 import eu.siacs.conversations.ui.util.MenuDoubleTabUtil;
 import eu.siacs.conversations.ui.util.PendingItem;
 import eu.siacs.conversations.ui.util.ToolbarUtils;
+import eu.siacs.conversations.ui.widget.AccountPickerDialog;
 import eu.siacs.conversations.utils.ExceptionHelper;
 import eu.siacs.conversations.utils.UIHelper;
 import eu.siacs.conversations.utils.XmppUri;
@@ -390,18 +391,24 @@ public class ConversationsActivity extends XmppActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.activity_conversations, menu);
-        final MenuItem qrCodeScanMenuItem = menu.findItem(R.id.action_scan_qr_code);
-        if (qrCodeScanMenuItem != null) {
-            if (isCameraFeatureAvailable()) {
-                final var fragment =
-                        getSupportFragmentManager().findFragmentById(R.id.main_fragment);
-                boolean visible =
-                        getResources().getBoolean(R.bool.show_qr_code_scan)
-                                && fragment instanceof ConversationsOverviewFragment;
-                qrCodeScanMenuItem.setVisible(visible);
-            } else {
-                qrCodeScanMenuItem.setVisible(false);
-            }
+        final var qrCodeActions = menu.findItem(R.id.action_qr_codes);
+        if (qrCodeActions == null) {
+            return super.onCreateOptionsMenu(menu);
+        }
+        final var fragment = getSupportFragmentManager().findFragmentById(R.id.main_fragment);
+        boolean visible =
+                getResources().getBoolean(R.bool.show_qr_code_scan)
+                        && fragment instanceof ConversationsOverviewFragment;
+        if (visible) {
+            final var qrCodeScanMenuItem = menu.findItem(R.id.action_scan_qr_code);
+            final var showQrCodeMenuItem = menu.findItem(R.id.action_show_qr_code);
+            final var easyOnboardInvite = menu.findItem(R.id.action_easy_invite);
+            qrCodeActions.setVisible(true);
+            qrCodeScanMenuItem.setVisible(isCameraFeatureAvailable());
+            showQrCodeMenuItem.setVisible(new AccountPickerDialog.Enabled(this).hasAnyAccounts());
+            easyOnboardInvite.setVisible(new AccountPickerDialog.EasyInvite(this).hasAnyAccounts());
+        } else {
+            qrCodeActions.setVisible(false);
         }
         return super.onCreateOptionsMenu(menu);
     }
@@ -518,7 +525,7 @@ public class ConversationsActivity extends XmppActivity
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(final MenuItem item) {
         if (MenuDoubleTabUtil.shouldIgnoreTap()) {
             return false;
         }
@@ -535,7 +542,10 @@ public class ConversationsActivity extends XmppActivity
                 }
                 break;
             case R.id.action_scan_qr_code:
-                UriHandlerActivity.scan(this);
+                UriHandlerActivity.scan(this, false);
+                return true;
+            case R.id.action_show_qr_code:
+                new AccountPickerDialog.Enabled(this).pick(a -> showQrCode(a.getShareableUri()));
                 return true;
             case R.id.action_search_all_conversations:
                 startActivity(new Intent(this, SearchActivity.class));

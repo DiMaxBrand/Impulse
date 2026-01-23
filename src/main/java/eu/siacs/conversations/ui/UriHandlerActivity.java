@@ -46,10 +46,6 @@ public class UriHandlerActivity extends BaseActivity {
     private ActivityUriHandlerBinding binding;
     private Call call;
 
-    public static void scan(final Activity activity) {
-        scan(activity, false);
-    }
-
     public static void scan(final Activity activity, final boolean provisioning) {
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -80,7 +76,7 @@ public class UriHandlerActivity extends BaseActivity {
                 if (requestCode == REQUEST_CAMERA_PERMISSIONS_TO_SCAN_AND_PROVISION) {
                     scan(activity, true);
                 } else {
-                    scan(activity);
+                    scan(activity, false);
                 }
             } else {
                 Toast.makeText(

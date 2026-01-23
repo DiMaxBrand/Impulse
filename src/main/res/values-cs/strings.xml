@@ -931,7 +931,6 @@
     <string name="failed_deliveries">Neúspěšné přenosy</string>
     <string name="more_options">Více možností</string>
     <string name="no_application_found">Nenalezena žádná aplikace</string>
-    <string name="invite_to_app">Pozvat do Conversations</string>
     <string name="unable_to_parse_invite">Nelze načíst pozvánku</string>
     <string name="server_does_not_support_easy_onboarding_invites">Server nepodporuje vytváření pozvánek</string>
     <string name="no_active_accounts_support_this">Žádný z aktivních účtů tuto funkci nepodporuje</string>

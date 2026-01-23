@@ -616,11 +616,11 @@
     <string name="this_device_has_been_verified">This device has been verified</string>
     <string name="copy_fingerprint">Copy fingerprint</string>
     <string name="all_omemo_keys_have_been_verified">You have verified all the OMEMO keys in your possession</string>
-    <string name="barcode_does_not_contain_fingerprints_for_this_chat">The barcode does not contain fingerprints for this chat.</string>
+    <string name="barcode_does_not_contain_fingerprints_for_this_chat">The QR code does not contain fingerprints for this chat.</string>
     <string name="verified_fingerprints">Verified fingerprints</string>
-    <string name="use_camera_icon_to_scan_barcode">Use the camera to scan a contact’s barcode</string>
+    <string name="use_camera_icon_to_scan_barcode">Use the camera to scan a contact’s QR code</string>
     <string name="please_wait_for_keys_to_be_fetched">Please wait for keys to be fetched</string>
-    <string name="share_as_barcode">Share as Barcode</string>
+    <string name="share_as_barcode">Share as QR code</string>
     <string name="share_as_uri">Share as XMPP URI</string>
     <string name="share_as_http">Share as HTTP link</string>
     <string name="pref_blind_trust_before_verification">Blind Trust Before Verification</string>
@@ -1006,7 +1006,7 @@
     <string name="failed_deliveries">Failed deliveries</string>
     <string name="more_options">More options</string>
     <string name="no_application_found">No application found</string>
-    <string name="invite_to_app">Invite to Conversations</string>
+    <string name="server_invite">Invite to server</string>
     <string name="unable_to_parse_invite">Unable to parse invite</string>
     <string name="server_does_not_support_easy_onboarding_invites">Server does not support generating invites</string>
     <string name="no_active_accounts_support_this">No active accounts support this feature</string>
@@ -1146,4 +1146,5 @@
     <string name="mobile_ticket">Mobile ticket</string>
     <string name="emoji_reactions">Emoji reactions</string>
     <string name="open_keyboard">Open keyboard</string>
+    <string name="qr_code_actions">Scan QR, Show QR, Server invite</string>
 </resources>

@@ -893,7 +893,6 @@
     <string name="failed_deliveries">Misslyckade leveranser</string>
     <string name="more_options">Fler alternativ</string>
     <string name="no_application_found">Ingen applikation hittades</string>
-    <string name="invite_to_app">Bjud in till Conversations</string>
     <string name="no_xmpp_adddress_found">Ingen XMPP-adress hittades</string>
     <plurals name="n_missed_calls_from_x">
         <item quantity="one">%1$d missat samtal från %2$s</item>
