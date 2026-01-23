@@ -1202,4 +1202,6 @@
     <string name="mobile_ticket">Мобільний квиток</string>
     <string name="open_keyboard">Показати клавіатуру</string>
     <string name="emoji_reactions">Реакції емоджі</string>
+    <string name="server_invite">Запросити на сервер</string>
+    <string name="qr_code_actions">Сканувати QR-код, показати QR-код, запросити на сервер</string>
 </resources>
