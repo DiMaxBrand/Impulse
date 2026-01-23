@@ -597,9 +597,9 @@
     <string name="copy_fingerprint">Kopiera fingeravtryck</string>
     <string name="all_omemo_keys_have_been_verified">Du har verifierat alla OMEMO-nycklar i din ägo</string>
     <string name="verified_fingerprints">Verifierade fingeravtryck</string>
-    <string name="use_camera_icon_to_scan_barcode">Använd kameran för att skanna en kontakts streckkod</string>
+    <string name="use_camera_icon_to_scan_barcode">Använd kameran för att skanna en kontakts QR-kod</string>
     <string name="please_wait_for_keys_to_be_fetched">Var god vänta på att nycklarna ska hämtas</string>
-    <string name="share_as_barcode">Dela som streckkod</string>
+    <string name="share_as_barcode">Dela som QR-kod</string>
     <string name="share_as_uri">Dela som XMPP-URI</string>
     <string name="share_as_http">Dela som HTTP-länk</string>
     <string name="pref_blind_trust_before_verification">Blind tillit före verifiering</string>
@@ -1089,7 +1089,7 @@
     <string name="no_contacts_permission">%1$s behöver åtkomst till dina kontakter</string>
     <string name="pref_use_colorful_bubbles_summary">Distinkta bakgrundsfärger för skickade och mottagna meddelanden</string>
     <string name="no_permission_to_place_call">Ingen åtkomst för att göra ett telefon-samtal</string>
-    <string name="barcode_does_not_contain_fingerprints_for_this_chat">Streckkoden innehåller inte fingeravtryck för den här chatten.</string>
+    <string name="barcode_does_not_contain_fingerprints_for_this_chat">QR-koden innehåller inga fingeravtryck för den här chatten.</string>
     <string name="corresponding_chats_closed">Motsvarande chattar arkiverade.</string>
     <string name="pref_dynamic_colors_summary">Systemfärger (Material You)</string>
     <string name="copy_geo_uri">Kopiera geo-position</string>
@@ -1133,7 +1133,7 @@
     <string name="pref_fullscreen_notification_summary">Tillåt den här appen att visa aviseringar om inkommande samtal som tar upp hela skärmen när enheten är låst.</string>
     <string name="delete_avatar_message">Skulle du vilja radera din avatar? En del klienter kan komma att fortsätta att visa en cachad kopia av din avatar.</string>
     <string name="account_status_channel_binding">Ingen kanalbindning</string>
-    <string name="server_info_occupant_id">XEP-0421: Occupant identifiers</string>
+    <string name="server_info_occupant_id">XEP-0421: Occupant Identifiers</string>
     <string name="server_info_moderated_message_retraction">XEP-0425: Moderated Message Retraction</string>
     <string name="download_failed_could_not_establish_tls">Kunde inte etablera en TLS-anslutning</string>
     <string name="channel_discover_opt_in_message">Funktionen kanalupptäckt använder en tredjepartstjänst som heter &lt;a href=https://search.jabber.network&gt;search.jabber.network&lt;/a&gt;.&lt;br&gt;&lt;br&gt;Om du använder den här funktionen kommer din IP-adress och dina söktermer att skickas till den tjänsten. Se deras &lt;a href=https://search.jabber.network/privacy&gt;integritetspolicy&lt;/a&gt; för mer information.</string>
@@ -1167,4 +1167,6 @@
     <string name="mobile_ticket">Mobilbiljett</string>
     <string name="emoji_reactions">Emoji-reaktioner</string>
     <string name="open_keyboard">Öppna tangentbordet</string>
+    <string name="server_invite">Bjud in till server</string>
+    <string name="qr_code_actions">Skanna QR-kod, visa QR-kod, serverinbjudan</string>
 </resources>
