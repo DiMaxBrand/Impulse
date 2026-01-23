@@ -452,9 +452,9 @@
     <string name="delete_selected_keys">Fshi kyçet e përzgjedhur</string>
     <string name="copy_fingerprint">Kopjo shenja gishtash</string>
     <string name="verified_fingerprints">Shenja gishtash të verifikuar</string>
-    <string name="use_camera_icon_to_scan_barcode">Përdorni kamerën e telefonit tuaj që të skanoni një kod me vija</string>
+    <string name="use_camera_icon_to_scan_barcode">Përdorni kamerën që të skanoni kodin QR të një kontakti</string>
     <string name="please_wait_for_keys_to_be_fetched">Ju lutemi, pritni të sillen kyçet</string>
-    <string name="share_as_barcode">Ndajeni si Kod me vija</string>
+    <string name="share_as_barcode">Ndajeni si kod QR</string>
     <string name="share_as_uri">Jepe si URI XMPP</string>
     <string name="share_as_http">Ndajeni me të tjerë si lidhje HTTP</string>
     <string name="pref_blind_trust_before_verification">Besim i Verbër Para Verifikimi</string>
@@ -1021,7 +1021,7 @@
     <string name="action_archive_chat">Arkivoje fjalosjen</string>
     <string name="title_activity_new_chat">Fjalosje e re</string>
     <string name="archive_this_chat">Fshije fjalosjen më pas</string>
-    <string name="barcode_does_not_contain_fingerprints_for_this_chat">Kodi me vija s’përmban shenja gishtash për këtë fjalosje.</string>
+    <string name="barcode_does_not_contain_fingerprints_for_this_chat">Kodi QR s’përmban shenja gishtash për këtë fjalosje.</string>
     <string name="switch_to_chat">Kaloni te fjalosja</string>
     <string name="title_undo_swipe_out_chat">Fjalosje e arkivuar</string>
     <string name="welcome_header">Ejani në Conversation</string>
