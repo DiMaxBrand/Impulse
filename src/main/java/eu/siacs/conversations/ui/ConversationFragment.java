@@ -333,8 +333,12 @@ public class ConversationFragment extends XmppFragment
         if (messageLoaderToast != null) {
             messageLoaderToast.cancel();
         }
-        messageLoaderToast = Toast.makeText(requireContext(), resId, Toast.LENGTH_LONG);
-        messageLoaderToast.show();
+        try {
+            messageLoaderToast = Toast.makeText(requireContext(), resId, Toast.LENGTH_LONG);
+            messageLoaderToast.show();
+        } catch (final IllegalStateException ignored) {
+            // no reason to show toast when activity is gone
+        }
     }
 
     private final OnScrollListener mOnScrollListener =
@@ -2994,10 +2998,10 @@ public class ConversationFragment extends XmppFragment
     }
 
     private boolean storeNextMessage() {
-        return storeNextMessage(this.binding.textinput.getText().toString());
+        return storeNextMessage(CharSequences.nullToEmpty(this.binding.textinput.getText()));
     }
 
-    private boolean storeNextMessage(String msg) {
+    private boolean storeNextMessage(final String msg) {
         final boolean participating =
                 conversation.getMode() == Conversational.MODE_SINGLE
                         || conversation.getMucOptions().participating();
@@ -3475,7 +3479,14 @@ public class ConversationFragment extends XmppFragment
         }
         ChatStateManager.send(conversation, Config.DEFAULT_CHAT_STATE);
         if (storeNextMessage()) {
-            runOnUiThread(() -> requireConversationsActivity().onConversationsListItemUpdated());
+            runOnUiThread(
+                    () -> {
+                        try {
+                            requireConversationsActivity().onConversationsListItemUpdated();
+                        } catch (final IllegalStateException ignored) {
+
+                        }
+                    });
         }
         runOnUiThread(this::updateSendButton);
     }
