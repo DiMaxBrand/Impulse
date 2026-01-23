@@ -588,9 +588,9 @@
     <string name="copy_fingerprint">Fingerabdruck kopieren</string>
     <string name="all_omemo_keys_have_been_verified">Du hast alle in deinem Besitz befindlichen OMEMO-Schlüssel überprüft</string>
     <string name="verified_fingerprints">Überprüfte Fingerabdrücke</string>
-    <string name="use_camera_icon_to_scan_barcode">Nutze die Kamera, um Barcodes deiner Kontakte zu scannen</string>
+    <string name="use_camera_icon_to_scan_barcode">Nutze die Kamera, um QR-Codes deiner Kontakte zu scannen</string>
     <string name="please_wait_for_keys_to_be_fetched">Bitte warten, bis die Schlüssel abgerufen werden</string>
-    <string name="share_as_barcode">Als Barcode teilen</string>
+    <string name="share_as_barcode">Als QR-Code teilen</string>
     <string name="share_as_uri">Als XMPP-URI teilen</string>
     <string name="share_as_http">Als HTTP-Link teilen</string>
     <string name="pref_blind_trust_before_verification">Blind vertrauen vor der Überprüfung</string>
@@ -1014,7 +1014,7 @@
     <string name="switch_to_chat">Zum Chat wechseln</string>
     <string name="action_archive_chat">Chat archivieren</string>
     <string name="welcome_header">Nimm an der Unterhaltung teil</string>
-    <string name="barcode_does_not_contain_fingerprints_for_this_chat">Der Barcode enthält keine Fingerabdrücke für diesen Chat.</string>
+    <string name="barcode_does_not_contain_fingerprints_for_this_chat">Der QR-Code enthält keine Fingerabdrücke für diesen Chat.</string>
     <string name="title_undo_swipe_out_chat">Chat archiviert</string>
     <string name="pref_send_crash_reports">Absturzberichte senden</string>
     <string name="pref_title_interface">Benutzeroberfläche</string>
@@ -1152,4 +1152,6 @@
     <string name="mobile_ticket">Mobiles Ticket</string>
     <string name="emoji_reactions">Emoji-Reaktionen</string>
     <string name="open_keyboard">Tastatur öffnen</string>
+    <string name="server_invite">Server-Einladung</string>
+    <string name="qr_code_actions">QR-Code scannen QR-Code anzeigen, Server-Einladung</string>
 </resources>
