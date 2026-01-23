@@ -876,7 +876,7 @@
     <string name="backup">备份</string>
     <string name="category_about">关于</string>
     <string name="please_enable_an_account">请启用账号</string>
-    <string name="make_call">进行通话</string>
+    <string name="make_call">发起通话</string>
     <string name="rtp_state_incoming_call">来电</string>
     <string name="rtp_state_incoming_video_call">视频通话来电</string>
     <string name="rtp_state_content_add_video">切换到视频通话？</string>
@@ -1146,4 +1146,6 @@
     <string name="mobile_ticket">移动票证</string>
     <string name="emoji_reactions">表情符号回应</string>
     <string name="open_keyboard">打开键盘</string>
+    <string name="server_invite">邀请加入服务器</string>
+    <string name="qr_code_actions">扫描二维码、显示二维码、服务器邀请</string>
 </resources>
