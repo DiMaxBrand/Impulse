@@ -591,9 +591,9 @@
     <string name="copy_fingerprint">Skopiuj odcisk</string>
     <string name="all_omemo_keys_have_been_verified">Zweryfikowałeś wszystkie klucze OMEMO które posiadasz</string>
     <string name="verified_fingerprints">Zaufane odciski</string>
-    <string name="use_camera_icon_to_scan_barcode">Użyj aparatu, aby zeskanować kod kreskowy kontaktu</string>
+    <string name="use_camera_icon_to_scan_barcode">Użyj aparatu, aby zeskanować kod QR kontaktu</string>
     <string name="please_wait_for_keys_to_be_fetched">Proszę czekać na ściągnięcie kluczy</string>
-    <string name="share_as_barcode">Udostępnij przez kod QR</string>
+    <string name="share_as_barcode">Udostępnij jako kod QR</string>
     <string name="share_as_uri">Udostępnij przez URI XMPP</string>
     <string name="share_as_http">Udostępnij przez link HTTP</string>
     <string name="pref_blind_trust_before_verification">Ślepo Ufaj Przed Weryfikacją</string>
@@ -1029,7 +1029,7 @@
     <string name="title_activity_new_chat">Nowa rozmowa</string>
     <string name="archive_this_chat">Usuń rozmowę później</string>
     <string name="pref_use_colorful_bubbles">Kolorowe dymki rozmowy</string>
-    <string name="barcode_does_not_contain_fingerprints_for_this_chat">Kod kreskowy nie zawiera odcisków palca dla tej rozmowy.</string>
+    <string name="barcode_does_not_contain_fingerprints_for_this_chat">Kod QR nie zawiera odcisków palca dla tej rozmowy.</string>
     <string name="corresponding_chats_closed">Powiązane rozmowy zarchiwizowane.</string>
     <string name="start_chat">Rozpocznij rozmowę</string>
     <string name="unified_push_summary">Przekazywanie powiadomień do innych aplikacji kompatybilnych z UnifiedPush</string>
@@ -1178,4 +1178,6 @@
     <string name="mobile_ticket">Bilet mobilny</string>
     <string name="emoji_reactions">Reakcje emoji</string>
     <string name="open_keyboard">Otwórz klawiaturę</string>
+    <string name="server_invite">Zaproś na serwer</string>
+    <string name="qr_code_actions">Skanowanie QR‑ów, pokazywanie QR‑ów, zapraszanie na serwer</string>
 </resources>
