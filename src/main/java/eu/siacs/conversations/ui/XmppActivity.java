@@ -57,6 +57,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.google.zxing.WriterException;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.BuildConfig;
 import eu.siacs.conversations.Config;
@@ -1092,7 +1093,13 @@ public abstract class XmppActivity extends ActionBarActivity {
                             com.google.android.material.R.attr.colorSurfaceContainerHighest,
                             "No surface color configured");
         }
-        final var bitmap = BarcodeProvider.create2dBarcodeBitmap(uri, width, black, white);
+        final Bitmap bitmap;
+        try {
+            bitmap = BarcodeProvider.create2dBarcodeBitmap(uri, width, black, white);
+        } catch (final WriterException e) {
+            Log.e(Config.LOGTAG, "could not create qr code", e);
+            return;
+        }
         final ImageView view = new ImageView(this);
         view.setBackgroundColor(white);
         view.setImageBitmap(bitmap);
