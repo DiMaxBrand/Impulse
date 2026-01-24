@@ -1,5 +1,9 @@
 # Changelog
 
+### Version 2.19.9
+
+* Combine QR code related actions (show, scan, invite) into one central menu
+
 ### Version 2.19.8
 
 * Fix calls getting stuck at connecting when 'Use Relays' is enabled but server doesn't have any
