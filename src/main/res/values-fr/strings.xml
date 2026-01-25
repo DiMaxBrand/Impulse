@@ -1172,4 +1172,7 @@
     <string name="pref_use_relays">Tojours utiliser les relais</string>
     <string name="pref_use_relays_summary">Relaye toutes les connections P2P (appels et transferts de fichiers) via votre serveur pour éviter de révéler votre adresse IP.</string>
     <string name="mobile_ticket">Ticket mobile</string>
+    <string name="server_invite">Invitation serveur</string>
+    <string name="open_keyboard">Ouvrir le clavier</string>
+    <string name="qr_code_actions">Scanner le QR code, Afficher le QR code, Invitation Serveur</string>
 </resources>
