@@ -579,9 +579,9 @@
     <string name="this_device_has_been_verified">Овај уређај је оверен</string>
     <string name="copy_fingerprint">Копирај отисак</string>
     <string name="verified_fingerprints">Оверени отисци</string>
-    <string name="use_camera_icon_to_scan_barcode">Употреби камеру за очитавање бар-кôда контакта</string>
+    <string name="use_camera_icon_to_scan_barcode">Употреби камеру да очиташ QR кôд контакта</string>
     <string name="please_wait_for_keys_to_be_fetched">Сачекај да се добаве кључеви</string>
-    <string name="share_as_barcode">Подели као бар-кôд</string>
+    <string name="share_as_barcode">Подели као QR кôд</string>
     <string name="share_as_uri">Подели као XMPP линк</string>
     <string name="share_as_http">Подели као HTTP линк</string>
     <string name="pref_blind_trust_before_verification">Слепо одобри пре овере</string>
@@ -928,7 +928,7 @@
     <string name="welcome_header_quicksy">Добродошао/ла на Quicksy!</string>
     <string name="reconnect_on_other_host">Поново повежи на други сервер</string>
     <string name="all_omemo_keys_have_been_verified">Оверио/ла си све OMEMO кључеве које поседујеш</string>
-    <string name="barcode_does_not_contain_fingerprints_for_this_chat">Бар-кôд не садржи отиске за ову преписку.</string>
+    <string name="barcode_does_not_contain_fingerprints_for_this_chat">QR кôд не садржи отиске за ову преписку.</string>
     <string name="pref_clean_private_storage_summary">Очисти приватно складиште где се чувају фајлови (могу поново да се преузму са сервера)</string>
     <string name="pref_blind_trust_before_verification_summary">Одобри нове уређаје од неоверених контаката, али питај за потврду нових уређаја за оверене контакте.</string>
     <string name="blindly_trusted_omemo_keys">Слепо одобрени OMEMO кључеви, у смислу да би то могао да буде неко други или је неко упао.</string>
@@ -1187,4 +1187,6 @@
     <string name="mobile_ticket">Мобилни тикет</string>
     <string name="emoji_reactions">Емотикон реакције</string>
     <string name="open_keyboard">Отвори тастатуру</string>
+    <string name="server_invite">Позови на сервер</string>
+    <string name="qr_code_actions">Очитај QR, Прикажи QR, Позивнице на сервер</string>
 </resources>
