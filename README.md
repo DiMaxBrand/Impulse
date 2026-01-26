@@ -92,7 +92,7 @@ TLDR: If you know what F-Droid is and have it installed for other apps as well, 
 |Fallback via FCM (Google Push)³|✅|⛔|
 |Price|💰|🎁|
 
-<small>¹: The foreground service by default shows up as a semi perament notification (1 of 1 account connected). The nofitication can be hidden through settings of the operating system. The functionality of the foreground service itself won’t be effected by hidding the notification. A long press on the notification (or exapending it and pressing the "Hide Notification" button) will bring you to the relevant setting in the operating system. Move the slider for Foreground Service into the off position.
+<small>¹: The foreground service by default shows up as a semi-permanent notification (1 of 1 account connected). The nofitication can be hidden through settings of the operating system. The functionality of the foreground service itself won’t be effected by hidding the notification. A long press on the notification (or exapending it and pressing the "Hide Notification" button) will bring you to the relevant setting in the operating system. Move the slider for Foreground Service into the off position.
 
 ²: Can be substituted via [search.jabber.network](https://search.jabber.network)
 
