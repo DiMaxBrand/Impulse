@@ -1022,7 +1022,7 @@
     <string name="welcome_header">Unirse a Conversation</string>
     <string name="pref_use_colorful_bubbles">Burbujas de chat de colores</string>
     <string name="pref_use_colorful_bubbles_summary">Colores de fondo distintos para mensajes enviados y recibidos</string>
-    <string name="barcode_does_not_contain_fingerprints_for_this_chat">El código de barras no contiene huellas digitales para este chat.</string>
+    <string name="barcode_does_not_contain_fingerprints_for_this_chat">El código QR no contiene huellas digitales para este chat.</string>
     <string name="pref_keyboard_options">Teclado</string>
     <string name="pref_category_engagement_notifications">Notificaciones de participación</string>
     <string name="pref_category_application">Solicitud</string>
@@ -1165,4 +1165,6 @@
     <string name="mobile_ticket">Pase digital</string>
     <string name="emoji_reactions">Reacciones con emojis</string>
     <string name="open_keyboard">Abrir teclado</string>
+    <string name="server_invite">Invitar al servidor</string>
+    <string name="qr_code_actions">Escanear QR, Mostrar QR, Invitación al servidor</string>
 </resources>
