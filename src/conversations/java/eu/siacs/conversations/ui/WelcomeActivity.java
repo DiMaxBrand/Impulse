@@ -32,7 +32,7 @@ import eu.siacs.conversations.xmpp.Jid;
 import java.util.Arrays;
 import java.util.List;
 
-public class WelcomeActivity extends XmppActivity
+public class WelcomeActivity extends QrCodeScanningXmppActivity
         implements XmppConnectionService.OnAccountCreated, KeyChainAliasCallback {
 
     private static final int REQUEST_IMPORT_BACKUP = 0x63fb;
@@ -156,7 +156,7 @@ public class WelcomeActivity extends XmppActivity
                 }
                 break;
             case R.id.action_scan_qr_code:
-                UriHandlerActivity.scan(this, true);
+                requestPermissionAndScanQrCode();
                 break;
             case R.id.action_add_account_with_cert:
                 addAccountFromKey();
@@ -207,7 +207,6 @@ public class WelcomeActivity extends XmppActivity
     public void onRequestPermissionsResult(
             int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        UriHandlerActivity.onRequestPermissionResult(this, requestCode, grantResults);
         if (grantResults.length > 0) {
             if (allGranted(grantResults)) {
                 switch (requestCode) {

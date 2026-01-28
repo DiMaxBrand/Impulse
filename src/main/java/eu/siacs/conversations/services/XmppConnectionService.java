@@ -56,6 +56,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
+import de.gultsch.common.MiniUri;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.Conversations;
@@ -3553,11 +3554,11 @@ public class XmppConnectionService extends Service {
         return null;
     }
 
-    public Conversation findUniqueConversationByJid(XmppUri xmppUri) {
+    public Conversation findUniqueConversationByJid(final MiniUri.Xmpp xmppUri) {
         List<Conversation> findings = new ArrayList<>();
         for (Conversation c : getConversations()) {
             if (c.getAccount().isEnabled()
-                    && c.getAddress().asBareJid().equals(xmppUri.getJid())
+                    && c.getAddress().asBareJid().equals(xmppUri.asJid())
                     && ((c.getMode() == Conversational.MODE_MULTI)
                             == xmppUri.isAction(XmppUri.ACTION_JOIN))) {
                 findings.add(c);

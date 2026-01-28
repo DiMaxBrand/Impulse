@@ -47,7 +47,6 @@ import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.ui.ConversationsActivity;
 import eu.siacs.conversations.ui.ShowLocationActivity;
-import java.util.Arrays;
 
 @SuppressLint("ParcelCreator")
 public class FixedURLSpan extends URLSpan {
@@ -71,17 +70,24 @@ public class FixedURLSpan extends URLSpan {
 
     @Override
     public void onClick(final View widget) {
-        final var uri = new MiniUri(getURL());
+        final MiniUri uri;
+        try {
+            uri = MiniUri.asMiniUri(getURL());
+        } catch (final IllegalArgumentException e) {
+            return;
+        }
         final Context context = widget.getContext();
-        final boolean candidateToProcessDirectly =
-                "xmpp".equals(uri.getScheme())
-                        || ("https".equals(uri.getScheme())
-                                && "conversations.im".equals(uri.getAuthority())
-                                && uri.getPathSegments().size() > 1
-                                && Arrays.asList("j", "i").contains(uri.getPathSegments().get(0)));
-        if (candidateToProcessDirectly
-                && context instanceof ConversationsActivity conversationsActivity) {
-            if (conversationsActivity.onXmppUriClicked(uri.asUri())) {
+        final MiniUri.Xmpp asXmppUri;
+        if (uri instanceof MiniUri.Xmpp x) {
+            asXmppUri = x;
+        } else if (uri instanceof MiniUri.Transformable t
+                && t.transform() instanceof MiniUri.Xmpp x) {
+            asXmppUri = x;
+        } else {
+            asXmppUri = null;
+        }
+        if (asXmppUri != null && context instanceof ConversationsActivity conversationsActivity) {
+            if (conversationsActivity.onXmppUriClicked(asXmppUri)) {
                 Log.d(Config.LOGTAG, "handled xmpp uri internally");
                 widget.playSoundEffect(SoundEffectConstants.CLICK);
                 return;

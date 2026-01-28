@@ -58,6 +58,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import de.gultsch.common.MiniUri;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.crypto.OmemoSetting;
@@ -79,14 +80,13 @@ import eu.siacs.conversations.ui.util.ToolbarUtils;
 import eu.siacs.conversations.ui.widget.AccountPickerDialog;
 import eu.siacs.conversations.utils.ExceptionHelper;
 import eu.siacs.conversations.utils.UIHelper;
-import eu.siacs.conversations.utils.XmppUri;
 import eu.siacs.conversations.xmpp.Jid;
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist;
 import java.util.Arrays;
 import java.util.List;
 import org.openintents.openpgp.util.OpenPgpApi;
 
-public class ConversationsActivity extends XmppActivity
+public class ConversationsActivity extends QrCodeScanningXmppActivity
         implements OnConversationSelected,
                 OnConversationArchived,
                 OnConversationsListItemUpdated,
@@ -281,7 +281,6 @@ public class ConversationsActivity extends XmppActivity
     public void onRequestPermissionsResult(
             int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        UriHandlerActivity.onRequestPermissionResult(this, requestCode, grantResults);
         if (grantResults.length > 0) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 switch (requestCode) {
@@ -511,11 +510,10 @@ public class ConversationsActivity extends XmppActivity
         }
     }
 
-    public boolean onXmppUriClicked(Uri uri) {
-        XmppUri xmppUri = new XmppUri(uri);
-        if (xmppUri.isValidJid() && !xmppUri.hasFingerprints()) {
+    public boolean onXmppUriClicked(final MiniUri.Xmpp uri) {
+        if (uri.isAddress() && !uri.getOmemoFingerprints().isEmpty()) {
             final Conversation conversation =
-                    xmppConnectionService.findUniqueConversationByJid(xmppUri);
+                    xmppConnectionService.findUniqueConversationByJid(uri);
             if (conversation != null) {
                 openConversation(conversation, null);
                 return true;
@@ -542,7 +540,7 @@ public class ConversationsActivity extends XmppActivity
                 }
                 break;
             case R.id.action_scan_qr_code:
-                UriHandlerActivity.scan(this, false);
+                requestPermissionAndScanQrCode();
                 return true;
             case R.id.action_show_qr_code:
                 new AccountPickerDialog.Enabled(this).pick(a -> showQrCode(a.getShareableUri()));
