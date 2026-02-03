@@ -1201,4 +1201,7 @@
     <string name="emoji_reactions">Реакції емоджі</string>
     <string name="server_invite">Запросити на сервер</string>
     <string name="qr_code_actions">Сканувати QR-код, показати QR-код, запросити на сервер</string>
+    <string name="qr_code_contains_link">Відкрити посилання?</string>
+    <string name="open_browser">Відкрити браузер</string>
+    <string name="qr_code_contains_link_text">Цей QR-код веде на вебсайт. Перевірте адресу нижче, перш ніж відкривати її у браузері:</string>
 </resources>
