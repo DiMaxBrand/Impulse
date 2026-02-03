@@ -1186,4 +1186,7 @@
     <string name="open_keyboard">Отвори тастатуру</string>
     <string name="server_invite">Позови на сервер</string>
     <string name="qr_code_actions">Очитај QR, Прикажи QR, Позивнице на сервер</string>
+    <string name="qr_code_contains_link">Отвори веб линк?</string>
+    <string name="qr_code_contains_link_text">Овај QR кôд упућује на неки сајт. Потврди адресу испод пре него што је отвориш у прегледачу:</string>
+    <string name="open_browser">Отвори прегледач</string>
 </resources>
