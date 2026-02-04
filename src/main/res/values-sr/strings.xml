@@ -1189,4 +1189,10 @@
     <string name="qr_code_contains_link">Отвори веб линк?</string>
     <string name="qr_code_contains_link_text">Овај QR кôд упућује на неки сајт. Потврди адресу испод пре него што је отвориш у прегледачу:</string>
     <string name="open_browser">Отвори прегледач</string>
+    <string name="muc_user_ban_explainer">Овај корисник више неће моћи да види нове поруке нити да учествује у преписци.</string>
+    <plurals name="delete_n_messages">
+        <item quantity="one">Обриши %d поруку</item>
+        <item quantity="few">Обриши %d поруке</item>
+        <item quantity="other">Обриши %d порука</item>
+    </plurals>
 </resources>
