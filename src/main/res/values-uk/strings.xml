@@ -1204,4 +1204,11 @@
     <string name="qr_code_contains_link">Відкрити посилання?</string>
     <string name="open_browser">Відкрити браузер</string>
     <string name="qr_code_contains_link_text">Цей QR-код веде на вебсайт. Перевірте адресу нижче, перш ніж відкривати її у браузері:</string>
+    <plurals name="delete_n_messages">
+        <item quantity="one">Видалити %d повідомлення</item>
+        <item quantity="few">Видалити %d повідомлення</item>
+        <item quantity="many">Видалити %d повідомлень</item>
+        <item quantity="other">Видалити %d повідомлень</item>
+    </plurals>
+    <string name="muc_user_ban_explainer">Цей користувач більше не зможе бачити нові повідомлення або брати участь у розмові.</string>
 </resources>
