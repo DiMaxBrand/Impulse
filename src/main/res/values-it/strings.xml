@@ -376,9 +376,6 @@
     <string name="remove_from_room">Rimuovi dalla chat di gruppo</string>
     <string name="remove_from_channel">Rimuovi dal canale</string>
     <string name="could_not_change_affiliation">Impossibile cambiare l’affiliazione di %s</string>
-    <string name="ban_from_conference">Bandisci dalla chat di gruppo</string>
-    <string name="ban_from_channel">Bandisci dal canale</string>
-    <string name="removing_from_public_conference">Stai tentando di rimuovere %s da un canale pubblico. L\'unico modo per farlo è di bandire quell\'utente per sempre.</string>
     <string name="ban_now">Bandisci</string>
     <string name="could_not_change_role">Impossibile cambiare ruolo di %s</string>
     <string name="conference_options">Configurazione chat di gruppo privata</string>

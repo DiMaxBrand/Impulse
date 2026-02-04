@@ -350,9 +350,6 @@
     <string name="remove_from_room">從群組聊天中移除</string>
     <string name="remove_from_channel">從頻道中移除</string>
     <string name="could_not_change_affiliation">無法變更 %s 的關係</string>
-    <string name="ban_from_conference">從群組聊天中封鎖</string>
-    <string name="ban_from_channel">從頻道中封鎖</string>
-    <string name="removing_from_public_conference">你正在嘗試從公用頻道中移除 %s。只有永遠封鎖此使用者才能將其將其移除。</string>
     <string name="ban_now">立即封鎖</string>
     <string name="could_not_change_role">無法修改 %s 的角色</string>
     <string name="conference_options">私人群組聊天組態</string>

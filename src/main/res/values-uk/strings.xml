@@ -372,9 +372,6 @@
     <string name="remove_from_room">Вилучити з групи</string>
     <string name="remove_from_channel">Вилучити з каналу</string>
     <string name="could_not_change_affiliation">Неможливо змінити статус участі %s</string>
-    <string name="ban_from_conference">Заборонити доступ до групи</string>
-    <string name="ban_from_channel">Заборонити в каналі</string>
-    <string name="removing_from_public_conference">Ви намагаєтеся вилучити %s з публічного каналу. Єдиним способом для цього є заблокувати користувача назавжди.</string>
     <string name="ban_now">Заборонити зараз</string>
     <string name="could_not_change_role">Неможливо змінити роль %s</string>
     <string name="conference_options">Налаштування приватного чату</string>

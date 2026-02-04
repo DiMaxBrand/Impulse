@@ -366,9 +366,6 @@
     <string name="remove_from_room">Премахване от груповия разговор</string>
     <string name="remove_from_channel">Премахване от канала</string>
     <string name="could_not_change_affiliation">Принадлежността на %s не може да бъде променена </string>
-    <string name="ban_from_conference">Забраняване на достъпа до груповия разговор</string>
-    <string name="ban_from_channel">Забраняване на достъпа до канала</string>
-    <string name="removing_from_public_conference">Опитвате се да премахнете%s от публичен канал. Единственият начин да направите това е да блокирате завинаги потребителя.</string>
     <string name="ban_now">Забраняване на достъпа сега</string>
     <string name="could_not_change_role">Ролята на %s не може да бъде променена</string>
     <string name="conference_options">Настройка на частен групов разговор</string>

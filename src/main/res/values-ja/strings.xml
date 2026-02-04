@@ -371,9 +371,6 @@
     <string name="remove_from_room">グループチャットから削除</string>
     <string name="remove_from_channel">談話室から削除</string>
     <string name="could_not_change_affiliation">%s の所属を変更できません</string>
-    <string name="ban_from_conference">グループチャットから出禁にする</string>
-    <string name="ban_from_channel">談話室から出禁にする</string>
-    <string name="removing_from_public_conference">あなたは公開談話室から %s を削除しようとしています。その唯一の手段は、そのユーザーを永久に出禁にすることです。</string>
     <string name="ban_now">今すぐ出禁にする</string>
     <string name="could_not_change_role">%s の役割を変更できません</string>
     <string name="conference_options">非公開グループチャットの環境設定</string>

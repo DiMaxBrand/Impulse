@@ -375,9 +375,6 @@
     <string name="remove_from_room">Eliminar a parola en grupo</string>
     <string name="remove_from_channel">Retirar da canle</string>
     <string name="could_not_change_affiliation">Non se puido mudar a afiliación de %s</string>
-    <string name="ban_from_conference">Vetar na parola en grupo</string>
-    <string name="ban_from_channel">Vetar na canle</string>
-    <string name="removing_from_public_conference">Estás a intentar eliminar a %s dunha canle pública. O único xeito de facelo é prohibíndolle o acceso para sempre.</string>
     <string name="ban_now">Rexeitar agora</string>
     <string name="could_not_change_role">Non se puido mudar o rol de %s</string>
     <string name="conference_options">Configuración do grupo privado de conversa</string>

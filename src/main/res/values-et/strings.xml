@@ -310,7 +310,6 @@
     <string name="new_password">Uus salasõna</string>
     <string name="password_should_not_be_empty">Salasõna ei saa tühi olla</string>
     <string name="remove_from_room">Eemalda vestlusrühmast</string>
-    <string name="ban_from_conference">Keela ligipääs vestlusrühma</string>
     <string name="conference_options">Privaatse vestlusrühma seadistused</string>
     <string name="modified_conference_options">Vestlusrühma seadistused on muudetud!</string>
     <string name="could_not_modify_conference_options">Vestlusrühma seadistuste muutmine ei õnnestunud</string>
@@ -518,9 +517,7 @@
     <string name="could_not_change_affiliation">Kasutaja „%s“ kuuluvuse muutmine ei õnnestunud</string>
     <string name="remove_owner_privileges">Võta omaniku õigused ära</string>
     <string name="remove_from_channel">Eemalda kanalilt</string>
-    <string name="ban_from_channel">Keela ligipääs kanalile</string>
     <string name="could_not_change_role">Kasutaja „%s“ rolli muutmine ei õnnestunud</string>
-    <string name="removing_from_public_conference">Sa üritad eemaldada kasutajat „%s“ avalikult kanalilt. Ainus viis seda teha on talle igavese suhtluskeelu seadmine.</string>
     <string name="ban_now">Keela ligipääs nüüd</string>
     <string name="sending_x_file">Saadame faili „%s“</string>
     <string name="offering_x_file">Pakume faili „%s“</string>

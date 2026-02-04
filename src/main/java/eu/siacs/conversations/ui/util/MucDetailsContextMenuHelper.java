@@ -2,20 +2,24 @@ package eu.siacs.conversations.ui.util;
 
 import android.app.Activity;
 import android.preference.PreferenceManager;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.TypefaceSpan;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
+import androidx.core.content.ContextCompat;
+import androidx.databinding.DataBindingUtil;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
+import eu.siacs.conversations.databinding.DialogMucUserBanBinding;
 import eu.siacs.conversations.entities.Account;
 import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
+import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.MucOptions;
 import eu.siacs.conversations.entities.MucOptions.User;
 import eu.siacs.conversations.services.XmppConnectionService;
@@ -25,8 +29,12 @@ import eu.siacs.conversations.ui.ConversationsActivity;
 import eu.siacs.conversations.ui.MucUsersActivity;
 import eu.siacs.conversations.ui.XmppActivity;
 import eu.siacs.conversations.xmpp.Jid;
+import eu.siacs.conversations.xmpp.manager.ModerationManager;
+import eu.siacs.conversations.xmpp.manager.MultiUserChatManager;
 import im.conversations.android.xmpp.model.muc.Affiliation;
 import im.conversations.android.xmpp.model.muc.Role;
+import java.util.Collections;
+import java.util.Set;
 
 public final class MucDetailsContextMenuHelper {
 
@@ -62,9 +70,6 @@ public final class MucDetailsContextMenuHelper {
             MenuItem managePermissions = menu.findItem(R.id.manage_permissions);
             removeFromRoom.setTitle(
                     isGroupChat ? R.string.remove_from_room : R.string.remove_from_channel);
-            MenuItem banFromConference = menu.findItem(R.id.ban_from_conference);
-            banFromConference.setTitle(
-                    isGroupChat ? R.string.ban_from_conference : R.string.ban_from_channel);
             MenuItem invite = menu.findItem(R.id.invite);
             final User self = conversation.getMucOptions().getSelf();
             if (user.realJidMatchesAccount()) {
@@ -91,15 +96,8 @@ public final class MucDetailsContextMenuHelper {
                         managePermissionsVisible = true;
                         removeMembership.setVisible(true);
                     }
-                    if (!Config.DISABLE_BAN) {
-                        managePermissionsVisible = true;
-                        banFromConference.setVisible(true);
-                    }
-                } else {
-                    if (!Config.DISABLE_BAN || conversation.getMucOptions().membersOnly()) {
-                        removeFromRoom.setVisible(true);
-                    }
                 }
+                removeFromRoom.setVisible(true);
             }
             if (self.ranks(Affiliation.OWNER)) {
                 if (isGroupChat || advancedMode || user.getAffiliation() == Affiliation.OWNER) {
@@ -180,15 +178,7 @@ public final class MucDetailsContextMenuHelper {
                         conversation, jid, Affiliation.NONE, onAffiliationChanged);
                 return true;
             case R.id.remove_from_room:
-                removeFromRoom(user, activity, onAffiliationChanged);
-                return true;
-            case R.id.ban_from_conference:
-                activity.xmppConnectionService.changeAffiliationInConference(
-                        conversation, jid, Affiliation.OUTCAST, onAffiliationChanged);
-                if (user.getRole() != Role.NONE) {
-                    activity.xmppConnectionService.changeRoleInConference(
-                            conversation, user.resource(), Role.NONE);
-                }
+                removeFromRoom(user, activity);
                 return true;
             case R.id.send_private_message:
                 if (activity instanceof ConversationsActivity) {
@@ -213,53 +203,81 @@ public final class MucDetailsContextMenuHelper {
         }
     }
 
-    private static void removeFromRoom(
-            final User user,
-            XmppActivity activity,
-            XmppConnectionService.OnAffiliationChanged onAffiliationChanged) {
-        final Conversation conversation = user.getConversation();
-        if (conversation.getMucOptions().membersOnly()) {
-            activity.xmppConnectionService.changeAffiliationInConference(
-                    conversation, user.getRealJid(), Affiliation.NONE, onAffiliationChanged);
-            if (user.getRole() != Role.NONE) {
-                activity.xmppConnectionService.changeRoleInConference(
-                        conversation, user.resource(), Role.NONE);
-            }
+    private static void removeFromRoom(final User user, final XmppActivity activity) {
+        final var mucOptions = user.getMucOptions();
+        final Conversation conversation = mucOptions.getConversation();
+        final var messages =
+                conversation.findMessagesWithOccupantIdOrRealJid(
+                        user.getRealJid(), user.getOccupantId());
+        final boolean isGroupChat = mucOptions.isPrivateAndNonAnonymous();
+        final DialogMucUserBanBinding binding =
+                DataBindingUtil.inflate(
+                        activity.getLayoutInflater(), R.layout.dialog_muc_user_ban, null, false);
+        final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity);
+        builder.setTitle(isGroupChat ? R.string.remove_from_room : R.string.remove_from_channel);
+        if (!mucOptions.isPrivateAndNonAnonymous()
+                && mucOptions.moderation()
+                && !messages.isEmpty()) {
+            binding.deleteMessage.setText(
+                    activity.getResources()
+                            .getQuantityString(
+                                    R.plurals.delete_n_messages, messages.size(), messages.size()));
         } else {
-            final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity);
-            builder.setTitle(R.string.ban_from_conference);
-            String jid = user.getRealJid().asBareJid().toString();
-            SpannableString message =
-                    new SpannableString(
-                            activity.getString(R.string.removing_from_public_conference, jid));
-            int start = message.toString().indexOf(jid);
-            if (start >= 0) {
-                message.setSpan(
-                        new TypefaceSpan("monospace"),
-                        start,
-                        start + jid.length(),
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-            builder.setMessage(message);
-            builder.setNegativeButton(R.string.cancel, null);
-            builder.setPositiveButton(
-                    R.string.ban_now,
-                    (dialog, which) -> {
-                        activity.xmppConnectionService.changeAffiliationInConference(
-                                conversation,
-                                user.getRealJid(),
-                                Affiliation.OUTCAST,
-                                onAffiliationChanged);
-                        if (user.getRole() != Role.NONE) {
-                            activity.xmppConnectionService.changeRoleInConference(
-                                    conversation, user.resource(), Role.NONE);
-                        }
-                    });
-            builder.create().show();
+            binding.deleteMessage.setVisibility(View.GONE);
+        }
+        binding.jid.setText(user.getRealJid().asBareJid().toString());
+        builder.setView(binding.getRoot());
+        builder.setNegativeButton(R.string.cancel, null);
+        builder.setPositiveButton(
+                R.string.continue_btn,
+                (dialog, which) -> {
+                    if (!mucOptions.isPrivateAndNonAnonymous()
+                            && mucOptions.moderation()
+                            && binding.deleteMessage.isChecked()) {
+                        banUserDeleteMessages(activity, user, messages);
+                    } else {
+                        banUserDeleteMessages(activity, user, Collections.emptySet());
+                    }
+                });
+        builder.create().show();
+    }
+
+    private static void banUserDeleteMessages(
+            final XmppActivity activity, final User user, final Set<Message> messages) {
+        final var account = user.getAccount();
+        final var conversation = user.getConversation();
+        final var future =
+                account.getXmppConnection()
+                        .getManager(MultiUserChatManager.class)
+                        .setAffiliation(conversation, Affiliation.OUTCAST, user.getRealJid());
+        account.getXmppConnection()
+                .getManager(MultiUserChatManager.class)
+                .setRole(conversation.getAddress().asBareJid(), Role.NONE, user.resource());
+        Futures.addCallback(
+                future,
+                new FutureCallback<>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        Log.d(Config.LOGTAG, "affiliation change success");
+                    }
+
+                    @Override
+                    public void onFailure(Throwable t) {
+                        Log.d(Config.LOGTAG, "could not change affiliation", t);
+                        Toast.makeText(
+                                        activity,
+                                        R.string.could_not_change_affiliation,
+                                        Toast.LENGTH_LONG)
+                                .show();
+                    }
+                },
+                ContextCompat.getMainExecutor(activity));
+        for (final var message : messages) {
+            account.getXmppConnection().getManager(ModerationManager.class).moderate(message);
         }
     }
 
-    private static void startConversation(User user, XmppActivity activity) {
+    private static void startConversation(final User user, final XmppActivity activity) {
         if (user.getRealJid() != null) {
             Conversation newConversation =
                     activity.xmppConnectionService.findOrCreateConversation(

@@ -377,9 +377,6 @@
     <string name="remove_from_room">Grup konuşmasından çıkar </string>
     <string name="remove_from_channel">Kanaldan çıkar</string>
     <string name="could_not_change_affiliation">%s kişisinin ortaklığı değiştirilemedi</string>
-    <string name="ban_from_conference">Grup konuşmasından men et</string>
-    <string name="ban_from_channel">Kanaldan men et</string>
-    <string name="removing_from_public_conference">%s kişisini ortak kanaldan çıkarmaya çalışıyorsunuz. Bunu yapmanın tek yolu kişiyi tamamen men etmektir.</string>
     <string name="ban_now">Şimdi men et</string>
     <string name="could_not_change_role">%s kişisinin rolü değiştirilemedi</string>
     <string name="conference_options">Özel grup konuşması ayarları</string>

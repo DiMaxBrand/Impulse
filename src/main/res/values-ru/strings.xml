@@ -387,9 +387,6 @@
     <string name="remove_from_room">Исключить из конференции</string>
     <string name="remove_from_channel">Исключить из канала</string>
     <string name="could_not_change_affiliation">Невозможно изменить принадлежность %s</string>
-    <string name="ban_from_conference">Заблокировать в конференции</string>
-    <string name="ban_from_channel">Заблокировать в канале</string>
-    <string name="removing_from_public_conference">Вы пытаетесь исключить %s из публичного канала. Единственный способ это сделать — навсегда заблокировать этого пользователя. </string>
     <string name="ban_now">Заблокировать</string>
     <string name="could_not_change_role">Невозможно сменить роль %s</string>
     <string name="conference_options">Настройки приватной конференции</string>

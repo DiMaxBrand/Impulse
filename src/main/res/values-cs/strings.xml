@@ -369,9 +369,6 @@
     <string name="remove_from_room">Odebrat ze skupinového chatu</string>
     <string name="remove_from_channel">Odebrat z kanálu</string>
     <string name="could_not_change_affiliation">Nelze změnit připojení uživatele %s</string>
-    <string name="ban_from_conference">Blokovat ve skupinovém chatu</string>
-    <string name="ban_from_channel">Blokovat v kanálu</string>
-    <string name="removing_from_public_conference">Pokoušíte se odstranit %s z veřejného kanálu. Jediný způsob, jak toho docílit, je zablokovat tohoto uživatele navždy.</string>
     <string name="ban_now">Vypovědět</string>
     <string name="could_not_change_role">Nelze změnit roli uživatele %s</string>
     <string name="conference_options">Nastavení soukromých skupinových chatů</string>

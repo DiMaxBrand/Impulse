@@ -374,9 +374,6 @@
     <string name="remove_from_room">Supprimer du groupe</string>
     <string name="remove_from_channel">Supprimer du salon</string>
     <string name="could_not_change_affiliation">Impossible de changer l\'affiliation de %s</string>
-    <string name="ban_from_conference">Bannir du groupe</string>
-    <string name="ban_from_channel">Bannir du salon</string>
-    <string name="removing_from_public_conference">Vous essayez de supprimer %s d\'un salon public. La seule façon de le faire est de bannir cet·te utilisateur·ice pour toujours.</string>
     <string name="ban_now">Bannir maintenant</string>
     <string name="could_not_change_role">Impossible de changer le rôle de %s</string>
     <string name="conference_options">Configuration du groupe privé</string>

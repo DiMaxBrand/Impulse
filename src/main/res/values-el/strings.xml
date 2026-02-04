@@ -367,9 +367,6 @@
     <string name="remove_from_room">Αφαίρεση από την ομάδική συζήτηση</string>
     <string name="remove_from_channel">Αφαίρεση από το κανάλι</string>
     <string name="could_not_change_affiliation">Δεν ήταν δυνατή η αλλαγή του δεσμού της επαφής %s</string>
-    <string name="ban_from_conference">Αποκλεισμός από την ομαδική συζήτηση</string>
-    <string name="ban_from_channel">Αποκλεισμός από το κανάλι</string>
-    <string name="removing_from_public_conference">Προσπαθείτε να αφαιρέσετε τον χρήστη %s από ένα δημόσιο κανάλι. Ο μόνος τρόπος να γίνει αυτό είναι να αποκλείσετε τον χρήστη για πάντα.</string>
     <string name="ban_now">Αποκλεισμός τώρα</string>
     <string name="could_not_change_role">Δεν ήταν δυνατή η αλλαγή ρόλου της επαφής %s</string>
     <string name="conference_options">Ρύθμιση συζήτησης ιδιωτικής ομάδας</string>

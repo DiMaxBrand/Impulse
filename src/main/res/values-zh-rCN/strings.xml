@@ -387,9 +387,6 @@
     <string name="remove_from_room">从群聊移除</string>
     <string name="remove_from_channel">从频道移除</string>
     <string name="could_not_change_affiliation">无法更改 %s 的从属关系</string>
-    <string name="ban_from_conference">从群聊封禁</string>
-    <string name="ban_from_channel">从频道封禁</string>
-    <string name="removing_from_public_conference">您正尝试从公开频道移除 %s。唯一办法是永久封禁该用户。</string>
     <string name="ban_now">立即封禁</string>
     <string name="could_not_change_role">无法更改 %s 的角色</string>
     <string name="conference_options">私人群聊配置</string>

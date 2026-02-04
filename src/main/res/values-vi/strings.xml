@@ -370,9 +370,6 @@
     <string name="remove_from_room">Xoá khỏi cuộc trò chuyện nhóm</string>
     <string name="remove_from_channel">Xoá khỏi kênh</string>
     <string name="could_not_change_affiliation">Không thể đổi mối quan hệ của %s</string>
-    <string name="ban_from_conference">Cấm khỏi cuộc trò chuyện nhóm</string>
-    <string name="ban_from_channel">Cấm khỏi kênh</string>
-    <string name="removing_from_public_conference">Bạn đang cố xoá %s khỏi một kênh công khai. Cách duy nhất để làm thế là cấm người dùng đó mãi mãi.</string>
     <string name="ban_now">Cấm ngay</string>
     <string name="could_not_change_role">Không thể đổi phận sự của %s</string>
     <string name="conference_options">Thiết lâp cuộc trò chuyện nhóm riêng tư</string>

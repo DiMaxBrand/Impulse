@@ -300,8 +300,6 @@
     <string name="remove_from_room">Hiqe prej fjalosjeje grupi</string>
     <string name="remove_from_channel">Hiqe prej kanali</string>
     <string name="could_not_change_affiliation">S’u ndryshua dot përshoqërim i %s</string>
-    <string name="ban_from_conference">Dëboje nga fjalosje në grup</string>
-    <string name="ban_from_channel">Dëboje nga kanali</string>
     <string name="ban_now">Dëboje tani</string>
     <string name="could_not_change_role">S’u ndryshua dot roli i %s</string>
     <string name="conference_options">Formësim fjalosje private në grup</string>
@@ -873,7 +871,6 @@
 \nS’u sollën dot kyçe të rinj nga shërbyesi. Ndoshta ka diçka gabim me shërbyesin tuaj të kontakteve\?</string>
     <string name="error_no_keys_to_trust_presence">S’ka kyçe të përdorshëm për këtë kontakt.
 \nSigurohuni se keni që të dy pajtim pranie.</string>
-    <string name="removing_from_public_conference">Po rrekeni të hiqni %s nga një kanal publik. Rruga e vetme për ta bërë këtë është ta dëboni përgjithmonë atë përdorues.</string>
     <string name="non_anonymous">Bëji adresat XMPP të dukshme për këdo</string>
     <string name="could_not_modify_conference_options">S’u ndryshuan dot mundësi fjalosjeje në grup</string>
     <string name="pref_enter_is_send_summary">Përdorni tastin Enter për të dërguar mesazhin. Mundeni përherë të përdorni Ctrl+Enter për të dërguar mesazhin, edhe nëse kjo mundësi është e çaktivizuar.</string>
