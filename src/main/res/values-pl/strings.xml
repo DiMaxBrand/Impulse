@@ -1177,4 +1177,7 @@
     <string name="open_keyboard">Otwórz klawiaturę</string>
     <string name="server_invite">Zaproś na serwer</string>
     <string name="qr_code_actions">Skanowanie QR‑ów, pokazywanie QR‑ów, zapraszanie na serwer</string>
+    <string name="qr_code_contains_link">Otworzyć link internetowy?</string>
+    <string name="qr_code_contains_link_text">Ten kod QR kieruje do strony internetowej. Sprawdź adres przed otwarciem go w Twojej przeglądarce:</string>
+    <string name="open_browser">Otwórz przeglądarkę</string>
 </resources>
