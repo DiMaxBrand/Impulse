@@ -1148,4 +1148,8 @@
     <string name="open_browser">打开浏览器</string>
     <string name="qr_code_contains_link">打开网页链接？</string>
     <string name="qr_code_contains_link_text">此二维码指向一个网站。请在浏览器中打开前验证以下地址：</string>
+    <plurals name="delete_n_messages">
+        <item quantity="other">删除 %d 条消息</item>
+    </plurals>
+    <string name="muc_user_ban_explainer">此用户将无法再查看新消息，也无法再参与对话。</string>
 </resources>
