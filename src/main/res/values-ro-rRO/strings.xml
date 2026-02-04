@@ -1174,4 +1174,10 @@
     <string name="qr_code_contains_link">Deschide adresa?</string>
     <string name="qr_code_contains_link_text">Acest cod QR indică a adresă web. Vă rugăm să o verificați înainte de a o deschide în browser:</string>
     <string name="open_browser">Deschide browser</string>
+    <string name="muc_user_ban_explainer">Acest utilizator nu va mai putea vedea mesaje noi și nu va mai putea participa la conversație.</string>
+    <plurals name="delete_n_messages">
+        <item quantity="one">Șterge %d mesaj</item>
+        <item quantity="few">Șterge %d mesaje</item>
+        <item quantity="other">Șterge %d de mesaje</item>
+    </plurals>
 </resources>
