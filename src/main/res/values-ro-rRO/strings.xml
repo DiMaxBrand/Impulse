@@ -1171,4 +1171,7 @@
     <string name="open_keyboard">Deschide tastatura</string>
     <string name="server_invite">Invită pe server</string>
     <string name="qr_code_actions">Scanează QR, Arată QR, Invitație server</string>
+    <string name="qr_code_contains_link">Deschide adresa?</string>
+    <string name="qr_code_contains_link_text">Acest cod QR indică a adresă web. Vă rugăm să o verificați înainte de a o deschide în browser:</string>
+    <string name="open_browser">Deschide browser</string>
 </resources>
