@@ -1166,4 +1166,7 @@
     <string name="open_keyboard">Öppna tangentbordet</string>
     <string name="server_invite">Bjud in till server</string>
     <string name="qr_code_actions">Skanna QR-kod, visa QR-kod, serverinbjudan</string>
+    <string name="qr_code_contains_link">Öppna webblänk?</string>
+    <string name="qr_code_contains_link_text">Denna QR-kod pekar till en webbplats. Kontrollera adressen nedan innan du öppnar den i din webbläsare:</string>
+    <string name="open_browser">Öppna webbläsare</string>
 </resources>
