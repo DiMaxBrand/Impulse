@@ -29,6 +29,7 @@
 -dontwarn rocks.xmpp.addr.**
 -dontwarn com.google.firebase.analytics.connector.AnalyticsConnector
 -dontwarn java.lang.**
+-dontwarn com.google.auto.service.AutoService
 -dontwarn javax.lang.**
 
 -dontwarn com.android.org.conscrypt.SSLParametersImpl
