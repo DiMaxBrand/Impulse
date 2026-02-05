@@ -682,9 +682,6 @@ public class XmppConnectionService extends Service {
             case ACTION_IDLE_PING:
                 scheduleNextIdlePing();
                 break;
-            case ACTION_FCM_MESSAGE_RECEIVED:
-                Log.d(Config.LOGTAG, "push message arrived in service. account");
-                break;
             case ACTION_QUICK_LOG:
                 final String message = intent == null ? null : intent.getStringExtra("message");
                 if (message != null && Config.QUICK_LOG) {

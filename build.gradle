@@ -86,12 +86,6 @@ dependencies {
     implementation 'org.osmdroid:osmdroid-android:6.1.20'
     implementation 'org.whispersystems:signal-protocol-java:2.6.2'
     conversationsPlaystoreImplementation 'com.android.installreferrer:installreferrer:2.2'
-    playstoreImplementation('com.google.firebase:firebase-messaging:25.0.1') {
-        exclude group: 'com.google.firebase', module: 'firebase-core'
-        exclude group: 'com.google.firebase', module: 'firebase-analytics'
-        exclude group: 'com.google.firebase', module: 'firebase-measurement-connector'
-
-    }
     quicksyImplementation 'io.michaelrocks:libphonenumber-android:9.0.22'
     quicksyPlaystoreImplementation 'com.google.android.gms:play-services-auth-api-phone:18.3.0'
 
