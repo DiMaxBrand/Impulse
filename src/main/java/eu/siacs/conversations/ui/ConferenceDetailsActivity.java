@@ -36,7 +36,6 @@ import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Conversational;
 import eu.siacs.conversations.entities.MucOptions;
 import eu.siacs.conversations.entities.MucOptions.User;
-import eu.siacs.conversations.services.XmppConnectionService;
 import eu.siacs.conversations.services.XmppConnectionService.OnConversationUpdate;
 import eu.siacs.conversations.services.XmppConnectionService.OnMucRosterUpdate;
 import eu.siacs.conversations.ui.adapter.MediaAdapter;
@@ -53,7 +52,6 @@ import eu.siacs.conversations.ui.util.SoftKeyboardUtils;
 import eu.siacs.conversations.utils.AccountUtils;
 import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.StylingHelper;
-import eu.siacs.conversations.xmpp.Jid;
 import eu.siacs.conversations.xmpp.manager.BookmarkManager;
 import eu.siacs.conversations.xmpp.manager.MultiUserChatManager;
 import im.conversations.android.model.Bookmark;
@@ -65,11 +63,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import me.drakeet.support.toast.ToastCompat;
 
 public class ConferenceDetailsActivity extends XmppActivity
-        implements OnConversationUpdate,
-                OnMucRosterUpdate,
-                XmppConnectionService.OnAffiliationChanged,
-                TextWatcher,
-                OnMediaLoaded {
+        implements OnConversationUpdate, OnMucRosterUpdate, TextWatcher, OnMediaLoaded {
     public static final String ACTION_VIEW_MUC = "view_muc";
 
     private Conversation mConversation;
@@ -768,16 +762,6 @@ public class ConferenceDetailsActivity extends XmppActivity
 
     private String getStatus(User user) {
         return getStatus(this, user, mAdvancedMode);
-    }
-
-    @Override
-    public void onAffiliationChangedSuccessful(Jid jid) {
-        refreshUi();
-    }
-
-    @Override
-    public void onAffiliationChangeFailed(Jid jid, int resId) {
-        displayToast(getString(resId, jid.asBareJid().toString()));
     }
 
     private void displayToast(final String msg) {

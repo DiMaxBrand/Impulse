@@ -136,8 +136,6 @@ import eu.siacs.conversations.xmpp.manager.VCardManager;
 import im.conversations.android.model.Bookmark;
 import im.conversations.android.model.ImmutableBookmark;
 import im.conversations.android.xmpp.model.delay.Delay;
-import im.conversations.android.xmpp.model.muc.Affiliation;
-import im.conversations.android.xmpp.model.muc.Role;
 import im.conversations.android.xmpp.model.stanza.Iq;
 import im.conversations.android.xmpp.model.up.Push;
 import java.io.File;
@@ -3041,51 +3039,6 @@ public class XmppConnectionService extends Service {
                 .setSubject(conference, subject);
     }
 
-    public void changeAffiliationInConference(
-            final Conversation conference,
-            Jid user,
-            final Affiliation affiliation,
-            final OnAffiliationChanged callback) {
-        final var account = conference.getAccount();
-        final var future =
-                account.getXmppConnection()
-                        .getManager(MultiUserChatManager.class)
-                        .setAffiliation(conference, affiliation, user);
-        Futures.addCallback(
-                future,
-                new FutureCallback<Void>() {
-                    @Override
-                    public void onSuccess(Void result) {
-                        if (callback != null) {
-                            callback.onAffiliationChangedSuccessful(user);
-                        } else {
-                            Log.d(
-                                    Config.LOGTAG,
-                                    "changed affiliation of " + user + " to " + affiliation);
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Throwable t) {
-                        if (callback != null) {
-                            callback.onAffiliationChangeFailed(
-                                    user, R.string.could_not_change_affiliation);
-                        } else {
-                            Log.d(Config.LOGTAG, "could not change affiliation", t);
-                        }
-                    }
-                },
-                MoreExecutors.directExecutor());
-    }
-
-    public void changeRoleInConference(
-            final Conversation conference, final String nick, Role role) {
-        final var account = conference.getAccount();
-        account.getXmppConnection()
-                .getManager(MultiUserChatManager.class)
-                .setRole(conference.getAddress().asBareJid(), role, nick);
-    }
-
     public ListenableFuture<Void> destroyRoom(final Conversation conversation) {
         final var account = conversation.getAccount();
         return account.getXmppConnection()
@@ -3964,12 +3917,6 @@ public class XmppConnectionService extends Service {
         void onMoreMessagesLoaded(int count, Conversation conversation);
 
         void informUser(int r);
-    }
-
-    public interface OnAffiliationChanged {
-        void onAffiliationChangedSuccessful(Jid jid);
-
-        void onAffiliationChangeFailed(Jid jid, int resId);
     }
 
     public interface OnConversationUpdate {

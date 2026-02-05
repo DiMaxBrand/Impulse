@@ -8,6 +8,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.databinding.DataBindingUtil;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -22,7 +23,6 @@ import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.MucOptions;
 import eu.siacs.conversations.entities.MucOptions.User;
-import eu.siacs.conversations.services.XmppConnectionService;
 import eu.siacs.conversations.ui.ConferenceDetailsActivity;
 import eu.siacs.conversations.ui.ConversationFragment;
 import eu.siacs.conversations.ui.ConversationsActivity;
@@ -135,12 +135,8 @@ public final class MucDetailsContextMenuHelper {
     }
 
     public static boolean onContextItemSelected(
-            MenuItem item, User user, XmppActivity activity, final String fingerprint) {
+            final MenuItem item, User user, final XmppActivity activity, final String fingerprint) {
         final Conversation conversation = user.getConversation();
-        final XmppConnectionService.OnAffiliationChanged onAffiliationChanged =
-                activity instanceof XmppConnectionService.OnAffiliationChanged
-                        ? (XmppConnectionService.OnAffiliationChanged) activity
-                        : null;
         Jid jid = user.getRealJid();
         switch (item.getItemId()) {
             case R.id.action_contact_details:
@@ -160,22 +156,18 @@ public final class MucDetailsContextMenuHelper {
                 startConversation(user, activity);
                 return true;
             case R.id.give_admin_privileges:
-                activity.xmppConnectionService.changeAffiliationInConference(
-                        conversation, jid, Affiliation.ADMIN, onAffiliationChanged);
+                changeAffiliationInConference(activity, conversation, jid, Affiliation.ADMIN);
                 return true;
             case R.id.give_membership:
             case R.id.remove_admin_privileges:
             case R.id.revoke_owner_privileges:
-                activity.xmppConnectionService.changeAffiliationInConference(
-                        conversation, jid, Affiliation.MEMBER, onAffiliationChanged);
+                changeAffiliationInConference(activity, conversation, jid, Affiliation.MEMBER);
                 return true;
             case R.id.give_owner_privileges:
-                activity.xmppConnectionService.changeAffiliationInConference(
-                        conversation, jid, Affiliation.OWNER, onAffiliationChanged);
+                changeAffiliationInConference(activity, conversation, jid, Affiliation.OWNER);
                 return true;
             case R.id.remove_membership:
-                activity.xmppConnectionService.changeAffiliationInConference(
-                        conversation, jid, Affiliation.NONE, onAffiliationChanged);
+                changeAffiliationInConference(activity, conversation, jid, Affiliation.NONE);
                 return true;
             case R.id.remove_from_room:
                 removeFromRoom(user, activity);
@@ -201,6 +193,37 @@ public final class MucDetailsContextMenuHelper {
             default:
                 return false;
         }
+    }
+
+    private static void changeAffiliationInConference(
+            final XmppActivity activity,
+            final Conversation conversation,
+            final Jid user,
+            final Affiliation affiliation) {
+        final var account = conversation.getAccount();
+        final var future =
+                account.getXmppConnection()
+                        .getManager(MultiUserChatManager.class)
+                        .setAffiliation(conversation, affiliation, user);
+        Futures.addCallback(
+                future,
+                new FutureCallback<>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        activity.refreshUi();
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Throwable t) {
+                        Log.d(Config.LOGTAG, "could not change affiliation", t);
+                        Toast.makeText(
+                                        activity,
+                                        R.string.could_not_change_affiliation,
+                                        Toast.LENGTH_LONG)
+                                .show();
+                    }
+                },
+                ContextCompat.getMainExecutor(activity));
     }
 
     private static void removeFromRoom(final User user, final XmppActivity activity) {

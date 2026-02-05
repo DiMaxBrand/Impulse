@@ -81,7 +81,6 @@ import eu.siacs.conversations.ui.util.ToolbarUtils;
 import eu.siacs.conversations.ui.widget.AccountPickerDialog;
 import eu.siacs.conversations.utils.ExceptionHelper;
 import eu.siacs.conversations.utils.UIHelper;
-import eu.siacs.conversations.xmpp.Jid;
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist;
 import java.util.Arrays;
 import java.util.List;
@@ -96,8 +95,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                 XmppConnectionService.OnConversationUpdate,
                 XmppConnectionService.OnRosterUpdate,
                 OnUpdateBlocklist,
-                XmppConnectionService.OnShowErrorToast,
-                XmppConnectionService.OnAffiliationChanged {
+                XmppConnectionService.OnShowErrorToast {
 
     public static final String ACTION_VIEW_CONVERSATION = "eu.siacs.conversations.action.VIEW";
     public static final String EXTRA_CONVERSATION = "conversationUuid";
@@ -429,19 +427,6 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         if (pendingViewIntent.clear()) {
             Log.e(Config.LOGTAG, "cleared pending view intent");
         }
-    }
-
-    private void displayToast(final String msg) {
-        runOnUiThread(
-                () -> Toast.makeText(ConversationsActivity.this, msg, Toast.LENGTH_SHORT).show());
-    }
-
-    @Override
-    public void onAffiliationChangedSuccessful(Jid jid) {}
-
-    @Override
-    public void onAffiliationChangeFailed(Jid jid, int resId) {
-        displayToast(getString(resId, jid.asBareJid().toString()));
     }
 
     private void openConversation(@Nullable final Conversation conversation, final Bundle extras) {

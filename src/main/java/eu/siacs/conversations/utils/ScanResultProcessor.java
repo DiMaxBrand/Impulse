@@ -12,10 +12,12 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
 import de.gultsch.common.MiniUri;
 import de.gultsch.common.Patterns;
+import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.http.HttpConnectionManager;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import okhttp3.Call;
@@ -88,6 +90,9 @@ public class ScanResultProcessor {
                 return Futures.immediateFailedFuture(
                         new IllegalArgumentException("xmpp uri has no address"));
             }
+            if (new AppSettings(context).isUseTor()) {
+                return Futures.immediateFuture(http);
+            }
             if (eligibleForLinkHeaderDiscovery(http.asHttpUrl())) {
                 final var linkHeaderFuture = fetchLinkHeader(http.asHttpUrl());
                 return Futures.catching(
@@ -137,8 +142,8 @@ public class ScanResultProcessor {
                                 })
                         .followRedirects(false)
                         .followSslRedirects(false)
+                        .callTimeout(Duration.ofSeconds(3))
                         .build();
-        // TODO add proxyn
         final var call = okHttp.newCall(new Request.Builder().url(url).head().build());
         call.enqueue(
                 new Callback() {
