@@ -1151,4 +1151,12 @@
     <string name="open_keyboard">Abrir teclado</string>
     <string name="server_invite">Convidar ao servidor</string>
     <string name="qr_code_actions">Escanear QR, Mostrar QR, Convidar ao servidor</string>
+    <string name="qr_code_contains_link">Abrir Ligazón á Web?</string>
+    <string name="qr_code_contains_link_text">Este código QR refírese a un sitio web. Comproba embaixo o enderezo antes de abrilo no navegador:</string>
+    <string name="open_browser">Abrir Navegador</string>
+    <string name="muc_user_ban_explainer">Esta usuaria xa non poderá ver as novas mensaxes ou participar na conversa.</string>
+    <plurals name="delete_n_messages">
+        <item quantity="one">Eliminar %d mensaxe</item>
+        <item quantity="other">Eliminar %d mensaxes</item>
+    </plurals>
 </resources>
