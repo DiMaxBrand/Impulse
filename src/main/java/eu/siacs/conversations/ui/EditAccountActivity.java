@@ -40,7 +40,9 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -88,6 +90,7 @@ import eu.siacs.conversations.xmpp.manager.HttpUploadManager;
 import eu.siacs.conversations.xmpp.manager.MessageArchiveManager;
 import eu.siacs.conversations.xmpp.manager.PepManager;
 import eu.siacs.conversations.xmpp.manager.PresenceManager;
+import eu.siacs.conversations.xmpp.manager.PushNotificationManager;
 import eu.siacs.conversations.xmpp.manager.RegistrationManager;
 import im.conversations.android.xmpp.model.data.Data;
 import im.conversations.android.xmpp.model.mam.Preferences;
@@ -1297,6 +1300,20 @@ public class EditAccountActivity extends OmemoActivity
                 this.binding.serverInfoSasl2.setText(R.string.server_info_unavailable);
             }
             this.binding.loginMechanism.setText(Strings.nullToEmpty(features.loginMechanism()));
+            final var stanzas = connection.getStanzaRxTx();
+            final var pushManager = connection.getManager(PushNotificationManager.class);
+            final var pushCount = pushManager.getPushNotificationCounter();
+            final List<Integer> stanzaRxTxValues;
+            if (PushManagementService.isStub()
+                    || pushCount == 0
+                    || !new PushManagementService(this).available(mAccount)) {
+                this.binding.stanzaRxTxLabel.setText(R.string.server_info_stanzas_rx_tx);
+                stanzaRxTxValues = ImmutableList.of(stanzas.rx(), stanzas.tx());
+            } else {
+                this.binding.stanzaRxTxLabel.setText(R.string.server_info_stanzas_rx_tx_push);
+                stanzaRxTxValues = ImmutableList.of(stanzas.rx(), stanzas.tx(), pushCount);
+            }
+            this.binding.stanzaRxTx.setText(Joiner.on('/').join(stanzaRxTxValues));
             if (connection.getManager(PepManager.class).isAvailable()) {
                 AxolotlService axolotlService = this.mAccount.getAxolotlService();
                 if (axolotlService != null && axolotlService.isPepBroken()) {

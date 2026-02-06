@@ -314,6 +314,27 @@
                                 android:layout_height="wrap_content">
 
                                 <TextView
+                                    android:id="@+id/stanza_rx_tx_label"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="end"
+                                    android:singleLine="true"
+                                    android:text="@string/server_info_stanzas_rx_tx"
+                                    android:textAppearance="?textAppearanceBodyMedium" />
+
+                                <TextView
+                                    android:id="@+id/stanza_rx_tx"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="end"
+                                    android:textAppearance="?textAppearanceBodyMedium" />
+                            </TableRow>
+
+                            <TableRow
+                                android:layout_width="fill_parent"
+                                android:layout_height="wrap_content">
+
+                                <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:ellipsize="end"

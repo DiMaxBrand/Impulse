@@ -130,6 +130,7 @@ import eu.siacs.conversations.xmpp.manager.MultiUserChatManager;
 import eu.siacs.conversations.xmpp.manager.NickManager;
 import eu.siacs.conversations.xmpp.manager.PepManager;
 import eu.siacs.conversations.xmpp.manager.PresenceManager;
+import eu.siacs.conversations.xmpp.manager.PushNotificationManager;
 import eu.siacs.conversations.xmpp.manager.RegistrationManager;
 import eu.siacs.conversations.xmpp.manager.RosterManager;
 import eu.siacs.conversations.xmpp.manager.VCardManager;
@@ -777,6 +778,15 @@ public class XmppConnectionService extends Service {
                     androidId != null
                             && CryptoHelper.getAccountFingerprint(account, androidId)
                                     .equals(pushedAccountHash);
+            if (pushWasMeantForThisAccount) {
+                final var manager =
+                        account.getXmppConnection().getManager(PushNotificationManager.class);
+                Log.d(
+                        Config.LOGTAG,
+                        account.getJid().asBareJid()
+                                + ": received push notification #"
+                                + manager.incrementAndGetPushNotificationCounter());
+            }
             pingNow |=
                     processAccountState(
                             account,
