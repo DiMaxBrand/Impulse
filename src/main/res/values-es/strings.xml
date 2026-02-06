@@ -1173,4 +1173,5 @@
         <item quantity="many">Eliminar %d mensajes</item>
         <item quantity="other">Eliminar %d mensajes</item>
     </plurals>
+    <string name="server_info_stanzas_rx_tx_push">Stanzas (rx/tx/push)</string>
 </resources>
