@@ -1,5 +1,12 @@
 # Changelog
 
+### Version 2.19.10
+
+* Offer to delete messages when banning someone in a public channel
+* Refactor QR code scanning and URI handling
+* Play Store flavor: Stop using Google libray and interface directly with Google Play Service via IPC
+* Fix rotation issues in tablet mode
+
 ### Version 2.19.9
 
 * Combine QR code related actions (show, scan, invite) into one central menu
