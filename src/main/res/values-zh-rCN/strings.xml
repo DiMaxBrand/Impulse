@@ -1152,4 +1152,6 @@
         <item quantity="other">删除 %d 条消息</item>
     </plurals>
     <string name="muc_user_ban_explainer">此用户将无法再查看新消息，也无法再参与对话。</string>
+    <string name="server_info_stanzas_rx_tx">节（接收/发送）</string>
+    <string name="server_info_stanzas_rx_tx_push">节（接收/发送/推送）</string>
 </resources>
