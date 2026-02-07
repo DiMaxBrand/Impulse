@@ -1156,4 +1156,15 @@
     <string name="open_keyboard">Abrir teclado</string>
     <string name="server_invite">Convidar para o servidor</string>
     <string name="qr_code_actions">Ler QR, Mostrar QR, Convite do Servidor</string>
+    <string name="server_info_stanzas_rx_tx">Stanzas (rx/tx)</string>
+    <string name="server_info_stanzas_rx_tx_push">Stanzas (rx/tx/push)</string>
+    <string name="qr_code_contains_link">Abrir Ligação?</string>
+    <string name="qr_code_contains_link_text">Este código QR aponta para um website. Por favor, verifique este endereço antes de o abrir no seu navegador:</string>
+    <string name="open_browser">Abrir Navegador</string>
+    <string name="muc_user_ban_explainer">Este utilizador não conseguirá ver novas mensagens ou participar na conversa.</string>
+    <plurals name="delete_n_messages">
+        <item quantity="one">Eliminar %d mensagem</item>
+        <item quantity="many">Eliminar %d mensagens</item>
+        <item quantity="other">Eliminar %d mensagens</item>
+    </plurals>
 </resources>
