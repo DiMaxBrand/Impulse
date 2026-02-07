@@ -389,9 +389,9 @@ public class MiniUri {
     public static final class Http extends Transformable {
 
         private static final String INVITATION_AUTHORITY_LEGACY = "conversations.im";
-        private static final String INVITATION_AUTHORITY_DEFAULT = "invite.joinjabber.org";
+        private static final String INVITATION_AUTHORITY_DEFAULT = "xmpp.link";
         private static final Collection<String> INVITATION_AUTHORITIES =
-                Arrays.asList(INVITATION_AUTHORITY_DEFAULT, "xmpp.link");
+                Arrays.asList(INVITATION_AUTHORITY_DEFAULT, "invite.joinjabber.org");
 
         private final HttpUrl httpUrl;
 

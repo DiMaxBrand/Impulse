@@ -176,7 +176,7 @@ public class MiniUriTest {
                                 MiniUri.Xmpp.ACTION_JOIN,
                                 Collections.singleton(MiniUri.EMPTY_STRING)));
         Assert.assertEquals(
-                "https://invite.joinjabber.org/#test%40conference.example.com%3Fjoin",
+                "https://xmpp.link/#test%40conference.example.com%3Fjoin",
                 uri.asInvitationUri().asUri().toString());
     }
 }

@@ -498,7 +498,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     }
 
     public boolean onXmppUriClicked(final MiniUri.Xmpp uri) {
-        if (uri.isAddress() && !uri.getOmemoFingerprints().isEmpty()) {
+        if (uri.isAddress() && uri.getOmemoFingerprints().isEmpty()) {
             final Conversation conversation =
                     xmppConnectionService.findUniqueConversationByJid(uri);
             if (conversation != null) {

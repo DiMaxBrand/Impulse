@@ -47,6 +47,7 @@ import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.ui.ConversationsActivity;
 import eu.siacs.conversations.ui.ShowLocationActivity;
+import eu.siacs.conversations.ui.YuriLauncherActivity;
 
 @SuppressLint("ParcelCreator")
 public class FixedURLSpan extends URLSpan {
@@ -86,12 +87,16 @@ public class FixedURLSpan extends URLSpan {
         } else {
             asXmppUri = null;
         }
-        if (asXmppUri != null && context instanceof ConversationsActivity conversationsActivity) {
-            if (conversationsActivity.onXmppUriClicked(asXmppUri)) {
+        if (asXmppUri != null && asXmppUri.isAddress()) {
+            if (context instanceof ConversationsActivity ca && ca.onXmppUriClicked(asXmppUri)) {
                 Log.d(Config.LOGTAG, "handled xmpp uri internally");
                 widget.playSoundEffect(SoundEffectConstants.CLICK);
                 return;
             }
+            final var intent = new Intent(context, YuriLauncherActivity.class);
+            intent.setData(asXmppUri.asUri());
+            startActivity(widget, intent);
+            return;
         }
         final Intent intent = new Intent(Intent.ACTION_VIEW, uri.asUri());
         if ("web+ap".equals(uri.getScheme())) {
