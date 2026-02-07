@@ -1159,4 +1159,6 @@
         <item quantity="one">%d Nachricht löschen</item>
         <item quantity="other">%d Nachrichten löschen</item>
     </plurals>
+    <string name="server_info_stanzas_rx_tx">Stanzas (Rx/Tx)</string>
+    <string name="server_info_stanzas_rx_tx_push">Stanzas (Rx/Tx/Push)</string>
 </resources>
