@@ -1179,4 +1179,6 @@
     <string name="muc_user_ban_explainer">See kasutaja ei näe enam uusi sõnumeid ega saa osaleda vestlustes.</string>
     <string name="open_browser">Ava veebibrauseris</string>
     <string name="qr_code_contains_link_text">See QR-kood viitab veebisaidile. Enne veebibrauseris avamist palun kontrolli, kas see aadress on ikka loogiline ja õige:</string>
+    <string name="server_info_stanzas_rx_tx">Stanzad (rx/tx)</string>
+    <string name="server_info_stanzas_rx_tx_push">Stanzad (rx/tx/push)</string>
 </resources>
