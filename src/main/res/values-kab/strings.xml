@@ -289,4 +289,9 @@
     <string name="invalid_muc_nick">Isem n useqdac d arameɣtu</string>
     <string name="contact_blocked">Anermis yettusewḥel</string>
     <string name="pref_accept_files">Qbel ifuyla</string>
+    <string name="problem_connecting_to_accounts">Ur izmir ara ad yeqqen ɣer ddeqs n imiḍanen</string>
+    <string name="touch_to_fix">Ttekki akken ad tesferkeḍ imiḍanen-ik·im</string>
+    <string name="not_in_roster">Rnu anermis-agi ixuṣṣen ɣer tebdart inermisen-ik·im?</string>
+    <string name="send_failed">asiweḍ ur yeddi ara</string>
+    <string name="preparing_image">Heggi iman-ik·im i tuzzna n tugna</string>
 </resources>
