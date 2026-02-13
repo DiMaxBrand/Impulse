@@ -132,7 +132,7 @@
     <string name="send_presence_updates">Enviar actualizacións de presenza</string>
     <string name="receive_presence_updates">Recibir actualizacións de presenza</string>
     <string name="ask_for_presence_updates">Solicitar actualizacións de presenza</string>
-    <string name="attach_choose_picture">Seleccionar imaxe</string>
+    <string name="attach_choose_picture">Escoller imaxe</string>
     <string name="attach_take_picture">Facer foto</string>
     <string name="preemptively_grant">Por defecto conceder solicitudes de subscrición</string>
     <string name="error_not_an_image_file">O arquivo seleccionado non é unha imaxe</string>
@@ -1159,4 +1159,6 @@
         <item quantity="one">Eliminar %d mensaxe</item>
         <item quantity="other">Eliminar %d mensaxes</item>
     </plurals>
+    <string name="server_info_stanzas_rx_tx">Stanzas (rx/tx)</string>
+    <string name="server_info_stanzas_rx_tx_push">Stanzas (rx/tx/push)</string>
 </resources>
