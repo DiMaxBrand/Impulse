@@ -294,4 +294,23 @@
     <string name="not_in_roster">Rnu anermis-agi ixuṣṣen ɣer tebdart inermisen-ik·im?</string>
     <string name="send_failed">asiweḍ ur yeddi ara</string>
     <string name="preparing_image">Heggi iman-ik·im i tuzzna n tugna</string>
+    <string name="delete_file_dialog_msg">D tidet tebɣiḍ ad tekkseḍ afaylu-agi?\n\n<b>Ɣur-k·m:</b> Ayagi ur itekkes ara ineɣlan n ufaylu-agi ikelsen deg yibenkan neɣ iqeddacen nniḍen.</string>
+    <string name="send_unencrypted_message">Azen izen s wudem n uḍris ibanen</string>
+    <string name="send_message_to_x">Azen izen ɣer %s</string>
+    <string name="send_encrypted_message">Azen izen awgelhan</string>
+    <string name="send_omemo_x509_message">Azen izen awgelhan v\\OMEMO</string>
+    <string name="your_nick_has_been_changed">Meffer isem-ik·im yettusnifel</string>
+    <string name="send_unencrypted">Azen aḍris s wudem ibanen</string>
+    <string name="decryption_failed">Tukksa n uwgelhen ur teddi ara. Ahat ur tesɛiḍ ara tasarutt tusligt iwatan.</string>
+    <string name="openkeychain_not_installed">Ttxil-k·m sbedd OpenKeychain</string>
+    <string name="offering">Tikci…</string>
+    <string name="no_pgp_key">Ulac tasarut OpenPGP yettwafen</string>
+    <string name="contact_has_no_pgp_key">Ur yezmir ara ad iwgelhen izen-ik·im acku anermis-ik·im ur d isumer ara tsarut-is tazayezt.\n\n<small>Ttxil-k·m, suter anermis-ik·im akken ad isbedd OpenPGP.</small></string>
+    <string name="no_pgp_keys">Ulac tisura OpenPGO yettwafen</string>
+    <string name="contacts_have_no_pgp_keys">Ur yezmir ara ad iwgelhen izen-ik·im acku inermisen-ik·im ur d sumren ara tisura-nsen uzayez.\n\n<small>Ttxil-k·m, suter asen akken ad sbedden OpenPGP.</small></string>
+    <string name="pref_accept_files_summary">Qbel s wudem awurman ifuyla meẓẓiyen ɣef…</string>
+    <string name="pref_vibrate_summary">Argagi ticki izen amaynut ad d-yaweḍ</string>
+    <string name="pref_led">Alɣu LED</string>
+    <string name="pref_notification_sound">Imesli n ulɣu</string>
+    <string name="pref_notification_sound_summary">Imesli n ulɣu i yiznan imaynuten</string>
 </resources>
