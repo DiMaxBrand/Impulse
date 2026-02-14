@@ -570,9 +570,7 @@
     <string name="verified_fingerprints">Перевірені цифрові підписи</string>
     <string name="use_camera_icon_to_scan_barcode">Використайте камеру для сканування QR-коду контакту</string>
     <string name="please_wait_for_keys_to_be_fetched">Зачекайте поки ключі отримуються</string>
-    <string name="share_as_barcode">Поділитися через QR-код</string>
     <string name="share_as_uri">Поділитися XMPP URI</string>
-    <string name="share_as_http">Поділитися посиланням HTTP</string>
     <string name="pref_blind_trust_before_verification">Довіряти наосліп до підтвердження</string>
     <string name="pref_blind_trust_before_verification_summary">Автоматично довіряти всім новим пристроям співрозмовників, які ще не пройшли перевірки, запитувати підтвердження вручну щоразу, як перевірений контакт додає свій новий пристрій.</string>
     <string name="blindly_trusted_omemo_keys">Ключі OMEMO, яким Ви довіряєте наосліп, тобто співрозмовник може бути не тим, кому Ви довіряєте.</string>

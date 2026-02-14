@@ -425,9 +425,7 @@
     <string name="pref_delete_omemo_identities_summary">Re-generuje vaše kľúče OMEMO. Všetky vaše kontakty vás budú musieť znova overiť. Použite to ako poslednú možnosť.</string>
     <string name="delete_selected_keys">Odstrániť označené kľúče</string>
     <string name="all_omemo_keys_have_been_verified">Overili ste všetky kľúče OMEMO vo vašom vlastníctve.</string>
-    <string name="share_as_barcode">Zdieľať ako qr kód</string>
     <string name="share_as_uri">Zdieľať ako XMPP URI</string>
-    <string name="share_as_http">Zdieľať ako HTTP odkaz</string>
     <string name="verify_omemo_keys">Overiť kľúče OMEMO</string>
     <string name="pref_automatically_delete_messages_description">Automaticky vymazávať správy z tohto zariadenia, ktoré sú staršie ako nastavené časové obdobie.</string>
     <string name="online_right_now">online práve teraz</string>

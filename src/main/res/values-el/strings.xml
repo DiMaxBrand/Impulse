@@ -577,9 +577,7 @@
     <string name="verified_fingerprints">Επαληθευμένα αποτυπώματα</string>
     <string name="use_camera_icon_to_scan_barcode">Χρησιμοποιήστε την κάμερα για να σαρώσετε τον κωδικό QR μιας επαφής</string>
     <string name="please_wait_for_keys_to_be_fetched">Παρακαλώ περιμένετε την μεταφόρτωση των κλειδιών</string>
-    <string name="share_as_barcode">Διαμοιρασμός ως κώδικας QR</string>
     <string name="share_as_uri">Διαμοιρασμός ως διεύθυνση URI XMPP</string>
-    <string name="share_as_http">Διαμοιρασμός ως σύνδεσμος HTTP</string>
     <string name="pref_blind_trust_before_verification">Τυφλή εμπιστοσύνη πριν την επαλήθευση</string>
     <string name="pref_blind_trust_before_verification_summary">Αυτόματη εμπιστοσύνη σε όλες τις νέες συσκευές επαφών που δεν έχουν επαληθευτεί παλιότερα, και παροχή χειροκίνητης επιβεβαίωσης κάθε φορά που μια επαληθευμένη επαφή προσθέτει μια νέα συσκευή.</string>
     <string name="blindly_trusted_omemo_keys">Κλειδιά OMEMO με τυφλή εμπιστοσύνη, που σημαίνει ότι μπορεί να είναι κάποιος άλλος ή κάποιος τρίτος μπορεί να έχει αποκτήσει πρόσβαση. </string>

@@ -617,9 +617,8 @@
     <string name="verified_fingerprints">Verified fingerprints</string>
     <string name="use_camera_icon_to_scan_barcode">Use the camera to scan a contact’s QR code</string>
     <string name="please_wait_for_keys_to_be_fetched">Please wait for keys to be fetched</string>
-    <string name="share_as_barcode">Share as QR code</string>
-    <string name="share_as_uri">Share as XMPP URI</string>
-    <string name="share_as_http">Share as HTTP link</string>
+    <string name="share_as_uri">Share XMPP URI</string>
+    <string name="share_invitation">Share invitation</string>
     <string name="pref_blind_trust_before_verification">Blind Trust Before Verification</string>
     <string name="pref_blind_trust_before_verification_summary">Trust new devices from non-verified contacts, but prompt manual confirmation of new devices for verified contacts.</string>
     <string name="blindly_trusted_omemo_keys">Blindly trusted OMEMO keys, meaning they could be someone else or someone could have tapped in.</string>
@@ -1150,6 +1149,7 @@
     <string name="qr_code_contains_link_text">This QR code points to a website. Please verify the address below before opening it in your browser:</string>
     <string name="open_browser">Open Browser</string>
     <string name="muc_user_ban_explainer">This user will no longer be able to see new messages or participate in the conversation.</string>
+    <string name="publish_qr_code">Publish QR code</string>
     <plurals name="delete_n_messages">
         <item quantity="one">Delete %d message</item>
         <item quantity="other">Delete %d messages</item>

@@ -557,9 +557,7 @@
     <string name="verified_fingerprints">Varmennetut sormenjäljet</string>
     <string name="use_camera_icon_to_scan_barcode">Käytä kameraa yhteystietosi viivakoodin lukemiseen</string>
     <string name="please_wait_for_keys_to_be_fetched">Odota hetki, avaimia ladataan</string>
-    <string name="share_as_barcode">Jaa viivakoodina</string>
     <string name="share_as_uri">Jaa XMPP-osoitteena</string>
-    <string name="share_as_http">Jaa HTTP-linkkinä</string>
     <string name="pref_blind_trust_before_verification">Sokea luottamus ennen varmistusta</string>
     <string name="pref_blind_trust_before_verification_summary">Luota uusiin laitteisiin varmistamattomilta yhteystiedoilta, mutta vaadi varmistettujen yhteystietojen uusien laitteiden manuaalinen hyväksyminen.</string>
     <string name="blindly_trusted_omemo_keys">OMEMO-avaimiin luotetaan sokeasti, eli ne voivat olla jonkun muun tai joku voi salakuunnella.</string>

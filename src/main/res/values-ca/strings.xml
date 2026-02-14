@@ -562,9 +562,7 @@
     <string name="verified_fingerprints">Empremtes digitals verificades</string>
     <string name="use_camera_icon_to_scan_barcode">Utilitzeu la càmera per escanejar el codi de barres d\'un contacte</string>
     <string name="please_wait_for_keys_to_be_fetched">Espereu que es puguin obtenir les claus</string>
-    <string name="share_as_barcode">Comparteix com a codi de barres</string>
     <string name="share_as_uri">Comparteix com a XMPP URI</string>
-    <string name="share_as_http">Comparteix com a enllaç HTTP</string>
     <string name="pref_blind_trust_before_verification">Confiança cega abans de la verificació</string>
     <string name="pref_blind_trust_before_verification_summary">Confiar en els nous dispositius dels contactes no verificats, però sol·licitar la confirmació manual dels nous dispositius per als contactes verificats.</string>
     <string name="blindly_trusted_omemo_keys">Confiar cegament en les claus de OMEMO, la qual cosa significa que podria ser una altra persona o que algú podria haver intervingut.</string>

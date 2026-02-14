@@ -13,7 +13,6 @@
     <string name="your_server_invitation">Ваше запрошення до сервера</string>
     <string name="improperly_formatted_provisioning">Неправильно відформатований код забезпечення</string>
     <string name="if_contact_is_nearby_use_qr">Якщо контакт поблизу, він також може прийняти запрошення, відсканувавши код нижче.</string>
-    <string name="easy_invite_share_text">Приєднуйтеся до %1$s і спілкуйтеся зі мною: %2$s</string>
     <string name="share_invite_with">Запросити…</string>
     <string name="tap_share_button_send_invite">Натисніть «Поділитися», щоб надіслати Вашому контакту запрошення до %1$s.</string>
 </resources>

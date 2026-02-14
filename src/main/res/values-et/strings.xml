@@ -834,8 +834,6 @@
     <string name="verified_fingerprints">Verifitseeritud sõrmejäljed</string>
     <string name="use_camera_icon_to_scan_barcode">Kasuta kaamerat kontakti QR-kood skaneerimiseks</string>
     <string name="please_wait_for_keys_to_be_fetched">Palun oota, kuni võtmed saavad laaditud</string>
-    <string name="share_as_barcode">Jaga QR-koodina</string>
-    <string name="share_as_http">Jaga HTTP lingina</string>
     <string name="pref_blind_trust_before_verification">Enne verifitseerimist usalda pimesi</string>
     <string name="pref_blind_trust_before_verification_summary">Usalda verifitseerimata kontaktide uusi seadmeid, aga küsi kinnitust verifitseeritud kontaktide uute seadmete puhul.</string>
     <string name="blindly_trusted_omemo_keys">Pimesi usaldatud OMEMO-võtmed. See võib tähendada, et tegemist on kellegi teisega või keegi kolmas suudab sõnumiliiklust jälgida.</string>

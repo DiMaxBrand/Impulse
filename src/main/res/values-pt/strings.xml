@@ -620,8 +620,6 @@
     <string name="all_omemo_keys_have_been_verified">Verificou todas as chaves OMEMO na sua posse</string>
     <string name="this_device_has_been_verified">Este dispositivo foi verificado</string>
     <string name="please_wait_for_keys_to_be_fetched">Por favor, espere a obtenção de chaves</string>
-    <string name="share_as_barcode">Partilhar como código QR</string>
-    <string name="share_as_http">Partilhar como link HTTP</string>
     <string name="pref_blind_trust_before_verification">Confiar Cegamente Antes da Verificação</string>
     <string name="pref_delete_omemo_identities_summary">Regenerar as suas chaves OMEMO. Todos os seus contactos terão que verificar novamente. Use só como último recurso.</string>
     <string name="use_camera_icon_to_scan_barcode">Use a câmara para capturar o código QR de um contacto</string>

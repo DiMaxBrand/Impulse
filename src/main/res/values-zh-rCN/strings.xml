@@ -594,9 +594,7 @@
     <string name="verified_fingerprints">已通过验证的指纹</string>
     <string name="use_camera_icon_to_scan_barcode">使用相机扫描联系人的二维码</string>
     <string name="please_wait_for_keys_to_be_fetched">请稍候，正在获取密钥</string>
-    <string name="share_as_barcode">以二维码形式分享</string>
     <string name="share_as_uri">以 XMPP URI 形式分享</string>
-    <string name="share_as_http">以 HTTP 链接形式分享</string>
     <string name="pref_blind_trust_before_verification">验证前盲目信任</string>
     <string name="pref_blind_trust_before_verification_summary">自动信任未经验证的联系人的新设备，但已验证的联系人的新设备需手动确认。</string>
     <string name="blindly_trusted_omemo_keys">盲目信任的 OMEMO 密钥，意味着存在密钥冒用或第三方窃听的风险。</string>

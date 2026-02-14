@@ -402,9 +402,7 @@
     <string name="verified_fingerprints">Bekreftede fingeravtrykk</string>
     <string name="use_camera_icon_to_scan_barcode">Bruk kameraet for å skanne en kontakts strekkode</string>
     <string name="please_wait_for_keys_to_be_fetched">Vent på innhenting av nøkler</string>
-    <string name="share_as_barcode">Del som strekkode</string>
     <string name="share_as_uri">Del som XMPP-URI</string>
-    <string name="share_as_http">Del som HTTP-lenke</string>
     <string name="pref_blind_trust_before_verification">Blind tillit før bekreftelse</string>
     <string name="not_trusted">Ikke betrodd</string>
     <string name="invalid_barcode">Ugyldig 2D-strekkode</string>

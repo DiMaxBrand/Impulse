@@ -581,9 +581,7 @@
     <string name="verified_fingerprints">指紋を検証しました</string>
     <string name="use_camera_icon_to_scan_barcode">カメラを使用して連絡先のバーコードをスキャンします</string>
     <string name="please_wait_for_keys_to_be_fetched">鍵が取得されるのをお待ちください</string>
-    <string name="share_as_barcode">バーコードで共有</string>
     <string name="share_as_uri">XMPP URI で共有</string>
-    <string name="share_as_http">HTTP リンクで共有</string>
     <string name="pref_blind_trust_before_verification">検証前に無条件に信頼</string>
     <string name="pref_blind_trust_before_verification_summary">検証されていない連絡先からの新しいデバイスは信頼しますが、検証済みの連絡先については新しいデバイスを手動で確認するよう求めます。</string>
     <string name="blindly_trusted_omemo_keys">無条件に信頼されている OMEMO 鍵です。他の誰かである可能性や、誰かに盗聴される危険性があります。</string>

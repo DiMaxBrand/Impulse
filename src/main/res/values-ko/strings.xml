@@ -369,9 +369,7 @@
     <string name="this_device_has_been_verified">해당 장치가 인증되었습니다</string>
     <string name="copy_fingerprint">핑거프린트 복사</string>
     <string name="verified_fingerprints">인증된 핑거프린트</string>
-    <string name="share_as_barcode">바코드로 공유</string>
     <string name="share_as_uri">XMPP URI로 공유</string>
-    <string name="share_as_http">HTTP 링크로 공유</string>
     <string name="not_trusted">신뢰되지 않음</string>
     <string name="invalid_barcode">잘못된 2D 바코드</string>
     <string name="pref_clean_private_storage_summary">파일이 저장되어있는 개인 스토리지를 정리합니다 (서버에서 다시 다운로드 할 수 있습니다)</string>

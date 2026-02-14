@@ -584,9 +584,7 @@
     <string name="verified_fingerprints">Empreintes vérifiées</string>
     <string name="use_camera_icon_to_scan_barcode">Utilisez l\'appareil photo pour scanner le QR code d\'un contact</string>
     <string name="please_wait_for_keys_to_be_fetched">Veuillez attendre que les clés soient récupérées</string>
-    <string name="share_as_barcode">Partager par QR code</string>
     <string name="share_as_uri">Partager par URI XMPP</string>
-    <string name="share_as_http">Partager par lien HTTP</string>
     <string name="pref_blind_trust_before_verification">Faire aveuglément confiance avant vérification</string>
     <string name="pref_blind_trust_before_verification_summary">Faire automatiquement confiance aux nouveaux appareils des contacts qui n\'ont pas été vérifiés auparavant mais demander une confirmation manuelle à chaque fois qu\'un contact vérifié auparavant utilise un nouvel appareil.</string>
     <string name="blindly_trusted_omemo_keys">Les clés OMEMO ont fait l\'objet d\'une confiance aveugle, cela signifie qu\'il pourrait s\'agir de quelqu\'un d\'autre ou que quelqu\'un aurait pu intercepter l\'échange.</string>

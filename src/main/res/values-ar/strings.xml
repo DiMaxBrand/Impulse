@@ -436,9 +436,7 @@
     <string name="verified_fingerprints">البصمات المصادق عليها</string>
     <string name="use_camera_icon_to_scan_barcode">إستخدم آلة التصوير لمسح شفرة التعرف على مراسلك</string>
     <string name="please_wait_for_keys_to_be_fetched">الرجاء الإنتظار ريثما يتم جلب المفاتيح</string>
-    <string name="share_as_barcode">شاركه كشَفْرة خَيْطيّة</string>
     <string name="share_as_uri">شاركه كعنوان XMPP</string>
-    <string name="share_as_http">شاركه كرابط HTTP</string>
     <string name="pref_blind_trust_before_verification">الثقة العمياء قبل التحقق</string>
     <string name="not_trusted">غير موثوق بها</string>
     <string name="invalid_barcode">الشفْرة الخيْطيّة خاطئة</string>

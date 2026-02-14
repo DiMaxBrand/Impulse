@@ -467,9 +467,7 @@
     <string name="verified_fingerprints">Egiaztatutako hatz-markak</string>
     <string name="use_camera_icon_to_scan_barcode">Kamera erabili kontaktuaren barra kodea eskaneatzeko</string>
     <string name="please_wait_for_keys_to_be_fetched">Mesedez itxaron gakoak ekarri arte</string>
-    <string name="share_as_barcode">Barra kode bezala partekatu</string>
     <string name="share_as_uri">XMPP URI bezala partekatu</string>
-    <string name="share_as_http">HTTP link bezala partekatu</string>
     <string name="pref_blind_trust_before_verification">Egiaztatu aurreko fidagarritasun itsua</string>
     <string name="not_trusted">Ez fidagarria</string>
     <string name="invalid_barcode">2D barra kodea baliogabea</string>

@@ -503,9 +503,7 @@
     <string name="verified_fingerprints">Geverifieerde vingerafdrukken</string>
     <string name="use_camera_icon_to_scan_barcode">Gebruik de camera om de streepjescode van een contact te scannen</string>
     <string name="please_wait_for_keys_to_be_fetched">Wacht tot de sleutels zijn opgehaald</string>
-    <string name="share_as_barcode">Delen als streepjescode</string>
     <string name="share_as_uri">Delen als XMPP-URI</string>
-    <string name="share_as_http">Delen als HTTP-link</string>
     <string name="pref_blind_trust_before_verification">Blindelings vertrouwen vóór verificatie</string>
     <string name="not_trusted">Onvertrouwd</string>
     <string name="invalid_barcode">Ongeldige QR-code</string>

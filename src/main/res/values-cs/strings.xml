@@ -581,9 +581,7 @@
     <string name="verified_fingerprints">Ověřené otisky</string>
     <string name="use_camera_icon_to_scan_barcode">Naskenovat kód kontaktu pomocí fotoaparátu</string>
     <string name="please_wait_for_keys_to_be_fetched">Prosím, počkejte na získání klíčů</string>
-    <string name="share_as_barcode">Sdílet jako čárový kód</string>
     <string name="share_as_uri">Sdílet jako XMPP URI</string>
-    <string name="share_as_http">Sdílet jako HTTP odkaz</string>
     <string name="pref_blind_trust_before_verification">Slepě důvěřovat před ověřením</string>
     <string name="pref_blind_trust_before_verification_summary">Důvěřovat novým zařízením neověřených kontaktů, ale požadovat ruční potvrzení nových zařízení u ověřených kontaktů.</string>
     <string name="not_trusted">Nedůvěryhodný</string>

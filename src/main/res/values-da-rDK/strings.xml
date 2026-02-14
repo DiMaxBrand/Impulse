@@ -584,9 +584,7 @@
     <string name="verified_fingerprints">Bekræft fingeraftryk</string>
     <string name="use_camera_icon_to_scan_barcode">Brug kameraet til at skanne en kontakt’s QR kode</string>
     <string name="please_wait_for_keys_to_be_fetched">Vent til nøglerne hentes</string>
-    <string name="share_as_barcode">Del som QR kode</string>
     <string name="share_as_uri">Del som XMPP URL</string>
-    <string name="share_as_http">Del som HTTP link</string>
     <string name="pref_blind_trust_before_verification">Stol blindt før bekræftelse</string>
     <string name="pref_blind_trust_before_verification_summary">Stol på nye enheder fra ubekræftede kontakter, men prompt manuelt bekræftelse af nye enheder for bekræftede kontakter.</string>
     <string name="blindly_trusted_omemo_keys">Autobekræftet OMEMO nøgler, hvilket betyder de kan være en anden eller en kan have indtastet info.</string>

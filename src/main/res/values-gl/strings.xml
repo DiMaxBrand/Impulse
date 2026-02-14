@@ -587,9 +587,7 @@
     <string name="verified_fingerprints">Impresións dixitais verificadas</string>
     <string name="use_camera_icon_to_scan_barcode">Usa a cámara para escanear o código QR do contacto</string>
     <string name="please_wait_for_keys_to_be_fetched">Por favor agarde mentras se obteñen as chaves</string>
-    <string name="share_as_barcode">Compartir como código QR</string>
     <string name="share_as_uri">Compartir como URI XMPP</string>
-    <string name="share_as_http">Compartir como ligazón HTTP</string>
     <string name="pref_blind_trust_before_verification">Confianza cega antes da verificación</string>
     <string name="pref_blind_trust_before_verification_summary">Confiar en dispositivos novos de contactos non verificados, pero solicitar confirmación manual de novos dispositivos para contactos verificados.</string>
     <string name="blindly_trusted_omemo_keys">Chaves OMEMO de confianza cega, significa que podería ser calquera outra persoa ou algunha impostora.</string>

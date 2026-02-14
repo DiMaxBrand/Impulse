@@ -51,14 +51,9 @@ public class EasyOnboardingInviteActivity extends XmppActivity {
     }
 
     private void share() {
-        final String shareText =
-                getString(
-                        R.string.easy_invite_share_text,
-                        easyOnboardingInvite.getDomain(),
-                        easyOnboardingInvite.getShareableLink().toString());
         final Intent sendIntent = new Intent();
         sendIntent.setAction(Intent.ACTION_SEND);
-        sendIntent.putExtra(Intent.EXTRA_TEXT, shareText);
+        sendIntent.putExtra(Intent.EXTRA_TEXT, easyOnboardingInvite.getShareableLink().toString());
         sendIntent.setType("text/plain");
         startActivity(Intent.createChooser(sendIntent, getString(R.string.share_invite_with)));
     }

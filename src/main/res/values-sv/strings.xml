@@ -596,9 +596,7 @@
     <string name="verified_fingerprints">Verifierade fingeravtryck</string>
     <string name="use_camera_icon_to_scan_barcode">Använd kameran för att skanna en kontakts QR-kod</string>
     <string name="please_wait_for_keys_to_be_fetched">Var god vänta på att nycklarna ska hämtas</string>
-    <string name="share_as_barcode">Dela som QR-kod</string>
     <string name="share_as_uri">Dela som XMPP-URI</string>
-    <string name="share_as_http">Dela som HTTP-länk</string>
     <string name="pref_blind_trust_before_verification">Blind tillit före verifiering</string>
     <string name="pref_blind_trust_before_verification_summary">Lita på nya enheter från icke-verifierade kontakter, men begär manuell bekräftelse av nya enheter för verifierade kontakter.</string>
     <string name="blindly_trusted_omemo_keys">Att blint lita på OMEMO-nycklar, innebär att användaren skulle kunna vara någon annan, och att en tredje part kan tjuvlyssna.</string>

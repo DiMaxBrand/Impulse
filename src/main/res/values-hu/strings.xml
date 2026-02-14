@@ -549,9 +549,7 @@
     <string name="verified_fingerprints">Ellenőrzött ujjlenyomatok</string>
     <string name="use_camera_icon_to_scan_barcode">Használja a kamerát egy partner vonalkódjának beolvasásához</string>
     <string name="please_wait_for_keys_to_be_fetched">Várjon a kulcsok lekérésére</string>
-    <string name="share_as_barcode">Megosztás vonalkódként</string>
     <string name="share_as_uri">Megosztás XMPP URI-ként</string>
-    <string name="share_as_http">Megosztás HTTP hivatkozásként</string>
     <string name="pref_blind_trust_before_verification">Vak bizalom ellenőrzés előtt</string>
     <string name="not_trusted">Nem megbízható</string>
     <string name="invalid_barcode">Érvénytelen QR kód</string>

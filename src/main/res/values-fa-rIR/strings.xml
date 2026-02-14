@@ -745,7 +745,6 @@
     <string name="status_message">پیغام وضعیت</string>
     <string name="create_private_group_chat">گفتگوی گروهی خصوصی بسازید</string>
     <string name="feature_not_implemented">این ویژگی پیاده‌سازی نشده است</string>
-    <string name="share_as_barcode">هم‌رسانی به شکل بارکد</string>
     <string name="pref_blind_trust_before_verification_summary">به دستگاه‌های تازهٔ مخاطبان تأییدنشده آسان‌گیرانه اعتماد کن، ولی برای دستگاه‌های تازهٔ مخاطبان تأییدشده درخواست تأیید بفرست.</string>
     <string name="payment_required">پرداخت ضروری است</string>
     <string name="channel_already_exists">این کانال از قبل وجود دارد</string>
@@ -934,7 +933,6 @@
     <string name="view_media">دیدن رسانه</string>
     <string name="no_microphone_permission">به %1$s اجازهٔ دسترسی به میکروفن بده</string>
     <string name="providing_a_name_is_optional">ارائهٔ نام اختیاری است</string>
-    <string name="share_as_http">هم‌رسانی به شکل پیوند HTTP</string>
     <string name="account_status_host_unknown">این سرور مسئول این دامنه نیست</string>
     <string name="pref_dnd_on_silent_mode">مشغول با گوشی بی‌صدا</string>
     <string name="allow">اجازه</string>

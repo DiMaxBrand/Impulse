@@ -578,9 +578,7 @@
     <string name="verified_fingerprints">Потвърдени отпечатъци</string>
     <string name="use_camera_icon_to_scan_barcode">Използвайте камерата, за да сканирате баркода на контакт</string>
     <string name="please_wait_for_keys_to_be_fetched">Моля, изчакайте получаването на ключовете</string>
-    <string name="share_as_barcode">Споделяне като баркод</string>
     <string name="share_as_uri">Споделяне като адрес на XMPP</string>
-    <string name="share_as_http">Споделяне като връзка в Интернет</string>
     <string name="pref_blind_trust_before_verification">Доверяване на сляпо преди потвърждение</string>
     <string name="pref_blind_trust_before_verification_summary">Нови устройства на непотвърдени контакти автоматично получават доверие, но нови устройства на потвърдени контакти изискват ръчно потвърждаване.</string>
     <string name="blindly_trusted_omemo_keys">Доверени на сляпо ключове OMEMO, което означава, че това може да е някой друг, или че някой може да е получил неправомерен достъп.</string>

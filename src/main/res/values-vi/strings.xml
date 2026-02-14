@@ -581,9 +581,7 @@
     <string name="verified_fingerprints">Mã vân tay đã xác minh</string>
     <string name="use_camera_icon_to_scan_barcode">Sử dụng máy ảnh để quét mã vạch của liên hệ</string>
     <string name="please_wait_for_keys_to_be_fetched">Vui lòng đợi để lấy các mã khoá</string>
-    <string name="share_as_barcode">Chia sẻ dưới dạng mã vạch</string>
     <string name="share_as_uri">Chia sẻ dưới dạng URI XMPP</string>
-    <string name="share_as_http">Chia sẻ dưới dạng liên kết HTTP</string>
     <string name="pref_blind_trust_before_verification">Tin tưởng mù quáng trước khi xác minh</string>
     <string name="pref_blind_trust_before_verification_summary">Tin tưởng các thiết bị mới từ các liên hệ chưa xác minh, nhưng hỏi xác nhận thủ công các thiết bị mới từ các liên hệ đã xác minh.</string>
     <string name="blindly_trusted_omemo_keys">Các mã khoá OMEMO đã tin tưởng mù quáng, có nghĩa là họ có thể là một ai đó khác hoặc ai đó có thể đã can thiệp.</string>

@@ -605,9 +605,7 @@
     <string name="verified_fingerprints">Zaufane ôdciski</string>
     <string name="use_camera_icon_to_scan_barcode">Użyj fotoaparatu, coby zeskanować kod kryskowy kōntaktu</string>
     <string name="please_wait_for_keys_to_be_fetched">Czekej na ściōngniyńcie kluczy</string>
-    <string name="share_as_barcode">Udostympnij bez kod QR</string>
     <string name="share_as_uri">Udostympnij bez URI XMPP</string>
-    <string name="share_as_http">Udostympnij bez link HTTP</string>
     <string name="pref_blind_trust_before_verification">Ôd Razu Ufej Przed Weryfikacyjōm</string>
     <string name="pref_blind_trust_before_verification_summary">Autōmatycznie ufej wszyskim nowym maszinōm ôd niyzweryfikowanych kōntaktōw, ale proś ô rynczne potwierdzynie nowych maszin ôd zweryfikowanych kōntaktōw.</string>
     <string name="blindly_trusted_omemo_keys">Ôd razu zaufane klucze OMEMO, to znaczy mogōm noleżeć do kogoś inkszego abo ftoś może sie podepnōńć.</string>

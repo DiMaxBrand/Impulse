@@ -605,9 +605,7 @@
     <string name="verified_fingerprints">Подтверждённые отпечатки</string>
     <string name="use_camera_icon_to_scan_barcode">Используйте камеру для сканирования QR-кода контакта</string>
     <string name="please_wait_for_keys_to_be_fetched">Подождите получения ключей</string>
-    <string name="share_as_barcode">Отправить QR-код</string>
     <string name="share_as_uri">Отправить XMPP URI</string>
-    <string name="share_as_http">Отправить HTTP-ссылку</string>
     <string name="pref_blind_trust_before_verification">Слепое доверие до подтверждения</string>
     <string name="pref_blind_trust_before_verification_summary">Автоматически доверять всем новым устройствам контактов, которые не были подтверждены ранее, но запрашивать ручное подтверждение каждый раз, когда подтверждённый контакт добавляет новое устройство</string>
     <string name="blindly_trusted_omemo_keys">Принятие OMEMO-ключей вслепую. Это означает, что собеседник может оказаться недоверенным лицом.</string>

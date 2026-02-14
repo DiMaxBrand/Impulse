@@ -587,9 +587,7 @@
     <string name="verified_fingerprints">Überprüfte Fingerabdrücke</string>
     <string name="use_camera_icon_to_scan_barcode">Nutze die Kamera, um QR-Codes deiner Kontakte zu scannen</string>
     <string name="please_wait_for_keys_to_be_fetched">Bitte warten, bis die Schlüssel abgerufen werden</string>
-    <string name="share_as_barcode">Als QR-Code teilen</string>
     <string name="share_as_uri">Als XMPP-URI teilen</string>
-    <string name="share_as_http">Als HTTP-Link teilen</string>
     <string name="pref_blind_trust_before_verification">Blind vertrauen vor der Überprüfung</string>
     <string name="pref_blind_trust_before_verification_summary">Neuen Geräten von nicht verifizierten Kontakten vertrauen, aber bei verifizierten Kontakten eine manuelle Bestätigung der neuen Geräte verlangen.</string>
     <string name="blindly_trusted_omemo_keys">Blind vertraute OMEMO-Schlüssel bedeutet, dass es sich um eine andere Person handeln könnte oder dass jemand sie abgehört haben könnte.</string>
