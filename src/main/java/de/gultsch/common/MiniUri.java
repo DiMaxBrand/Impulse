@@ -286,6 +286,7 @@ public class MiniUri {
         public static final String ACTION_ROSTER = "roster";
         public static final String PARAMETER_PRE_AUTH = "preauth";
         public static final String PARAMETER_IBR = "ibr";
+        public static final String PARAMETER_BODY = "body";
 
         private final Jid jid;
 
@@ -370,11 +371,15 @@ public class MiniUri {
         }
 
         public String getBody() {
-            return getParameterFlat().get("body");
+            return getParameter(PARAMETER_BODY);
         }
 
         public String getName() {
-            return getParameterFlat().get("name");
+            return getParameter("name");
+        }
+
+        public boolean isYesIbr() {
+            return "y".equalsIgnoreCase(getParameter(PARAMETER_IBR));
         }
 
         public Http asInvitationUri() {

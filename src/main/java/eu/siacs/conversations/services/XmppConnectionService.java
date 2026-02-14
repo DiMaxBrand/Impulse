@@ -42,7 +42,6 @@ import android.util.LruCache;
 import android.util.Pair;
 import androidx.annotation.IntegerRes;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.core.app.RemoteInput;
 import androidx.core.content.ContextCompat;
 import com.google.common.base.Objects;
@@ -190,7 +189,6 @@ public class XmppConnectionService extends Service {
     public static final String ACTION_FCM_MESSAGE_RECEIVED = "fcm_message_received";
     public static final String ACTION_DISMISS_CALL = "dismiss_call";
     public static final String ACTION_END_CALL = "end_call";
-    public static final String ACTION_PROVISION_ACCOUNT = "provision_account";
     public static final String ACTION_CALL_INTEGRATION_SERVICE_STARTED =
             "call_integration_service_started";
     private static final String ACTION_POST_CONNECTIVITY_CHANGE =
@@ -549,21 +547,6 @@ public class XmppConnectionService extends Service {
                     endRtpSession(sessionId);
                 }
                 break;
-            case ACTION_PROVISION_ACCOUNT:
-                {
-                    if (intent == null) {
-                        break;
-                    }
-                    final String address = intent.getStringExtra("address");
-                    final String password = intent.getStringExtra("password");
-                    if (QuickConversationsService.isQuicksy()
-                            || Strings.isNullOrEmpty(address)
-                            || Strings.isNullOrEmpty(password)) {
-                        break;
-                    }
-                    provisionAccount(address, password);
-                    break;
-                }
             case ACTION_DISMISS_ERROR_NOTIFICATIONS:
                 dismissErrorNotifications();
                 break;
@@ -1189,6 +1172,7 @@ public class XmppConnectionService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             systemBroadcastFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
         }
+        systemBroadcastFilter.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
         systemBroadcastFilter.addAction(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED);
         ContextCompat.registerReceiver(
                 this,
@@ -1209,14 +1193,10 @@ public class XmppConnectionService extends Service {
         final SharedPreferences sharedPreferences =
                 androidx.preference.PreferenceManager.getDefaultSharedPreferences(this);
         sharedPreferences.registerOnSharedPreferenceChangeListener(
-                new SharedPreferences.OnSharedPreferenceChangeListener() {
-                    @Override
-                    public void onSharedPreferenceChanged(
-                            SharedPreferences sharedPreferences, @Nullable String key) {
-                        Log.d(Config.LOGTAG, "preference '" + key + "' has changed");
-                        if (AppSettings.KEEP_FOREGROUND_SERVICE.equals(key)) {
-                            toggleForegroundService();
-                        }
+                (sp, key) -> {
+                    Log.d(Config.LOGTAG, "preference '" + key + "' has changed");
+                    if (AppSettings.KEEP_FOREGROUND_SERVICE.equals(key)) {
+                        toggleForegroundService();
                     }
                 });
     }
@@ -2348,14 +2328,6 @@ public class XmppConnectionService extends Service {
 
     public UnifiedPushBroker getUnifiedPushBroker() {
         return this.unifiedPushBroker;
-    }
-
-    private void provisionAccount(final String address, final String password) {
-        final Jid jid = Jid.of(address);
-        final Account account = new Account(jid, password);
-        account.setOption(Account.OPTION_DISABLED, true);
-        Log.d(Config.LOGTAG, jid.asBareJid().toString() + ": provisioning account");
-        createAccount(account);
     }
 
     public void createAccountFromKey(final String alias, final OnAccountCreated callback) {
