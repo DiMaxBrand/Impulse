@@ -549,6 +549,7 @@ public class XmppConnection implements Runnable {
         } catch (final UnknownHostException
                 | ConnectException
                 | SocksSocketFactory.HostNotFoundException e) {
+            // TODO run NetworkManager.getHint() here
             this.changeState(Account.State.SERVER_NOT_FOUND);
         } catch (final SocksSocketFactory.SocksProxyNotFoundException e) {
             this.changeState(Account.State.TOR_NOT_AVAILABLE);

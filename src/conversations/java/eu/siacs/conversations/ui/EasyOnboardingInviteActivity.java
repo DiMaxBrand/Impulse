@@ -55,7 +55,7 @@ public class EasyOnboardingInviteActivity extends XmppActivity {
                 getString(
                         R.string.easy_invite_share_text,
                         easyOnboardingInvite.getDomain(),
-                        easyOnboardingInvite.getShareableLink());
+                        easyOnboardingInvite.getShareableLink().toString());
         final Intent sendIntent = new Intent();
         sendIntent.setAction(Intent.ACTION_SEND);
         sendIntent.putExtra(Intent.EXTRA_TEXT, shareText);
@@ -118,7 +118,7 @@ public class EasyOnboardingInviteActivity extends XmppActivity {
         try {
             bitmap =
                     BarcodeProvider.create2dBarcodeBitmap(
-                            invite.getShareableLink(), width, black, white);
+                            invite.getShareableLink().toString(), width, black, white);
         } catch (final WriterException e) {
             Log.e(Config.LOGTAG, "could not create QR code", e);
             return;

@@ -6,6 +6,7 @@ import com.google.common.base.Strings;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
+import de.gultsch.common.MiniUri;
 import eu.siacs.conversations.utils.EasyOnboardingInvite;
 import eu.siacs.conversations.xml.Namespace;
 import eu.siacs.conversations.xmpp.Jid;
@@ -46,11 +47,13 @@ public class EasyOnboardingManager extends AbstractManager {
                     if (data == null) {
                         throw new IllegalStateException("No data in command");
                     }
-                    final var uri = data.getValue("uri");
-                    final var landingUrl = data.getValue("landing-url");
-                    if (Strings.isNullOrEmpty(uri)) {
-                        throw new IllegalStateException("missing uri");
+                    final MiniUri.Xmpp uri;
+                    if (MiniUri.getOrNull(data.getValue("uri")) instanceof MiniUri.Xmpp xmpp) {
+                        uri = xmpp;
+                    } else {
+                        throw new IllegalStateException("Did not find valid XMPP uri");
                     }
+                    final var landingUrl = data.getValue("landing-url");
                     if (Strings.isNullOrEmpty(landingUrl)) {
                         return new EasyOnboardingInvite(getAccount().getDomain(), uri);
                     }
