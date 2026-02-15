@@ -445,7 +445,7 @@
     <string name="verified_fingerprints">Shenja gishtash të verifikuar</string>
     <string name="use_camera_icon_to_scan_barcode">Përdorni kamerën që të skanoni kodin QR të një kontakti</string>
     <string name="please_wait_for_keys_to_be_fetched">Ju lutemi, pritni të sillen kyçet</string>
-    <string name="share_as_uri">Jepe si URI XMPP</string>
+    <string name="share_as_uri">Ndani URI XMPP me të tjerë</string>
     <string name="pref_blind_trust_before_verification">Besim i Verbër Para Verifikimi</string>
     <string name="not_trusted">Jo i besuar</string>
     <string name="invalid_barcode">Kod QR i pavlefshëm</string>
@@ -1158,4 +1158,6 @@
         <item quantity="other">Fshini %d mesazhe</item>
     </plurals>
     <string name="muc_user_ban_explainer">Ky përdorues s’do të jetë më në gjendje të shohë mesazhe të reja, ose të marrë pjesë te biseda.</string>
+    <string name="publish_qr_code">Boto kod QR</string>
+    <string name="share_invitation">Ndani ftesë me të tjerë</string>
 </resources>
