@@ -588,7 +588,7 @@
     <string name="verified_fingerprints">Amprente verificate</string>
     <string name="use_camera_icon_to_scan_barcode">Folosește camera pentru a scana codul QR al contactului</string>
     <string name="please_wait_for_keys_to_be_fetched">Vă rugăm să așteptați până se preiau cheile</string>
-    <string name="share_as_uri">Partajează ca adresă XMPP</string>
+    <string name="share_as_uri">Partajează legătură XMPP</string>
     <string name="pref_blind_trust_before_verification">Încredere Oarbă Înainte de Verificare</string>
     <string name="pref_blind_trust_before_verification_summary">Ai încredere în toate dispozitivele noi ale contactelor care nu au fost verificate anterior, dar cere confirmarea manuală pentru dispozitivele noi ale contactelor verificate.</string>
     <string name="blindly_trusted_omemo_keys">Încredere oarbă în aceste chei OMEMO, aceasta înseamnă că ar putea fi altcineva sau cineva și-a strecurat propriile chei.</string>
@@ -1173,4 +1173,6 @@
     </plurals>
     <string name="server_info_stanzas_rx_tx">Stanțe (pr/tr)</string>
     <string name="server_info_stanzas_rx_tx_push">Stanțe (pr/tr/push)</string>
+    <string name="share_invitation">Partajează invitație</string>
+    <string name="publish_qr_code">Publică cod QR</string>
 </resources>
