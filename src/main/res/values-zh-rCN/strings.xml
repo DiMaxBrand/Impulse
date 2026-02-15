@@ -587,7 +587,7 @@
     <string name="verified_fingerprints">已通过验证的指纹</string>
     <string name="use_camera_icon_to_scan_barcode">使用相机扫描联系人的二维码</string>
     <string name="please_wait_for_keys_to_be_fetched">请稍候，正在获取密钥</string>
-    <string name="share_as_uri">以 XMPP URI 形式分享</string>
+    <string name="share_as_uri">分享 XMPP URI</string>
     <string name="pref_blind_trust_before_verification">验证前盲目信任</string>
     <string name="pref_blind_trust_before_verification_summary">自动信任未经验证的联系人的新设备，但已验证的联系人的新设备需手动确认。</string>
     <string name="blindly_trusted_omemo_keys">盲目信任的 OMEMO 密钥，意味着存在密钥冒用或第三方窃听的风险。</string>
@@ -1145,4 +1145,6 @@
     <string name="muc_user_ban_explainer">此用户将无法再查看新消息，也无法再参与对话。</string>
     <string name="server_info_stanzas_rx_tx">节（接收/发送）</string>
     <string name="server_info_stanzas_rx_tx_push">节（接收/发送/推送）</string>
+    <string name="share_invitation">分享邀请</string>
+    <string name="publish_qr_code">发布二维码</string>
 </resources>
