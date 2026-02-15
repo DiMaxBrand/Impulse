@@ -333,4 +333,21 @@
     <string name="account_status_channel_binding">Ulac abrid n tuqqna n ubadu</string>
     <string name="encryption_choice_unencrypted">Aḍris war awgelhen</string>
     <string name="mgmt_account_disable">Sexsi s wudem askudan</string>
+    <string name="install_openkeychain">Izen awgelhan. Ttxil-k·m, sebded OpenKeychain i tukksa n uwgelhen-is.</string>
+    <string name="openpgp_messages_found">Iznan iwgelhanen imaynuten OpenPGP i yettwafen</string>
+    <string name="openpgp_key_id">Asulay n tsarut OpenPGP</string>
+    <string name="omemo_fingerprint">Adsil umḍin OMEMO</string>
+    <string name="omemo_fingerprint_x509">Adsil umḍin v\\OMEMO</string>
+    <string name="omemo_fingerprint_selected_message">Adsil umḍin OMEMO (Aẓar n yizen)</string>
+    <string name="omemo_fingerprint_x509_selected_message">Adsil umḍin v\\OMEMO (Aẓar n yizen)</string>
+    <string name="trust_omemo_fingerprints">Eg taflest deg udsil umḍin OMEMO</string>
+    <string name="fetching_keys">Awway n tsura…</string>
+    <string name="group_chats">Agraw n idiwenniyen</string>
+    <string name="view_contact_details">Wali talqayt n unermis</string>
+    <string name="unblock_contact">Kkes asewḥel i unermis</string>
+    <string name="contact_already_exists">Anermis yella yakan</string>
+    <string name="save_as_bookmark">Sekles am usɣal</string>
+    <string name="delete_bookmark">Kkes asɣal</string>
+    <string name="destroy_room">Hudd agraw n usqerdec</string>
+    <string name="destroy_channel">Hudd abadu</string>
 </resources>
