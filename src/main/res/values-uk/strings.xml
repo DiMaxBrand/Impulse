@@ -1200,4 +1200,8 @@
         <item quantity="other">Видалити %d повідомлень</item>
     </plurals>
     <string name="muc_user_ban_explainer">Цей користувач більше не зможе бачити нові повідомлення або брати участь у розмові.</string>
+    <string name="share_invitation">Поділитися запрошенням</string>
+    <string name="publish_qr_code">Опублікувати QR-код</string>
+    <string name="server_info_stanzas_rx_tx">Станси (rx/tx)</string>
+    <string name="server_info_stanzas_rx_tx_push">Станси (rx/tx/push)</string>
 </resources>
