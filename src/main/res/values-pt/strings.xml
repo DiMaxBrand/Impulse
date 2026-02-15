@@ -598,7 +598,7 @@
     <string name="report_jid_as_spammer">Reportar este endereço XMPP por spam.</string>
     <string name="no_permission_to_access_x">Sem permissão para aceder %s</string>
     <string name="pref_clean_cache_summary">Limpar a pasta de cache (usada pela câmara)</string>
-    <string name="share_as_uri">Partilhar como URI XMPP</string>
+    <string name="share_as_uri">Partilhar URI XMPP</string>
     <string name="pref_clean_cache">Limpar cache</string>
     <string name="verifying_omemo_keys_trusted_source">Está prestes a verificar as chaves OMEMO de %1$s após clicar um link. Isto só é seguro se seguiu este link de uma fonte confiada, onde somente %2$s possa o ter publicado.</string>
     <string name="data_saver_enabled_explained">O seu sistema operativo está a restringir %1$s de aceder a Internet em segundo plano. Para receber notificações de novas mensagens, deve permitir %1$s acesso sem restrições quando “Data saver” está ativo.\n%1$s irá se esforçar para economizar dados quando possível.</string>
@@ -1158,4 +1158,6 @@
         <item quantity="many">Eliminar %d mensagens</item>
         <item quantity="other">Eliminar %d mensagens</item>
     </plurals>
+    <string name="share_invitation">Partilhar convite</string>
+    <string name="publish_qr_code">Publicar código QR</string>
 </resources>
