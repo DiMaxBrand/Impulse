@@ -350,4 +350,27 @@
     <string name="delete_bookmark">Kkes asɣal</string>
     <string name="destroy_room">Hudd agraw n usqerdec</string>
     <string name="destroy_channel">Hudd abadu</string>
+    <string name="send_private_message_to">Azen izen uslig i %s</string>
+    <string name="account_already_exists">Amiḍan-agi yella yakan</string>
+    <string name="server_info_session_established">Tiɣimit tettwasbedd</string>
+    <string name="disable_notifications">Sens ilɣa</string>
+    <string name="conference_requires_password">Asqerdec n ugraw yesra awal n uɛeddi</string>
+    <string name="request_presence_updates">Ttxil-ik·im, suter deg tazwara anermis-ik·im aleqqem n tilin.\n\n<small>D ayen ara k·em-yeǧǧen ad d-tafeḍ anwa asnas n udiwenni iseqdec unermis-ik·im</small>.</string>
+    <string name="pref_allow_message_correction">Aẓrag n yeznan</string>
+    <string name="pref_expert_options_summary">Ttxil-k·m, ḥader deg tigi</string>
+    <string name="title_pref_quiet_hours">Isragen n usgunfu</string>
+    <string name="title_pref_quiet_hours_start_time">Asrag n tazwara</string>
+    <string name="title_pref_quiet_hours_end_time">Asrag n tagara</string>
+    <string name="title_pref_enable_quiet_hours">Rmed isragen n usgunfu</string>
+    <string name="pref_quiet_hours_summary">Ilɣa ad ttususmen deg isragen n usgunfu</string>
+    <string name="pref_autojoin">Semtawi isɣalen</string>
+    <string name="toast_message_omemo_fingerprint">Adsil umḍin OMEMO yettwaneɣlen ɣer tecfawit</string>
+    <string name="conference_banned">Tettwagedleḍ seg ugraw-agi n usqerdec</string>
+    <string name="conference_members_only">Agraw-agi n usqerdec i yiɛeggalen kan</string>
+    <string name="conference_kicked">Ssuffeɣen-k·em seg ugraw-a n usqerdec</string>
+    <string name="conference_shutdown">Agraw n usqerdec yettwasexsi</string>
+    <string name="conference_unknown_error">Dayen ur k·em-mazal ara deg ugraw-agi n usqerdec</string>
+    <string name="conference_technical_problems">Teǧǧiḍ agraw-a n usqerdec ɣef ssebbat itiknikanen</string>
+    <string name="using_account">aseqdec n umiḍan %s</string>
+    <string name="hosted_on">yettwasenneftaɣ deg %s</string>
 </resources>
