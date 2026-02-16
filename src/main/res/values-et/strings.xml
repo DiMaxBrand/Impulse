@@ -1172,4 +1172,6 @@
     <string name="qr_code_contains_link_text">See QR-kood viitab veebisaidile. Enne veebibrauseris avamist palun kontrolli, kas see aadress on ikka loogiline ja õige:</string>
     <string name="server_info_stanzas_rx_tx">Stanzad (rx/tx)</string>
     <string name="server_info_stanzas_rx_tx_push">Stanzad (rx/tx/push)</string>
+    <string name="share_invitation">Jaga kutset</string>
+    <string name="publish_qr_code">Avalda QR-kood</string>
 </resources>
