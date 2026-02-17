@@ -1174,4 +1174,10 @@
     <string name="server_info_stanzas_rx_tx_push">Stanzad (rx/tx/push)</string>
     <string name="share_invitation">Jaga kutset</string>
     <string name="publish_qr_code">Avalda QR-kood</string>
+    <string name="give_membership">Anna liikmelisus</string>
+    <string name="remove_membership">Eemalda liikmelisus</string>
+    <string name="make_admin">Muuda peakasutajaks</string>
+    <string name="dismiss_as_admin">Võta peakasutaja õigused ära</string>
+    <string name="make_owner">Muuda omanikuks</string>
+    <string name="dismiss_as_owner">Võta omaniku roll ära</string>
 </resources>
