@@ -1147,4 +1147,10 @@
     <string name="server_info_stanzas_rx_tx_push">节（接收/发送/推送）</string>
     <string name="share_invitation">分享邀请</string>
     <string name="publish_qr_code">发布二维码</string>
+    <string name="give_membership">给予成员身份</string>
+    <string name="remove_membership">删除成员身份</string>
+    <string name="make_admin">赋予管理员身份</string>
+    <string name="dismiss_as_admin">撤销管理员身份</string>
+    <string name="make_owner">赋予所有者身份</string>
+    <string name="dismiss_as_owner">撤销所有者身份</string>
 </resources>
