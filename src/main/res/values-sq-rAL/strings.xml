@@ -1160,4 +1160,10 @@
     <string name="muc_user_ban_explainer">Ky përdorues s’do të jetë më në gjendje të shohë mesazhe të reja, ose të marrë pjesë te biseda.</string>
     <string name="publish_qr_code">Boto kod QR</string>
     <string name="share_invitation">Ndani ftesë me të tjerë</string>
+    <string name="dismiss_as_admin">Hiqeni nga përgjegjës</string>
+    <string name="make_admin">Bëjeni përgjegjës</string>
+    <string name="give_membership">Jepni anëtarësim</string>
+    <string name="remove_membership">Hiqini anëtarësimin</string>
+    <string name="make_owner">Bëjeni të zotin</string>
+    <string name="dismiss_as_owner">Hiqeni nga zot</string>
 </resources>
