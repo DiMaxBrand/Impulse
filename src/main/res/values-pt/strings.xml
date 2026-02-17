@@ -1160,4 +1160,10 @@
     </plurals>
     <string name="share_invitation">Partilhar convite</string>
     <string name="publish_qr_code">Publicar código QR</string>
+    <string name="give_membership">Encarregar de membro</string>
+    <string name="remove_membership">Revogar privilégios de membro</string>
+    <string name="make_admin">Encarregar de administrador</string>
+    <string name="dismiss_as_admin">Desencarregar de administrador</string>
+    <string name="make_owner">Encarregar de dono</string>
+    <string name="dismiss_as_owner">Desencarregar de dono</string>
 </resources>
