@@ -362,13 +362,6 @@
     <string name="no_role">Поза мережею</string>
     <string name="outcast">Вигнанець</string>
     <string name="member">Учасник</string>
-    <string name="advanced_mode">Розширений режим</string>
-    <string name="grant_membership">Надати право участі</string>
-    <string name="remove_membership">Відкликати право участі</string>
-    <string name="grant_admin_privileges">Надати права адміністратора</string>
-    <string name="remove_admin_privileges">Відкликати права адміністратора</string>
-    <string name="grant_owner_privileges">Надати права власника</string>
-    <string name="remove_owner_privileges">Відкликати права власника</string>
     <string name="remove_from_room">Вилучити з групи</string>
     <string name="remove_from_channel">Вилучити з каналу</string>
     <string name="could_not_change_affiliation">Неможливо змінити статус участі %s</string>

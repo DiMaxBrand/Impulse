@@ -290,13 +290,6 @@
     <string name="no_affiliation">Pa përshoqërim</string>
     <string name="no_role">I shkëputur</string>
     <string name="member">Anëtar</string>
-    <string name="advanced_mode">Mënyrë e thelluar</string>
-    <string name="grant_membership">Akordojini privilegje anëtari</string>
-    <string name="remove_membership">Shfuqizoni privilegje anëtari</string>
-    <string name="grant_admin_privileges">Akordoni privilegje përgjegjësi</string>
-    <string name="remove_admin_privileges">Shfuqizoni privilegje përgjegjësi</string>
-    <string name="grant_owner_privileges">Akordojini privilegje të zoti</string>
-    <string name="remove_owner_privileges">Shfuqizoni privilegje të zoti</string>
     <string name="remove_from_room">Hiqe prej fjalosjeje grupi</string>
     <string name="remove_from_channel">Hiqe prej kanali</string>
     <string name="could_not_change_affiliation">S’u ndryshua dot përshoqërim i %s</string>

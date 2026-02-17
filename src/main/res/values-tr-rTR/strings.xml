@@ -367,13 +367,6 @@
     <string name="no_role">Çevrim dışı</string>
     <string name="outcast">Bağlantısız</string>
     <string name="member">Üye</string>
-    <string name="advanced_mode">Gelişmiş kip</string>
-    <string name="grant_membership">Üye imtiyazları tanı</string>
-    <string name="remove_membership">Üye imtiyazlarını kaldır</string>
-    <string name="grant_admin_privileges">Yönetici imtiyazlarını kabul et</string>
-    <string name="remove_admin_privileges">Yönetici imtiyazlarını geri çevir</string>
-    <string name="grant_owner_privileges">Sahip imtiyazları tanı</string>
-    <string name="remove_owner_privileges">Sahip imtiyazlarını kaldır</string>
     <string name="remove_from_room">Grup konuşmasından çıkar </string>
     <string name="remove_from_channel">Kanaldan çıkar</string>
     <string name="could_not_change_affiliation">%s kişisinin ortaklığı değiştirilemedi</string>

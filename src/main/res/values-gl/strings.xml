@@ -365,13 +365,6 @@
     <string name="no_role">Offline</string>
     <string name="outcast">Outcast</string>
     <string name="member">Membro</string>
-    <string name="advanced_mode">Modo avanzado</string>
-    <string name="grant_membership">Conceder privilexios de membresía</string>
-    <string name="remove_membership">Retirar privilexios de membresía</string>
-    <string name="grant_admin_privileges">Dar privilexios de administración</string>
-    <string name="remove_admin_privileges">Revocar privilexios de administración</string>
-    <string name="grant_owner_privileges">Conceder privilexios de propiedade</string>
-    <string name="remove_owner_privileges">Retirar privilexios de propiedade</string>
     <string name="remove_from_room">Eliminar a parola en grupo</string>
     <string name="remove_from_channel">Retirar da canle</string>
     <string name="could_not_change_affiliation">Non se puido mudar a afiliación de %s</string>

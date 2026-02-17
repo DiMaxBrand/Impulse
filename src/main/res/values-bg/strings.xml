@@ -356,13 +356,6 @@
     <string name="no_role">Извън линия</string>
     <string name="outcast">Отхвърлен</string>
     <string name="member">Член</string>
-    <string name="advanced_mode">Разширен режим</string>
-    <string name="grant_membership">Даване на правомощия на член</string>
-    <string name="remove_membership">Премахване на правомощията на член</string>
-    <string name="grant_admin_privileges">Даване на правомощия на администратор</string>
-    <string name="remove_admin_privileges">Отмяна на администраторските права</string>
-    <string name="grant_owner_privileges">Даване на правомощия на собственик</string>
-    <string name="remove_owner_privileges">Премахване на правомощията на собственик</string>
     <string name="remove_from_room">Премахване от груповия разговор</string>
     <string name="remove_from_channel">Премахване от канала</string>
     <string name="could_not_change_affiliation">Принадлежността на %s не може да бъде променена </string>

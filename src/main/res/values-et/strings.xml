@@ -515,7 +515,6 @@
     <string name="perform_action_with">Tee toiming...</string>
     <string name="no_affiliation">Kuuluvusi pole</string>
     <string name="could_not_change_affiliation">Kasutaja „%s“ kuuluvuse muutmine ei õnnestunud</string>
-    <string name="remove_owner_privileges">Võta omaniku õigused ära</string>
     <string name="remove_from_channel">Eemalda kanalilt</string>
     <string name="could_not_change_role">Kasutaja „%s“ rolli muutmine ei õnnestunud</string>
     <string name="ban_now">Keela ligipääs nüüd</string>
@@ -605,12 +604,6 @@
     <string name="error_trustkeys_title">Midagi läks valesti</string>
     <string name="no_role">Pole võrgus</string>
     <string name="outcast">Hüljatu</string>
-    <string name="advanced_mode">Üksikasjalik seadistus</string>
-    <string name="grant_membership">Liikmelisuse lubamine</string>
-    <string name="remove_membership">Liikmelisuse keelamine</string>
-    <string name="grant_admin_privileges">Peakasutaja õiguste lubamine</string>
-    <string name="remove_admin_privileges">Peakasutaja õiguste keelamine</string>
-    <string name="grant_owner_privileges">Omaniku õiguste lubamine</string>
     <string name="never">Mitte kunagi</string>
     <string name="until_further_notice">Järgmise teadaandmiseni</string>
     <string name="snooze">Lükka edasi</string>

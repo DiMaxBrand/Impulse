@@ -231,9 +231,6 @@
     <string name="no_role">오프라인</string>
     <string name="outcast">추방됨 </string>
     <string name="member">멤버 </string>
-    <string name="advanced_mode">고급 모드 </string>
-    <string name="grant_admin_privileges">관리자 특권 허가 </string>
-    <string name="remove_admin_privileges">관리자 특권 철회 </string>
     <string name="could_not_change_affiliation">%s 의 관련 여부를 변경할 수 없습니다 </string>
     <string name="ban_now">지금 금지 </string>
     <string name="could_not_change_role">%s 의 역할을 변경할 수 없습니다 </string>

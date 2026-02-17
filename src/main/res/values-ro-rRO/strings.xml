@@ -368,13 +368,6 @@
     <string name="no_role">Deconectat</string>
     <string name="outcast">proscris</string>
     <string name="member">Membru</string>
-    <string name="advanced_mode">Mod avansat</string>
-    <string name="grant_membership">Acordă privilegii de membru</string>
-    <string name="remove_membership">Abrogă privilegiile de membru</string>
-    <string name="grant_admin_privileges">Acordă privilegiile de administrator</string>
-    <string name="remove_admin_privileges">Abrogă privilegiile de administrator</string>
-    <string name="grant_owner_privileges">Acordă privilegii de proprietar</string>
-    <string name="remove_owner_privileges">Abrogă privilegiile de proprietar</string>
     <string name="remove_from_room">Înlătură din discuția de grup</string>
     <string name="remove_from_channel">Înlătură din canal</string>
     <string name="could_not_change_affiliation">Nu s-a putut schimba afilierea lui %s</string>

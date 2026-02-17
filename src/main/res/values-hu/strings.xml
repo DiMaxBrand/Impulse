@@ -349,13 +349,6 @@
     <string name="no_role">Kilépett</string>
     <string name="outcast">Kiközösített</string>
     <string name="member">Tag</string>
-    <string name="advanced_mode">Speciális mód</string>
-    <string name="grant_membership">Tagi jogosultságok megadása</string>
-    <string name="remove_membership">Tagi jogosultságok visszavonása</string>
-    <string name="grant_admin_privileges">Adminisztrátori jogosultságok megadása</string>
-    <string name="remove_admin_privileges">Adminisztrátor jogosultságok visszavonása</string>
-    <string name="grant_owner_privileges">Tulajdonosi jogosultságok megadása</string>
-    <string name="remove_owner_privileges">Tulajdonosi jogosultságok visszavonása</string>
     <string name="remove_from_room">Eltávolítás a csoportos csevegésből</string>
     <string name="remove_from_channel">Eltávolítás a csatornából</string>
     <string name="could_not_change_affiliation">Nem sikerült %s hovatartozását megváltoztatni</string>

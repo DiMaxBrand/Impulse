@@ -377,13 +377,6 @@
     <string name="no_role">离线</string>
     <string name="outcast">被驱逐者</string>
     <string name="member">成员</string>
-    <string name="advanced_mode">高级模式</string>
-    <string name="grant_membership">授予成员权限</string>
-    <string name="remove_membership">撤销成员权限</string>
-    <string name="grant_admin_privileges">授予管理员权限</string>
-    <string name="remove_admin_privileges">撤销管理员权限</string>
-    <string name="grant_owner_privileges">授予所有者权限</string>
-    <string name="remove_owner_privileges">撤销所有者权限</string>
     <string name="remove_from_room">从群聊移除</string>
     <string name="remove_from_channel">从频道移除</string>
     <string name="could_not_change_affiliation">无法更改 %s 的从属关系</string>

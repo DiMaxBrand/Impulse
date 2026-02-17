@@ -286,9 +286,6 @@
     <string name="no_role">غير متصل</string>
     <string name="outcast">مفصول</string>
     <string name="member">عضو</string>
-    <string name="advanced_mode">الوضع المتقدم</string>
-    <string name="grant_admin_privileges">منح امتيازات الإداره</string>
-    <string name="remove_admin_privileges">إلغاء امتيازات الإدارة</string>
     <string name="remove_from_room">التنحية من مجموعة المحادثة</string>
     <string name="remove_from_channel">أزله مِن القناة</string>
     <string name="could_not_change_affiliation">لا يمكن تغيير انتساب %s</string>

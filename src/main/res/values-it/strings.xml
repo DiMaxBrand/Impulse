@@ -366,13 +366,6 @@
     <string name="no_role">Offline</string>
     <string name="outcast">Emarginato</string>
     <string name="member">Membro</string>
-    <string name="advanced_mode">Modalità avanzata</string>
-    <string name="grant_membership">Concedi appartenenza</string>
-    <string name="remove_membership">Revoca appartenenza</string>
-    <string name="grant_admin_privileges">Concedi i privilegi di amministratore</string>
-    <string name="remove_admin_privileges">Revoca i privilegi di amministratore</string>
-    <string name="grant_owner_privileges">Rendi proprietario</string>
-    <string name="remove_owner_privileges">Revoca privilegi di proprietario</string>
     <string name="remove_from_room">Rimuovi dalla chat di gruppo</string>
     <string name="remove_from_channel">Rimuovi dal canale</string>
     <string name="could_not_change_affiliation">Impossibile cambiare l’affiliazione di %s</string>

@@ -360,13 +360,6 @@
     <string name="no_role">Ngoại tuyến</string>
     <string name="outcast">Kẻ bị ruồng bỏ</string>
     <string name="member">Thành viên</string>
-    <string name="advanced_mode">Chế độ nâng cao</string>
-    <string name="grant_membership">Cấp đặc quyền thành viên</string>
-    <string name="remove_membership">Thu hồi đặc quyền thành viên</string>
-    <string name="grant_admin_privileges">Trao quyền quản trị</string>
-    <string name="remove_admin_privileges">Huỷ quyền quản trị</string>
-    <string name="grant_owner_privileges">Cấp đặc quyền chủ sở hữu</string>
-    <string name="remove_owner_privileges">Thu hồi đặc quyền chủ sở hữu</string>
     <string name="remove_from_room">Xoá khỏi cuộc trò chuyện nhóm</string>
     <string name="remove_from_channel">Xoá khỏi kênh</string>
     <string name="could_not_change_affiliation">Không thể đổi mối quan hệ của %s</string>

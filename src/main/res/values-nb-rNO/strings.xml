@@ -251,9 +251,6 @@
     <string name="no_role">Frakoblet</string>
     <string name="outcast">Fredløs</string>
     <string name="member">Medlem</string>
-    <string name="advanced_mode">Avansert modus</string>
-    <string name="grant_admin_privileges">Innlem som administrator</string>
-    <string name="remove_admin_privileges">Tilbakekall administratorrettigheter</string>
     <string name="remove_from_room">Fjern fra gruppesludring</string>
     <string name="could_not_change_affiliation">Kunne ikke endre tilknytningen til %s</string>
     <string name="ban_now">Bannlys nå</string>

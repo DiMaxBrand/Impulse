@@ -367,13 +367,6 @@
     <string name="no_role">Offline</string>
     <string name="outcast">Wykluczony</string>
     <string name="member">Członek</string>
-    <string name="advanced_mode">Tryb zaawansowany</string>
-    <string name="grant_membership">Przyznaj uprawnienia członkostwa</string>
-    <string name="remove_membership">Usuń uprawnienia członkostwa</string>
-    <string name="grant_admin_privileges">Przyznaj uprawnienia administratora</string>
-    <string name="remove_admin_privileges">Odbierz uprawnienia administratora</string>
-    <string name="grant_owner_privileges">Przyznaj uprawnienia właściciela</string>
-    <string name="remove_owner_privileges">Usuń uprawnienia właściciela</string>
     <string name="remove_from_room">Usuń z konferencji</string>
     <string name="remove_from_channel">Usuń z kanału</string>
     <string name="could_not_change_affiliation">Nie udało się zmienić stanowiska dla %s</string>

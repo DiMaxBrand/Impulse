@@ -351,13 +351,6 @@
     <string name="no_role">Poissa</string>
     <string name="outcast">Hylkiö</string>
     <string name="member">Jäsen</string>
-    <string name="advanced_mode">Edistynyt tila</string>
-    <string name="grant_membership">Myönnä jäsenyys</string>
-    <string name="remove_membership">Peru jäsenyys</string>
-    <string name="grant_admin_privileges">Myönnä ylläpitäjän oikeudet</string>
-    <string name="remove_admin_privileges">Peru ylläpitäjän oikeudet</string>
-    <string name="grant_owner_privileges">Myönnä omistajuus</string>
-    <string name="remove_owner_privileges">Peru omistajuus</string>
     <string name="remove_from_room">Poista ryhmäkeskustelusta</string>
     <string name="remove_from_channel">Poista kanavalta</string>
     <string name="ban_now">Estä nyt</string>

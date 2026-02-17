@@ -357,13 +357,6 @@
     <string name="no_role">Εκτός σύνδεσης</string>
     <string name="outcast">Απόκληρος</string>
     <string name="member">Μέλος</string>
-    <string name="advanced_mode">Κατάσταση για προχωρημένους</string>
-    <string name="grant_membership">Απόδοση δικαιωμάτων μέλους</string>
-    <string name="remove_membership">Ανάκληση δικαιωμάτων μέλους</string>
-    <string name="grant_admin_privileges">Απόδοση δικαιωμάτων διαχειριστή</string>
-    <string name="remove_admin_privileges">Ανάκληση δικαιωμάτων διαχειριστή</string>
-    <string name="grant_owner_privileges">Απόδοση δικαιωμάτων ιδιοκτήτη</string>
-    <string name="remove_owner_privileges">Ανάκληση δικαιωμάτων κατόχου</string>
     <string name="remove_from_room">Αφαίρεση από την ομάδική συζήτηση</string>
     <string name="remove_from_channel">Αφαίρεση από το κανάλι</string>
     <string name="could_not_change_affiliation">Δεν ήταν δυνατή η αλλαγή του δεσμού της επαφής %s</string>

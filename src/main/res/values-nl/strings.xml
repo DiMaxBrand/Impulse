@@ -330,13 +330,6 @@
     <string name="no_role">Offline</string>
     <string name="outcast">Verstoteling</string>
     <string name="member">Lid</string>
-    <string name="advanced_mode">Geavanceerde modus</string>
-    <string name="grant_membership">Lidprivileges verlenen</string>
-    <string name="remove_membership">Lidprivileges intrekken</string>
-    <string name="grant_admin_privileges">Beheerdersprivileges verlenen</string>
-    <string name="remove_admin_privileges">Beheerdersprivileges ontzeggen</string>
-    <string name="grant_owner_privileges">Eigenaarsprivileges verlenen</string>
-    <string name="remove_owner_privileges">Eigenaarsprivileges intrekken</string>
     <string name="remove_from_room">Verwijderen uit groepsgesprek</string>
     <string name="remove_from_channel">Verwijderen uit kanaal</string>
     <string name="could_not_change_affiliation">Kan de aansluiting van %s niet wijzigen</string>

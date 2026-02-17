@@ -370,13 +370,6 @@
     <string name="no_role">Није на вези</string>
     <string name="outcast">Забрањен/а</string>
     <string name="member">Члан</string>
-    <string name="advanced_mode">Напредни режим</string>
-    <string name="grant_membership">Одобри чланске привилегије</string>
-    <string name="remove_membership">Укини чланске привилегије</string>
-    <string name="grant_admin_privileges">Одобри админ. привилегије</string>
-    <string name="remove_admin_privileges">Одобри админ. привилегије</string>
-    <string name="grant_owner_privileges">Одобри власничке привилегије</string>
-    <string name="remove_owner_privileges">Укини власничке привилегије</string>
     <string name="remove_from_room">Уклони из групне преписке</string>
     <string name="remove_from_channel">Уклони из канала</string>
     <string name="could_not_change_affiliation">Није могуће променити припадност за %s</string>

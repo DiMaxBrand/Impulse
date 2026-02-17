@@ -364,13 +364,6 @@
     <string name="no_role">Hors ligne</string>
     <string name="outcast">Banni·e</string>
     <string name="member">Membre</string>
-    <string name="advanced_mode">Mode avancé</string>
-    <string name="grant_membership">Accorder des privilèges aux membres</string>
-    <string name="remove_membership">Révoquer les privilèges des membres</string>
-    <string name="grant_admin_privileges">Accorder des privilèges d\'administrateur·ice</string>
-    <string name="remove_admin_privileges">Révoquer des privilèges d\'administrateur·ice</string>
-    <string name="grant_owner_privileges">Accorder des privilèges de propriétaire</string>
-    <string name="remove_owner_privileges">Révoquer les privilèges du propriétaire</string>
     <string name="remove_from_room">Supprimer du groupe</string>
     <string name="remove_from_channel">Supprimer du salon</string>
     <string name="could_not_change_affiliation">Impossible de changer l\'affiliation de %s</string>

@@ -364,13 +364,6 @@
     <string name="no_role">Desconectado</string>
     <string name="outcast">Rechazado</string>
     <string name="member">Miembro</string>
-    <string name="advanced_mode">Modo avanzado</string>
-    <string name="grant_membership">Conceder privilegios de miembro</string>
-    <string name="remove_membership">Revocar privilegios de miembro</string>
-    <string name="grant_admin_privileges">Conceder privilegios de administrador</string>
-    <string name="remove_admin_privileges">Revocar privilegios de administrador</string>
-    <string name="grant_owner_privileges">Conceder privilegios de propietario</string>
-    <string name="remove_owner_privileges">Revocar privilegios de propietario</string>
     <string name="remove_from_room">Expulsar de la conversación</string>
     <string name="remove_from_channel">Eliminar del canal</string>
     <string name="could_not_change_affiliation">No se puede cambiar la afiliación de %s</string>

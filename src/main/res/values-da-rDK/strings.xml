@@ -361,13 +361,6 @@
     <string name="no_role">Offline</string>
     <string name="outcast">Udstødt</string>
     <string name="member">Medlem</string>
-    <string name="advanced_mode">Avanceret tilstand</string>
-    <string name="grant_membership">Giv medlemsrettigheder</string>
-    <string name="remove_membership">Tilbagekald medlemsrettigheder</string>
-    <string name="grant_admin_privileges">Giv administratorrettigheder</string>
-    <string name="remove_admin_privileges">Tilbagekald administratorrettigheder</string>
-    <string name="grant_owner_privileges">Giv ejerrettigheder</string>
-    <string name="remove_owner_privileges">Tilbagekald ejerrettigheder</string>
     <string name="remove_from_room">Fjern fra gruppechat</string>
     <string name="remove_from_channel">Fjern fra kanal</string>
     <string name="could_not_change_affiliation">Kunne ikke ændre tilknytning til %s</string>

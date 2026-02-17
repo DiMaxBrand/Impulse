@@ -52,12 +52,10 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
                     return a.equals(b);
                 }
             };
-    private final boolean advancedMode;
     private MucOptions.User selectedUser = null;
 
-    public UserAdapter(final boolean advancedMode) {
+    public UserAdapter() {
         super(DIFF);
-        this.advancedMode = advancedMode;
     }
 
     @NonNull
@@ -114,15 +112,13 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
                             "%s • %s",
                             resource,
                             ConferenceDetailsActivity.getStatus(
-                                    viewHolder.binding.getRoot().getContext(),
-                                    user,
-                                    advancedMode)));
+                                    viewHolder.binding.getRoot().getContext(), user)));
         } else {
             viewHolder.binding.contactJid.setText(
                     ConferenceDetailsActivity.getStatus(
-                            viewHolder.binding.getRoot().getContext(), user, advancedMode));
+                            viewHolder.binding.getRoot().getContext(), user));
         }
-        if (advancedMode && user.getPgpKeyId() != 0) {
+        if (user.getMucOptions().isPrivateAndNonAnonymous() && user.getPgpKeyId() != 0) {
             viewHolder.binding.key.setVisibility(View.VISIBLE);
             viewHolder.binding.key.setOnClickListener(
                     v -> {

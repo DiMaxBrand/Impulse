@@ -356,13 +356,6 @@
     <string name="no_role">Fora de línia</string>
     <string name="outcast">Outcast</string>
     <string name="member">Membre</string>
-    <string name="advanced_mode">Mode avançat</string>
-    <string name="grant_membership">Concedir privilegis als membres</string>
-    <string name="remove_membership">Revocar els privilegis dels membres</string>
-    <string name="grant_admin_privileges">Admetre privilegis d\'administrador</string>
-    <string name="remove_admin_privileges">Rebocar privilegis d\'administrador</string>
-    <string name="grant_owner_privileges">Concedir privilegis al propietari</string>
-    <string name="remove_owner_privileges">Revocar els privilegis del propietari</string>
     <string name="remove_from_room">Suprimeix del xat de grup</string>
     <string name="remove_from_channel">Eliminar del canal</string>
     <string name="could_not_change_affiliation">No s\'ha pogut canviar l\'afiliació del %s</string>

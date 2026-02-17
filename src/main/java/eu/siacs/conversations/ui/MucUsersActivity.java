@@ -101,7 +101,7 @@ public class MucUsersActivity extends XmppActivity
         setSupportActionBar(binding.toolbar);
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
         configureActionBar(getSupportActionBar(), true);
-        this.userAdapter = new UserAdapter(getPreferences().getBoolean("advanced_muc_mode", false));
+        this.userAdapter = new UserAdapter();
         binding.list.setAdapter(this.userAdapter);
     }
 

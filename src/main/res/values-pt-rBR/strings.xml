@@ -360,13 +360,6 @@
     <string name="no_role">Off-line</string>
     <string name="outcast">Excluído</string>
     <string name="member">Membro</string>
-    <string name="advanced_mode">Modo avançado</string>
-    <string name="grant_membership">Conceder privilégios de membro</string>
-    <string name="remove_membership">Revogar privilégios de membro</string>
-    <string name="grant_admin_privileges">Conceder privilégios de administrador</string>
-    <string name="remove_admin_privileges">Revogar privilégios de administrador</string>
-    <string name="grant_owner_privileges">Conceder privilégios de proprietário</string>
-    <string name="remove_owner_privileges">Revogar privilégios de proprietário</string>
     <string name="remove_from_room">Remover do grupo</string>
     <string name="remove_from_channel">Remover do canal</string>
     <string name="could_not_change_affiliation">Não foi possível alterar a filiação de %s</string>

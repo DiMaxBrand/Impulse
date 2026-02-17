@@ -381,13 +381,6 @@
     <string name="no_role">Offline</string>
     <string name="outcast">Outcast</string>
     <string name="member">Member</string>
-    <string name="advanced_mode">Advanced mode</string>
-    <string name="grant_membership">Grant member privileges</string>
-    <string name="remove_membership">Revoke member privileges</string>
-    <string name="grant_admin_privileges">Grant admin privileges</string>
-    <string name="remove_admin_privileges">Revoke admin privileges</string>
-    <string name="grant_owner_privileges">Grant owner privileges</string>
-    <string name="remove_owner_privileges">Revoke owner privileges</string>
     <string name="remove_from_room">Remove from group chat</string>
     <string name="remove_from_channel">Remove from channel</string>
     <string name="could_not_change_affiliation">Could not change affiliation of %s</string>
@@ -1150,6 +1143,12 @@
     <string name="open_browser">Open Browser</string>
     <string name="muc_user_ban_explainer">This user will no longer be able to see new messages or participate in the conversation.</string>
     <string name="publish_qr_code">Publish QR code</string>
+    <string name="give_membership">Give membership</string>
+    <string name="remove_membership">Remove membership</string>
+    <string name="make_admin">Make admin</string>
+    <string name="dismiss_as_admin">Dismiss as admin</string>
+    <string name="make_owner">Make owner</string>
+    <string name="dismiss_as_owner">Dismiss as owner</string>
     <plurals name="delete_n_messages">
         <item quantity="one">Delete %d message</item>
         <item quantity="other">Delete %d messages</item>

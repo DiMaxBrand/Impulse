@@ -365,13 +365,6 @@
     <string name="no_role">Offline</string>
     <string name="outcast">Ausgeschlossen</string>
     <string name="member">Mitglied</string>
-    <string name="advanced_mode">Erweiterter Modus</string>
-    <string name="grant_membership">Mitgliederrechte gewähren</string>
-    <string name="remove_membership">Mitgliederrechte entziehen</string>
-    <string name="grant_admin_privileges">Administratorrechte gewähren</string>
-    <string name="remove_admin_privileges">Administratorrechte entziehen</string>
-    <string name="grant_owner_privileges">Eigentümerrechte gewähren</string>
-    <string name="remove_owner_privileges">Eigentümerrechte entziehen</string>
     <string name="remove_from_room">Aus Gruppenchat entfernen</string>
     <string name="remove_from_channel">Aus Channel entfernen</string>
     <string name="could_not_change_affiliation">Zugehörigkeit von %s konnte nicht verändert werden</string>

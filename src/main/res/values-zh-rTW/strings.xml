@@ -340,13 +340,6 @@
     <string name="no_role">離線</string>
     <string name="outcast">遺棄</string>
     <string name="member">成員</string>
-    <string name="advanced_mode">進階模式</string>
-    <string name="grant_membership">授予成員權限</string>
-    <string name="remove_membership">撤銷成員權限</string>
-    <string name="grant_admin_privileges">授予管理員權限</string>
-    <string name="remove_admin_privileges">撤銷管理員權限</string>
-    <string name="grant_owner_privileges">授予擁有者權限</string>
-    <string name="remove_owner_privileges">撤銷擁有者權限</string>
     <string name="remove_from_room">從群組聊天中移除</string>
     <string name="remove_from_channel">從頻道中移除</string>
     <string name="could_not_change_affiliation">無法變更 %s 的關係</string>

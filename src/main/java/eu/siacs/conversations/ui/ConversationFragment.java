@@ -3647,7 +3647,7 @@ public class ConversationFragment extends XmppFragment
                 popupMenu.inflate(R.menu.muc_details_context);
                 final Menu menu = popupMenu.getMenu();
                 MucDetailsContextMenuHelper.configureMucDetailsContextMenu(
-                        requireActivity(), menu, conversation, user);
+                        requireActivity(), menu, user);
                 popupMenu.setOnMenuItemClickListener(
                         menuItem ->
                                 MucDetailsContextMenuHelper.onContextItemSelected(

@@ -338,9 +338,6 @@
     <string name="no_role">Offline</string>
     <string name="outcast">Vylúčený</string>
     <string name="member">Člen</string>
-    <string name="advanced_mode">Rozšírený režim</string>
-    <string name="grant_admin_privileges">Povoliť administrátorské výsady</string>
-    <string name="remove_admin_privileges">Odobrať administrátorské výsady</string>
     <string name="could_not_change_affiliation">Nepodarilo sa zmeniť pripojenie užívateľa %s</string>
     <string name="ban_now">Vylúčiť</string>
     <string name="could_not_change_role">Nepodarilo sa zmeniť úlohu %s</string>

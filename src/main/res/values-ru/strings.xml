@@ -377,13 +377,6 @@
     <string name="no_role">Не в сети</string>
     <string name="outcast">Заблокирован</string>
     <string name="member">Участник</string>
-    <string name="advanced_mode">Расширенный режим</string>
-    <string name="grant_membership">Предоставить права участника</string>
-    <string name="remove_membership">Снять права участника</string>
-    <string name="grant_admin_privileges">Назначить администратором</string>
-    <string name="remove_admin_privileges">Снять административные права</string>
-    <string name="grant_owner_privileges">Назначить владельцем</string>
-    <string name="remove_owner_privileges">Снять права владельца</string>
     <string name="remove_from_room">Исключить из конференции</string>
     <string name="remove_from_channel">Исключить из канала</string>
     <string name="could_not_change_affiliation">Невозможно изменить принадлежность %s</string>

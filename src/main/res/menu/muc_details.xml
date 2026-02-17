@@ -35,11 +35,11 @@
         android:title="@string/destroy_room"
         app:showAsAction="never" />
     <item
-        android:id="@+id/action_advanced_mode"
+        android:id="@+id/action_server_info_show_more"
         android:checkable="true"
         android:checked="false"
         android:orderInCategory="85"
-        android:title="@string/advanced_mode"
+        android:title="@string/server_info_show_more"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_custom_notifications"

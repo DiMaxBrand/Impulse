@@ -361,13 +361,6 @@
     <string name="no_role">オフライン</string>
     <string name="outcast">追放</string>
     <string name="member">メンバー</string>
-    <string name="advanced_mode">詳細モード</string>
-    <string name="grant_membership">メンバー権限を付与</string>
-    <string name="remove_membership">メンバー権限を取消</string>
-    <string name="grant_admin_privileges">管理者権限を付与</string>
-    <string name="remove_admin_privileges">管理者権限を取消</string>
-    <string name="grant_owner_privileges">所有者権限を付与</string>
-    <string name="remove_owner_privileges">所有者権限を取消</string>
     <string name="remove_from_room">グループチャットから削除</string>
     <string name="remove_from_channel">談話室から削除</string>
     <string name="could_not_change_affiliation">%s の所属を変更できません</string>
