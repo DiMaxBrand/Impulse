@@ -1182,4 +1182,10 @@
     <string name="server_info_stanzas_rx_tx_push">Stanze (wysyłanie/odbieranie/wypychanie)</string>
     <string name="share_invitation">Udostępnij zaproszenie</string>
     <string name="publish_qr_code">Publikuj kod QR</string>
+    <string name="give_membership">Przydziel członkostwo</string>
+    <string name="remove_membership">Odbierz członkostwo</string>
+    <string name="make_admin">Uczyń administratorem</string>
+    <string name="dismiss_as_admin">Wyłącz jako administratora</string>
+    <string name="make_owner">Uczyń właścicielem</string>
+    <string name="dismiss_as_owner">Wyłącz jako właściciela</string>
 </resources>
