@@ -1175,4 +1175,10 @@
     <string name="server_info_stanzas_rx_tx_push">Stanțe (pr/tr/push)</string>
     <string name="share_invitation">Partajează invitație</string>
     <string name="publish_qr_code">Publică cod QR</string>
+    <string name="give_membership">Acordă rol de membru</string>
+    <string name="make_admin">Acordă rol de administrator</string>
+    <string name="make_owner">Acordă rol de proprietar</string>
+    <string name="remove_membership">Abrogă rol de membru</string>
+    <string name="dismiss_as_admin">Abrogă rol de administrator</string>
+    <string name="dismiss_as_owner">Abrogă rol de proprietar</string>
 </resources>
