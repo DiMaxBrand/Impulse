@@ -179,4 +179,21 @@ public class MiniUriTest {
                 "https://xmpp.link/#test%40conference.example.com%3Fjoin",
                 uri.asInvitationUri().asUri().toString());
     }
+
+    @Test
+    public void ircXmppUri() {
+        final var address = Jid.of("#fdroid%irc.oftc.net@irc.domain.tld");
+        final var uri = new MiniUri.Xmpp(address);
+        final var asUriString = uri.asUri().toString();
+        final var asHttpString = uri.asInvitationUri().asUri().toString();
+        Assert.assertEquals("xmpp:%23fdroid%25irc.oftc.net@irc.domain.tld", asUriString);
+        Assert.assertEquals(
+                "https://xmpp.link/#%2523fdroid%2525irc.oftc.net%40irc.domain.tld", asHttpString);
+        final var readback = MiniUri.getXmppUriOrNull(asUriString);
+        Assert.assertNotNull(readback);
+        Assert.assertEquals(address, readback.asJid());
+        final var readbackHttp = MiniUri.getXmppUriOrNull(asHttpString);
+        Assert.assertNotNull(readbackHttp);
+        Assert.assertEquals(address, readbackHttp.asJid());
+    }
 }

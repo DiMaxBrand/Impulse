@@ -1,8 +1,6 @@
 package de.gultsch.common;
 
 import android.net.Uri;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
@@ -14,6 +12,7 @@ import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
+import com.google.common.escape.CharEscaper;
 import eu.siacs.conversations.xmpp.Jid;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -28,6 +27,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import okhttp3.HttpUrl;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public class MiniUri {
 
@@ -295,7 +296,7 @@ public class MiniUri {
             Preconditions.checkArgument(getScheme().equals("xmpp"), "scheme must be xmpp");
             Preconditions.checkArgument(
                     Objects.isNull(getAuthority()), "authorities are not supported");
-            final var path = getPath();
+            final var path = urlDecodeOrEmpty(getPath());
             if (Strings.isNullOrEmpty(path)) {
                 if (this.getParameter().isEmpty()) {
                     throw new IllegalArgumentException(
@@ -312,7 +313,12 @@ public class MiniUri {
         }
 
         public Xmpp(final Jid jid, final Map<String, Collection<String>> parameter) {
-            this(String.format("%s:%s%s", "xmpp", jid.toString(), asQueryString(parameter)));
+            this(
+                    String.format(
+                            "%s:%s%s",
+                            "xmpp",
+                            LIGHT_URI_ESCAPER.escape(jid.toString()),
+                            asQueryString(parameter)));
         }
 
         private static String asQueryString(final Map<String, Collection<String>> parameter) {
@@ -473,4 +479,18 @@ public class MiniUri {
             return new Xmpp(jid);
         }
     }
+
+    private static final CharEscaper LIGHT_URI_ESCAPER =
+            new CharEscaper() {
+
+                private static final Collection<Character> CHARACTERS = Arrays.asList('#', '%');
+
+                @Override
+                protected char @Nullable [] escape(final char c) {
+                    if (CHARACTERS.contains(c)) {
+                        return String.format("%%%02x", (int) c).toCharArray();
+                    }
+                    return null;
+                }
+            };
 }
