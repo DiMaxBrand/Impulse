@@ -589,7 +589,7 @@
     <string name="verified_fingerprints">Verifierade fingeravtryck</string>
     <string name="use_camera_icon_to_scan_barcode">Använd kameran för att skanna en kontakts QR-kod</string>
     <string name="please_wait_for_keys_to_be_fetched">Var god vänta på att nycklarna ska hämtas</string>
-    <string name="share_as_uri">Dela som XMPP-URI</string>
+    <string name="share_as_uri">Dela XMPP-URI</string>
     <string name="pref_blind_trust_before_verification">Blind tillit före verifiering</string>
     <string name="pref_blind_trust_before_verification_summary">Lita på nya enheter från icke-verifierade kontakter, men begär manuell bekräftelse av nya enheter för verifierade kontakter.</string>
     <string name="blindly_trusted_omemo_keys">Att blint lita på OMEMO-nycklar, innebär att användaren skulle kunna vara någon annan, och att en tredje part kan tjuvlyssna.</string>
@@ -1160,4 +1160,19 @@
     <string name="qr_code_contains_link">Öppna webblänk?</string>
     <string name="qr_code_contains_link_text">Denna QR-kod pekar till en webbplats. Kontrollera adressen nedan innan du öppnar den i din webbläsare:</string>
     <string name="open_browser">Öppna webbläsare</string>
+    <string name="share_invitation">Dela inbjudan</string>
+    <string name="server_info_stanzas_rx_tx">Datasektioner (rx/tx)</string>
+    <string name="server_info_stanzas_rx_tx_push">Datasektioner (rx/tx/push)</string>
+    <string name="muc_user_ban_explainer">Den här användaren kommer inte längre att kunna se meddelanden, eller att kunna delta i den här konversationen.</string>
+    <string name="publish_qr_code">Publicera QR-kod</string>
+    <string name="give_membership">Ge medlemskap</string>
+    <string name="remove_membership">Ta bort medlemsskap</string>
+    <string name="make_admin">Gör till admin</string>
+    <string name="dismiss_as_admin">Ta bort som admin</string>
+    <string name="make_owner">Gör till ägare</string>
+    <string name="dismiss_as_owner">Ta bort som ägare</string>
+    <plurals name="delete_n_messages">
+        <item quantity="one">Ta bort %d meddelande</item>
+        <item quantity="other">Ta bort %d meddelanden</item>
+    </plurals>
 </resources>
