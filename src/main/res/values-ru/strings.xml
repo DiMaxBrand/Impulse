@@ -1204,4 +1204,10 @@
     <string name="server_info_stanzas_rx_tx">Секции (↓/↑)</string>
     <string name="share_invitation">Отправить приглашение</string>
     <string name="publish_qr_code">Опубликовать QR-код</string>
+    <string name="give_membership">Предоставить членство</string>
+    <string name="remove_membership">Отменить членство</string>
+    <string name="make_admin">Назначить администратором</string>
+    <string name="dismiss_as_admin">Удалить из администраторов</string>
+    <string name="make_owner">Назначить владельцем</string>
+    <string name="dismiss_as_owner">Удалить из владельцев</string>
 </resources>
