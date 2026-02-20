@@ -1190,4 +1190,10 @@
     <string name="server_info_stanzas_rx_tx_push">Станце (rx/tx/push)</string>
     <string name="share_invitation">Подели позивницу</string>
     <string name="publish_qr_code">Објави QR кôд</string>
+    <string name="give_membership">Додели чланство</string>
+    <string name="remove_membership">Одузми чланство</string>
+    <string name="make_admin">Додели админ привилегије</string>
+    <string name="dismiss_as_admin">Одузми админ привилегије</string>
+    <string name="make_owner">Додели привилегије власника</string>
+    <string name="dismiss_as_owner">Одузми привилегије власника</string>
 </resources>
