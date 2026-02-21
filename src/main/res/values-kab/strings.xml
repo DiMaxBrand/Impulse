@@ -490,4 +490,24 @@
     <string name="restore_backup">Err-d aḥraz</string>
     <string name="enter_password_to_restore">Sekcem awal-ik·im n uɛeddi i umiḍan %s iwakken ad d-terreḍ aḥraz.</string>
     <string name="restore_omemo_key">Err-d tisura OMEMO</string>
+    <string name="edit_status_message">Ẓreg izen n waddad</string>
+    <string name="disable_encryption">Sens awgelhen</string>
+    <string name="error_trustkey_device_list">Ulamek awway n tebdart n yibenkan</string>
+    <string name="error_trustkey_bundle">Yegguma ad d-yawi tisura n uwgelhen</string>
+    <string name="error_trustkey_hint_mutual">Tamawt: Deg kra n tikwal, yezmer ad yefru waya s tmerna-k·m ɣer yal tibdarin-ik·im n unermis.</string>
+    <string name="disable_encryption_message">D tidet tebɣiḍ ad tsenseḍ awgelhen n OMEMO i udiwenni-agi?\nAya ad yeǧǧ anedbal-ik·im n uqeddac ad iɣer iznan-ik·im, maca yezmer d netta kan i d abrid n teywalt akked yimdanen s iseqdacen imsaɣen yeffɣen i uzemz.</string>
+    <string name="disable_now">Sens tura</string>
+    <string name="pref_omemo_setting">Awgelhen OMEMO</string>
+    <string name="pref_omemo_setting_summary_always">OMEMO ad yettwaseqdec dima i yidiwenniyen n yiwen ɣer yiwen neɣ deg ugraw udiwenni uslig.</string>
+    <string name="pref_omemo_setting_summary_default_on">OMEMO ad yettwaseqdec s wudem amezwer i udiwenni amaynut.</string>
+    <string name="pref_omemo_setting_summary_default_off">OMEMO Yessefk ad yettwarmed i yidiwenniyen imaynuten.</string>
+    <string name="default_on">Yettwarmed s wudem amezwer</string>
+    <string name="default_off">Yensa s wudem amezwer</string>
+    <string name="pref_dynamic_colors">Initen s wudem asmussaw</string>
+    <string name="pref_dynamic_colors_summary">Initen unagraw (Material You)</string>
+    <string name="not_encrypted_for_this_device">Izen ur yettwawgelhen ara i yibenk-agi.</string>
+    <string name="omemo_decryption_failed">Tuccḍa deg tukksa n uwgelhen n yizen OMEMO.</string>
+    <string name="location_disabled">Beṭṭu n wadig yensa</string>
+    <string name="action_fix_to_location">Seɣti ideg</string>
+    <string name="unable_to_start_recording">Yegguma ad isenker asekles</string>
 </resources>
