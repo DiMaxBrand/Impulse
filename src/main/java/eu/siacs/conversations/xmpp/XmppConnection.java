@@ -491,8 +491,15 @@ public class XmppConnection implements Runnable {
                         }
 
                         localSocket = new Socket();
-                        localSocket.connect(addr, Config.SOCKET_TIMEOUT * 1000);
-                        localSocket.setSoTimeout(Config.SOCKET_TIMEOUT * 1000);
+                        final int timeout;
+                        if (new NetworkManager(mXmppConnectionService).getHint()
+                                == NetworkManager.Hint.ACTIVE) {
+                            timeout = Config.SOCKET_TIMEOUT;
+                        } else {
+                            timeout = Config.SOCKET_TIMEOUT_LOW;
+                        }
+                        localSocket.connect(addr, timeout);
+                        localSocket.setSoTimeout(timeout);
                         if (features.encryptionEnabled) {
                             localSocket = upgradeSocketToTls(localSocket);
                         }
