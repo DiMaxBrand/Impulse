@@ -145,7 +145,7 @@
     <string name="account_status_offline">Поза мережею</string>
     <string name="account_status_unauthorized">Не авторизовано</string>
     <string name="account_status_not_found">Сервер не знайдено</string>
-    <string name="account_status_no_internet">Немає зв’язку з мережею</string>
+    <string name="account_status_no_internet">Немає підключення до Інтернету</string>
     <string name="account_status_regis_fail">Не вдалося зареєструватися</string>
     <string name="account_status_regis_conflict">Ім’я користувача вже використовується</string>
     <string name="account_status_regis_success">Реєстрацію виконано</string>
@@ -1210,4 +1210,5 @@
     <string name="make_owner">Призначити власником</string>
     <string name="dismiss_as_admin">Вилучити з адміністраторів</string>
     <string name="dismiss_as_owner">Вилучити з власників</string>
+    <string name="account_status_airplane_mode">Режим «У літаку»</string>
 </resources>
