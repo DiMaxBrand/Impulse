@@ -60,10 +60,7 @@ public abstract class ScramMechanism extends SaslMechanism {
         super(account);
         this.channelBinding = channelBinding;
         if (channelBinding == ChannelBinding.NONE) {
-            // TODO this needs to be changed to "y,," for the scram internal down grade protection
-            // but we might risk compatibility issues if the server supports a binding that we don’t
-            // support
-            this.gs2Header = "n,,";
+            this.gs2Header = "y,,";
         } else {
             this.gs2Header =
                     String.format(
