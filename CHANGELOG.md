@@ -1,5 +1,11 @@
 # Changelog
 
+### Version 2.19.11
+
+* Fix invite URIs for IRC channels
+* Show red warning icon in conference details of non compliant MUCs
+* Fix connection and retry behaviour around airplane mode and VPNs
+
 ### Version 2.19.10
 
 * Offer to delete messages when banning someone in a public channel
