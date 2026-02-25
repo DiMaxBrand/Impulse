@@ -1,11 +1,9 @@
 package eu.siacs.conversations.xml;
 
-import android.util.Log;
 import android.util.Xml;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
-import eu.siacs.conversations.Config;
 import im.conversations.android.xmpp.ExtensionFactory;
 import im.conversations.android.xmpp.model.StreamElement;
 import java.io.Closeable;
@@ -21,53 +19,49 @@ public class XmlReader implements Closeable {
 
     private static final int XML_ELEMENT_MAX_DEPTH = 128;
 
-    private final XmlPullParser parser;
-    private InputStream is;
+    private ParserInputStream parserInputStream;
 
-    public XmlReader() {
-        this.parser = Xml.newPullParser();
+    private static ParserInputStream of(final InputStream inputStream) throws IOException {
+        final var parser = Xml.newPullParser();
         try {
-            this.parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true);
-        } catch (XmlPullParserException e) {
-            Log.d(Config.LOGTAG, "error setting namespace feature on parser");
+            parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true);
+            parser.setInput(new InputStreamReader(inputStream));
+            return new ParserInputStream(parser, inputStream);
+        } catch (final XmlPullParserException e) {
+            throw new IOException(e);
         }
     }
 
     public void setInputStream(final InputStream inputStream) throws IOException {
-        if (inputStream == null) {
-            throw new IOException();
-        }
-        this.is = inputStream;
-        try {
-            parser.setInput(new InputStreamReader(this.is));
-        } catch (XmlPullParserException e) {
-            throw new IOException("error resetting parser");
-        }
+        this.parserInputStream = of(inputStream);
     }
 
     public void reset() throws IOException {
-        if (this.is == null) {
-            throw new IOException();
+        final var current = this.parserInputStream;
+        if (current == null) {
+            throw new IOException("Unable to reset. No current parser");
         }
-        try {
-            parser.setInput(new InputStreamReader(this.is));
-        } catch (XmlPullParserException e) {
-            throw new IOException("error resetting parser");
-        }
+        this.parserInputStream = of(current.inputStream());
     }
 
     @Override
     public void close() {
-        final var current = this.is;
-        Closeables.closeQuietly(current);
-        this.is = null;
+        final var current = this.parserInputStream;
+        if (current != null) {
+            this.parserInputStream = null;
+            Closeables.closeQuietly(current.inputStream());
+        }
     }
 
     public @NonNull Tag readTag() throws IOException {
         try {
-            while (this.is != null && parser.next() != XmlPullParser.END_DOCUMENT) {
-                if (parser.getEventType() == XmlPullParser.START_TAG) {
-                    final var id = new ExtensionFactory.Id(parser.getName(), parser.getNamespace());
+            while (parserInputStream != null
+                    && parserInputStream.parser.next() != XmlPullParser.END_DOCUMENT) {
+                final var parser = parserInputStream.parser;
+                if (parserInputStream.parser.getEventType() == XmlPullParser.START_TAG) {
+                    final var id =
+                            new ExtensionFactory.Id(
+                                    parser.getName(), parserInputStream.parser.getNamespace());
                     final var attrBuilder = new ImmutableMap.Builder<String, String>();
                     for (int i = 0; i < parser.getAttributeCount(); ++i) {
                         // TODO we would also look at parser.getAttributeNamespace()
@@ -163,4 +157,6 @@ public class XmlReader implements Closeable {
             super("Reached maximum depth of XML stream");
         }
     }
+
+    private record ParserInputStream(XmlPullParser parser, InputStream inputStream) {}
 }
