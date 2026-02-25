@@ -12,7 +12,6 @@ import android.util.Pair;
 import android.util.SparseArray;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -20,6 +19,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ClassToInstanceMap;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.primitives.Ints;
@@ -103,6 +103,7 @@ import im.conversations.android.xmpp.model.sasl.Success;
 import im.conversations.android.xmpp.model.sasl2.Authenticate;
 import im.conversations.android.xmpp.model.sasl2.Authentication;
 import im.conversations.android.xmpp.model.sasl2.Challenge;
+import im.conversations.android.xmpp.model.sasl2.Continue;
 import im.conversations.android.xmpp.model.sasl2.UserAgent;
 import im.conversations.android.xmpp.model.session.Session;
 import im.conversations.android.xmpp.model.sm.Ack;
@@ -116,6 +117,7 @@ import im.conversations.android.xmpp.model.sm.StreamManagement;
 import im.conversations.android.xmpp.model.stanza.Iq;
 import im.conversations.android.xmpp.model.stanza.Presence;
 import im.conversations.android.xmpp.model.stanza.Stanza;
+import im.conversations.android.xmpp.model.streams.Stream;
 import im.conversations.android.xmpp.model.streams.StreamError;
 import im.conversations.android.xmpp.model.streams.StreamErrorCondition;
 import im.conversations.android.xmpp.model.tls.Proceed;
@@ -123,6 +125,7 @@ import im.conversations.android.xmpp.model.tls.StartTls;
 import im.conversations.android.xmpp.processor.AccountStateProcessor;
 import im.conversations.android.xmpp.processor.BindProcessor;
 import im.conversations.android.xmpp.processor.MessageAcknowledgedProcessor;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.IDN;
@@ -575,6 +578,10 @@ public class XmppConnection implements Runnable {
                     account.getJid().asBareJid()
                             + ": elements in XML stream reached maximum depth");
             this.changeState(Account.State.INCOMPATIBLE_SERVER);
+        } catch (final EndOfStreamException e) {
+            Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": received stream close");
+            this.changeState(Account.State.OFFLINE);
+            this.attempt = Math.max(0, this.attempt - 1);
         } catch (final IOException | XmlPullParserException e) {
             Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": error reading XML stream", e);
             this.changeState(Account.State.OFFLINE);
@@ -622,12 +629,15 @@ public class XmppConnection implements Runnable {
         if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedException();
         }
-        if (tag == null) {
+        final Tag.Start start;
+        if (tag instanceof Tag.Start s) {
+            start = s;
+        } else {
             return false;
         }
-        final boolean success = tag.isStart("stream", Namespace.STREAMS);
+        final boolean success = start.is(Stream.class);
         if (success) {
-            final var from = tag.getAttribute("from");
+            final var from = start.getAttribute("from");
             if (from == null || !from.equals(account.getServer())) {
                 throw new StateChangingException(Account.State.HOST_UNKNOWN);
             }
@@ -681,81 +691,79 @@ public class XmppConnection implements Runnable {
         final CountDownLatch streamCountDownLatch = new CountDownLatch(1);
         this.mStreamCountDownLatch = streamCountDownLatch;
         Tag nextTag = tagReader.readTag();
-        while (!nextTag.isEnd("stream")) {
-            if (nextTag.isStart("error", Namespace.STREAMS)) {
-                processStreamError(tagReader.readElement(nextTag, StreamError.class));
-            } else if (nextTag.isStart("features", Namespace.STREAMS)) {
-                processStreamFeatures(nextTag);
-            } else if (nextTag.isStart("proceed", Namespace.TLS)) {
+        while (nextTag instanceof Tag.Start startTag) {
+            if (startTag.is(StreamError.class)) {
+                processStreamError(tagReader.readElement(startTag, StreamError.class));
+            } else if (startTag.is(im.conversations.android.xmpp.model.streams.Features.class)) {
+                processStreamFeatures(startTag);
+            } else if (startTag.is(Proceed.class)) {
                 if (this.socket instanceof SSLSocket) {
                     throw new StateChangingException(
                             Account.State.INCOMPATIBLE_SERVER,
                             "received 'proceed' but socket was not SSL");
                 }
-                switchOverToTls(nextTag);
-            } else if (nextTag.isStart("failure", Namespace.TLS)) {
+                switchOverToTls(startTag);
+            } else if (startTag.is(im.conversations.android.xmpp.model.tls.Failure.class)) {
                 throw new StateChangingException(Account.State.TLS_ERROR);
             } else if (!isSecure()) {
                 throw new StateChangingException(Account.State.INCOMPATIBLE_SERVER);
-            } else if (account.isOptionSet(Account.OPTION_REGISTER)
-                    && nextTag.isStart("iq", Namespace.JABBER_CLIENT)) {
-                processIq(nextTag);
+            } else if (account.isOptionSet(Account.OPTION_REGISTER) && startTag.is(Iq.class)) {
+                processIq(startTag);
             } else if (this.loginInfo == null) {
                 throw new StateChangingException(
                         Account.State.INCOMPATIBLE_SERVER, "login has not been started");
-            } else if (nextTag.isStart("success", Namespace.SASL)) {
-                processSuccess(tagReader.readElement(nextTag, Success.class));
+            } else if (startTag.is(Success.class)) {
+                processSuccess(tagReader.readElement(startTag, Success.class));
                 break;
-            } else if (nextTag.isStart("success", Namespace.SASL_2)) {
+            } else if (startTag.is(im.conversations.android.xmpp.model.sasl2.Success.class)) {
                 processSuccess(
                         tagReader.readElement(
-                                nextTag, im.conversations.android.xmpp.model.sasl2.Success.class));
-            } else if (nextTag.isStart("failure", Namespace.SASL)) {
-                final var failure = tagReader.readElement(nextTag, Failure.class);
+                                startTag, im.conversations.android.xmpp.model.sasl2.Success.class));
+            } else if (startTag.is(Failure.class)) {
+                final var failure = tagReader.readElement(startTag, Failure.class);
                 processFailure(failure);
-            } else if (nextTag.isStart("failure", Namespace.SASL_2)) {
+            } else if (startTag.is(im.conversations.android.xmpp.model.sasl2.Failure.class)) {
                 final var failure =
                         tagReader.readElement(
-                                nextTag, im.conversations.android.xmpp.model.sasl2.Failure.class);
+                                startTag, im.conversations.android.xmpp.model.sasl2.Failure.class);
                 processFailure(failure);
-            } else if (nextTag.isStart("continue", Namespace.SASL_2)) {
-                // two step sasl2 - we don’t support this yet
+            } else if (startTag.is(Continue.class)) {
+                // two-step sasl2 - we don’t support this yet
                 throw new StateChangingException(
                         Account.State.INCOMPATIBLE_CLIENT, "received 'continue'");
-            } else if (nextTag.isStart("challenge", Namespace.SASL)) {
+            } else if (startTag.is(im.conversations.android.xmpp.model.sasl.Challenge.class)) {
                 final var challenge =
                         tagReader.readElement(
-                                nextTag, im.conversations.android.xmpp.model.sasl.Challenge.class);
+                                startTag, im.conversations.android.xmpp.model.sasl.Challenge.class);
                 processChallenge(challenge);
-            } else if (nextTag.isStart("challenge", Namespace.SASL_2)) {
-                final var challenge = tagReader.readElement(nextTag, Challenge.class);
+            } else if (startTag.is(Challenge.class)) {
+                final var challenge = tagReader.readElement(startTag, Challenge.class);
                 processChallenge(challenge);
             } else if (!LoginInfo.isSuccess(this.loginInfo)) {
                 throw new StateChangingException(
                         Account.State.INCOMPATIBLE_SERVER,
                         "premature stanzas. login not yet successful");
-            } else if (this.streamId != null
-                    && nextTag.isStart("resumed", Namespace.STREAM_MANAGEMENT)) {
-                final Resumed resumed = tagReader.readElement(nextTag, Resumed.class);
+            } else if (this.streamId != null && startTag.is(Resumed.class)) {
+                final Resumed resumed = tagReader.readElement(startTag, Resumed.class);
                 processResumed(resumed);
-            } else if (nextTag.isStart("failed", Namespace.STREAM_MANAGEMENT)) {
-                final Failed failed = tagReader.readElement(nextTag, Failed.class);
+            } else if (startTag.is(Failed.class)) {
+                final Failed failed = tagReader.readElement(startTag, Failed.class);
                 processFailed(failed, true);
-            } else if (nextTag.isStart("iq", Namespace.JABBER_CLIENT)) {
-                processIq(nextTag);
+            } else if (startTag.is(Iq.class)) {
+                processIq(startTag);
             } else if (!isBound) {
                 throw new StateChangingException(
                         Account.State.INCOMPATIBLE_SERVER,
-                        "Received unexpected " + nextTag.identifier());
-            } else if (nextTag.isStart("message", Namespace.JABBER_CLIENT)) {
-                processMessage(nextTag);
-            } else if (nextTag.isStart("presence", Namespace.JABBER_CLIENT)) {
-                processPresence(nextTag);
-            } else if (nextTag.isStart("enabled", Namespace.STREAM_MANAGEMENT)) {
-                final var enabled = tagReader.readElement(nextTag, Enabled.class);
+                        "Received unexpected " + startTag.getId());
+            } else if (startTag.is(im.conversations.android.xmpp.model.stanza.Message.class)) {
+                processMessage(startTag);
+            } else if (startTag.is(Presence.class)) {
+                processPresence(startTag);
+            } else if (startTag.is(Enabled.class)) {
+                final var enabled = tagReader.readElement(startTag, Enabled.class);
                 processEnabled(enabled);
-            } else if (nextTag.isStart("r", Namespace.STREAM_MANAGEMENT)) {
-                tagReader.readElement(nextTag, Request.class);
+            } else if (startTag.is(Request.class)) {
+                tagReader.readElement(startTag, Request.class);
                 if (Config.EXTENDED_SM_LOGGING) {
                     Log.d(
                             Config.LOGTAG,
@@ -765,7 +773,7 @@ public class XmppConnection implements Runnable {
                 }
                 final Ack ack = new Ack(this.stanzasReceived);
                 tagWriter.writeStanzaAsync(ack);
-            } else if (nextTag.isStart("a", Namespace.STREAM_MANAGEMENT)) {
+            } else if (startTag.is(Ack.class)) {
                 boolean accountUiNeedsRefresh = false;
                 synchronized (NotificationService.CATCHUP_LOCK) {
                     if (mWaitingForSmCatchup.compareAndSet(true, false)) {
@@ -790,7 +798,7 @@ public class XmppConnection implements Runnable {
                 if (accountUiNeedsRefresh) {
                     mXmppConnectionService.updateAccountUi();
                 }
-                final var ack = tagReader.readElement(nextTag, Ack.class);
+                final var ack = tagReader.readElement(startTag, Ack.class);
                 lastPacketReceived = SystemClock.elapsedRealtime();
                 final boolean acknowledgedMessages;
                 synchronized (this.mStanzaQueue) {
@@ -811,12 +819,15 @@ public class XmppConnection implements Runnable {
             } else {
                 throw new StateChangingException(
                         Account.State.INCOMPATIBLE_SERVER,
-                        "encountered unknown stream element " + nextTag.identifier());
+                        "encountered unknown stream element " + startTag.getId());
             }
             nextTag = tagReader.readTag();
         }
-        if (nextTag != null && nextTag.isEnd("stream")) {
+        if (nextTag instanceof Tag.End endTag && endTag.is(Stream.class)) {
             streamCountDownLatch.countDown();
+            throw new EndOfStreamException();
+        } else {
+            throw new UnexpectedTagException(nextTag);
         }
     }
 
@@ -1022,7 +1033,7 @@ public class XmppConnection implements Runnable {
             tagReader.reset();
             sendStartStream(false, true);
             final Tag tag = tagReader.readTag();
-            if (tag != null && tag.isStart("stream", Namespace.STREAMS)) {
+            if (tag instanceof Tag.Start startTag && startTag.is(Stream.class)) {
                 processStream();
             } else {
                 throw new StateChangingException(Account.State.STREAM_OPENING_ERROR);
@@ -1065,10 +1076,11 @@ public class XmppConnection implements Runnable {
 
     private void processNopStreamFeatures() throws IOException {
         final Tag tag = tagReader.readTag();
-        if (tag.isStart("features", Namespace.STREAMS)) {
+        if (tag instanceof Tag.Start startTag
+                && startTag.is(im.conversations.android.xmpp.model.streams.Features.class)) {
             this.streamFeatures =
                     tagReader.readElement(
-                            tag, im.conversations.android.xmpp.model.streams.Features.class);
+                            startTag, im.conversations.android.xmpp.model.streams.Features.class);
             Log.d(
                     Config.LOGTAG,
                     account.getJid().asBareJid()
@@ -1323,8 +1335,8 @@ public class XmppConnection implements Runnable {
         return acknowledgedMessages;
     }
 
-    private <S extends Stanza> @NonNull S processPacket(final Tag currentTag, final Class<S> clazz)
-            throws IOException {
+    private <S extends Stanza> @NonNull S processPacket(
+            final Tag.Start currentTag, final Class<S> clazz) throws IOException {
         final S stanza = tagReader.readElement(currentTag, clazz);
         if (stanzasReceived == Integer.MAX_VALUE) {
             resetStreamId();
@@ -1347,7 +1359,7 @@ public class XmppConnection implements Runnable {
         return stanza;
     }
 
-    private void processIq(final Tag currentTag) throws IOException {
+    private void processIq(final Tag.Start currentTag) throws IOException {
         final Iq packet = processPacket(currentTag, Iq.class);
         if (packet.isInvalid()) {
             Log.e(
@@ -1425,7 +1437,7 @@ public class XmppConnection implements Runnable {
         return null;
     }
 
-    private void processMessage(final Tag currentTag) throws IOException {
+    private void processMessage(final Tag.Start currentTag) throws IOException {
         final var packet =
                 processPacket(currentTag, im.conversations.android.xmpp.model.stanza.Message.class);
         if (packet.isInvalid()) {
@@ -1448,7 +1460,7 @@ public class XmppConnection implements Runnable {
         this.messageListener.accept(packet);
     }
 
-    private void processPresence(final Tag currentTag) throws IOException {
+    private void processPresence(final Tag.Start currentTag) throws IOException {
         final var packet = processPacket(currentTag, Presence.class);
         if (packet.isInvalid()) {
             Log.e(
@@ -1464,7 +1476,7 @@ public class XmppConnection implements Runnable {
             Log.d(
                     Config.LOGTAG,
                     account.getJid().asBareJid()
-                            + "Not processing presence. Thread was interrupted");
+                            + ": Not processing presence. Thread was interrupted");
             return;
         }
         this.presenceListener.accept(packet);
@@ -1474,7 +1486,8 @@ public class XmppConnection implements Runnable {
         tagWriter.writeElement(new StartTls());
     }
 
-    private void switchOverToTls(final Tag currentTag) throws XmlPullParserException, IOException {
+    private void switchOverToTls(final Tag.Start currentTag)
+            throws XmlPullParserException, IOException {
         tagReader.readElement(currentTag, Proceed.class);
         final Socket socket = this.socket;
         final SSLSocket sslSocket = upgradeSocketToTls(socket);
@@ -1493,7 +1506,7 @@ public class XmppConnection implements Runnable {
         }
         features.encryptionEnabled = true;
         final Tag tag = tagReader.readTag();
-        if (tag != null && tag.isStart("stream", Namespace.STREAMS)) {
+        if (tag instanceof Tag.Start startTag && startTag.is(Stream.class)) {
             SSLSockets.log(account, sslSocket);
             processStream();
         } else {
@@ -1549,7 +1562,7 @@ public class XmppConnection implements Runnable {
         return sslSocket;
     }
 
-    private void processStreamFeatures(final Tag currentTag) throws IOException {
+    private void processStreamFeatures(final Tag.Start currentTag) throws IOException {
         final var streamFeatures =
                 tagReader.readElement(
                         currentTag, im.conversations.android.xmpp.model.streams.Features.class);
@@ -2495,14 +2508,15 @@ public class XmppConnection implements Runnable {
     }
 
     private void sendStartStream(final boolean from, final boolean flush) throws IOException {
-        final Tag stream = Tag.start("stream:stream", Namespace.JABBER_CLIENT);
-        stream.setAttribute("to", account.getServer());
+        final var attrBuilder = new ImmutableMap.Builder<String, String>();
+        attrBuilder.put("to", account.getServer());
         if (from) {
-            stream.setAttribute("from", account.getJid().asBareJid().toString());
+            attrBuilder.put("from", account.getJid().asBareJid().toString());
         }
-        stream.setAttribute("version", "1.0");
-        stream.setAttribute("xml:lang", LocalizedContent.STREAM_LANGUAGE);
-        stream.setAttribute("xmlns:stream", Namespace.STREAMS);
+        attrBuilder.put("version", "1.0");
+        attrBuilder.put("xml:lang", LocalizedContent.STREAM_LANGUAGE);
+        attrBuilder.put("xmlns:stream", Namespace.STREAMS);
+        final Tag stream = new Tag.Start(Stream.ID, attrBuilder.buildOrThrow());
         tagWriter.writeTag(stream, flush);
     }
 
@@ -2716,21 +2730,17 @@ public class XmppConnection implements Runnable {
                 final CountDownLatch streamCountDownLatch = this.mStreamCountDownLatch;
                 try {
                     currentTagWriter.await(1, TimeUnit.SECONDS);
-                    Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": closing stream");
-                    currentTagWriter.writeTag(Tag.end("stream:stream"));
+                    Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": sending stream close");
+                    currentTagWriter.writeTag(new Tag.End(Stream.ID));
                     if (streamCountDownLatch != null) {
-                        if (streamCountDownLatch.await(1, TimeUnit.SECONDS)) {
-                            Log.d(
-                                    Config.LOGTAG,
-                                    account.getJid().asBareJid() + ": remote ended stream");
-                        } else {
+                        if (!streamCountDownLatch.await(1, TimeUnit.SECONDS)) {
                             Log.d(
                                     Config.LOGTAG,
                                     account.getJid().asBareJid()
-                                            + ": remote has not closed socket. force closing");
+                                            + ": gave up waiting for stream close. force closing");
                         }
                     }
-                } catch (InterruptedException e) {
+                } catch (final InterruptedException e) {
                     Log.d(
                             Config.LOGTAG,
                             account.getJid().asBareJid()
@@ -2992,24 +3002,7 @@ public class XmppConnection implements Runnable {
         }
     }
 
-    private static class StreamId {
-        public final String id;
-        public final Resolver.Result location;
-
-        private StreamId(String id, Resolver.Result location) {
-            this.id = id;
-            this.location = location;
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return MoreObjects.toStringHelper(this)
-                    .add("id", id)
-                    .add("location", location)
-                    .toString();
-        }
-    }
+    private record StreamId(String id, Resolver.Result location) {}
 
     private static class StateChangingError extends Error {
         private final Account.State state;
@@ -3118,6 +3111,35 @@ public class XmppConnection implements Runnable {
                 return null;
             }
             return HttpUrl.parse(address);
+        }
+    }
+
+    public static class EndOfStreamException extends EOFException {
+        public EndOfStreamException() {
+            super("Reached the end of the stream");
+        }
+    }
+
+    public static class UnexpectedTagException extends IOException {
+        private final Tag tag;
+
+        public UnexpectedTagException(final Tag tag) {
+            super(message(tag));
+            this.tag = tag;
+        }
+
+        public Tag getTag() {
+            return this.tag;
+        }
+
+        private static String message(final Tag tag) {
+            if (tag instanceof Tag.IdentifiableTag identifiableTag) {
+                final var id = identifiableTag.getId();
+                return String.format(
+                        "%s - %s#%s", tag.getClass().getSimpleName(), id.name(), id.namespace());
+            } else {
+                return tag.getClass().getSimpleName();
+            }
         }
     }
 }

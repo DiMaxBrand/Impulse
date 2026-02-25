@@ -2,6 +2,9 @@ package eu.siacs.conversations.xml;
 
 import android.util.Log;
 import android.util.Xml;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.io.Closeables;
 import eu.siacs.conversations.Config;
 import im.conversations.android.xmpp.ExtensionFactory;
 import im.conversations.android.xmpp.model.StreamElement;
@@ -55,6 +58,8 @@ public class XmlReader implements Closeable {
 
     @Override
     public void close() {
+        final var current = this.is;
+        Closeables.closeQuietly(current);
         this.is = null;
     }
 
@@ -62,23 +67,28 @@ public class XmlReader implements Closeable {
         try {
             while (this.is != null && parser.next() != XmlPullParser.END_DOCUMENT) {
                 if (parser.getEventType() == XmlPullParser.START_TAG) {
-                    Tag tag = Tag.start(parser.getName(), parser.getNamespace());
+                    final var id = new ExtensionFactory.Id(parser.getName(), parser.getNamespace());
+                    final var attrBuilder = new ImmutableMap.Builder<String, String>();
                     for (int i = 0; i < parser.getAttributeCount(); ++i) {
                         // TODO we would also look at parser.getAttributeNamespace()
-                        final String prefix = parser.getAttributePrefix(i);
-                        String name;
-                        if (prefix != null && !prefix.isEmpty()) {
-                            name = prefix + ":" + parser.getAttributeName(i);
-                        } else {
+                        final var value = parser.getAttributeValue(i);
+                        final var prefix = parser.getAttributePrefix(i);
+                        final String name;
+                        if (Strings.isNullOrEmpty(prefix)) {
                             name = parser.getAttributeName(i);
+                        } else {
+                            name = prefix + ":" + parser.getAttributeName(i);
                         }
-                        tag.setAttribute(name, parser.getAttributeValue(i));
+                        if (name != null && value != null) {
+                            attrBuilder.put(name, value);
+                        }
                     }
-                    return tag;
+                    return new Tag.Start(id, attrBuilder.buildKeepingLast());
                 } else if (parser.getEventType() == XmlPullParser.END_TAG) {
-                    return Tag.end(parser.getName());
+                    final var id = new ExtensionFactory.Id(parser.getName(), parser.getNamespace());
+                    return new Tag.End(id);
                 } else if (parser.getEventType() == XmlPullParser.TEXT) {
-                    return Tag.no(parser.getText());
+                    return new Tag.No(parser.getText());
                 }
             }
 
@@ -96,7 +106,7 @@ public class XmlReader implements Closeable {
         throw new EOFException();
     }
 
-    public <T extends StreamElement> T readElement(final Tag current, final Class<T> clazz)
+    public <T extends StreamElement> T readElement(final Tag.Start current, final Class<T> clazz)
             throws IOException {
         final Element element = readElement(current);
         if (clazz.isInstance(element)) {
@@ -114,23 +124,38 @@ public class XmlReader implements Closeable {
         if (depth >= XML_ELEMENT_MAX_DEPTH) {
             throw new XmlMaxDepthReachedException();
         }
-        final var namespace = currentTag.getNamespace();
-        final var name = currentTag.getName();
-        final Element element = ExtensionFactory.create(name, namespace);
-        element.setAttributes(currentTag.getAttributes());
-        Tag nextTag = this.readTag();
-        if (nextTag.isNo()) {
-            element.setContent(nextTag.getName());
-            nextTag = this.readTag();
+        final ExtensionFactory.Id id;
+        final Element element;
+        if (currentTag instanceof Tag.Start start) {
+            id = start.getId();
+            element = ExtensionFactory.create(id);
+            element.setAttributes(start.getAttributes());
+        } else {
+            throw new IOException("Cannot start reading element at tag other than start");
         }
-        while (!nextTag.isEnd(element.getName())) {
-            if (!nextTag.isNo()) {
-                final var child = this.readElement(nextTag, depth + 1);
-                element.addChild(child);
+        while (true) {
+            final var tag = this.readTag();
+            System.out.println("encountered inner tag: " + tag.getClass());
+            switch (tag) {
+                case Tag.Start innerStart -> {
+                    final var child = this.readElement(innerStart, depth + 1);
+                    element.addChild(child);
+                }
+                case Tag.No no -> {
+                    if (element.getChildren().isEmpty()) {
+                        element.setContent(no.getText());
+                    }
+                }
+                case Tag.End end -> {
+                    if (end.getId().equals(id)) {
+                        return element;
+                    } else {
+                        throw new IOException("End tag did not match start tag");
+                    }
+                }
+                default -> throw new IOException("Read invalid tag " + tag.getClass());
             }
-            nextTag = this.readTag();
         }
-        return element;
     }
 
     public static class XmlMaxDepthReachedException extends IOException {
