@@ -154,7 +154,7 @@
     <string name="account_status_offline">Rozłączono</string>
     <string name="account_status_unauthorized">Błąd uwierzytelnienia</string>
     <string name="account_status_not_found">Nie odnaleziono serwera</string>
-    <string name="account_status_no_internet">Brak połączenia</string>
+    <string name="account_status_no_internet">Brak Internetu</string>
     <string name="account_status_regis_fail">Błąd rejestracji</string>
     <string name="account_status_regis_conflict">Nazwa jest już w użyciu</string>
     <string name="account_status_regis_success">Zarejestrowano pomyślnie</string>
@@ -574,7 +574,7 @@
     <string name="show_error_message">Pokaż komunikaty błędów</string>
     <string name="error_message">Komunikat o błędzie</string>
     <string name="data_saver_enabled">Oszczędzanie danych jest włączone</string>
-    <string name="data_saver_enabled_explained">Twój system operacyjny ogranicza %1$s dostęp do internetu w tle. Aby otrzymywać powiadomienia o nowych wiadomościach należy pozwolić %1$s na nieograniczone dostęp kiedy opcja Oszczędzania Danych jest włączona.\n%1$s będzie oszczędzać transfer danych kiedy to możliwe.</string>
+    <string name="data_saver_enabled_explained">Twój system operacyjny ogranicza %1$s dostęp do Internetu w tle. Aby otrzymywać powiadomienia o nowych wiadomościach należy pozwolić %1$s na nieograniczony dostęp kiedy opcja Oszczędzania Danych jest włączona.\n%1$s będzie oszczędzać transfer danych kiedy to możliwe.</string>
     <string name="device_does_not_support_data_saver">Twoje urządzenie nie wspiera wyłączenia Oszczędzania danych dla %1$s.</string>
     <string name="error_unable_to_create_temporary_file">Niemożna utworzyć pliku tymczasowego</string>
     <string name="this_device_has_been_verified">To urządzenie zostało zweryfikowane</string>
@@ -1188,4 +1188,5 @@
     <string name="dismiss_as_admin">Wyłącz jako administratora</string>
     <string name="make_owner">Uczyń właścicielem</string>
     <string name="dismiss_as_owner">Wyłącz jako właściciela</string>
+    <string name="account_status_airplane_mode">Tryb samolotowy</string>
 </resources>
