@@ -156,7 +156,7 @@
     <string name="account_status_offline">Nedkopplad</string>
     <string name="account_status_unauthorized">Ej behörig</string>
     <string name="account_status_not_found">Servern hittades inte</string>
-    <string name="account_status_no_internet">Ingen anslutning</string>
+    <string name="account_status_no_internet">Inget internet</string>
     <string name="account_status_regis_fail">Registreringen misslyckades</string>
     <string name="account_status_regis_conflict">Användarnamnet används redan</string>
     <string name="account_status_regis_success">Registreringen genomförd</string>
@@ -1175,4 +1175,5 @@
         <item quantity="one">Ta bort %d meddelande</item>
         <item quantity="other">Ta bort %d meddelanden</item>
     </plurals>
+    <string name="account_status_airplane_mode">Flygplansläge</string>
 </resources>
