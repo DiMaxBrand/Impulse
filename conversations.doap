@@ -320,6 +320,15 @@
             <xmpp:version>0.6.3</xmpp:version>
         </xmpp:SupportedXep>
     </implements>
+        <implements>
+        <xmpp:SupportedXep>
+            <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0317.html"/>
+            <xmpp:status>partial</xmpp:status>
+            <xmpp:version>0.3.1</xmpp:version>
+            <xmpp:since>2.20.0</xmpp:since>
+            <xmpp:note>Read only. A management interface is currently not provided.</xmpp:note>
+        </xmpp:SupportedXep>
+    </implements>
     <implements>
         <xmpp:SupportedXep>
             <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0319.html"/>

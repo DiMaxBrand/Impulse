@@ -21,8 +21,13 @@ public class XEP0392Helper {
 
     @ColorInt
     public static int rgbFromNick(final String name) {
+        return rgbFromAngle(angle(name) * 360);
+    }
+
+    @ColorInt
+    public static int rgbFromAngle(final double angle) {
         final var converter = new HsluvColorConverter();
-        converter.hsluv_h = angle(name) * 360;
+        converter.hsluv_h = angle;
         converter.hsluv_s = 100;
         converter.hsluv_l = 50;
         converter.hsluvToRgb();

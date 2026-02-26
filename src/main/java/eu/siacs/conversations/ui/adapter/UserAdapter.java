@@ -2,16 +2,22 @@ package eu.siacs.conversations.ui.adapter;
 
 import android.app.PendingIntent;
 import android.content.IntentSender;
+import android.content.res.ColorStateList;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
+import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.databinding.DataBindingUtil;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.color.MaterialColors;
+import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.Ints;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.crypto.PgpEngine;
 import eu.siacs.conversations.databinding.ItemContactBinding;
@@ -22,6 +28,7 @@ import eu.siacs.conversations.ui.XmppActivity;
 import eu.siacs.conversations.ui.util.AvatarWorkerTask;
 import eu.siacs.conversations.ui.util.MucDetailsContextMenuHelper;
 import eu.siacs.conversations.utils.Compatibility;
+import eu.siacs.conversations.utils.XEP0392Helper;
 import eu.siacs.conversations.xmpp.Jid;
 import org.openintents.openpgp.util.OpenPgpUtils;
 
@@ -147,6 +154,36 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
             viewHolder.binding.key.setText(OpenPgpUtils.convertKeyIdToHex(user.getPgpKeyId()));
         } else {
             viewHolder.binding.key.setVisibility(View.GONE);
+        }
+        final var hats = user.getHats();
+        if (hats.isEmpty()) {
+            viewHolder.binding.tags.setVisibility(View.GONE);
+        } else {
+            final var context = viewHolder.binding.tags.getContext();
+            final var inflater = LayoutInflater.from(context);
+            viewHolder.binding.tags.removeViews(1, viewHolder.binding.tags.getChildCount() - 1);
+            final ImmutableList.Builder<Integer> viewIdBuilder = new ImmutableList.Builder<>();
+            for (final var hat : hats) {
+                final TextView tv =
+                        (TextView)
+                                inflater.inflate(R.layout.item_tag, viewHolder.binding.tags, false);
+                tv.setText(hat.title());
+                @ColorInt final int color;
+                if (hat.hue() == null) {
+                    color = XEP0392Helper.rgbFromNick(hat.uri());
+                } else {
+                    color = XEP0392Helper.rgbFromAngle(hat.hue() % 360.0);
+                }
+                tv.setBackgroundTintList(
+                        ColorStateList.valueOf(
+                                MaterialColors.harmonizeWithPrimary(context, color)));
+                final int id = View.generateViewId();
+                tv.setId(id);
+                viewIdBuilder.add(id);
+                viewHolder.binding.tags.addView(tv);
+            }
+            viewHolder.binding.flowWidget.setReferencedIds(Ints.toArray(viewIdBuilder.build()));
+            viewHolder.binding.tags.setVisibility(View.VISIBLE);
         }
     }
 
