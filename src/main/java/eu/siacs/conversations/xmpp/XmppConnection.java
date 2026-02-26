@@ -714,7 +714,6 @@ public class XmppConnection implements Runnable {
                         Account.State.INCOMPATIBLE_SERVER, "login has not been started");
             } else if (startTag.is(Success.class)) {
                 processSuccess(tagReader.readElement(startTag, Success.class));
-                break;
             } else if (startTag.is(im.conversations.android.xmpp.model.sasl2.Success.class)) {
                 processSuccess(
                         tagReader.readElement(
