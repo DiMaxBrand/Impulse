@@ -41,6 +41,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 public class MucOptions {
@@ -109,6 +110,7 @@ public class MucOptions {
                         null,
                         role,
                         affiliation,
+                        Collections.emptySet(),
                         false);
     }
 
@@ -357,6 +359,11 @@ public class MucOptions {
     public boolean occupantId() {
         final var features = getFeatures();
         return features.contains(Namespace.OCCUPANT_ID);
+    }
+
+    public boolean hats() {
+        final var features = getFeatures();
+        return features.contains(Namespace.HATS);
     }
 
     public boolean moderation() {
@@ -823,6 +830,7 @@ public class MucOptions {
         private final String occupantId;
         private final Role role;
         private final Affiliation affiliation;
+        private final Set<Hat> hats;
         private Long pgpKeyId;
         private String avatar;
         private Class<? extends ChatStateNotification> chatState = null;
@@ -833,7 +841,8 @@ public class MucOptions {
                 final Jid realJid,
                 final String occupantId,
                 final Role role,
-                final Affiliation affiliation) {
+                final Affiliation affiliation,
+                final Set<Hat> hats) {
             Preconditions.checkNotNull(options, "MucOptions must not be null");
             Preconditions.checkNotNull(role, "Role must not be null. Use NONE instead");
             Preconditions.checkNotNull(
@@ -844,6 +853,7 @@ public class MucOptions {
             this.occupantId = occupantId;
             this.role = role;
             this.affiliation = affiliation;
+            this.hats = hats;
         }
 
         public AddressableId asId() {
@@ -866,6 +876,10 @@ public class MucOptions {
 
         public Affiliation getAffiliation() {
             return this.affiliation;
+        }
+
+        public Set<Hat> getHats() {
+            return this.hats;
         }
 
         public long getPgpKeyId() {
@@ -1021,7 +1035,13 @@ public class MucOptions {
 
         public User asOfflineUser() {
             return new User(
-                    this.options, null, this.realJid, this.occupantId, Role.NONE, affiliation);
+                    this.options,
+                    null,
+                    this.realJid,
+                    this.occupantId,
+                    Role.NONE,
+                    affiliation,
+                    null);
         }
 
         public User withAffiliation(final Affiliation affiliation) {
@@ -1031,7 +1051,8 @@ public class MucOptions {
                     this.realJid,
                     this.occupantId,
                     this.role,
-                    affiliation);
+                    affiliation,
+                    this.hats);
         }
 
         public Self asConnectedSelf() {
@@ -1046,6 +1067,7 @@ public class MucOptions {
                     this.occupantId,
                     this.role,
                     this.affiliation,
+                    this.hats,
                     true);
         }
 
@@ -1076,8 +1098,9 @@ public class MucOptions {
                 final String occupantId,
                 final Role role,
                 final Affiliation affiliation,
+                final Set<Hat> hats,
                 final boolean connected) {
-            super(options, fullJid, realJid, occupantId, role, affiliation);
+            super(options, fullJid, realJid, occupantId, role, affiliation, hats);
             Preconditions.checkNotNull(
                     realJid, "The self muc user should not have a null real jid");
             Preconditions.checkArgument(
@@ -1104,6 +1127,7 @@ public class MucOptions {
                     getOccupantId(),
                     Role.NONE,
                     getAffiliation(),
+                    getHats(),
                     false);
         }
     }
@@ -1115,7 +1139,14 @@ public class MucOptions {
                 final Jid fullJid,
                 final Jid realJid,
                 final String occupantId) {
-            super(options, fullJid, realJid, occupantId, Role.NONE, Affiliation.NONE);
+            super(
+                    options,
+                    fullJid,
+                    realJid,
+                    occupantId,
+                    Role.NONE,
+                    Affiliation.NONE,
+                    Collections.emptySet());
         }
     }
 
@@ -1171,4 +1202,6 @@ public class MucOptions {
             };
         }
     }
+
+    public record Hat(String uri, String title, Double hue) {}
 }

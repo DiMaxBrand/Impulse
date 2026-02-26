@@ -121,6 +121,7 @@ public final class Namespace {
     public static final String SDP_OFFER_ANSWER = "urn:ietf:rfc:3264";
     public static final String SESSION = "urn:ietf:params:xml:ns:xmpp-session";
     public static final String HASHES = "urn:xmpp:hashes:2";
+    public static final String HATS = "urn:xmpp:hats:0";
     public static final String MEDIA_ELEMENT = "urn:xmpp:media-element";
     public static final String MDS_DISPLAYED = "urn:xmpp:mds:displayed:0";
     public static final String MDS_SERVER_ASSIST = "urn:xmpp:mds:server-assist:0";
