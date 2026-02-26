@@ -1046,28 +1046,21 @@ public class XmppConnection implements Runnable {
     }
 
     private void processFailure(final AuthenticationFailure failure) throws IOException {
-        final SaslMechanism.Version version;
-        try {
-            version = SaslMechanism.Version.of(failure);
-        } catch (final IllegalArgumentException e) {
-            throw new StateChangingException(Account.State.INCOMPATIBLE_SERVER);
-        }
-
         final LoginInfo currentLoginInfo = this.loginInfo;
         if (currentLoginInfo == null || LoginInfo.isSuccess(currentLoginInfo)) {
             throw new StateChangingException(
                     Account.State.INCOMPATIBLE_SERVER,
                     "received login failure even though login was not started or already complete");
         }
-
-        Log.d(Config.LOGTAG, failure.toString());
-        Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": login failure " + version);
+        final var text = failure.getText();
+        final var errorCondition = failure.getErrorCondition();
+        final var message = AuthenticationFailure.message(text, errorCondition);
+        Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": login failure: " + message);
         if (SaslMechanism.hashedToken(LoginInfo.mechanism(currentLoginInfo))) {
             Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": resetting token");
             account.resetFastToken();
             mXmppConnectionService.databaseBackend.updateAccount(account);
         }
-        final var errorCondition = failure.getErrorCondition();
         if (errorCondition instanceof SaslError.InvalidMechanism
                 || errorCondition instanceof SaslError.MechanismTooWeak) {
             Log.d(
@@ -1083,7 +1076,6 @@ public class XmppConnection implements Runnable {
         } else if (errorCondition instanceof SaslError.TemporaryAuthFailure) {
             throw new StateChangingException(Account.State.TEMPORARY_AUTH_FAILURE);
         } else if (errorCondition instanceof SaslError.AccountDisabled) {
-            final String text = failure.getText();
             if (Strings.isNullOrEmpty(text)) {
                 throw new StateChangingException(Account.State.UNAUTHORIZED);
             }
