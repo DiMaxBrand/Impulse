@@ -39,6 +39,7 @@ import eu.siacs.conversations.entities.MucOptions.User;
 import eu.siacs.conversations.services.XmppConnectionService.OnConversationUpdate;
 import eu.siacs.conversations.services.XmppConnectionService.OnMucRosterUpdate;
 import eu.siacs.conversations.ui.adapter.MediaAdapter;
+import eu.siacs.conversations.ui.adapter.UserAdapter;
 import eu.siacs.conversations.ui.adapter.UserPreviewAdapter;
 import eu.siacs.conversations.ui.interfaces.OnMediaLoaded;
 import eu.siacs.conversations.ui.text.FixedURLSpan;
@@ -641,6 +642,7 @@ public class ConferenceDetailsActivity extends XmppActivity
             this.binding.mucSubject.setVisibility(View.GONE);
         }
         this.binding.mucYourNick.setText(mucOptions.getActualNick());
+        UserAdapter.setHats(this.binding.tags, self.getHats());
         if (mucOptions.online()) {
             this.binding.jidWarning.setVisibility(
                     mucOptions.isCompliant() ? View.INVISIBLE : View.VISIBLE);

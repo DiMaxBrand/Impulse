@@ -11,6 +11,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
+import androidx.constraintlayout.helper.widget.Flow;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.databinding.DataBindingUtil;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
@@ -30,6 +32,7 @@ import eu.siacs.conversations.ui.util.MucDetailsContextMenuHelper;
 import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.XEP0392Helper;
 import eu.siacs.conversations.xmpp.Jid;
+import java.util.Set;
 import org.openintents.openpgp.util.OpenPgpUtils;
 
 public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHolder>
@@ -155,18 +158,19 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
         } else {
             viewHolder.binding.key.setVisibility(View.GONE);
         }
-        final var hats = user.getHats();
+        setHats(viewHolder.binding.tags, user.getHats());
+    }
+
+    public static void setHats(final ConstraintLayout layout, final Set<MucOptions.Hat> hats) {
         if (hats.isEmpty()) {
-            viewHolder.binding.tags.setVisibility(View.GONE);
+            layout.setVisibility(View.GONE);
         } else {
-            final var context = viewHolder.binding.tags.getContext();
+            final var context = layout.getContext();
             final var inflater = LayoutInflater.from(context);
-            viewHolder.binding.tags.removeViews(1, viewHolder.binding.tags.getChildCount() - 1);
+            layout.removeViews(1, layout.getChildCount() - 1);
             final ImmutableList.Builder<Integer> viewIdBuilder = new ImmutableList.Builder<>();
             for (final var hat : hats) {
-                final TextView tv =
-                        (TextView)
-                                inflater.inflate(R.layout.item_tag, viewHolder.binding.tags, false);
+                final TextView tv = (TextView) inflater.inflate(R.layout.item_tag, layout, false);
                 tv.setText(hat.title());
                 @ColorInt final int color;
                 if (hat.hue() == null) {
@@ -180,10 +184,11 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
                 final int id = View.generateViewId();
                 tv.setId(id);
                 viewIdBuilder.add(id);
-                viewHolder.binding.tags.addView(tv);
+                layout.addView(tv);
             }
-            viewHolder.binding.flowWidget.setReferencedIds(Ints.toArray(viewIdBuilder.build()));
-            viewHolder.binding.tags.setVisibility(View.VISIBLE);
+            final Flow flowWidget = layout.findViewById(R.id.flow_widget);
+            flowWidget.setReferencedIds(Ints.toArray(viewIdBuilder.build()));
+            layout.setVisibility(View.VISIBLE);
         }
     }
 

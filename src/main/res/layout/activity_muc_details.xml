@@ -341,6 +341,7 @@
                             android:layout_height="wrap_content">
 
                             <LinearLayout
+                                android:layout_toStartOf="@+id/edit_nick_button"
                                 android:layout_width="fill_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_centerVertical="true"
@@ -351,7 +352,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:singleLine="true"
-                                    android:textAppearance="?textAppearanceBodyMedium" />
+                                    android:textAppearance="?textAppearanceBodyLarge" />
 
                                 <TextView
                                     android:id="@+id/muc_role"
@@ -359,6 +360,25 @@
                                     android:layout_height="wrap_content"
                                     android:singleLine="true"
                                     android:textAppearance="?textAppearanceBodyMedium" />
+                                <androidx.constraintlayout.widget.ConstraintLayout
+                                    android:id="@+id/tags"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4sp">
+
+                                    <androidx.constraintlayout.helper.widget.Flow
+                                        android:id="@+id/flow_widget"
+                                        android:layout_width="0dp"
+                                        android:layout_height="wrap_content"
+                                        app:flow_horizontalBias="0"
+                                        app:flow_horizontalGap="8sp"
+                                        app:flow_horizontalStyle="packed"
+                                        app:flow_verticalGap="4sp"
+                                        app:flow_wrapMode="chain"
+                                        app:layout_constraintEnd_toEndOf="parent"
+                                        app:layout_constraintStart_toStartOf="parent"
+                                        app:layout_constraintTop_toTopOf="parent" />
+                                </androidx.constraintlayout.widget.ConstraintLayout>
                             </LinearLayout>
 
                             <ImageButton
