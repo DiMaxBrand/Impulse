@@ -1,5 +1,9 @@
 # Changelog
 
+### Version 2.19.12
+
+* Fix log in to Prosody 0.12
+
 ### Version 2.19.11
 
 * Fix invite URIs for IRC channels
