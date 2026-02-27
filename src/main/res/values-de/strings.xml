@@ -361,8 +361,6 @@
     <string name="enable_all_accounts">Alle Konten aktivieren</string>
     <string name="disable_all_accounts">Alle Konten abschalten</string>
     <string name="perform_action_with">Aktion durchführen mit</string>
-    <string name="no_affiliation">Keine Zugehörigkeit</string>
-    <string name="no_role">Offline</string>
     <string name="outcast">Ausgeschlossen</string>
     <string name="member">Mitglied</string>
     <string name="remove_from_room">Aus Gruppenchat entfernen</string>

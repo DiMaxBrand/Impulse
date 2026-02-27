@@ -356,8 +356,6 @@
     <string name="enable_all_accounts">Bật toàn bộ tài khoản</string>
     <string name="disable_all_accounts">Tắt toàn bộ tài khoản</string>
     <string name="perform_action_with">Thực hiện thao tác với</string>
-    <string name="no_affiliation">Không có quan hệ gì</string>
-    <string name="no_role">Ngoại tuyến</string>
     <string name="outcast">Kẻ bị ruồng bỏ</string>
     <string name="member">Thành viên</string>
     <string name="remove_from_room">Xoá khỏi cuộc trò chuyện nhóm</string>

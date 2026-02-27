@@ -513,7 +513,6 @@
     <string name="enable_all_accounts">Võta kõik kontod kasutusele</string>
     <string name="disable_all_accounts">Eemalda kõik kontod kasutuselt</string>
     <string name="perform_action_with">Tee toiming...</string>
-    <string name="no_affiliation">Kuuluvusi pole</string>
     <string name="could_not_change_affiliation">Kasutaja „%s“ kuuluvuse muutmine ei õnnestunud</string>
     <string name="remove_from_channel">Eemalda kanalilt</string>
     <string name="could_not_change_role">Kasutaja „%s“ rolli muutmine ei õnnestunud</string>
@@ -602,7 +601,6 @@
     <string name="unable_to_perform_this_action">Seda toimingut ei õnnestunud teha</string>
     <string name="open_join_dialog">Liitu avaliku kanaliga…</string>
     <string name="error_trustkeys_title">Midagi läks valesti</string>
-    <string name="no_role">Pole võrgus</string>
     <string name="outcast">Hüljatu</string>
     <string name="never">Mitte kunagi</string>
     <string name="until_further_notice">Järgmise teadaandmiseni</string>

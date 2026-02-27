@@ -363,8 +363,6 @@
     <string name="enable_all_accounts">Aktywuj wszystkie konta</string>
     <string name="disable_all_accounts">Wyłącz wszystkie konta</string>
     <string name="perform_action_with">Użyj</string>
-    <string name="no_affiliation">Brak stanowiska</string>
-    <string name="no_role">Offline</string>
     <string name="outcast">Wykluczony</string>
     <string name="member">Członek</string>
     <string name="remove_from_room">Usuń z konferencji</string>

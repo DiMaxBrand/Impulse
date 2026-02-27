@@ -128,7 +128,6 @@
     <string name="unblock_contact">برداشتن مسدودسازی مخاطب</string>
     <string name="send_again">فرستادن دوباره</string>
     <string name="web_address">نشانی وب</string>
-    <string name="no_role">آفلاین</string>
     <string name="vcard">مخاطب</string>
     <string name="show_location">نمایش موقعیت مکانی</string>
     <string name="presence_online">آنلاین</string>
@@ -565,7 +564,6 @@
         <item quantity="other">%d گفتگوی خوانده‌نشده</item>
     </plurals>
     <string name="audio">صدا</string>
-    <string name="no_affiliation">بدون نسبت</string>
     <string name="rtp_state_connecting">وصل می‌شود</string>
     <string name="crash_report_message">فرستادن اطلاعات مربوط به اشکال برنامه از راه حساب XMPP شما به توسعهٔ %1$s در آینده کمک می‌کند.</string>
     <string name="pref_keep_foreground_service">سرویس پیش‌زمینه</string>

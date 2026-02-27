@@ -373,8 +373,6 @@
     <string name="enable_all_accounts">Включить все аккаунты</string>
     <string name="disable_all_accounts">Отключить все аккаунты</string>
     <string name="perform_action_with">Взаимодействовать с</string>
-    <string name="no_affiliation">Посетитель</string>
-    <string name="no_role">Не в сети</string>
     <string name="outcast">Заблокирован</string>
     <string name="member">Участник</string>
     <string name="remove_from_room">Исключить из конференции</string>

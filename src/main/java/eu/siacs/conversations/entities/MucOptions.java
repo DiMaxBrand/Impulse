@@ -847,6 +847,7 @@ public class MucOptions {
             Preconditions.checkNotNull(role, "Role must not be null. Use NONE instead");
             Preconditions.checkNotNull(
                     affiliation, "Affiliation must not be null. Use NONE instead");
+            Preconditions.checkNotNull(hats, "pass an empty set instead of null for hats");
             this.options = options;
             this.fullJid = fullJid;
             this.realJid = realJid != null ? realJid.asBareJid() : null;
@@ -880,6 +881,17 @@ public class MucOptions {
 
         public Set<Hat> getHats() {
             return this.hats;
+        }
+
+        public List<DynamicTag> getDynamicTags() {
+            if (this.role == Role.NONE && this.affiliation == Affiliation.NONE) {
+                return ImmutableList.copyOf(this.hats);
+            } else {
+                return new ImmutableList.Builder<DynamicTag>()
+                        .add(new Attributes(this.affiliation, this.role))
+                        .addAll(this.hats)
+                        .build();
+            }
         }
 
         public long getPgpKeyId() {
@@ -1041,7 +1053,7 @@ public class MucOptions {
                     this.occupantId,
                     Role.NONE,
                     affiliation,
-                    null);
+                    Collections.emptySet());
         }
 
         public User withAffiliation(final Affiliation affiliation) {
@@ -1203,5 +1215,9 @@ public class MucOptions {
         }
     }
 
-    public record Hat(String uri, String title, Double hue) {}
+    public sealed interface DynamicTag {}
+
+    public record Hat(String uri, String title, Double hue) implements DynamicTag {}
+
+    public record Attributes(Affiliation affiliation, Role role) implements DynamicTag {}
 }

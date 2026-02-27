@@ -352,8 +352,6 @@
     <string name="enable_all_accounts">Активиране на всички профили</string>
     <string name="disable_all_accounts">Деактивиране на всички профили</string>
     <string name="perform_action_with">Изпълнение на действието с</string>
-    <string name="no_affiliation">Няма принадлежност</string>
-    <string name="no_role">Извън линия</string>
     <string name="outcast">Отхвърлен</string>
     <string name="member">Член</string>
     <string name="remove_from_room">Премахване от груповия разговор</string>

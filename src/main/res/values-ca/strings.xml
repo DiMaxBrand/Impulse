@@ -352,8 +352,6 @@
     <string name="enable_all_accounts">Habilitar tots els comptes</string>
     <string name="disable_all_accounts">Deshabilitar tots els comptes</string>
     <string name="perform_action_with">Realitzar l\'acció amb</string>
-    <string name="no_affiliation">Cap afiliació</string>
-    <string name="no_role">Fora de línia</string>
     <string name="outcast">Outcast</string>
     <string name="member">Membre</string>
     <string name="remove_from_room">Suprimeix del xat de grup</string>

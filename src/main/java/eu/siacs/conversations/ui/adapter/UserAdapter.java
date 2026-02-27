@@ -11,6 +11,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
+import androidx.annotation.StringRes;
 import androidx.constraintlayout.helper.widget.Flow;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.databinding.DataBindingUtil;
@@ -25,14 +26,13 @@ import eu.siacs.conversations.crypto.PgpEngine;
 import eu.siacs.conversations.databinding.ItemContactBinding;
 import eu.siacs.conversations.entities.MucOptions;
 import eu.siacs.conversations.services.XmppConnectionService;
-import eu.siacs.conversations.ui.ConferenceDetailsActivity;
 import eu.siacs.conversations.ui.XmppActivity;
 import eu.siacs.conversations.ui.util.AvatarWorkerTask;
 import eu.siacs.conversations.ui.util.MucDetailsContextMenuHelper;
 import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.XEP0392Helper;
 import eu.siacs.conversations.xmpp.Jid;
-import java.util.Set;
+import java.util.List;
 import org.openintents.openpgp.util.OpenPgpUtils;
 
 public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHolder>
@@ -115,18 +115,13 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
                         });
         final String resource = user.resource();
         final String displayName = user.getDisplayName();
-        viewHolder.binding.contactDisplayName.setText(displayName);
-        if (resource != null && !resource.equals(displayName)) {
-            viewHolder.binding.contactJid.setText(
-                    String.format(
-                            "%s • %s",
-                            resource,
-                            ConferenceDetailsActivity.getStatus(
-                                    viewHolder.binding.getRoot().getContext(), user)));
+        viewHolder.binding.contactDisplayName.setText(user.getDisplayName());
+        final var jid = user.getRealJid();
+        if (jid != null) {
+            viewHolder.binding.contactJid.setText(jid);
+            viewHolder.binding.contactJid.setVisibility(View.VISIBLE);
         } else {
-            viewHolder.binding.contactJid.setText(
-                    ConferenceDetailsActivity.getStatus(
-                            viewHolder.binding.getRoot().getContext(), user));
+            viewHolder.binding.contactJid.setVisibility(View.GONE);
         }
         if (user.getMucOptions().isPrivateAndNonAnonymous() && user.getPgpKeyId() != 0) {
             viewHolder.binding.key.setVisibility(View.VISIBLE);
@@ -158,29 +153,27 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
         } else {
             viewHolder.binding.key.setVisibility(View.GONE);
         }
-        setHats(viewHolder.binding.tags, user.getHats());
+        setHats(viewHolder.binding.tags, user.getDynamicTags());
     }
 
-    public static void setHats(final ConstraintLayout layout, final Set<MucOptions.Hat> hats) {
-        if (hats.isEmpty()) {
+    public static void setHats(
+            final ConstraintLayout layout, final List<MucOptions.DynamicTag> tags) {
+        if (tags.isEmpty()) {
             layout.setVisibility(View.GONE);
         } else {
             final var context = layout.getContext();
             final var inflater = LayoutInflater.from(context);
             layout.removeViews(1, layout.getChildCount() - 1);
             final ImmutableList.Builder<Integer> viewIdBuilder = new ImmutableList.Builder<>();
-            for (final var hat : hats) {
+            for (final var tag : tags) {
                 final TextView tv = (TextView) inflater.inflate(R.layout.item_tag, layout, false);
-                tv.setText(hat.title());
-                @ColorInt final int color;
-                if (hat.hue() == null) {
-                    color = XEP0392Helper.rgbFromNick(hat.uri());
+                if (tag instanceof MucOptions.Hat hat) {
+                    setTag(tv, hat);
+                } else if (tag instanceof MucOptions.Attributes attributes) {
+                    setAttributes(tv, attributes);
                 } else {
-                    color = XEP0392Helper.rgbFromAngle(hat.hue() % 360.0);
+                    throw new IllegalArgumentException("Could not render unknown tag");
                 }
-                tv.setBackgroundTintList(
-                        ColorStateList.valueOf(
-                                MaterialColors.harmonizeWithPrimary(context, color)));
                 final int id = View.generateViewId();
                 tv.setId(id);
                 viewIdBuilder.add(id);
@@ -190,6 +183,74 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
             flowWidget.setReferencedIds(Ints.toArray(viewIdBuilder.build()));
             layout.setVisibility(View.VISIBLE);
         }
+    }
+
+    private static void setAttributes(
+            final TextView textView, final MucOptions.Attributes attributes) {
+        textView.setTextColor(
+                MaterialColors.getColor(
+                        textView, com.google.android.material.R.attr.colorOnSurfaceVariant));
+        @ColorInt int color;
+        @StringRes int title;
+        switch (attributes.affiliation()) {
+            case OWNER -> {
+                color =
+                        MaterialColors.getColor(
+                                textView,
+                                com.google.android.material.R.attr.colorSurfaceContainerHighest);
+                title = R.string.owner;
+            }
+            case ADMIN -> {
+                color =
+                        MaterialColors.getColor(
+                                textView,
+                                com.google.android.material.R.attr.colorSurfaceContainerHigh);
+                title = R.string.admin;
+            }
+            case MEMBER -> {
+                color =
+                        MaterialColors.getColor(
+                                textView, com.google.android.material.R.attr.colorSurfaceContainer);
+                title = R.string.member;
+            }
+            case OUTCAST -> {
+                color =
+                        MaterialColors.getColor(
+                                textView,
+                                com.google.android.material.R.attr.colorSurfaceContainerLowest);
+                title = R.string.outcast;
+            }
+            default -> {
+                color =
+                        MaterialColors.getColor(
+                                textView,
+                                com.google.android.material.R.attr.colorSurfaceContainerLow);
+                switch (attributes.role()) {
+                    case MODERATOR -> title = R.string.moderator;
+                    case PARTICIPANT -> title = R.string.participant;
+                    case VISITOR -> title = R.string.visitor;
+                    default ->
+                            throw new IllegalArgumentException(
+                                    "Dynamic tags should not be rendered for NONE/NONE attributes");
+                }
+            }
+        }
+        textView.setText(title);
+        textView.setBackgroundTintList(ColorStateList.valueOf(color));
+    }
+
+    private static void setTag(final TextView textView, final MucOptions.Hat hat) {
+        textView.setText(hat.title());
+        @ColorInt final int color;
+        if (hat.hue() == null) {
+            color = XEP0392Helper.rgbFromNick(hat.uri());
+        } else {
+            color = XEP0392Helper.rgbFromAngle(hat.hue() % 360.0);
+        }
+        @ColorInt
+        final int harmonizedColor =
+                MaterialColors.harmonizeWithPrimary(textView.getContext(), color);
+        textView.setBackgroundTintList(ColorStateList.valueOf(harmonizedColor));
     }
 
     public MucOptions.User getSelectedUser() {

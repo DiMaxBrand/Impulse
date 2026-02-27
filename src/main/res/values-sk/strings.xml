@@ -334,8 +334,6 @@
     <string name="enable_all_accounts">Povoliť všetky účty</string>
     <string name="disable_all_accounts">Vypnúť všetky účty</string>
     <string name="perform_action_with">Uskutočniť akciu s</string>
-    <string name="no_affiliation">Nepridružený</string>
-    <string name="no_role">Offline</string>
     <string name="outcast">Vylúčený</string>
     <string name="member">Člen</string>
     <string name="could_not_change_affiliation">Nepodarilo sa zmeniť pripojenie užívateľa %s</string>

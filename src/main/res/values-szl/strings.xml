@@ -373,8 +373,6 @@
     <string name="enable_all_accounts">Aktywuj wszyjske kōnta</string>
     <string name="disable_all_accounts">Zastow wszyjske kōnta</string>
     <string name="perform_action_with">Użyj</string>
-    <string name="no_affiliation">Brak stanowiska</string>
-    <string name="no_role">Offline</string>
     <string name="outcast">Wykluczōny</string>
     <string name="member">Czōnek</string>
     <string name="remove_from_room">Wyciep z kōnferyncyje</string>

@@ -287,8 +287,6 @@
     <string name="enable_all_accounts">Aktivizo krejt llogaritë</string>
     <string name="disable_all_accounts">Çaktivizo krejt llogaritë</string>
     <string name="perform_action_with">Kryeje veprimin me</string>
-    <string name="no_affiliation">Pa përshoqërim</string>
-    <string name="no_role">I shkëputur</string>
     <string name="member">Anëtar</string>
     <string name="remove_from_room">Hiqe prej fjalosjeje grupi</string>
     <string name="remove_from_channel">Hiqe prej kanali</string>

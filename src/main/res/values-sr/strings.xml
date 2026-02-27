@@ -366,8 +366,6 @@
     <string name="enable_all_accounts">Укључи све налоге</string>
     <string name="disable_all_accounts">Искључи све налоге</string>
     <string name="perform_action_with">Изврши радњу користећи</string>
-    <string name="no_affiliation">Без припадности</string>
-    <string name="no_role">Није на вези</string>
     <string name="outcast">Забрањен/а</string>
     <string name="member">Члан</string>
     <string name="remove_from_room">Уклони из групне преписке</string>

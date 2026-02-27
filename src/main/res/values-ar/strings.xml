@@ -282,8 +282,6 @@
     <string name="enable_all_accounts">تفعيل كل الحسابات</string>
     <string name="disable_all_accounts">تعطيل كل الحسابات</string>
     <string name="perform_action_with">تنفيذ الإجراء مع</string>
-    <string name="no_affiliation">زائر</string>
-    <string name="no_role">غير متصل</string>
     <string name="outcast">مفصول</string>
     <string name="member">عضو</string>
     <string name="remove_from_room">التنحية من مجموعة المحادثة</string>

@@ -227,8 +227,6 @@
     <string name="enable_all_accounts">모든 계정 사용 </string>
     <string name="disable_all_accounts">모든 계정 해제 </string>
     <string name="perform_action_with">다음으로 동작을 수행 </string>
-    <string name="no_affiliation">관련 없음 </string>
-    <string name="no_role">오프라인</string>
     <string name="outcast">추방됨 </string>
     <string name="member">멤버 </string>
     <string name="could_not_change_affiliation">%s 의 관련 여부를 변경할 수 없습니다 </string>

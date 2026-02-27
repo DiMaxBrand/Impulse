@@ -369,8 +369,6 @@
     <string name="enable_all_accounts">Aktivera alla konton</string>
     <string name="disable_all_accounts">Inaktivera alla konton</string>
     <string name="perform_action_with">Utför åtgärden med</string>
-    <string name="no_affiliation">Ingen anknytning</string>
-    <string name="no_role">Frånkopplad</string>
     <string name="outcast">Utstött</string>
     <string name="member">Medlem</string>
     <string name="remove_from_room">Ta bort från gruppchatt</string>

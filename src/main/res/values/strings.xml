@@ -378,8 +378,6 @@
     <string name="enable_all_accounts">Enable all accounts</string>
     <string name="disable_all_accounts">Disable all accounts</string>
     <string name="perform_action_with">Perform action with</string>
-    <string name="no_affiliation">No affiliation</string>
-    <string name="no_role">Offline</string>
     <string name="outcast">Outcast</string>
     <string name="member">Member</string>
     <string name="remove_from_room">Remove from group chat</string>

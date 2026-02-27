@@ -364,8 +364,6 @@
     <string name="enable_all_accounts">Activează toate conturile</string>
     <string name="disable_all_accounts">Dezactivează toate conturile</string>
     <string name="perform_action_with">Efectuaza actiune cu</string>
-    <string name="no_affiliation">Fara afiliere</string>
-    <string name="no_role">Deconectat</string>
     <string name="outcast">proscris</string>
     <string name="member">Membru</string>
     <string name="remove_from_room">Înlătură din discuția de grup</string>

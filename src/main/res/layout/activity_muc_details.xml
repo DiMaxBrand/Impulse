@@ -354,12 +354,6 @@
                                     android:singleLine="true"
                                     android:textAppearance="?textAppearanceBodyLarge" />
 
-                                <TextView
-                                    android:id="@+id/muc_role"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:singleLine="true"
-                                    android:textAppearance="?textAppearanceBodyMedium" />
                                 <androidx.constraintlayout.widget.ConstraintLayout
                                     android:id="@+id/tags"
                                     android:layout_width="wrap_content"

@@ -357,8 +357,6 @@
     <string name="enable_all_accounts">すべてのアカウントを有効化</string>
     <string name="disable_all_accounts">すべてのアカウントを無効化</string>
     <string name="perform_action_with">アクションを実行...</string>
-    <string name="no_affiliation">所属なし</string>
-    <string name="no_role">オフライン</string>
     <string name="outcast">追放</string>
     <string name="member">メンバー</string>
     <string name="remove_from_room">グループチャットから削除</string>

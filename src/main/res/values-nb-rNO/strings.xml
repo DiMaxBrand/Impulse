@@ -247,8 +247,6 @@
     <string name="enable_all_accounts">Skru på alle kontoer</string>
     <string name="disable_all_accounts">Koble fra alle kontoer</string>
     <string name="perform_action_with">Utfør handling med</string>
-    <string name="no_affiliation">Ingen tilknytning</string>
-    <string name="no_role">Frakoblet</string>
     <string name="outcast">Fredløs</string>
     <string name="member">Medlem</string>
     <string name="remove_from_room">Fjern fra gruppesludring</string>

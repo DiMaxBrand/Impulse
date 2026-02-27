@@ -360,8 +360,6 @@
     <string name="enable_all_accounts">Activer tous les comptes</string>
     <string name="disable_all_accounts">Désactiver tous les comptes</string>
     <string name="perform_action_with">Faire une action avec</string>
-    <string name="no_affiliation">Aucune affiliation</string>
-    <string name="no_role">Hors ligne</string>
     <string name="outcast">Banni·e</string>
     <string name="member">Membre</string>
     <string name="remove_from_room">Supprimer du groupe</string>

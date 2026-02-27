@@ -357,8 +357,6 @@
     <string name="enable_all_accounts">Aktiver alle konti</string>
     <string name="disable_all_accounts">Deaktiver alle konti</string>
     <string name="perform_action_with">Udfør handling med</string>
-    <string name="no_affiliation">Ingen tilknytning</string>
-    <string name="no_role">Offline</string>
     <string name="outcast">Udstødt</string>
     <string name="member">Medlem</string>
     <string name="remove_from_room">Fjern fra gruppechat</string>

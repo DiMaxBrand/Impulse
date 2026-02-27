@@ -326,8 +326,6 @@
     <string name="enable_all_accounts">Alle accounts inschakelen</string>
     <string name="disable_all_accounts">Alle accounts uitschakelen</string>
     <string name="perform_action_with">Actie uitvoeren met</string>
-    <string name="no_affiliation">Geen aansluiting</string>
-    <string name="no_role">Offline</string>
     <string name="outcast">Verstoteling</string>
     <string name="member">Lid</string>
     <string name="remove_from_room">Verwijderen uit groepsgesprek</string>

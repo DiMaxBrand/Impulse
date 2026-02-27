@@ -3,7 +3,6 @@ package eu.siacs.conversations.ui;
 import static eu.siacs.conversations.utils.StringUtils.changed;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -18,7 +17,6 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
-import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.databinding.DataBindingUtil;
@@ -57,7 +55,6 @@ import eu.siacs.conversations.xmpp.manager.BookmarkManager;
 import eu.siacs.conversations.xmpp.manager.MultiUserChatManager;
 import im.conversations.android.model.Bookmark;
 import im.conversations.android.xmpp.model.muc.Affiliation;
-import im.conversations.android.xmpp.model.muc.Role;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -642,13 +639,11 @@ public class ConferenceDetailsActivity extends XmppActivity
             this.binding.mucSubject.setVisibility(View.GONE);
         }
         this.binding.mucYourNick.setText(mucOptions.getActualNick());
-        UserAdapter.setHats(this.binding.tags, self.getHats());
+        UserAdapter.setHats(this.binding.tags, self.getDynamicTags());
         if (mucOptions.online()) {
             this.binding.jidWarning.setVisibility(
                     mucOptions.isCompliant() ? View.INVISIBLE : View.VISIBLE);
             this.binding.usersWrapper.setVisibility(View.VISIBLE);
-            this.binding.mucRole.setVisibility(View.VISIBLE);
-            this.binding.mucRole.setText(getStatus(this, self));
             if (mucOptions.getSelf().ranks(Affiliation.OWNER)) {
                 this.binding.mucSettings.setVisibility(View.VISIBLE);
                 this.binding.mucConferenceType.setText(MucConfiguration.describe(this, mucOptions));
@@ -733,37 +728,6 @@ public class ConferenceDetailsActivity extends XmppActivity
         } else {
             this.binding.noUsersHints.setVisibility(View.GONE);
         }
-    }
-
-    public static String getStatus(final Context context, final User user) {
-        if (user.getMucOptions().isPrivateAndNonAnonymous()) {
-            return context.getString(affiliationToStringRes(user.getAffiliation()));
-        } else {
-
-            return String.format(
-                    "%s (%s)",
-                    context.getString(affiliationToStringRes(user.getAffiliation())),
-                    context.getString(roleToStringRes(user.getRole())));
-        }
-    }
-
-    private static @StringRes int affiliationToStringRes(final Affiliation affiliation) {
-        return switch (affiliation) {
-            case OWNER -> R.string.owner;
-            case ADMIN -> R.string.admin;
-            case MEMBER -> R.string.member;
-            case NONE -> R.string.no_affiliation;
-            case OUTCAST -> R.string.outcast;
-        };
-    }
-
-    private static @StringRes int roleToStringRes(final Role role) {
-        return switch (role) {
-            case MODERATOR -> R.string.moderator;
-            case VISITOR -> R.string.visitor;
-            case PARTICIPANT -> R.string.participant;
-            case NONE -> R.string.no_role;
-        };
     }
 
     private void displayToast(final String msg) {

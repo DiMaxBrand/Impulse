@@ -362,8 +362,6 @@
     <string name="enable_all_accounts">Attiva tutti i profili</string>
     <string name="disable_all_accounts">Disattiva tutti i profili</string>
     <string name="perform_action_with">Esegui azione con</string>
-    <string name="no_affiliation">Nessuna affiliazione</string>
-    <string name="no_role">Offline</string>
     <string name="outcast">Emarginato</string>
     <string name="member">Membro</string>
     <string name="remove_from_room">Rimuovi dalla chat di gruppo</string>

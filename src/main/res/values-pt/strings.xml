@@ -242,8 +242,6 @@
     <string name="enable_all_accounts">Ativar todas as contas</string>
     <string name="disable_all_accounts">Desativar todas as contas</string>
     <string name="perform_action_with">Realizar a ação com</string>
-    <string name="no_affiliation">Sem afiliação</string>
-    <string name="no_role">Offline</string>
     <string name="outcast">Banido</string>
     <string name="member">Membro</string>
     <string name="remove_from_room">Remover da conversa em grupo</string>

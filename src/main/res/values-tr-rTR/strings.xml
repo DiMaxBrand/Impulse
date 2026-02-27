@@ -363,8 +363,6 @@
     <string name="enable_all_accounts">Tüm hesapları etkinleştir</string>
     <string name="disable_all_accounts">Tüm hesapları devre dışı bırak</string>
     <string name="perform_action_with">Kullanarak tamamla</string>
-    <string name="no_affiliation">Ortaklık yok</string>
-    <string name="no_role">Çevrim dışı</string>
     <string name="outcast">Bağlantısız</string>
     <string name="member">Üye</string>
     <string name="remove_from_room">Grup konuşmasından çıkar </string>

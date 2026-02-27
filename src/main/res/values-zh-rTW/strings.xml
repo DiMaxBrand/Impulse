@@ -336,8 +336,6 @@
     <string name="enable_all_accounts">啟用所有帳戶</string>
     <string name="disable_all_accounts">停用所有帳戶</string>
     <string name="perform_action_with">執行動作</string>
-    <string name="no_affiliation">沒有關係</string>
-    <string name="no_role">離線</string>
     <string name="outcast">遺棄</string>
     <string name="member">成員</string>
     <string name="remove_from_room">從群組聊天中移除</string>

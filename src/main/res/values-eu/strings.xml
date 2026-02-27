@@ -291,8 +291,6 @@
     <string name="enable_all_accounts">Kontu guztiak gaitu</string>
     <string name="disable_all_accounts">Kontu guztiak ezgaitu</string>
     <string name="perform_action_with">Ekintza honekin egin</string>
-    <string name="no_affiliation">Afiliaziorik ez</string>
-    <string name="no_role">Lineaz kanpo</string>
     <string name="outcast">Baztertutakoa</string>
     <string name="member">Kidea</string>
     <string name="remove_from_room">Taldetik kendu</string>
