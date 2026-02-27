@@ -152,7 +152,7 @@
     <string name="account_status_offline">Hors-ligne</string>
     <string name="account_status_unauthorized">Non autorisé</string>
     <string name="account_status_not_found">Impossible de trouver le serveur</string>
-    <string name="account_status_no_internet">Aucune connectivité</string>
+    <string name="account_status_no_internet">Pas d’internet</string>
     <string name="account_status_regis_fail">Échec de l\'inscription</string>
     <string name="account_status_regis_conflict">Identifiant déjà utilisé</string>
     <string name="account_status_regis_success">Inscription réussie</string>
@@ -1175,4 +1175,11 @@
         <item quantity="many">Supprimer %d de messages</item>
         <item quantity="other">Supprimer %d messages</item>
     </plurals>
+    <string name="account_status_airplane_mode">Mode avion</string>
+    <string name="give_membership">Ajouter comme membre</string>
+    <string name="remove_membership">Retirer comme membre</string>
+    <string name="make_admin">Ajouter comme admin</string>
+    <string name="dismiss_as_admin">Retirer comme admin</string>
+    <string name="make_owner">Ajouter comme propriétaire</string>
+    <string name="dismiss_as_owner">Retirer comme propriétaire</string>
 </resources>
