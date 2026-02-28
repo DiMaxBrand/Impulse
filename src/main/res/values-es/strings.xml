@@ -151,7 +151,7 @@
     <string name="account_status_offline">Desconectado</string>
     <string name="account_status_unauthorized">No autorizado</string>
     <string name="account_status_not_found">Servidor no encontrado</string>
-    <string name="account_status_no_internet">Sin conectividad</string>
+    <string name="account_status_no_internet">Sin internet</string>
     <string name="account_status_regis_fail">Error en el registro</string>
     <string name="account_status_regis_conflict">El identificador ya está en uso</string>
     <string name="account_status_regis_success">Registro completado</string>
@@ -1166,4 +1166,8 @@
     <string name="server_info_stanzas_rx_tx">Estanzas (rx/tx)</string>
     <string name="share_invitation">Compartir invitación</string>
     <string name="publish_qr_code">Publicar código QR</string>
+    <string name="account_status_airplane_mode">Modo avión</string>
+    <string name="give_membership">Otorgar membresía</string>
+    <string name="remove_membership">Quitar membresía</string>
+    <string name="make_admin">Hacer admin</string>
 </resources>
