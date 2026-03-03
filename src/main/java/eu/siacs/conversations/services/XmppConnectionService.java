@@ -801,7 +801,7 @@ public class XmppConnectionService extends Service {
     private void handleOrbotStartedEvent() {
         for (final Account account : accounts) {
             if (account.getStatus() == Account.State.TOR_NOT_AVAILABLE) {
-                reconnectAccount(account, true, false);
+                reconnectAccount(account, false);
             }
         }
     }
@@ -836,7 +836,7 @@ public class XmppConnectionService extends Service {
                 if (lastSent > lastReceived) {
                     if (pingTimeoutIn < 0) {
                         Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": ping timeout");
-                        this.reconnectAccount(account, true, interactive);
+                        this.reconnectAccount(account, interactive);
                     } else {
                         this.scheduleWakeUpCall(pingTimeoutIn, requestCode);
                     }
@@ -864,7 +864,7 @@ public class XmppConnectionService extends Service {
                 }
             }
         } else if (account.getStatus() == Account.State.OFFLINE) {
-            reconnectAccount(account, true, interactive);
+            reconnectAccount(account, interactive);
         } else if (account.getStatus() == Account.State.CONNECTING) {
             final var connectionDuration = connection.getConnectionDuration();
             final var discoDuration = connection.getDiscoDuration();
@@ -883,7 +883,7 @@ public class XmppConnectionService extends Service {
                     account.getStatus() == Account.State.SEE_OTHER_HOST
                             || connection.getManager(JingleManager.class).hasJingleRtpConnection();
             if (connection.getTimeToNextAttempt(aggressive) <= 0) {
-                reconnectAccount(account, true, interactive);
+                reconnectAccount(account, interactive);
             }
         }
         return false;
@@ -1375,14 +1375,14 @@ public class XmppConnectionService extends Service {
         }
     }
 
-    private void logoutAndSave(boolean stop) {
+    private void logoutAndSave(final boolean stop) {
         int activeAccounts = 0;
-        for (final Account account : accounts) {
+        for (final var account : accounts) {
             if (account.isConnectionEnabled()) {
                 account.getXmppConnection().getManager(RosterManager.class).writeToDatabase();
                 activeAccounts++;
+                XmppConnection.RECONNNECTION_EXECUTOR.execute(() -> logout(account));
             }
-            XmppConnection.RECONNNECTION_EXECUTOR.execute(() -> disconnect(account, false));
         }
         if (stop || activeAccounts == 0) {
             Log.d(Config.LOGTAG, "good bye");
@@ -2415,7 +2415,14 @@ public class XmppConnectionService extends Service {
                     mNotificationService.clear(conversation);
                 }
             }
-            XmppConnection.RECONNNECTION_EXECUTOR.execute(() -> disconnect(account, !connected));
+            XmppConnection.RECONNNECTION_EXECUTOR.execute(
+                    () -> {
+                        if (connected) {
+                            logout(account);
+                        } else {
+                            account.getXmppConnection().disconnect(true);
+                        }
+                    });
             mDatabaseWriterExecutor.execute(
                     () -> {
                         if (databaseBackend.deleteAccount(account)) {
@@ -2988,25 +2995,21 @@ public class XmppConnectionService extends Service {
                 .destroy(conversation.getAddress().asBareJid());
     }
 
-    private void disconnect(final Account account, boolean force) {
-        final XmppConnection connection = account.getXmppConnection();
-        if (connection == null) {
-            return;
-        }
-        if (!force) {
-            final List<Conversation> conversations = getConversations();
-            for (Conversation conversation : conversations) {
-                if (conversation.getAccount() == account) {
-                    if (conversation.getMode() == Conversation.MODE_MULTI) {
-                        account.getXmppConnection()
-                                .getManager(MultiUserChatManager.class)
-                                .unavailable(conversation);
-                    }
+    private void logout(final Account account) {
+        Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": logging out");
+        final var connection = account.getXmppConnection();
+        final var conversations = getConversations();
+        for (final var conversation : conversations) {
+            if (conversation.getAccount() == account) {
+                if (conversation.getMode() == Conversation.MODE_MULTI) {
+                    connection.getManager(MultiUserChatManager.class).unavailable(conversation);
                 }
             }
-            connection.getManager(PresenceManager.class).unavailable();
         }
-        connection.disconnect(force);
+        connection.getManager(PresenceManager.class).unavailable();
+        connection.disconnect(false);
+        connection.getManager(PresenceManager.class).clear();
+        connection.resetEverything();
     }
 
     @Override
@@ -3133,24 +3136,24 @@ public class XmppConnectionService extends Service {
         mDatabaseWriterExecutor.execute(() -> databaseBackend.updateConversation(conversation));
     }
 
-    public void reconnectAccount(
-            final Account account, final boolean force, final boolean interactive) {
+    public void reconnectAccount(final Account account, final boolean interactive) {
         synchronized (account) {
-            final XmppConnection connection = account.getXmppConnection();
+            final var connection = account.getXmppConnection();
             if (account.isConnectionEnabled()) {
-                if (!force) {
-                    disconnect(account, false);
-                }
-                Thread thread = new Thread(connection);
+                final var thread = new Thread(connection);
                 connection.setInteractive(interactive);
                 connection.prepareNewConnection();
                 connection.interrupt();
                 thread.start();
                 scheduleWakeUpCall(Config.CONNECT_DISCO_TIMEOUT, account.getUuid().hashCode());
             } else {
-                disconnect(account, force || account.getTrueStatus().isError());
-                connection.getManager(PresenceManager.class).clear();
-                connection.resetEverything();
+                if (account.getTrueStatus().isError()) {
+                    connection.disconnect(true);
+                    connection.getManager(PresenceManager.class).clear();
+                    connection.resetEverything();
+                } else {
+                    logout(account);
+                }
                 final AxolotlService axolotlService = account.getAxolotlService();
                 if (axolotlService != null) {
                     axolotlService.resetBrokenness();
@@ -3160,7 +3163,7 @@ public class XmppConnectionService extends Service {
     }
 
     public void reconnectAccountInBackground(final Account account) {
-        XmppConnection.RECONNNECTION_EXECUTOR.execute(() -> reconnectAccount(account, false, true));
+        XmppConnection.RECONNNECTION_EXECUTOR.execute(() -> reconnectAccount(account, true));
     }
 
     public void invite(final Conversation conversation, final Jid contact) {

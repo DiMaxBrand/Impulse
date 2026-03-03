@@ -75,14 +75,14 @@ public class AccountStateProcessor extends XmppConnection.Delegate
                         account.getJid().asBareJid()
                                 + ": went into offline state during low ping mode."
                                 + " reconnecting now");
-                this.service.reconnectAccount(account, true, false);
+                this.service.reconnectAccount(account, false);
             } else {
                 final int timeToReconnect = SECURE_RANDOM.nextInt(10) + 2;
                 this.service.scheduleWakeUpCall(timeToReconnect, account.getUuid().hashCode());
             }
         } else if (account.getStatus() == Account.State.REGISTRATION_SUCCESSFUL) {
             this.service.databaseBackend.updateAccount(account);
-            this.service.reconnectAccount(account, true, false);
+            this.service.reconnectAccount(account, false);
         } else if (account.getStatus() != Account.State.CONNECTING) {
             this.service.resetSendingToWaiting(account);
             if (connection != null && account.getStatus().isAttemptReconnect()) {
@@ -98,7 +98,7 @@ public class AccountStateProcessor extends XmppConnection.Delegate
                                     + ": error connecting account. reconnecting now."
                                     + " lowPingTimeout="
                                     + lowPingTimeoutMode);
-                    this.service.reconnectAccount(account, true, false);
+                    this.service.reconnectAccount(account, false);
                 } else {
                     final int attempt = connection.getAttempt() + 1;
                     Log.d(
