@@ -19,7 +19,6 @@ import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.services.XmppConnectionService;
-import eu.siacs.conversations.xml.Element;
 import eu.siacs.conversations.xmpp.Jid;
 import eu.siacs.conversations.xmpp.XmppConnection;
 import im.conversations.android.xmpp.Entity;
@@ -102,7 +101,7 @@ public class PresenceManager extends AbstractManager {
         }
 
         final PgpEngine pgp = this.service.getPgpEngine();
-        final Element x = presence.getExtension(Signed.class);
+        final var x = presence.getExtension(Signed.class);
         if (pgp != null && x != null) {
             final String status = presence.getStatus();
             final long keyId = pgp.fetchKeyId(account, status, x.getContent());
