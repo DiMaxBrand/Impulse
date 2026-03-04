@@ -428,9 +428,11 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
     }
 
     public boolean hasErrorStatus() {
-        return getXmppConnection() != null
-                && (getStatus().isError() || getStatus() == State.CONNECTING)
-                && getXmppConnection().getAttempt() >= 3;
+        if (isConnectionEnabled()) {
+            final var state = this.lastErrorStatus;
+            return state != null && state.isError && this.xmppConnection.getAttempt() >= 3;
+        }
+        return false;
     }
 
     public im.conversations.android.xmpp.model.stanza.Presence.Availability getPresenceStatus() {
