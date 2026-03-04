@@ -427,10 +427,6 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
         return this.status;
     }
 
-    public boolean errorStatus() {
-        return getStatus().isError();
-    }
-
     public boolean hasErrorStatus() {
         return getXmppConnection() != null
                 && (getStatus().isError() || getStatus() == State.CONNECTING)

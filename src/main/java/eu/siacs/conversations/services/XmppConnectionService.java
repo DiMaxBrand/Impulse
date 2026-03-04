@@ -2420,7 +2420,7 @@ public class XmppConnectionService extends Service {
                         if (connected) {
                             logout(account);
                         } else {
-                            account.getXmppConnection().disconnect(true);
+                            account.getXmppConnection().disconnectHard();
                         }
                     });
             mDatabaseWriterExecutor.execute(
@@ -3007,7 +3007,7 @@ public class XmppConnectionService extends Service {
             }
         }
         connection.getManager(PresenceManager.class).unavailable();
-        connection.disconnect(false);
+        connection.disconnectSoft();
         connection.getManager(PresenceManager.class).clear();
         connection.resetEverything();
     }
@@ -3148,7 +3148,7 @@ public class XmppConnectionService extends Service {
                 scheduleWakeUpCall(Config.CONNECT_DISCO_TIMEOUT, account.getUuid().hashCode());
             } else {
                 if (account.getTrueStatus().isError()) {
-                    connection.disconnect(true);
+                    connection.disconnectHard();
                     connection.getManager(PresenceManager.class).clear();
                     connection.resetEverything();
                 } else {

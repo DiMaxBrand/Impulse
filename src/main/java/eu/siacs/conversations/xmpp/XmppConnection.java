@@ -2646,7 +2646,7 @@ public class XmppConnection implements Runnable {
     private synchronized void sendPacket(final StreamElement packet, final boolean force) {
         if (stanzasSent == Integer.MAX_VALUE) {
             resetStreamId();
-            disconnect(true);
+            disconnectHard();
             return;
         }
         synchronized (this.mStanzaQueue) {
@@ -2717,47 +2717,49 @@ public class XmppConnection implements Runnable {
         }
     }
 
-    public void disconnect(final boolean force) {
+    public void disconnectHard() {
+        Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": force closing socket");
         interrupt();
-        Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": disconnecting force=" + force);
-        if (force) {
-            forceCloseSocket();
-        } else {
-            final TagWriter currentTagWriter = this.tagWriter;
-            if (currentTagWriter.isActive()) {
-                currentTagWriter.finish();
-                final Socket currentSocket = this.socket;
-                final CountDownLatch streamCountDownLatch = this.mStreamCountDownLatch;
-                try {
-                    currentTagWriter.await(1, TimeUnit.SECONDS);
-                    Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": sending stream close");
-                    currentTagWriter.writeTag(new Tag.End(Stream.ID));
-                    if (streamCountDownLatch != null) {
-                        if (!streamCountDownLatch.await(1, TimeUnit.SECONDS)) {
-                            Log.d(
-                                    Config.LOGTAG,
-                                    account.getJid().asBareJid()
-                                            + ": gave up waiting for stream close. force closing");
-                        }
+        forceCloseSocket();
+    }
+
+    public void disconnectSoft() {
+        Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": disconnecting");
+        interrupt();
+        final TagWriter currentTagWriter = this.tagWriter;
+        if (currentTagWriter.isActive()) {
+            currentTagWriter.finish();
+            final var currentSocket = this.socket;
+            final var streamCountDownLatch = this.mStreamCountDownLatch;
+            try {
+                currentTagWriter.await(1, TimeUnit.SECONDS);
+                Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": sending stream close");
+                currentTagWriter.writeTag(new Tag.End(Stream.ID));
+                if (streamCountDownLatch != null) {
+                    if (!streamCountDownLatch.await(1, TimeUnit.SECONDS)) {
+                        Log.d(
+                                Config.LOGTAG,
+                                account.getJid().asBareJid()
+                                        + ": gave up waiting for stream close. force closing");
                     }
-                } catch (final InterruptedException e) {
-                    Log.d(
-                            Config.LOGTAG,
-                            account.getJid().asBareJid()
-                                    + ": interrupted while gracefully closing stream");
-                } catch (final IOException e) {
-                    Log.d(
-                            Config.LOGTAG,
-                            account.getJid().asBareJid()
-                                    + ": io exception during disconnect ("
-                                    + e.getMessage()
-                                    + ")");
-                } finally {
-                    FileBackend.close(currentSocket);
                 }
-            } else {
-                forceCloseSocket();
+            } catch (final InterruptedException e) {
+                Log.d(
+                        Config.LOGTAG,
+                        account.getJid().asBareJid()
+                                + ": interrupted while gracefully closing stream");
+            } catch (final IOException e) {
+                Log.d(
+                        Config.LOGTAG,
+                        account.getJid().asBareJid()
+                                + ": io exception during disconnect ("
+                                + e.getMessage()
+                                + ")");
+            } finally {
+                FileBackend.close(currentSocket);
             }
+        } else {
+            forceCloseSocket();
         }
     }
 
