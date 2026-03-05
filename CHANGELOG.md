@@ -1,5 +1,11 @@
 # Changelog
 
+### Version 2.19.13
+
+* Show hats in public conferences that have them
+* Fix crash when changing OMEMO bundle access model
+* Fix crash when sharing Quicksy XMPP addresses
+
 ### Version 2.19.12
 
 * Fix log in to Prosody 0.12
