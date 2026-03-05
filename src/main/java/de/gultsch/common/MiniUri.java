@@ -104,7 +104,12 @@ public class MiniUri {
         return builder.build().asMap();
     }
 
-    public static String urlDecodeOrEmpty(final String input) {
+    // TODO write custom percent decoder that doesn’t decode +
+    private static String pathDecodeOrEmpty(final String path) {
+        return urlDecodeOrEmpty(path.replace("+", "%2B"));
+    }
+
+    private static String urlDecodeOrEmpty(final String input) {
         try {
             return URLDecoder.decode(input, "UTF-8");
         } catch (final UnsupportedEncodingException | IllegalArgumentException e) {
@@ -112,7 +117,7 @@ public class MiniUri {
         }
     }
 
-    public static String urlEncode(final String input) {
+    private static String urlEncode(final String input) {
         try {
             return URLEncoder.encode(input, "UTF-8");
         } catch (final UnsupportedEncodingException e) {
@@ -296,7 +301,7 @@ public class MiniUri {
             Preconditions.checkArgument(getScheme().equals("xmpp"), "scheme must be xmpp");
             Preconditions.checkArgument(
                     Objects.isNull(getAuthority()), "authorities are not supported");
-            final var path = urlDecodeOrEmpty(getPath());
+            final var path = pathDecodeOrEmpty(getPath());
             if (Strings.isNullOrEmpty(path)) {
                 if (this.getParameter().isEmpty()) {
                     throw new IllegalArgumentException(

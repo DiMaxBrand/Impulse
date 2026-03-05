@@ -196,4 +196,17 @@ public class MiniUriTest {
         Assert.assertNotNull(readbackHttp);
         Assert.assertEquals(address, readbackHttp.asJid());
     }
+
+    @Test
+    public void inviteToQuicksy() {
+        final var address = Jid.of("+12345550166@quicksy.im");
+        final var uri = new MiniUri.Xmpp(address);
+        final var asUriString = uri.asUri().toString();
+        final var asHttpString = uri.asInvitationUri().asUri().toString();
+        Assert.assertEquals("xmpp:+12345550166@quicksy.im", asUriString);
+        Assert.assertEquals("https://xmpp.link/#%2B12345550166%40quicksy.im", asHttpString);
+        final var readbackHttp = MiniUri.getXmppUriOrNull(asHttpString);
+        Assert.assertNotNull(readbackHttp);
+        Assert.assertEquals(address, readbackHttp.asJid());
+    }
 }
