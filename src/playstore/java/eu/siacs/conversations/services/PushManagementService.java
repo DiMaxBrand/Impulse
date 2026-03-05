@@ -90,7 +90,11 @@ public class PushManagementService {
                         context, 0, broadcastIntent, PendingIntent.FLAG_IMMUTABLE));
         final var handler = new RegistrationMessageHandler(Looper.getMainLooper());
         intent.putExtra("google.messenger", new Messenger(handler));
-        context.startService(intent);
+        try {
+            context.startService(intent);
+        } catch (final SecurityException | IllegalStateException e) {
+            return Futures.immediateFailedFuture(e);
+        }
         return handler.endpointFuture;
     }
 
