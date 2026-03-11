@@ -1,6 +1,8 @@
 package eu.siacs.conversations.utils;
 
 import android.graphics.Color;
+import android.os.Build;
+
 import androidx.annotation.ColorInt;
 import com.google.common.hash.Hashing;
 import java.nio.charset.StandardCharsets;
@@ -31,9 +33,12 @@ public class XEP0392Helper {
         converter.hsluv_s = 100;
         converter.hsluv_l = 50;
         converter.hsluvToRgb();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return Color.rgb((float) converter.rgb_r, (float) converter.rgb_g, (float) converter.rgb_b);
+        }
         return Color.rgb(
-                (int) Math.round(converter.rgb_r * 255),
-                (int) Math.round(converter.rgb_g * 255),
-                (int) Math.round(converter.rgb_b * 255));
+                (int) (converter.rgb_r * 255 + 0.5f),
+                (int) (converter.rgb_g * 255 + 0.5f),
+                (int) (converter.rgb_b * 255 + 0.5f));
     }
 }
