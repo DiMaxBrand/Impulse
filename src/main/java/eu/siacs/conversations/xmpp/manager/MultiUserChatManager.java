@@ -1329,13 +1329,14 @@ public class MultiUserChatManager extends AbstractManager {
                         + address
                         + " to "
                         + conversation.getAddress().asBareJid());
-        final MucOptions.User user =
-                getOrCreateState(conversation)
-                        .getUser(MucOptions.IdentifiableUser.realAddress(address.asBareJid()));
+        final var state = getOrCreateState(conversation);
+        final var user =
+                state.getUser(MucOptions.IdentifiableUser.realAddress(address.asBareJid()));
         if (user == null || user.getAffiliation() == Affiliation.OUTCAST) {
-            // TODO either don’t do this or pick a better target affiliation for members only
-            Log.d(Config.LOGTAG, "changing affiliation of invitee to None");
-            this.setAffiliation(conversation, Affiliation.NONE, address);
+            final var targetAffiliation =
+                    state.membersOnly() ? Affiliation.MEMBER : Affiliation.NONE;
+            Log.d(Config.LOGTAG, "changing affiliation of invitee to " + targetAffiliation);
+            this.setAffiliation(conversation, targetAffiliation, address);
         }
 
         final var packet = new Message();

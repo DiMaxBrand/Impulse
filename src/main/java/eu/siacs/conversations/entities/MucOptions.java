@@ -490,6 +490,7 @@ public class MucOptions {
 
     @Nullable
     public User getUser(final IdentifiableUser identifiableUser) {
+        final var self = getSelf();
         final var occupantId = identifiableUser.mucUserOccupantId();
         final var realAddress = identifiableUser.mucUserRealAddress();
         final var address = identifiableUser.mucUserAddress();
@@ -501,7 +502,6 @@ public class MucOptions {
                 if (byOccupantId != null) {
                     return byOccupantId;
                 }
-                final var self = getSelf();
                 final var bySelf =
                         self != null && occupantId.equals(self.getOccupantId()) ? self : null;
                 if (bySelf != null) {
@@ -517,6 +517,9 @@ public class MucOptions {
                 final var offline = this.users.get(Id.realAddress(realAddress));
                 if (offline != null) {
                     return offline;
+                }
+                if (self != null && realAddress.equals(account.getJid().asBareJid())) {
+                    return self;
                 }
                 return Iterables.find(
                         this.users.values(), u -> realAddress.equals(u.realJid), null);
