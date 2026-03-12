@@ -28,6 +28,7 @@ import eu.siacs.conversations.xmpp.XmppConnection;
 import eu.siacs.conversations.xmpp.jingle.RtpCapability;
 import eu.siacs.conversations.xmpp.manager.HttpUploadManager;
 import eu.siacs.conversations.xmpp.manager.RosterManager;
+import java.util.Arrays;
 import java.util.Collection;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -343,9 +344,11 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
         return this.lastErrorStatus;
     }
 
-    public void setStatus(final State status) {
+    public void setStatus(@org.jspecify.annotations.NonNull final State status) {
         this.status = status;
-        if (status.isError || status == State.ONLINE) {
+        if (status.isError
+                || (Arrays.asList(State.ONLINE, State.AIRPLANE_MODE, State.NO_INTERNET)
+                        .contains(status))) {
             this.lastErrorStatus = status;
         }
     }

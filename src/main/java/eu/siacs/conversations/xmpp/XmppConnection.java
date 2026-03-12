@@ -2864,6 +2864,7 @@ public class XmppConnection implements Runnable {
     public void triggerConnectionTimeout() {
 
         // TODO not triggering timeout while waiting for captcha input
+        // TODO check for airplane mode?
 
         final var duration = getConnectionDuration();
         Log.d(
