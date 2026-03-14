@@ -10,6 +10,8 @@ import android.os.Build;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
@@ -44,6 +46,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.Ints;
 import de.gultsch.common.Linkify;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
@@ -90,6 +93,9 @@ import eu.siacs.conversations.xmpp.mam.MamReference;
 import eu.siacs.conversations.xmpp.manager.MessageArchiveManager;
 import im.conversations.android.xmpp.model.reactions.Restrictions;
 import java.net.URI;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -100,6 +106,8 @@ import java.util.regex.Pattern;
 public class MessageAdapter extends ArrayAdapter<Message> {
 
     public static final String DATE_SEPARATOR_BODY = "DATE_SEPARATOR";
+    public static final String LOAD_MORE_BODY = "LOAD_MORE";
+    public static final String LOCAL_TIME_BODY = "LOCAL_TIME";
     private static final int END = 0;
     private static final int START = 1;
     private static final int STATUS = 2;
@@ -1126,15 +1134,38 @@ public class MessageAdapter extends ArrayAdapter<Message> {
 
     private View render(final Message message, final StatusMessageItemViewHolder viewHolder) {
         final var conversation = message.getConversation();
-        if ("LOAD_MORE".equals(message.getBody())) {
+        if (LOAD_MORE_BODY.equals(message.getBody())) {
             viewHolder.binding.statusMessage.setVisibility(View.GONE);
             viewHolder.binding.messagePhoto.setVisibility(View.GONE);
+            viewHolder.binding.statusIcon.setVisibility(View.GONE);
             viewHolder.binding.loadMoreMessages.setVisibility(View.VISIBLE);
             viewHolder.binding.loadMoreMessages.setOnClickListener(
                     v -> loadMoreMessages((Conversation) message.getConversation()));
+        } else if (LOCAL_TIME_BODY.equals(message.getBody())
+                && conversation instanceof Conversation c) {
+            final var offset = ZoneOffset.ofTotalSeconds(Ints.saturatedCast(message.getTimeSent()));
+            final var localDateTime = Instant.now().atZone(offset);
+            final var resources = viewHolder.binding.statusMessage.getContext().getResources();
+            viewHolder.binding.statusMessage.setVisibility(View.VISIBLE);
+            viewHolder.binding.loadMoreMessages.setVisibility(View.GONE);
+            viewHolder.binding.messagePhoto.setVisibility(View.GONE);
+            final var time =
+                    new SpannableString(
+                            localDateTime.toLocalTime().truncatedTo(ChronoUnit.MINUTES).toString());
+            time.setSpan(
+                    new StyleSpan(android.graphics.Typeface.BOLD),
+                    0,
+                    time.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            viewHolder.binding.statusMessage.setText(
+                    TextUtils.expandTemplate(
+                            resources.getString(R.string.its_time_for_contact), time, c.getName()));
+            viewHolder.binding.statusIcon.setImageResource(R.drawable.ic_schedule_24dp);
+            viewHolder.binding.statusIcon.setVisibility(View.VISIBLE);
         } else {
             viewHolder.binding.statusMessage.setVisibility(View.VISIBLE);
             viewHolder.binding.loadMoreMessages.setVisibility(View.GONE);
+            viewHolder.binding.statusIcon.setVisibility(View.GONE);
             viewHolder.binding.statusMessage.setText(message.getBody());
             boolean showAvatar;
             if (conversation.getMode() == Conversation.MODE_SINGLE) {

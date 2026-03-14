@@ -3,6 +3,7 @@ package im.conversations.android.xmpp;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import eu.siacs.conversations.xmpp.manager.EntityTimeManager;
 import im.conversations.android.xml.XmlElementReader;
 import im.conversations.android.xmpp.model.time.Time;
 import java.io.IOException;
@@ -28,6 +29,18 @@ public class EntityTimeTest {
 <time xmlns="urn:xmpp:time"><utc>2006-12-19T17:58:35Z</utc><tzo>-06:00</tzo></time>\
 """,
                 xml);
+    }
+
+    @Test
+    public void dayTimeTest() {
+        Assert.assertFalse(
+                EntityTimeManager.isNightTime(ZonedDateTime.parse("2006-12-19T11:58:35-06:00")));
+    }
+
+    @Test
+    public void nightTimeTest() {
+        Assert.assertTrue(
+                EntityTimeManager.isNightTime(ZonedDateTime.parse("2006-12-19T05:23:42-06:00")));
     }
 
     @Test
