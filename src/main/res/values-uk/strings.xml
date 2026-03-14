@@ -1086,7 +1086,7 @@
     <string name="pref_backup_recurring">Регулярне резервне копіювання</string>
     <string name="unsupported_operation">Операція не підтримується</string>
     <string name="pref_fullscreen_notification_summary">Показувати сповіщення про вхідні виклики на весь екран, коли пристрій заблоковано.</string>
-    <string name="pref_backup_summary">Створити резервну копію, запланувати повторюване резервування</string>
+    <string name="pref_backup_summary">Створити резервну копію, запланувати повторювану, місце зберігання</string>
     <string name="pref_create_backup_one_off_summary">Створити резервну копію</string>
     <string name="allow_private_messages">Дозволити приватні повідомлення</string>
     <string name="your_avatar_tap_to_select_new_avatar">Ваш аватар. Торкніться, щоб вибрати новий аватар із галереї.</string>
@@ -1205,4 +1205,9 @@
     <string name="dismiss_as_admin">Вилучити з адміністраторів</string>
     <string name="dismiss_as_owner">Вилучити з власників</string>
     <string name="account_status_airplane_mode">Режим «У літаку»</string>
+    <string name="pref_category_backup_storage">Сховище</string>
+    <string name="backup_and_restore">Резервне копіювання та відновлення</string>
+    <string name="pref_import_backup_summary">Виберіть файл резервної копії, щоб відновити дані</string>
+    <string name="account_status_regis_invalid_captcha">Код CAPTCHA недійсний</string>
+    <string name="its_time_for_contact">У ^2 зараз ^1</string>
 </resources>
