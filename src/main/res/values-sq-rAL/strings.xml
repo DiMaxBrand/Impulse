@@ -1161,4 +1161,8 @@
     <string name="make_owner">Bëjeni të zotin</string>
     <string name="dismiss_as_owner">Hiqeni nga zot</string>
     <string name="account_status_airplane_mode">Mënyra aeroplan</string>
+    <string name="account_status_regis_invalid_captcha">CAPTCHA e pavlefshme</string>
+    <string name="backup_and_restore">Kopjeruani &amp; Riktheni</string>
+    <string name="pref_import_backup_summary">Që të riktheni të dhënat tuaja, përzgjidhni një kartelë kopjeruajtje</string>
+    <string name="pref_category_backup_storage">Depozitë</string>
 </resources>
