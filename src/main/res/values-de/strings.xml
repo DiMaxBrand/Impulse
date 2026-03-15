@@ -1036,7 +1036,7 @@
     <string name="pref_large_font">Große Schrift</string>
     <string name="pref_accept_invites_from_strangers">Einladungen von Unbekannten</string>
     <string name="pref_accept_invites_from_strangers_summary">Einladungen zu Gruppenchats von Unbekannten annehmen</string>
-    <string name="pref_backup_summary">Einmalig erstellen, wiederkehrend planen</string>
+    <string name="pref_backup_summary">Einmalig erstellen, wiederkehrend planen, Speicherort</string>
     <string name="pref_backup_recurring">Wiederkehrende Sicherung</string>
     <string name="pref_fullscreen_notification">Benachrichtigungen im Vollbildmodus</string>
     <string name="unsupported_operation">Nicht unterstützte Operation</string>
@@ -1155,4 +1155,9 @@
     <string name="make_admin">Administrator festlegen</string>
     <string name="dismiss_as_admin">Als Administrator entfernen</string>
     <string name="account_status_airplane_mode">Flugmodus</string>
+    <string name="account_status_regis_invalid_captcha">Ungültiges CAPTCHA</string>
+    <string name="backup_and_restore">Sicherung &amp; Wiederherstellung</string>
+    <string name="pref_import_backup_summary">Sicherungsdatei zur Wiederherstellung deiner Daten auswählen</string>
+    <string name="pref_category_backup_storage">Speicher</string>
+    <string name="its_time_for_contact">Es steht ^1 zu ^2</string>
 </resources>
