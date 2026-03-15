@@ -1210,4 +1210,6 @@
     <string name="pref_import_backup_summary">Виберіть файл резервної копії, щоб відновити дані</string>
     <string name="account_status_regis_invalid_captcha">Код CAPTCHA недійсний</string>
     <string name="its_time_for_contact">У ^2 зараз ^1</string>
+    <string name="pref_entity_time_summary">Дозволити контактам бачити ваш поточний час, щоб знати їхній місцевий час.</string>
+    <string name="pref_entity_time">Ділитися місцевим часом</string>
 </resources>
