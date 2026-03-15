@@ -1158,7 +1158,7 @@
     <string name="delete_message">Удалить сообщение</string>
     <string name="moderation_explained">Сообщение будет удалено для вас и всех остальных участников этого публичного канала.</string>
     <string name="do_not_show_this_warning_again">Больше не предупреждать.</string>
-    <string name="could_not_moderate_message">Не удалось отмодерировать сообщение</string>
+    <string name="could_not_moderate_message">Невозможно модерировать сообщение</string>
     <string name="last_seen">В сети %s</string>
     <plurals name="x_participants">
         <item quantity="one">%1$d участник</item>
@@ -1211,4 +1211,6 @@
     <string name="pref_import_backup_summary">Выбор файла резервной копии для восстановления данных</string>
     <string name="its_time_for_contact">У ^2 сейчас ^1</string>
     <string name="mobile_ticket">Цифровой пропуск</string>
+    <string name="pref_entity_time_summary">Делиться своим текущим временем с контактами, чтобы взамен знать их местное время.</string>
+    <string name="pref_entity_time">Делиться местным временем</string>
 </resources>
