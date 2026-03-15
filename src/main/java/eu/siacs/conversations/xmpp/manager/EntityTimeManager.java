@@ -47,23 +47,34 @@ public class EntityTimeManager extends AbstractManager {
                                             MoreExecutors.directExecutor());
                                 }
                             });
+    private final AppSettings appSettings;
 
     public EntityTimeManager(final Context context, final XmppConnection connection) {
         super(context, connection);
+        this.appSettings = new AppSettings(context);
     }
 
     public void request(final Iq request) {
-        final var appSettings = new AppSettings(this.context);
-        if (appSettings.isUseTor() || getAccount().isOnion()) {
+        if (this.appSettings.isUseTor() || getAccount().isOnion()) {
             this.connection.sendErrorFor(request, new Condition.Forbidden());
             return;
         }
-        Log.d(
-                Config.LOGTAG,
-                getAccount().getJid().asBareJid()
-                        + ": responding to entity time request from "
-                        + request.getFrom());
-        this.connection.sendResultFor(request, new Time(ZonedDateTime.now()));
+        final var from = request.getFrom();
+        if (from == null) {
+            this.connection.sendErrorFor(request, new Condition.NotAcceptable());
+            return;
+        }
+        final var contact = getManager(RosterManager.class).getContactFromContactList(from);
+        if (contact != null && contact.showInContactList() && this.appSettings.isEntityTime()) {
+            Log.d(
+                    Config.LOGTAG,
+                    getAccount().getJid().asBareJid()
+                            + ": responding to entity time request from "
+                            + request.getFrom());
+            this.connection.sendResultFor(request, new Time(ZonedDateTime.now()));
+        } else {
+            this.connection.sendErrorFor(request, new Condition.Forbidden());
+        }
     }
 
     // TODO add a zoneDateTimeWithTimeout and use that in the cache
@@ -87,7 +98,7 @@ public class EntityTimeManager extends AbstractManager {
                 MoreExecutors.directExecutor());
     }
 
-    public ListenableFuture<List<EntityTime>> getEntityTimes(final Jid address) {
+    private ListenableFuture<List<EntityTime>> getEntityTimes(final Jid address) {
         final var presences = getManager(PresenceManager.class).getPresences(address);
         final Collection<ListenableFuture<EntityTime>> futures =
                 Collections2.transform(
@@ -109,6 +120,10 @@ public class EntityTimeManager extends AbstractManager {
     }
 
     public ListenableFuture<ZonedDateTime> getZonedDateTime(final Jid address) {
+        if (!this.appSettings.isEntityTime()) {
+            return Futures.immediateFailedFuture(
+                    new IllegalStateException("Requesting entity time is disabled"));
+        }
         return Futures.transform(
                 getEntityTimes(address),
                 entityTimes -> {
@@ -142,6 +157,11 @@ public class EntityTimeManager extends AbstractManager {
     public static boolean isNightTime(final ZonedDateTime zonedDateTime) {
         final var localTime = zonedDateTime.toLocalTime();
         return localTime.isAfter(LocalTime.of(22, 0)) || localTime.isBefore(LocalTime.of(8, 0));
+    }
+
+    public static boolean isDifferentTimeZone(final ZonedDateTime zonedDateTime) {
+        final var local = ZonedDateTime.now();
+        return !local.getOffset().equals(zonedDateTime.getOffset());
     }
 
     public sealed interface EntityTime {}

@@ -36,6 +36,7 @@ public class AppSettings {
     public static final String AUTOMATIC_MESSAGE_DELETION = "automatic_message_deletion";
     public static final String BROADCAST_LAST_ACTIVITY = "last_activity";
     public static final String SEND_CHAT_STATES = "chat_states";
+    public static final String ENTITY_TIME = "entity_time";
     public static final String THEME = "theme";
     public static final String DYNAMIC_COLORS = "dynamic_colors";
     public static final String SHOW_DYNAMIC_TAGS = "show_dynamic_tags";
@@ -209,6 +210,10 @@ public class AppSettings {
 
     public boolean isSendChatStates() {
         return getBooleanPreference(SEND_CHAT_STATES, R.bool.chat_states);
+    }
+
+    public boolean isEntityTime() {
+        return getBooleanPreference(ENTITY_TIME, R.bool.entity_time);
     }
 
     public boolean isExtendedConnectionOptions() {

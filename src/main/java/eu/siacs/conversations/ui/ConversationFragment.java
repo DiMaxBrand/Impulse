@@ -3105,7 +3105,9 @@ public class ConversationFragment extends XmppFragment
                                         R.string.contact_has_stopped_typing,
                                         conversation.getName())));
             } else {
-                if (zonedDateTime != null && EntityTimeManager.isNightTime(zonedDateTime)) {
+                if (zonedDateTime != null
+                        && EntityTimeManager.isDifferentTimeZone(zonedDateTime)
+                        && EntityTimeManager.isNightTime(zonedDateTime)) {
                     final var localTimeMessage =
                             Message.createStatusMessage(
                                     conversation, MessageAdapter.LOCAL_TIME_BODY);

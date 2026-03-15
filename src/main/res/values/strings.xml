@@ -1153,6 +1153,8 @@
     <string name="dismiss_as_owner">Dismiss as owner</string>
     <string name="pref_import_backup_summary">Select a backup file to restore your data</string>
     <string name="pref_category_backup_storage">Storage</string>
+    <string name="pref_entity_time_summary">Share your current time with contacts to see their local time in return.</string>
+    <string name="pref_entity_time">Share local time</string>
     <plurals name="delete_n_messages">
         <item quantity="one">Delete %d message</item>
         <item quantity="other">Delete %d messages</item>
