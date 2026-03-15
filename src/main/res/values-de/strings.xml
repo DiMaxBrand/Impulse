@@ -1159,5 +1159,7 @@
     <string name="backup_and_restore">Sicherung &amp; Wiederherstellung</string>
     <string name="pref_import_backup_summary">Sicherungsdatei zur Wiederherstellung deiner Daten auswählen</string>
     <string name="pref_category_backup_storage">Speicher</string>
-    <string name="its_time_for_contact">Es steht ^1 zu ^2</string>
+    <string name="its_time_for_contact">Es ist ^1 für ^2</string>
+    <string name="pref_entity_time_summary">Teile deine aktuelle Uhrzeit mit deinen Kontakten, um im Gegenzug ihre Ortszeit zu erfahren.</string>
+    <string name="pref_entity_time">Ortszeit teilen</string>
 </resources>
