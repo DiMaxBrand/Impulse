@@ -1106,7 +1106,7 @@
     <string name="edit_configuration">Изменить настройки</string>
     <string name="edit_nick">Изменить имя</string>
     <string name="edit_name_and_topic">Изменить имя и тему</string>
-    <string name="pref_backup_summary">Создание разовых и регулярных резервных копий</string>
+    <string name="pref_backup_summary">Создание разовых и регулярных резервных копий, выбор хранилища</string>
     <string name="server_info_sasl2">XEP-0388: расширяемый профиль SASL</string>
     <string name="server_info_bind2">XEP-0386: привязка 2</string>
     <string name="could_not_add_reaction">Невозможно добавить реакцию</string>
@@ -1205,4 +1205,10 @@
     <string name="make_owner">Назначить владельцем</string>
     <string name="dismiss_as_owner">Удалить из владельцев</string>
     <string name="account_status_airplane_mode">Режим полёта</string>
+    <string name="account_status_regis_invalid_captcha">Неправильный код CAPTCHA</string>
+    <string name="backup_and_restore">Резервирование</string>
+    <string name="pref_category_backup_storage">Хранилище</string>
+    <string name="pref_import_backup_summary">Выбор файла резервной копии для восстановления данных</string>
+    <string name="its_time_for_contact">У ^2 сейчас ^1</string>
+    <string name="mobile_ticket">Цифровой пропуск</string>
 </resources>
