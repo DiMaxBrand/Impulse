@@ -1165,4 +1165,7 @@
     <string name="backup_and_restore">Kopjeruani &amp; Riktheni</string>
     <string name="pref_import_backup_summary">Që të riktheni të dhënat tuaja, përzgjidhni një kartelë kopjeruajtje</string>
     <string name="pref_category_backup_storage">Depozitë</string>
+    <string name="pref_entity_time">Tregoni kohën vendore</string>
+    <string name="pref_entity_time_summary">Tregojuni kontakteve tuaj kohën tuaj vendore, që të mund të shihni të tyren.</string>
+    <string name="its_time_for_contact">Është ^1 për ^2</string>
 </resources>
