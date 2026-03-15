@@ -1070,7 +1070,7 @@
     <string name="pref_category_application">Rakendus</string>
     <string name="pref_category_interaction">Koostoime</string>
     <string name="pref_category_on_this_device">Seadmes</string>
-    <string name="pref_backup_summary">Üks kord tehtav või korduv varundus</string>
+    <string name="pref_backup_summary">Üks kord tehtav või korduv varundus ning tema asukoht</string>
     <string name="pref_create_backup_one_off_summary">Tee varukoopia vaid nüüd</string>
     <string name="pref_backup_recurring">Tee varukoopiaid korduvalt</string>
     <string name="pref_fullscreen_notification">Täisekraaniteavitused</string>
@@ -1175,4 +1175,8 @@
     <string name="make_owner">Muuda omanikuks</string>
     <string name="dismiss_as_owner">Võta omaniku roll ära</string>
     <string name="account_status_airplane_mode">Lennukirežiim</string>
+    <string name="account_status_regis_invalid_captcha">Robotilõksu vastus pole õige</string>
+    <string name="backup_and_restore">Varundus ja taastamine</string>
+    <string name="pref_import_backup_summary">Oma andmete taastamiseks vali varukoopia</string>
+    <string name="pref_category_backup_storage">Andmeruum</string>
 </resources>
