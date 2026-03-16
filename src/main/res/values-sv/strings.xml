@@ -1134,7 +1134,7 @@
     <string name="pref_connection_summary_w_cd">Värdnamn och port, Tor, P2P, kanalupptäckt</string>
     <string name="pref_category_engagement_notifications">Interaktionsnotiser</string>
     <string name="pref_up_long_summary">När du agerar som UnifiedPush-distributör, kommer den ihållande, pålitliga och batterivänliga XMPP-anslutningen att användas för att väcka andra UnifiedPush-kompatibla appar, som Tusky, Ltt.rs, FluffyChat och fler.</string>
-    <string name="pref_backup_summary">Skapa engångsföreteelser, schemalägg återkommande</string>
+    <string name="pref_backup_summary">Skapa engångsföreteelser, schemalägg återkommande, lagringsplats</string>
     <string name="pref_create_backup_one_off_summary">Skapa engångssäkerhetskopior</string>
     <string name="custom_notifications_enable">Aktivera anpassade aviseringsinställningar (prioritet, ljud, vibration) för den här konversationen?</string>
     <string name="pref_backup_location">Säkerhetskopieringsplats</string>
@@ -1170,4 +1170,11 @@
         <item quantity="other">Ta bort %d meddelanden</item>
     </plurals>
     <string name="account_status_airplane_mode">Flygplansläge</string>
+    <string name="account_status_regis_invalid_captcha">Ogiltig CAPTCHA</string>
+    <string name="its_time_for_contact">Klockan är ^1 för ^2</string>
+    <string name="backup_and_restore">Säkerhetskopiera och återställ</string>
+    <string name="pref_import_backup_summary">Välj en säkerhetskopia för att återställa din data</string>
+    <string name="pref_category_backup_storage">Lagring</string>
+    <string name="pref_entity_time_summary">Dela din aktuella tid med dina kontakter för att kunna se deras lokala tid.</string>
+    <string name="pref_entity_time">Dela din lokala tid</string>
 </resources>
