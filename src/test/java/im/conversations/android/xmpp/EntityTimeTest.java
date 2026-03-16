@@ -1,13 +1,9 @@
 package im.conversations.android.xmpp;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.MatcherAssert.assertThat;
-
 import eu.siacs.conversations.xmpp.manager.EntityTimeManager;
 import im.conversations.android.xml.XmlElementReader;
 import im.conversations.android.xmpp.model.time.Time;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,9 +48,7 @@ public class EntityTimeTest {
     <utc>2006-12-19T17:58:35Z</utc>
   </time>\
 """;
-        final var element = XmlElementReader.read(xml.getBytes(StandardCharsets.UTF_8));
-        assertThat(element, instanceOf(Time.class));
-        final var time = (Time) element;
+        final var time = XmlElementReader.read(xml, Time.class);
         Assert.assertEquals(
                 ZonedDateTime.parse("2006-12-19T11:58:35-06:00"), time.asZonedDateTime());
     }
@@ -65,9 +59,7 @@ public class EntityTimeTest {
 """
 <time xmlns="urn:xmpp:time"><utc>2026-03-14T04:28:20Z</utc><tzo>+08:00</tzo></time>\
 """;
-        final var element = XmlElementReader.read(xml.getBytes(StandardCharsets.UTF_8));
-        assertThat(element, instanceOf(Time.class));
-        final var time = (Time) element;
+        final var time = XmlElementReader.read(xml, Time.class);
         final var zonedDateTime = time.asZonedDateTime();
         Assert.assertEquals(ZonedDateTime.parse("2026-03-14T12:28:20+08:00"), zonedDateTime);
         final var serialized = StreamElementWriter.asString(new Time(zonedDateTime));
@@ -80,9 +72,7 @@ public class EntityTimeTest {
                 """
                 <time xmlns="urn:xmpp:time"><utc>2026-01-01T00:00:00Z</utc><tzo>Z</tzo></time>\
                 """;
-        final var element = XmlElementReader.read(xml.getBytes(StandardCharsets.UTF_8));
-        assertThat(element, instanceOf(Time.class));
-        final var time = (Time) element;
+        final var time = XmlElementReader.read(xml, Time.class);
         final var zonedDateTime = time.asZonedDateTime();
         Assert.assertEquals(ZonedDateTime.parse("2026-01-01T00:00:00+00:00"), zonedDateTime);
         final var serialized = StreamElementWriter.asString(new Time(zonedDateTime));
@@ -99,9 +89,7 @@ public class EntityTimeTest {
                 """
                 <time xmlns="urn:xmpp:time"><utc>2026-03-14T04:28:20Z</utc><tzo>08:00</tzo></time>\
                 """;
-        final var element = XmlElementReader.read(xml.getBytes(StandardCharsets.UTF_8));
-        assertThat(element, instanceOf(Time.class));
-        final var time = (Time) element;
+        final var time = XmlElementReader.read(xml, Time.class);
         Assert.assertEquals(
                 ZonedDateTime.parse("2026-03-14T12:28:20+08:00"), time.asZonedDateTime());
     }

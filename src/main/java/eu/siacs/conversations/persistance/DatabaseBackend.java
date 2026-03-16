@@ -1622,10 +1622,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
             if (cursor.moveToFirst()) {
                 final var cached = cursor.getString(0);
                 try {
-                    final var element = XmlElementReader.read(cached);
-                    if (element instanceof InfoQuery infoQuery) {
-                        return infoQuery;
-                    }
+                    return XmlElementReader.read(cached, InfoQuery.class);
                 } catch (final IOException e) {
                     Log.e(Config.LOGTAG, "could not restore info query from cache", e);
                     return null;
@@ -1634,7 +1631,6 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                 return null;
             }
         }
-        return null;
     }
 
     public static class FilePath {

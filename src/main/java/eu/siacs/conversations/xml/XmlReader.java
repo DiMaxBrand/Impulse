@@ -102,7 +102,7 @@ public class XmlReader implements Closeable {
 
     public <T extends StreamElement> T readElement(final Tag.Start current, final Class<T> clazz)
             throws IOException {
-        final Element element = readElement(current);
+        final var element = readElement(current);
         if (clazz.isInstance(element)) {
             return clazz.cast(element);
         }
@@ -110,26 +110,20 @@ public class XmlReader implements Closeable {
                 String.format("Read unexpected {%s}%s", element.getNamespace(), element.getName()));
     }
 
-    public Element readElement(final Tag currentTag) throws IOException {
+    public Element readElement(final Tag.Start currentTag) throws IOException {
         return readElement(currentTag, 0);
     }
 
-    private Element readElement(final Tag currentTag, final int depth) throws IOException {
+    private Element readElement(final Tag.Start parent, final int depth) throws IOException {
         if (depth >= XML_ELEMENT_MAX_DEPTH) {
             throw new XmlMaxDepthReachedException();
         }
-        final ExtensionFactory.Id id;
-        final Element element;
-        if (currentTag instanceof Tag.Start start) {
-            id = start.getId();
-            element = ExtensionFactory.create(id);
-            element.setAttributes(start.getAttributes());
-        } else {
-            throw new IOException("Cannot start reading element at tag other than start");
-        }
+        final var id = parent.getId();
+        final var element = ExtensionFactory.create(id);
+        ;
+        element.setAttributes(parent.getAttributes());
         while (true) {
             final var tag = this.readTag();
-            System.out.println("encountered inner tag: " + tag.getClass());
             switch (tag) {
                 case Tag.Start innerStart -> {
                     final var child = this.readElement(innerStart, depth + 1);
