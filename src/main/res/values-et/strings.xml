@@ -1179,4 +1179,7 @@
     <string name="backup_and_restore">Varundus ja taastamine</string>
     <string name="pref_import_backup_summary">Oma andmete taastamiseks vali varukoopia</string>
     <string name="pref_category_backup_storage">Andmeruum</string>
+    <string name="its_time_for_contact">Kasutajal ^2 on kell ^1</string>
+    <string name="pref_entity_time_summary">Jaga oma kellaaega teiste kasutajatega ja näed nende oma.</string>
+    <string name="pref_entity_time">Jaga kohalikku kellaaega</string>
 </resources>
