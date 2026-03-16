@@ -1174,4 +1174,6 @@
     <string name="pref_import_backup_summary">Selecciona un archivo de respaldo para restaurar tus datos</string>
     <string name="pref_category_backup_storage">Almacenamiento</string>
     <string name="its_time_for_contact">Hora para ^2: ^1</string>
+    <string name="pref_entity_time">Compartir hora local</string>
+    <string name="pref_entity_time_summary">Comparte tu hora actual con tus contactos para así ver la suya también.</string>
 </resources>
