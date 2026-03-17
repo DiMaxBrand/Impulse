@@ -142,7 +142,7 @@ public class EasyOnboardingInviteActivity extends XmppActivity {
         }
         final Account account = xmppConnectionService.findAccountByJid(jid);
         final var future =
-                account.getXmppConnection().getManager(EasyOnboardingManager.class).get();
+                account.getXmppConnection().getManager(EasyOnboardingManager.class).invite();
         Futures.addCallback(
                 future,
                 new FutureCallback<>() {

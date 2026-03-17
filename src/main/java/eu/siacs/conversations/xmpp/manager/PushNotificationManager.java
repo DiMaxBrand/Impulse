@@ -26,6 +26,7 @@ public class PushNotificationManager extends AbstractManager {
 
     public ListenableFuture<Registration> register(
             final Jid appServer, final String fcmToken, final String androidId) {
+        // TODO refactor this to use AdHocCommandsManager
         final var iq = new Iq(Iq.Type.SET);
         iq.setTo(appServer);
         final var command =

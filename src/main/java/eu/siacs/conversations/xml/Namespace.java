@@ -110,6 +110,7 @@ public final class Namespace {
     public static final String PRE_AUTHENTICATED_IN_BAND_REGISTRATION = "urn:xmpp:ibr-token:0";
     public static final String PARS = "urn:xmpp:pars:0";
     public static final String EASY_ONBOARDING_INVITE = "urn:xmpp:invite#invite";
+    public static final String EASY_ONBOARDING_CREATE_ACCOUNT = "urn:xmpp:invite#create-account";
     public static final String OMEMO_DTLS_SRTP_VERIFICATION =
             "http://gultsch.de/xmpp/drafts/omemo/dlts-srtp-verification";
     public static final String JINGLE_TRANSPORT_ICE_OPTION =

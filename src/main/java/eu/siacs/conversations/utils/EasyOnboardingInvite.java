@@ -19,7 +19,7 @@ public class EasyOnboardingInvite implements Parcelable {
         if (MiniUri.tryParse(in.readString()) instanceof MiniUri.Xmpp xmpp) {
             this.uri = xmpp;
         } else {
-            throw new IllegalStateException("Illegal xmpp uri in parcel");
+            throw new IllegalStateException("Illegal XMPP uri in parcel");
         }
         final var landingUrl = in.readString();
         this.landingUrl = Strings.isNullOrEmpty(landingUrl) ? null : HttpUrl.parse(landingUrl);
