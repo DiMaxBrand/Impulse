@@ -125,7 +125,7 @@ public class EasyOnboardingManager extends AbstractManager {
 
     private Optional<Jid> getAddressForCommand(final String command) {
         final var discoManager = this.getManager(DiscoManager.class);
-        final var address = discoManager.getAddressForCommand(Namespace.EASY_ONBOARDING_INVITE);
+        final var address = discoManager.getAddressForCommand(command);
         return Optional.fromNullable(address);
     }
 }
