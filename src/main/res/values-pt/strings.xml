@@ -1168,4 +1168,9 @@
     <string name="pref_category_backup_storage">Armazenamento</string>
     <string name="pref_entity_time_summary">Partilhe o seu tempo atual com contactos para ver o tempo atual deles em troca.</string>
     <string name="pref_entity_time">Partilhar tempo local</string>
+    <string name="contact_has_paused_their_notifications">%s pausou as suas notificações</string>
+    <string name="pref_sync_system_dnd">Sincronizar DND do sistema</string>
+    <string name="pref_sync_system_dnd_summary">Automaticamente define o seu estado como \"Não Perturbar\" quando o modo DND do Android está ativo.</string>
+    <string name="pref_include_silent_modes">Incluir modos silenciosos</string>
+    <string name="pref_include_silent_modes_summary">Também definir \"Não Perturbar\" quando as notificações estão silenciadas ou o telemóvel está em modo vibrar.</string>
 </resources>
