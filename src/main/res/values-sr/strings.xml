@@ -723,7 +723,7 @@
         <item quantity="few">Поруке нису могле да се испоруче</item>
         <item quantity="other">Порука није могло да се испоручи</item>
     </plurals>
-    <string name="pref_backup_summary">Направи једну, Закажи аутоматске</string>
+    <string name="pref_backup_summary">Направи једну, Закажи аутоматске, Одреди локацију</string>
     <string name="pref_create_backup_one_off_summary">Направи једну резервну копију</string>
     <string name="pref_backup_recurring">Аутоматске резервне копије</string>
     <string name="pref_fullscreen_notification">Обавештења преко целог екрана</string>
@@ -1191,4 +1191,11 @@
     <string name="make_owner">Додели привилегије власника</string>
     <string name="dismiss_as_owner">Одузми привилегије власника</string>
     <string name="account_status_airplane_mode">Авионски режим</string>
+    <string name="account_status_regis_invalid_captcha">Неисправан CAPTCHA</string>
+    <string name="its_time_for_contact">Сад је ^1 за ^2</string>
+    <string name="backup_and_restore">Резервна копија и Враћање</string>
+    <string name="pref_import_backup_summary">Одабери резервну копију да вратиш податке</string>
+    <string name="pref_category_backup_storage">Складиште</string>
+    <string name="pref_entity_time_summary">Подели своје тренутно време са контактима како би видео њихово локално време.</string>
+    <string name="pref_entity_time">Подели локално време</string>
 </resources>
