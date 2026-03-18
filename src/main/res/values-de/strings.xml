@@ -1162,4 +1162,9 @@
     <string name="its_time_for_contact">Es ist ^1 für ^2</string>
     <string name="pref_entity_time_summary">Teile deine aktuelle Uhrzeit mit deinen Kontakten, um im Gegenzug ihre Ortszeit zu erfahren.</string>
     <string name="pref_entity_time">Ortszeit teilen</string>
+    <string name="contact_has_paused_their_notifications">%s hat seine Benachrichtigungen pausiert</string>
+    <string name="pref_sync_system_dnd_summary">Deinen Status automatisch auf „Nicht stören“ setzen, wenn der „Nicht stören“-Modus von Android aktiv ist.</string>
+    <string name="pref_sync_system_dnd">Synchronisieren des „Nicht stören“-Modus</string>
+    <string name="pref_include_silent_modes">Lautlos-Modus einbeziehen</string>
+    <string name="pref_include_silent_modes_summary">Zusätzlich wird „Nicht stören“ angezeigt, wenn Benachrichtigungen stummgeschaltet sind oder das Telefon auf Vibration eingestellt ist.</string>
 </resources>
