@@ -1212,4 +1212,9 @@
     <string name="its_time_for_contact">У ^2 зараз ^1</string>
     <string name="pref_entity_time_summary">Дозволити контактам бачити ваш поточний час, щоб знати їхній місцевий час.</string>
     <string name="pref_entity_time">Ділитися місцевим часом</string>
+    <string name="contact_has_paused_their_notifications">%s призупиняє отримання сповіщень</string>
+    <string name="pref_sync_system_dnd_summary">Автоматично встановлювати стан «Не турбувати», коли в Android активовано режим «Не турбувати».</string>
+    <string name="pref_sync_system_dnd">Синхронізація режиму «Не турбувати»</string>
+    <string name="pref_include_silent_modes_summary">Також показувати «Не турбувати», коли на телефоні вимкнено сповіщення або активовано режим вібрації.</string>
+    <string name="pref_include_silent_modes">Включно з безшумними режимами</string>
 </resources>
