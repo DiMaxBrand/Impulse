@@ -448,10 +448,6 @@
     <string name="pref_presence_settings">Dostępność</string>
     <string name="pref_away_when_screen_off">Niedostępny kiedy urządzenie jest zablokowane</string>
     <string name="pref_away_when_screen_off_summary">Pokaż jako Niedostępny kiedy urządzenie jest zablokowane</string>
-    <string name="pref_dnd_on_silent_mode">Zajęty w trybie cichym</string>
-    <string name="pref_dnd_on_silent_mode_summary">Pokaż jako Zajęty jeśli urządzenie jest w trybie cichym</string>
-    <string name="pref_treat_vibrate_as_silent">Traktuj tryb wibracji jak tryb cichy</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Pokaż jako Zajęty kiedy urządzenie jest w trybie wibracji</string>
     <string name="pref_show_connection_options">Nazwa hosta i port</string>
     <string name="pref_show_connection_options_summary">Pokaż rozszerzone ustawienia połączenia podczas konfigurowania konta</string>
     <string name="hostname_example">xmpp.example.com</string>

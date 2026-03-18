@@ -353,7 +353,6 @@
     <string name="server_info_broken">I dëmtuar</string>
     <string name="pref_away_when_screen_off">“I larguar”, kur pajisja është e kyçur</string>
     <string name="pref_away_when_screen_off_summary">Shfaqmë si “I lraguar”, kur pajisja është e kyçur</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Shfaqmë si “I zënë”, kur pajisja është në dridhje</string>
     <string name="pref_show_connection_options">Strehëemër &amp; Portë</string>
     <string name="action_add_account_with_certificate">Hyni me dëshmi</string>
     <string name="unable_to_parse_certificate">S’u analizua dot dëshmi</string>
@@ -868,9 +867,6 @@
     <string name="pref_chat_states_summary">Bëjuni të ditur kontakteve tuaj, kur shkruani mesazhe për ta</string>
     <string name="pref_dont_trust_system_cas_title">Mos beso DA sistemi</string>
     <string name="pref_quick_action_summary">Zëvendëso butonin “Dërgoje” me veprim të shpejtë</string>
-    <string name="pref_dnd_on_silent_mode">“I zënë” nën mënyrën e heshtur</string>
-    <string name="pref_dnd_on_silent_mode_summary">Shfaqe si “I zënë”, kur pajisja gjendet nën mënyrën e heshtur</string>
-    <string name="pref_treat_vibrate_as_silent">Trajtoje dridhjen si mënyrë heshturazi</string>
     <string name="pref_show_connection_options_summary">Kur ujdiset një llogari, shfaq rregullime të zgjeruara lidhjeje</string>
     <string name="hostname_example">xmpp.example.com</string>
     <string name="fetching_mam_prefs">Po sillen parapëlqime arkivimi. Ju lutemi, pritni…</string>

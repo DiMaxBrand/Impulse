@@ -424,10 +424,6 @@
     <string name="pref_presence_settings">Saatavuus</string>
     <string name="pref_away_when_screen_off">Poissa kun laite on lukittu</string>
     <string name="pref_away_when_screen_off_summary">Näytä minut poissaolevana kun näyttö on lukittu</string>
-    <string name="pref_dnd_on_silent_mode">Kiireinen kun laite on äänetön</string>
-    <string name="pref_dnd_on_silent_mode_summary">Näytä minut kiireisenä kun laite on äänettömänä</string>
-    <string name="pref_treat_vibrate_as_silent">Kohtele vain värinä -tilaa äänettömän lailla</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Näytä minut kiireisenä kun laite on vain värinä -tilassa</string>
     <string name="pref_show_connection_options">Isäntänimi ja portti</string>
     <string name="pref_show_connection_options_summary">Näytä laajennetut yhteysasetukset tilin määrittämisen yhteydessä</string>
     <string name="hostname_example">xmpp.esimerkki.fi</string>

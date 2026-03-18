@@ -448,10 +448,6 @@
     <string name="pref_presence_settings">Setări de disponibilitate</string>
     <string name="pref_away_when_screen_off">Plecat când dispozitivul este blocat</string>
     <string name="pref_away_when_screen_off_summary">Prezintă clientul drept \"Plecat\" atunci când dispozitivul este blocat</string>
-    <string name="pref_dnd_on_silent_mode">\"Ocupat\" în modul silențios</string>
-    <string name="pref_dnd_on_silent_mode_summary">Prezintă clientul drept \"Ocupat\" atunci când dispozitivul este în mod silențios</string>
-    <string name="pref_treat_vibrate_as_silent">Tratează modul vibrație ca silențios</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Prezintă clientul drept \"Ocupat\" atunci când dispozitivul este în mod vibrație</string>
     <string name="pref_show_connection_options">Nume gazdă &amp; port</string>
     <string name="pref_show_connection_options_summary">Arată opțiuni extinse de conectare atunci când se configurează un cont</string>
     <string name="hostname_example">xmpp.exemplu.ro</string>

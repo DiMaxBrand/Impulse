@@ -446,10 +446,6 @@
     <string name="pref_presence_settings">Присутност</string>
     <string name="pref_away_when_screen_off">Одсутан/на кад је уређај закључан</string>
     <string name="pref_away_when_screen_off_summary">Прикажи ме одсутним/ом када је уређај закључан</string>
-    <string name="pref_dnd_on_silent_mode">Заузет/а у нечујном режиму</string>
-    <string name="pref_dnd_on_silent_mode_summary">Прикажи ме заузетим/ом у нечујном режиму</string>
-    <string name="pref_treat_vibrate_as_silent">Третирај вибрацију као нечујни режим</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Прикажи ме заузетим/ом у режиму вибрације</string>
     <string name="pref_show_connection_options">Назив сервера и порт</string>
     <string name="pref_show_connection_options_summary">Прикажи додатна подешавања везе при отварању налога</string>
     <string name="hostname_example">xmpp.primer.com</string>

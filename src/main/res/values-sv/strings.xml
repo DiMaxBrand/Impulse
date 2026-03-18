@@ -451,10 +451,6 @@
     <string name="pref_presence_settings">Tillgänglighet</string>
     <string name="pref_away_when_screen_off">Borta när enheten är låst</string>
     <string name="pref_away_when_screen_off_summary">Visa som Borta när enheten är låst</string>
-    <string name="pref_dnd_on_silent_mode">Upptagen i tyst läge</string>
-    <string name="pref_dnd_on_silent_mode_summary">Visa som upptagen när enheten är i tyst läge</string>
-    <string name="pref_treat_vibrate_as_silent">Behandla vibrera-läget som tyst läge</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Visa som upptagen när enheten är satt till att endast vibrera</string>
     <string name="pref_show_connection_options">Värdnamn &amp; Port</string>
     <string name="pref_show_connection_options_summary">Visa utökade anslutningsinställningar vid kontokonfiguration</string>
     <string name="hostname_example">xmpp.exempel.se</string>

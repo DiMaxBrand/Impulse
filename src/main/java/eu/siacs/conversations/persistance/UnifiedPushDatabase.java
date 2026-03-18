@@ -53,7 +53,7 @@ public class UnifiedPushDatabase extends SQLiteOpenHelper {
                         null,
                         null,
                         null)) {
-            if (cursor != null && cursor.moveToFirst()) {
+            if (cursor.moveToFirst()) {
                 existingApplication = Optional.of(cursor.getString(0));
             } else {
                 existingApplication = Optional.absent();
@@ -115,7 +115,7 @@ public class UnifiedPushDatabase extends SQLiteOpenHelper {
                         null,
                         null,
                         null)) {
-            if (cursor != null && cursor.moveToFirst()) {
+            if (cursor.moveToFirst()) {
                 return new ApplicationEndpoint(
                         cursor.getString(cursor.getColumnIndexOrThrow("application")),
                         cursor.getString(cursor.getColumnIndexOrThrow("endpoint")));

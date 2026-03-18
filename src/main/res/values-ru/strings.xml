@@ -456,10 +456,6 @@
     <string name="pref_presence_settings">Доступность</string>
     <string name="pref_away_when_screen_off">\"Отошёл\" при блокировке экрана</string>
     <string name="pref_away_when_screen_off_summary">Устанавливать статус \"Отошёл\", когда устройство заблокировано</string>
-    <string name="pref_dnd_on_silent_mode">\"Не беспокоить\" в беззвучном режиме</string>
-    <string name="pref_dnd_on_silent_mode_summary">Устанавливать статус \"Не беспокоить\", когда устройство в беззвучном режиме</string>
-    <string name="pref_treat_vibrate_as_silent">\"Не беспокоить\" в режиме вибрации</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Устанавливать статус \"Не беспокоить\", когда устройство в режиме вибрации</string>
     <string name="pref_show_connection_options">Имя хоста и порт</string>
     <string name="pref_show_connection_options_summary">Показывать расширенные настройки соединения при настройке аккаунта</string>
     <string name="hostname_example">xmpp.example.com</string>

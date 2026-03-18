@@ -444,10 +444,6 @@
     <string name="pref_presence_settings">Dispoñibilidade</string>
     <string name="pref_away_when_screen_off">Ausente se bloqueado</string>
     <string name="pref_away_when_screen_off_summary">Mostrar como Ausente cando o dispositivo está bloqueado</string>
-    <string name="pref_dnd_on_silent_mode">En modolo silencioso, Ocupado</string>
-    <string name="pref_dnd_on_silent_mode_summary">Mostrar como Ocupado se o dispositivo está en silencio</string>
-    <string name="pref_treat_vibrate_as_silent">Trata a vibración como modo silencioso</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Mostrar como Ocupado cando o dispositivo está en vibración</string>
     <string name="pref_show_connection_options">Servidor e Porto</string>
     <string name="pref_show_connection_options_summary">Mostar axustes de conexión ampliados ao configurar unha conta</string>
     <string name="hostname_example">xmpp.exemplo.com</string>

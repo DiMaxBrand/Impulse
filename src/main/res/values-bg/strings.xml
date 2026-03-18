@@ -433,10 +433,6 @@
     <string name="pref_presence_settings">Присъствие</string>
     <string name="pref_away_when_screen_off">Отсъстващ при заключено устройство</string>
     <string name="pref_away_when_screen_off_summary">Показване като „отсъстващ“, когато устройството е заключено</string>
-    <string name="pref_dnd_on_silent_mode">Зает в тих режим</string>
-    <string name="pref_dnd_on_silent_mode_summary">Показване като „зает“, когато устройството е в тих режим</string>
-    <string name="pref_treat_vibrate_as_silent">Тих режим при режим на вибриране</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Показване като „зает“, когато устройството е на вибрация</string>
     <string name="pref_show_connection_options">Разширени настройки за връзката</string>
     <string name="pref_show_connection_options_summary">Показване на настройките за сървър и порт при установка на профил</string>
     <string name="hostname_example">xmpp.example.com</string>

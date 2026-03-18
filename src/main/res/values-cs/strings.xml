@@ -437,10 +437,6 @@
     <string name="pref_presence_settings">Dostupnost</string>
     <string name="pref_away_when_screen_off">Pryč při uzamčení zařízení</string>
     <string name="pref_away_when_screen_off_summary">Při uzamčeném zařízení nastaví váš stav na \"pryč\"</string>
-    <string name="pref_dnd_on_silent_mode">Nedostupný při vypnutém zvuku</string>
-    <string name="pref_dnd_on_silent_mode_summary">Při ztišeném vyzvánění označí váš stav jako \"nedostupný\"</string>
-    <string name="pref_treat_vibrate_as_silent">Vibrační mód brát stejně jako tichý</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Při nastavení pouze na vibrace označí váš stav jako \"nedostupný\"</string>
     <string name="pref_show_connection_options">Jméno hostitele a port</string>
     <string name="pref_show_connection_options_summary">Zobrazit rozšířené možnosti připojení při nastavování účtu</string>
     <string name="hostname_example">xmpp.server.cz</string>

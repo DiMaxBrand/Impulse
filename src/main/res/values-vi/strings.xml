@@ -436,10 +436,6 @@
     <string name="pref_presence_settings">Tính khả dụng</string>
     <string name="pref_away_when_screen_off">Vắng mặt khi đang khóa máy</string>
     <string name="pref_away_when_screen_off_summary">Hiện trạng thái Vắng mặt khi đang khóa máy</string>
-    <string name="pref_dnd_on_silent_mode">Bận ở chế độ im lặng</string>
-    <string name="pref_dnd_on_silent_mode_summary">Hiện là Bận khi thiết bị ở chế độ im lặng</string>
-    <string name="pref_treat_vibrate_as_silent">Coi chế độ rung như chế độ im lặng</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Hiện là Bận khi thiết bị ở chế độ rung</string>
     <string name="pref_show_connection_options">Cài đặt kết nối mở rộng</string>
     <string name="pref_show_connection_options_summary">Hiện tên máy chủ và cài đặt cổng khi thiết lập tài khoản</string>
     <string name="hostname_example">xmpp.example.com</string>

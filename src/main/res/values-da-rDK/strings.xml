@@ -440,10 +440,6 @@
     <string name="pref_presence_settings">Tilgængelighed</string>
     <string name="pref_away_when_screen_off">Ude når enhed er låst</string>
     <string name="pref_away_when_screen_off_summary">Vis som Ude når enheden er låst</string>
-    <string name="pref_dnd_on_silent_mode">Optaget i lydløs tilstand</string>
-    <string name="pref_dnd_on_silent_mode_summary">Vis som Optaget når enhed er i lydløs tilstand</string>
-    <string name="pref_treat_vibrate_as_silent">Behandl vibration som lydløs tilstand</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Vis som Optaget når enhed er på vibration</string>
     <string name="pref_show_connection_options">Værtsnavn og Port</string>
     <string name="pref_show_connection_options_summary">Vis udvidede forbindelsesindstillinger, når du opretter en konto</string>
     <string name="hostname_example">xmpp.domæne.dk</string>

@@ -346,8 +346,8 @@ public class PresenceManager extends AbstractManager {
 
     private im.conversations.android.xmpp.model.stanza.Presence.Availability getTargetPresence() {
         final var device = new Device(context);
-        if (appSettings.isDndOnSilentMode()
-                && device.isPhoneSilenced(appSettings.isTreatVibrateAsSilent())) {
+        if (appSettings.isDndSyncSystem()
+                && device.isPhoneSilenced(appSettings.isDndIncludeSilentMode())) {
             return im.conversations.android.xmpp.model.stanza.Presence.Availability.DND;
         } else if (appSettings.isAwayWhenScreenLocked() && device.isScreenLocked()) {
             return im.conversations.android.xmpp.model.stanza.Presence.Availability.AWAY;

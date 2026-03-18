@@ -425,7 +425,6 @@
     <string name="pref_presence_settings">Elérhetőség</string>
     <string name="pref_away_when_screen_off">Távol, ha az eszköz le van zárva</string>
     <string name="pref_away_when_screen_off_summary">Mutasson „Távoli”-ként, ha az eszköz le van zárva</string>
-    <string name="pref_treat_vibrate_as_silent">Rezgés kezelése csendes módként</string>
     <string name="pref_show_connection_options">Gépnév és port</string>
     <string name="pref_show_connection_options_summary">Gépnév és port beállításainak megjelenítése egy fiók beállításakor</string>
     <string name="hostname_example">xmpp.example.com</string>
@@ -848,12 +847,9 @@
     <string name="welcome_header">Csatlakozzon a Beszélgetéshez</string>
     <string name="pref_enter_is_send_summary">Az Enter gomb használata az üzenetküldéshez. A Ctrl+Entert mindig használhatja üzenetküldésre, akkor is, ha ez ki van kapcsolva.</string>
     <string name="conference_technical_problems">Technikai okokból elhagyta ezt a csoportos csevegést</string>
-    <string name="pref_dnd_on_silent_mode">Elfoglalt csendes módban</string>
     <string name="remove_bookmark_and_close">Szeretné eltávolítani a könyvjelzőt erről: %s és archiválni a csevegést?</string>
     <string name="audiobook">Hangoskönyv</string>
     <string name="pref_send_crash_reports">Hibajelentések küldése</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Mutasson Elfoglaltként, ha az eszköz rezgő módban van</string>
-    <string name="pref_dnd_on_silent_mode_summary">Mutasson Elfoglaltként, ha az eszköz csendes módban van</string>
     <string name="hostname_or_onion">Szerver- vagy .onion-cím</string>
     <string name="no_storage_permission">%1$s hozzáférést igényel a külső tárhelyhez</string>
     <string name="no_camera_permission">%1$s hozzáférést igényel a kamerához</string>

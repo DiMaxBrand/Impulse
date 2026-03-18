@@ -438,7 +438,6 @@
     <string name="account_status_host_unknown">Не несе відповідальності за домен</string>
     <string name="server_info_broken">Поламано</string>
     <string name="pref_presence_settings">Доступність</string>
-    <string name="pref_treat_vibrate_as_silent">Вважати вібро за безшумний режим</string>
     <string name="pref_show_connection_options">Ім’я вузла і порт</string>
     <string name="pref_show_connection_options_summary">Показати розширені налаштування з’єднання при налаштуванні облікового запису</string>
     <string name="hostname_example">xmpp.example.com</string>
@@ -909,7 +908,6 @@
         <item quantity="other">%1$d пропущених викликів від %2$s</item>
     </plurals>
     <string name="download_failed_invalid_file">Завантаження не вдалося: неправильний файл</string>
-    <string name="pref_dnd_on_silent_mode_summary">Встановити статус «Зайнятий», коли пристрій у безшумному режимі</string>
     <string name="rtp_state_content_add_video">Перемкнути на відеовиклик\?</string>
     <string name="no_storage_permission">Надати %1$s доступ до зовнішньої пам’яті</string>
     <plurals name="n_missed_calls">
@@ -964,8 +962,6 @@
     <string name="search_group_chats">Шукати групу</string>
     <string name="pref_away_when_screen_off">«Відійшов», якщо екран заблоковано</string>
     <string name="pref_away_when_screen_off_summary">Встановити статус «Відійшов», коли пристрій заблоковано</string>
-    <string name="pref_dnd_on_silent_mode">«Зайнятий» у безшумному режимі</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Встановити статус «Зайнятий», коли пристрій у віброрежимі</string>
     <string name="no_camera_permission">Надати %1$s доступ до камери</string>
     <string name="battery_optimizations_enabled_dialog">Ваш пристрій застосовує до %1$s інтенсивний режим енергозбереження, що може спричинити затримку сповіщень чи навіть втрату повідомлень. \n \nЗараз з’явиться запит на вимкнення режиму енергозбереження.</string>
     <string name="verifying_omemo_keys_trusted_source_account">Ви збираєтеся підтвердити ключі OMEMO для власного облікового запису. Це безпечно, лише якщо Ви перейшли за посиланням з довіреного джерела, де лише Ви могли опублікувати це посилання.</string>

@@ -621,10 +621,6 @@
     <string name="server_info_broken">Katki</string>
     <string name="pref_away_when_screen_off">Seadme lukustumisel, määra olekuks „Eemal“</string>
     <string name="pref_away_when_screen_off_summary">Kui seade on lukus, siis määra oma olekuks „Eemal“</string>
-    <string name="pref_dnd_on_silent_mode">Vaikse seadme puhul näita olekut „Hõivatud“</string>
-    <string name="pref_dnd_on_silent_mode_summary">Kui nutiseade on vaikses režiimis, siis näita oma olekuks „Hõivatud“</string>
-    <string name="pref_treat_vibrate_as_silent">Tõlgenda värinaalarmi kasutamist vaikse režiimina</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Kui nutiseade on värinaalarmi režiimis, siis näita oma olekuks „Hõivatud“</string>
     <string name="pref_show_connection_options">Serveri hosti nimi ja pordi number</string>
     <string name="pref_show_connection_options_summary">Kasutajakonto lisamisel näita täiendavaid ühenduse seadistusi</string>
     <string name="hostname_example">xmpp.toredomeen.ee</string>

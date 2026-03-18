@@ -456,10 +456,6 @@
     <string name="pref_presence_settings">Dostympność</string>
     <string name="pref_away_when_screen_off">Status „W ôddali”, kej ekran je zastawiōny</string>
     <string name="pref_away_when_screen_off_summary">Ôznaczo twōj zasōb za „W ôddali”, kej ekran je zastawiōny</string>
-    <string name="pref_dnd_on_silent_mode">„Niy szterować” we trybie cichym</string>
-    <string name="pref_dnd_on_silent_mode_summary">Ôznaczo twōj zasōb za „Niy szterować”, kej maszina je w trybie cichym</string>
-    <string name="pref_treat_vibrate_as_silent">Traktuj tryb wibracyje jak tryb cichy</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Ôznaczo twōj zasōb za „Niy szterować”, kej maszina je w trybie wibracyje</string>
     <string name="pref_show_connection_options">Rozszyrzōne sztelōnki połōnczynio</string>
     <string name="pref_show_connection_options_summary">Pokoż miano ôd hosta i sztelōnki portu przi przidowaniu kōnta</string>
     <string name="hostname_example">xmpp.prziklod.com</string>

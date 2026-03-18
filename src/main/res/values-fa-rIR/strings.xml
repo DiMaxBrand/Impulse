@@ -795,7 +795,6 @@
     <string name="xmpp_address">نشانی XMPP</string>
     <string name="i_followed_this_link_from_a_trusted_source">من این پیوند را از منبع مورد اعتمادی پی گرفته‌ام</string>
     <string name="reject_request">رد درخواست</string>
-    <string name="pref_dnd_on_silent_mode_summary">نمایش به عنوان مشغول اگر گوشی بی‌صدا شده باشد</string>
     <string name="channel_discovery_opt_in_title">نقض احتمالی حریم خصوصی!</string>
     <string name="please_enter_your_phone_number">لطفاً شمارهٔ تلفن خود را وارد کنید.</string>
     <string name="shared_text_with_x">نوشته با %s هم‌رسانی شد</string>
@@ -805,7 +804,6 @@
 \nهیچ اطلاعاتی دربارهٔ فهرست مخاطبان شما به جایی فرستاده نمی‌شود!</string>
     <string name="not_trusted">اعتمادنشده</string>
     <string name="hostname_example">‪xmpp.example.com‬</string>
-    <string name="pref_treat_vibrate_as_silent">لرزش معادل بی‌صدا</string>
     <string name="please_enter_pin_below">لطفاً کد ۶ رقمی را در زیر وارد کنید.</string>
     <string name="jabber_ids_are_visible_to_admins">نشانی‌های XMPP را مدیران می‌بینند.</string>
     <string name="please_enter_xmpp_address">لطفاً یک نشانی XMPP بدهید</string>
@@ -925,7 +923,6 @@
     <string name="no_microphone_permission">به %1$s اجازهٔ دسترسی به میکروفن بده</string>
     <string name="providing_a_name_is_optional">ارائهٔ نام اختیاری است</string>
     <string name="account_status_host_unknown">این سرور مسئول این دامنه نیست</string>
-    <string name="pref_dnd_on_silent_mode">مشغول با گوشی بی‌صدا</string>
     <string name="allow">اجازه</string>
     <string name="pref_show_connection_options_summary">نمایش تنظیمات نام میزبان و پورت هنگام ساخت حساب</string>
     <string name="add_existing_account">افزودن حساب فعلی</string>
@@ -939,7 +936,6 @@
     <string name="phone_number">شماره تلفن</string>
     <string name="pref_theme_automatic">خودکار</string>
     <string name="silent_messages_channel_name">پیام‌های بی‌صدا</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">نمایش به عنوان مشغول اگر گوشی در حالت لرزش باشد</string>
     <string name="pref_privacy">محرمانگی</string>
     <plurals name="months">
         <item quantity="one">%d ماه</item>

@@ -439,10 +439,6 @@
     <string name="pref_presence_settings">在席状況</string>
     <string name="pref_away_when_screen_off">デバイスがロックされているときは離席</string>
     <string name="pref_away_when_screen_off_summary">デバイスがロックされているときは離席と表示します</string>
-    <string name="pref_dnd_on_silent_mode">サイレントモードのときは取込中</string>
-    <string name="pref_dnd_on_silent_mode_summary">デバイスがサイレントモードのときは取込中と表示します</string>
-    <string name="pref_treat_vibrate_as_silent">バイブレートをサイレントモードとして扱う</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">デバイスがバイブレートのときは取込中と表示します</string>
     <string name="pref_show_connection_options">ホスト名とポート番号</string>
     <string name="pref_show_connection_options_summary">アカウントを設定するときに、拡張設定項目を表示します</string>
     <string name="hostname_example">xmpp.example.com</string>

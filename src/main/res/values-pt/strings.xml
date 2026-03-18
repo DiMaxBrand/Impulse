@@ -307,7 +307,6 @@
     <string name="account_status_tor_unavailable">Rede Tor indisponível</string>
     <string name="server_info_broken">Existe um problema</string>
     <string name="pref_presence_settings">Disponibilidade</string>
-    <string name="pref_treat_vibrate_as_silent">Tratar vibrar como modo silencioso</string>
     <string name="pref_show_connection_options">Host &amp; Porta</string>
     <string name="pref_show_connection_options_summary">Mostrar as definições da configuração extendida ao configurar uma conta</string>
     <string name="hostname_example">xmpp.exemplo.com</string>
@@ -546,8 +545,6 @@
     <string name="pref_away_when_screen_off">Ausente quando o dispositivo está bloqueado</string>
     <string name="shared_images_with_x">Imagens partilhadas com %s</string>
     <string name="shared_text_with_x">Texto partilhado com %s</string>
-    <string name="pref_dnd_on_silent_mode">Ocupado em modo silencioso</string>
-    <string name="pref_dnd_on_silent_mode_summary">Mostra como Ocupado quando o dispositivo está em modo silencioso</string>
     <string name="unable_to_fetch_mam_prefs">Não foi possível obter as preferências do arquivamento</string>
     <string name="certificate_chain_is_not_trusted">Cadeia de certificado não confiada</string>
     <string name="jid_does_not_match_certificate">Endereço XMPP não coincide com o certificado</string>
@@ -560,7 +557,6 @@
     <string name="captcha_required">CAPTCHA necessária</string>
     <string name="shared_file_with_x">Ficheiro partilhado com %s</string>
     <string name="shared_image_with_x">Imagem partilhada com %s</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Mostra como Ocupado quando o dispositivo está em modo vibração</string>
     <string name="quicksy_wants_your_consent">Quicksy pede o seu consentimento ao usar a sua data</string>
     <string name="no_keys_just_confirm">Já confiou a impressão digital desta pessoa. Ao selecionar “Concluído” está apenas confirmando que %s é parte do grupo.</string>
     <string name="sync_with_contacts_long">%1$s processa a sua lista de contactos localmente, no seu dispositivo, para mostrar os nomes e fotos de perfil de contactos correspondentes em XMPP.\n\nNenhuma informação da lista de contactos sai do seu dispositivo!</string>

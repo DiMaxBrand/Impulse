@@ -39,6 +39,8 @@ import java.util.concurrent.TimeUnit;
 public class UnifiedPushBroker {
 
     // time to expiration before a renewal attempt is made (24 hours)
+    // TODO Change to Duration and maybe use 18h to not force implementations that use 24h for their
+    // expiration (However 24h is really, really low)
     public static final long TIME_TO_RENEW = 86_400_000L;
 
     // interval for the 'cron tob' that attempts renewals for everything that expires is lass than
@@ -398,7 +400,9 @@ public class UnifiedPushBroker {
 
     private void broadcastEndpoint(
             final String instance, final UnifiedPushDatabase.ApplicationEndpoint endpoint) {
-        Log.d(Config.LOGTAG, "broadcasting endpoint to " + endpoint.application());
+        Log.d(
+                Config.LOGTAG,
+                "broadcasting endpoint to " + endpoint.application() + " " + endpoint.endpoint());
         final Intent updateIntent = endpointIntent(instance, endpoint);
         service.sendBroadcast(updateIntent);
     }

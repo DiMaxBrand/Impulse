@@ -446,10 +446,6 @@
     <string name="pref_presence_settings">Disponibilità</string>
     <string name="pref_away_when_screen_off">\"Non disponibile\" a dispositivo bloccato</string>
     <string name="pref_away_when_screen_off_summary">Imposta come non disponibile quando il dispositivo è bloccato</string>
-    <string name="pref_dnd_on_silent_mode">\"Occupato\" in modalità silenziosa</string>
-    <string name="pref_dnd_on_silent_mode_summary">Imposta come occupato quando il dispositivo è in modalità silenziosa</string>
-    <string name="pref_treat_vibrate_as_silent">Tratta vibrazione come modalità silenziosa</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Imposta come occupato quando il dispositivo è in modalità vibrazione</string>
     <string name="pref_show_connection_options">Host e porta</string>
     <string name="pref_show_connection_options_summary">Mostra le impostazioni di nome host e della porta quando configuri un profilo</string>
     <string name="hostname_example">xmpp.esempio.it</string>

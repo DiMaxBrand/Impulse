@@ -442,10 +442,6 @@
     <string name="pref_presence_settings">Disponibilité</string>
     <string name="pref_away_when_screen_off">Absent quand l\'appareil est verrouillé</string>
     <string name="pref_away_when_screen_off_summary">Afficher comme étant absent lorsque l\'appareil est verrouillé</string>
-    <string name="pref_dnd_on_silent_mode">Occupé en mode silence</string>
-    <string name="pref_dnd_on_silent_mode_summary">Occupé lorsque l\'appareil est en mode silencieux</string>
-    <string name="pref_treat_vibrate_as_silent">Indisponible en mode vibreur</string>
-    <string name="pref_treat_vibrate_as_dnd_summary">Occupé lorsque l\'appareil est en mode vibreur</string>
     <string name="pref_show_connection_options">Nom d\'hôte et port</string>
     <string name="pref_show_connection_options_summary">Montrer les paramètres étendus de connexion lors du paramétrage d\'un compte</string>
     <string name="hostname_example">xmpp.example.com</string>
