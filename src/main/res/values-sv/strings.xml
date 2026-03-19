@@ -1177,4 +1177,9 @@
     <string name="pref_category_backup_storage">Lagring</string>
     <string name="pref_entity_time_summary">Dela din aktuella tid med dina kontakter för att kunna se deras lokala tid.</string>
     <string name="pref_entity_time">Dela din lokala tid</string>
+    <string name="contact_has_paused_their_notifications">%s har pausat deras notiser</string>
+    <string name="pref_sync_system_dnd">Synkronisera systemets stör-ej-läge</string>
+    <string name="pref_sync_system_dnd_summary">Ställ automatiskt in din status till \"Stör ej\" när Androids stör-ej-läge är aktivt.</string>
+    <string name="pref_include_silent_modes">Inkludera tysta lägen</string>
+    <string name="pref_include_silent_modes_summary">Signalera också \"Stör ej\" när aviseringar är avstängda, eller när telefonen är på vibrationsläget.</string>
 </resources>
