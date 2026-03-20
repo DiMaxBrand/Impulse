@@ -1198,4 +1198,9 @@
     <string name="pref_category_backup_storage">Складиште</string>
     <string name="pref_entity_time_summary">Подели своје тренутно време са контактима како би видео њихово локално време.</string>
     <string name="pref_entity_time">Подели локално време</string>
+    <string name="contact_has_paused_their_notifications">%s је паузирао/ла своја обавештења</string>
+    <string name="pref_sync_system_dnd">Синхронизуј системски DND</string>
+    <string name="pref_sync_system_dnd_summary">Аутоматски подеси статус на \"Не узнемиравај\" када је Android DND режим активан.</string>
+    <string name="pref_include_silent_modes">Обухвати и нечујне режиме</string>
+    <string name="pref_include_silent_modes_summary">Такође шаљи \"Не узнемиравај\" и када су обавештења утишана или је телефон на вибрацији.</string>
 </resources>
