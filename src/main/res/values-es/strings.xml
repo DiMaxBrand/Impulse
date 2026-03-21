@@ -1176,4 +1176,9 @@
     <string name="its_time_for_contact">Hora para ^2: ^1</string>
     <string name="pref_entity_time">Compartir hora local</string>
     <string name="pref_entity_time_summary">Comparte tu hora actual con tus contactos para así ver la suya también.</string>
+    <string name="contact_has_paused_their_notifications">%s ha pausado sus notificaciones</string>
+    <string name="pref_include_silent_modes">Incluir modos silenciosos</string>
+    <string name="pref_include_silent_modes_summary">También indicar \"No interrumpir\" cuando las notificaciones están silenciadas o el teléfono, en vibrar.</string>
+    <string name="pref_sync_system_dnd">Sincronizar con \"No interrumpir\"</string>
+    <string name="pref_sync_system_dnd_summary">Establecer automáticamente tu estado a \"No interrumpir\" cuando el modo \"No interrumpir\" de Android esté activo.</string>
 </resources>
