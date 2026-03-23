@@ -148,9 +148,9 @@
     <string name="error_security_exception">Апликација којом си поделио/ла овај фајл није дала неопходне дозволе.</string>
     <string name="account_status_unknown">Непознато</string>
     <string name="account_status_disabled">Привремено искључен</string>
-    <string name="account_status_online">На вези</string>
+    <string name="account_status_online">На мрежи</string>
     <string name="account_status_connecting">Повезивање\u2026</string>
-    <string name="account_status_offline">Није на вези</string>
+    <string name="account_status_offline">Ван мреже</string>
     <string name="account_status_unauthorized">Неовлашћен</string>
     <string name="account_status_not_found">Сервер није пронађен</string>
     <string name="account_status_no_internet">Нема интернета</string>
@@ -399,7 +399,7 @@
     <string name="avatar_has_been_published">Аватар је објављен!</string>
     <string name="sending_x_file">Шаљем %s</string>
     <string name="offering_x_file">Нудим %s</string>
-    <string name="hide_offline">Сакриј неповезане</string>
+    <string name="hide_offline">Сакриј ван мреже</string>
     <string name="contact_is_typing">%s куца…</string>
     <string name="contact_has_stopped_typing">%s је престао/ла да куца</string>
     <string name="contacts_are_typing">%s куцају…</string>
@@ -512,7 +512,7 @@
     <string name="pref_manually_change_presence_summary">Постави присутност при измени своје статусне поруке.</string>
     <string name="status_message">Статусна порука</string>
     <string name="presence_chat">Слободан/на за преписку</string>
-    <string name="presence_online">На вези</string>
+    <string name="presence_online">На мрежи</string>
     <string name="presence_away">Одсутан/на</string>
     <string name="presence_xa">Недоступан/на</string>
     <string name="presence_dnd">Заузет/а</string>
@@ -613,7 +613,7 @@
     <string name="received_message_from_stranger">Примљена порука од непознате особе</string>
     <string name="block_stranger">Блокирај непознату особу</string>
     <string name="block_entire_domain">Блокирај читав домен</string>
-    <string name="online_right_now">на вези сада</string>
+    <string name="online_right_now">на мрежи сада</string>
     <string name="retry_decryption">Покушај дешифровање поново</string>
     <string name="session_failure">Неуспех сесије</string>
     <string name="account_status_regis_web">Сервер захтева регистрацију на сајту</string>
@@ -1203,4 +1203,5 @@
     <string name="pref_sync_system_dnd_summary">Аутоматски подеси статус на \"Не узнемиравај\" када је Android DND режим активан.</string>
     <string name="pref_include_silent_modes">Обухвати и нечујне режиме</string>
     <string name="pref_include_silent_modes_summary">Такође шаљи \"Не узнемиравај\" и када су обавештења утишана или је телефон на вибрацији.</string>
+    <string name="presence_offline">Ван мреже</string>
 </resources>
