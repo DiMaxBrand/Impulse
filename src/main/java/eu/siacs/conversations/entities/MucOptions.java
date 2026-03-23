@@ -891,10 +891,14 @@ public class MucOptions {
             if (this.role == Role.NONE && this.affiliation == Affiliation.NONE) {
                 return ImmutableList.copyOf(this.hats);
             } else {
-                return new ImmutableList.Builder<DynamicTag>()
-                        .add(new DynamicTag.Attributes(this.affiliation, this.role))
-                        .addAll(this.hats)
-                        .build();
+                final var builder =
+                        new ImmutableList.Builder<DynamicTag>()
+                                .add(new DynamicTag.Attributes(this.affiliation, this.role))
+                                .addAll(this.hats);
+                if (this.role == Role.NONE) {
+                    builder.add(new DynamicTag.Status(Presence.Availability.OFFLINE));
+                }
+                return builder.build();
             }
         }
 
