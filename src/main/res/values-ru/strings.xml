@@ -1218,4 +1218,5 @@
     <string name="pref_sync_system_dnd">Синхронизировать режим DND</string>
     <string name="pref_include_silent_modes">Включая беззвучный режим</string>
     <string name="pref_include_silent_modes_summary">Также устанавливать статус \"Не беспокоить\" в приложении, когда на устройстве отключены уведомления или оно находится в режиме вибрации</string>
+    <string name="presence_offline">Не в сети</string>
 </resources>
