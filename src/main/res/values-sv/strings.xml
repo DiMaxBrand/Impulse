@@ -1182,4 +1182,5 @@
     <string name="pref_sync_system_dnd_summary">Ställ automatiskt in din status till \"Stör ej\" när Androids stör-ej-läge är aktivt.</string>
     <string name="pref_include_silent_modes">Inkludera tysta lägen</string>
     <string name="pref_include_silent_modes_summary">Signalera också \"Stör ej\" när aviseringar är avstängda, eller när telefonen är på vibrationsläget.</string>
+    <string name="presence_offline">Offline</string>
 </resources>
