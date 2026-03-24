@@ -13,6 +13,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
+import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.services.XmppConnectionService;
 import eu.siacs.conversations.xml.Namespace;
 import eu.siacs.conversations.xmpp.Jid;
@@ -191,6 +192,11 @@ public class EntityTimeManager extends AbstractManager {
     public static boolean isDifferentTimeZone(final ZonedDateTime zonedDateTime) {
         final var local = ZonedDateTime.now();
         return !local.getOffset().equals(zonedDateTime.getOffset());
+    }
+
+    public static boolean noRecentMessages(final Conversation conversation) {
+        final var duration = Duration.between(conversation.getLastReceived(), Instant.now());
+        return Duration.ofMinutes(15).compareTo(duration) < 0;
     }
 
     public sealed interface EntityTime {}
