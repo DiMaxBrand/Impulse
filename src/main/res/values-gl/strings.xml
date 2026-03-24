@@ -1167,4 +1167,5 @@
     <string name="pref_sync_system_dnd_summary">Establece automaticamente o estado a «Non Molestar» cando o modo Non Molestar de Android estea activo.</string>
     <string name="pref_include_silent_modes">Incluír modos silenciosos</string>
     <string name="pref_include_silent_modes_summary">Tamén indicar «Non Molestar» cando as notificacións estean silenciadas ou o teléfono en modo vibración.</string>
+    <string name="presence_offline">Sen conexión</string>
 </resources>
