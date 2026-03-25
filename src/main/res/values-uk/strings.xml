@@ -145,7 +145,7 @@
     <string name="account_status_offline">Поза мережею</string>
     <string name="account_status_unauthorized">Не авторизовано</string>
     <string name="account_status_not_found">Сервер не знайдено</string>
-    <string name="account_status_no_internet">Немає підключення до Інтернету</string>
+    <string name="account_status_no_internet">Немає Інтернету</string>
     <string name="account_status_regis_fail">Не вдалося зареєструватися</string>
     <string name="account_status_regis_conflict">Ім’я користувача вже використовується</string>
     <string name="account_status_regis_success">Реєстрацію виконано</string>
@@ -510,7 +510,7 @@
     <string name="presence_online">У мережі</string>
     <string name="presence_away">Відійшов</string>
     <string name="presence_xa">Недоступний</string>
-    <string name="presence_dnd">Зайнятий</string>
+    <string name="presence_dnd">Не турбувати</string>
     <string name="secure_password_generated">Створено надійний пароль</string>
     <string name="device_does_not_support_battery_op">Ваш пристрій не підтримує вимкнення оптимізації батареї</string>
     <string name="registration_please_wait">Реєстрація не вдалася: спробуйте ще раз пізніше</string>
@@ -1218,4 +1218,5 @@
     <string name="pref_include_silent_modes_summary">Також показувати «Не турбувати», коли на телефоні вимкнено сповіщення або активовано режим вібрації.</string>
     <string name="pref_include_silent_modes">Включно з безшумними режимами</string>
     <string name="presence_offline">Поза мережею</string>
+    <string name="rtp_state_no_internet">Немає підключення до Інтернету</string>
 </resources>
