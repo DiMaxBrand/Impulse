@@ -529,7 +529,7 @@
     <string name="presence_online">Conectat(ă)</string>
     <string name="presence_away">Plecat(ă)</string>
     <string name="presence_xa">Indisponibil(ă)</string>
-    <string name="presence_dnd">Ocupat(ă)</string>
+    <string name="presence_dnd">Nu deranjați</string>
     <string name="secure_password_generated">O parolă sigură a fost generată</string>
     <string name="device_does_not_support_battery_op">Dispozitivul dumneavoastră nu suportă dezactivarea optimizării de baterie pentru această aplicație</string>
     <string name="registration_please_wait">Înregistrare eșuată: Încercați din nou mai târziu</string>
@@ -658,7 +658,7 @@
     <string name="certificate_does_not_contain_jid">Certificatul nu conține o adresă XMPP</string>
     <string name="server_info_partial">parțial</string>
     <string name="attach_record_video">Înregistrare video</string>
-    <string name="copy_to_clipboard">Copiază în clipboard</string>
+    <string name="copy_to_clipboard">Copiază</string>
     <string name="message_copied_to_clipboard">Mesaj copiat în clipboard</string>
     <string name="message">Mesaj</string>
     <string name="private_messages_are_disabled">Mesajele private sunt dezactivate</string>
@@ -1189,4 +1189,5 @@
     <string name="pref_include_silent_modes">Include modurile silențioase</string>
     <string name="pref_include_silent_modes_summary">Semnalează \"Nu deranjați\" și atunci când notificările sunt dezactivate sau telefonul este pe vibrație.</string>
     <string name="presence_offline">Deconectat</string>
+    <string name="rtp_state_no_internet">Fără conexiune Internet</string>
 </resources>
