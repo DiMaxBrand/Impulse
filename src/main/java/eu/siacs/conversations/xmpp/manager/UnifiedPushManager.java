@@ -62,8 +62,12 @@ public class UnifiedPushManager extends AbstractManager {
                     }
                     final var endpoint = registered.getEndpoint();
                     final var expiration = registered.getExpiration();
-                    // TODO check that endpoint and expiration are non null and expiration is in the
-                    // future
+                    if (endpoint == null || expiration == null) {
+                        throw new IllegalStateException("endpoint or expiration missing");
+                    }
+                    if (expiration.isBefore(Instant.now())) {
+                        throw new IllegalStateException("Expiration is in the past");
+                    }
                     return new Registration(endpoint, expiration);
                 },
                 MoreExecutors.directExecutor());

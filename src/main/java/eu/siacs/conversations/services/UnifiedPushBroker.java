@@ -30,6 +30,7 @@ import eu.siacs.conversations.xmpp.manager.PresenceManager;
 import eu.siacs.conversations.xmpp.manager.UnifiedPushManager;
 import im.conversations.android.xmpp.model.up.Push;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -38,10 +39,11 @@ import java.util.concurrent.TimeUnit;
 
 public class UnifiedPushBroker {
 
-    // time to expiration before a renewal attempt is made (24 hours)
-    // TODO Change to Duration and maybe use 18h to not force implementations that use 24h for their
-    // expiration (However 24h is really, really low)
-    public static final long TIME_TO_RENEW = 86_400_000L;
+    // some UnifiedPush rewrite proxy implementations like ejabberd and prosody use 24h expires.
+    // This is too low (our reference implementation is 7 days) however they do exist, and we try to
+    // find a middle ground between essentially renewing immediately and giving us plenty of time to
+    // refresh our tokens after internet connectivity
+    public static final Duration TIME_TO_RENEW = Duration.ofHours(18);
 
     // interval for the 'cron tob' that attempts renewals for everything that expires is lass than
     // `TIME_TO_RENEW`
