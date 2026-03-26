@@ -529,7 +529,7 @@
     <string name="presence_online">Uppkopplad</string>
     <string name="presence_away">Borta</string>
     <string name="presence_xa">Ej tillgänglig</string>
-    <string name="presence_dnd">Upptagen</string>
+    <string name="presence_dnd">Stör ej</string>
     <string name="secure_password_generated">Ett säkert lösenord har genererats</string>
     <string name="device_does_not_support_battery_op">Din enhet har inte stöd för att välja bort batterioptimering</string>
     <string name="registration_please_wait">Registreringen misslyckades: Försök igen senare</string>
@@ -654,7 +654,7 @@
     <string name="certificate_does_not_contain_jid">Certifikatet innehåller ingen XMPP-adress</string>
     <string name="server_info_partial">delvis</string>
     <string name="attach_record_video">Spela in video</string>
-    <string name="copy_to_clipboard">Kopiera till urklipp</string>
+    <string name="copy_to_clipboard">Kopiera</string>
     <string name="message_copied_to_clipboard">Meddelandet har kopierats till urklipp</string>
     <string name="message">Meddelande</string>
     <string name="private_messages_are_disabled">Privata meddelanden är inaktiverade</string>
@@ -1183,4 +1183,5 @@
     <string name="pref_include_silent_modes">Inkludera tysta lägen</string>
     <string name="pref_include_silent_modes_summary">Signalera också \"Stör ej\" när aviseringar är avstängda, eller när telefonen är på vibrationsläget.</string>
     <string name="presence_offline">Offline</string>
+    <string name="rtp_state_no_internet">Ingen Internetförbindelse</string>
 </resources>
