@@ -524,7 +524,7 @@
     <string name="presence_online">Dostępny</string>
     <string name="presence_away">Zaraz wracam</string>
     <string name="presence_xa">Niedostępny</string>
-    <string name="presence_dnd">Zajęty</string>
+    <string name="presence_dnd">Nie przeszkadzać</string>
     <string name="secure_password_generated">Zostało wygenerowane bezpieczne hasło</string>
     <string name="device_does_not_support_battery_op">Twoje urządzenie nie pozwala na wyłączenie optymalizacji baterii</string>
     <string name="registration_please_wait">Rejestracja nie powiodła się: spróbuj później</string>
@@ -659,7 +659,7 @@
     <string name="certificate_does_not_contain_jid">Certyfikat nie zawiera żadnych adresów XMPP</string>
     <string name="server_info_partial">częściowo</string>
     <string name="attach_record_video">Nagraj film</string>
-    <string name="copy_to_clipboard">Skopiuj do schowka</string>
+    <string name="copy_to_clipboard">Skopiuj</string>
     <string name="message_copied_to_clipboard">Wiadomość skopiowana do schowka</string>
     <string name="message">Wiadomość</string>
     <string name="private_messages_are_disabled">Prywatne wiadomości są wyłączone</string>
@@ -1196,4 +1196,5 @@
     <string name="pref_include_silent_modes">Uwzględnij wyciszone tryby</string>
     <string name="pref_include_silent_modes_summary">Sygnalizuj „nie przeszkadzać” również gdy powiadomienia są wyciszone lub telefon ma tylko wibrować.</string>
     <string name="presence_offline">Rozłączony</string>
+    <string name="rtp_state_no_internet">Brak połączenia z Internetem</string>
 </resources>
