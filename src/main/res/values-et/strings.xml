@@ -644,7 +644,7 @@
     <string name="status_message">Olekuteade</string>
     <string name="presence_chat">Vestlemiseks vaba</string>
     <string name="presence_away">Eemal</string>
-    <string name="presence_dnd">Hõivatud</string>
+    <string name="presence_dnd">Ära sega</string>
     <string name="presence_online">Võrgus</string>
     <string name="use_own_provider">Kasuta minu valitud teenusepakkujat</string>
     <string name="pick_your_username">Vali oma kasutajanimi</string>
@@ -746,7 +746,7 @@
     <string name="yesterday">Eile</string>
     <string name="pref_validate_hostname">Kontrolli hosti nime DNSSECi abil</string>
     <string name="attach_record_video">Salvesta video</string>
-    <string name="copy_to_clipboard">Kopeeri lõikelauale</string>
+    <string name="copy_to_clipboard">Kopeeri</string>
     <string name="message_copied_to_clipboard">Sõnum on kopeeritud lõikelauale</string>
     <string name="message">Sõnum</string>
     <string name="private_messages_are_disabled">Privaatsõnumid pole kasutusel</string>
@@ -1188,4 +1188,5 @@
     <string name="pref_sync_system_dnd_summary">Kui Androidi „Ära sega mind“ olek on aktiivne, siis sünkrooni see ka rakendusse.</string>
     <string name="pref_include_silent_modes">Kaasa seadme vaiksed olekud</string>
     <string name="pref_include_silent_modes_summary">Märgi olekuks „Ära sega mind“ ka siis, kui teavitused on summutatud või nutiseade kasutab teavituseks vaid värinat.</string>
+    <string name="rtp_state_no_internet">Internetiühendus puudub</string>
 </resources>
