@@ -1,5 +1,11 @@
 # Changelog
 
+### Version 2.19.14
+
+* Show warning in chat if contact is in different time zone and it is night time for them
+* Show warning in chat if contact is DND
+* Refactor automatic DND handling (based on system DND)
+
 ### Version 2.19.13
 
 * Show hats in public conferences that have them

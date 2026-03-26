@@ -75,7 +75,7 @@ dependencies {
     implementation 'io.deepmedia.community:transcoder-android:0.11.2'
     implementation 'me.drakeet.support:toastcompat:1.1.0'
     implementation 'me.leolin:ShortcutBadger:1.1.22@aar'
-    implementation 'net.fellbaum:jemoji:1.7.5'
+    implementation 'net.fellbaum:jemoji:1.7.6'
     implementation 'org.bouncycastle:bcmail-jdk18on:1.83'
     implementation 'org.conscrypt:conscrypt-android:2.5.3'
     implementation 'org.hsluv:hsluv:1.0'
@@ -86,7 +86,7 @@ dependencies {
     implementation 'org.osmdroid:osmdroid-android:6.1.20'
     implementation 'org.whispersystems:signal-protocol-java:2.6.2'
     conversationsPlaystoreImplementation 'com.android.installreferrer:installreferrer:2.2'
-    quicksyImplementation 'io.michaelrocks:libphonenumber-android:9.0.22'
+    quicksyImplementation 'io.michaelrocks:libphonenumber-android:9.0.24'
     quicksyImplementation "dev.paseto:jpaseto-api:0.7.0"
     quicksyImplementation "dev.paseto:jpaseto-impl:0.7.0"
     quicksyImplementation "dev.paseto:jpaseto-gson:0.7.0"
@@ -114,8 +114,8 @@ android {
     defaultConfig {
         minSdkVersion 23
         targetSdkVersion 36
-        versionCode 42171
-        versionName "2.19.13"
+        versionCode 42172
+        versionName "2.19.14"
         archivesBaseName += "-$versionName"
         applicationId "eu.siacs.conversations"
         resValue "string", "applicationId", applicationId
