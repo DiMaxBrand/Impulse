@@ -263,9 +263,7 @@
     <string name="enable">Activează</string>
     <string name="conference_requires_password">Discuția de grup necesită o parolă</string>
     <string name="enter_password">Introduceți parola</string>
-    <string name="request_presence_updates">Vă rugăm să cereți mai întâi actualizări de prezență de la acest contact.
-\n
-\n<small>Acestea vor fi folosite pentru a determina ce aplicații folosește contactul dumneavoastră.</small>.</string>
+    <string name="request_presence_updates">Vă rugăm să cereți mai întâi actualizări de prezență de la acest contact.\n\n<small>Acestea vor fi folosite pentru a determina ce aplicații folosește contactul dumneavoastră</small>.</string>
     <string name="request_now">Cere acum</string>
     <string name="ignore">Ignora</string>
     <string name="without_mutual_presence_updates"><b>Atenție:</b> Trimițând aceasta fără actualizări de prezență reciproce ar putea produce probleme neprevazute.\n\n<small>Mergeți la \"Detalii contact\" pentru a verifica abonările la actualizările de prezență.</small></string>
@@ -385,10 +383,10 @@
     <string name="reply">Răspunde</string>
     <string name="mark_as_read">Marchează ca citit</string>
     <string name="pref_input_options">Opțiuni introducere text</string>
-    <string name="pref_enter_is_send">ENTER trimite</string>
+    <string name="pref_enter_is_send">Enter trimite</string>
     <string name="pref_enter_is_send_summary">Apasă tasta Enter pentru a trimite mesajul. Puteți mereu apăsa Ctrl-Enter pentru a trimite mesajul, chiar dacă această opțiune nu este activată.</string>
-    <string name="pref_display_enter_key">Arată tasta ENTER</string>
-    <string name="pref_display_enter_key_summary">Preschimbă tasta emoticon în ENTER</string>
+    <string name="pref_display_enter_key">Arată tasta Enter</string>
+    <string name="pref_display_enter_key_summary">Preschimbă tasta emoticon în Enter</string>
     <string name="audio">audio</string>
     <string name="video">video</string>
     <string name="image">imagine</string>
@@ -551,7 +549,7 @@
     <string name="pref_theme_dark">Întunecat</string>
     <string name="unable_to_connect_to_keychain">Nu s-a putut face conectarea la OpenKeychain</string>
     <string name="this_device_is_no_longer_in_use">Acest dispozitiv nu mai este în uz</string>
-    <string name="type_pc">PC</string>
+    <string name="type_pc">Calculator</string>
     <string name="type_phone">Telefon mobil</string>
     <string name="type_tablet">Tabletă</string>
     <string name="type_web">Navigator internet</string>
