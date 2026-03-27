@@ -522,7 +522,7 @@
     <string name="presence_online">Disponible</string>
     <string name="presence_away">Ausente</string>
     <string name="presence_xa">No disponible</string>
-    <string name="presence_dnd">Ocupado</string>
+    <string name="presence_dnd">No molestar</string>
     <string name="secure_password_generated">Se ha generado una contraseña segura</string>
     <string name="device_does_not_support_battery_op">Su dispositivo no admite desactivar la optimización de batería</string>
     <string name="registration_please_wait">El registro falló. Prueba de nuevo más tarde</string>
@@ -651,7 +651,7 @@
     <string name="certificate_does_not_contain_jid">El certificado no contiene una dirección XMPP completa </string>
     <string name="server_info_partial">Parcial</string>
     <string name="attach_record_video">Grabar video</string>
-    <string name="copy_to_clipboard">Copiar al portapapeles</string>
+    <string name="copy_to_clipboard">Copiar</string>
     <string name="message_copied_to_clipboard">Mensaje copiado en el portapapeles</string>
     <string name="message">Mensaje</string>
     <string name="private_messages_are_disabled">Los mensajes privados están desactivados</string>
@@ -1181,4 +1181,6 @@
     <string name="pref_include_silent_modes_summary">También indicar \"No interrumpir\" cuando las notificaciones están silenciadas o el teléfono, en vibrar.</string>
     <string name="pref_sync_system_dnd">Sincronizar con \"No interrumpir\"</string>
     <string name="pref_sync_system_dnd_summary">Establecer automáticamente tu estado a \"No interrumpir\" cuando el modo \"No interrumpir\" de Android esté activo.</string>
+    <string name="presence_offline">Sin conexión</string>
+    <string name="rtp_state_no_internet">Sin conexión a internet</string>
 </resources>
