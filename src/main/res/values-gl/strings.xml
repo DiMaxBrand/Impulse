@@ -272,7 +272,7 @@
     <string name="pref_expert_options">Axustes de experta</string>
     <string name="pref_expert_options_summary">Por favor ten tino con estos axustes</string>
     <string name="title_activity_about_x">Sobre %s</string>
-    <string name="title_pref_quiet_hours">Non molestar</string>
+    <string name="title_pref_quiet_hours">Horas de tranquilidade</string>
     <string name="title_pref_quiet_hours_start_time">Hora de inicio</string>
     <string name="title_pref_quiet_hours_end_time">Hora de finalización</string>
     <string name="title_pref_enable_quiet_hours">Establecer horario sen notificacións</string>
@@ -521,7 +521,7 @@
     <string name="presence_online">En liña</string>
     <string name="presence_away">Fóra</string>
     <string name="presence_xa">Non dipoñible</string>
-    <string name="presence_dnd">Ocupada</string>
+    <string name="presence_dnd">Non molestar</string>
     <string name="secure_password_generated">Xerouse un contrasinal seguro</string>
     <string name="device_does_not_support_battery_op">O teu dispositivo non permite evitar a optimización a batería</string>
     <string name="registration_please_wait">Fallo no rexistro: inténteo de novo</string>
@@ -644,7 +644,7 @@
     <string name="certificate_does_not_contain_jid">O certificado non contén un enderezo XMPP</string>
     <string name="server_info_partial">parcial</string>
     <string name="attach_record_video">Gravar vídeo</string>
-    <string name="copy_to_clipboard">Copiar ao portapapeis</string>
+    <string name="copy_to_clipboard">Copiar</string>
     <string name="message_copied_to_clipboard">Mensaxe copiada ao portapapeis</string>
     <string name="message">Mensaxe</string>
     <string name="private_messages_are_disabled">As mensaxes privadas están desactivadas</string>
@@ -1168,4 +1168,5 @@
     <string name="pref_include_silent_modes">Incluír modos silenciosos</string>
     <string name="pref_include_silent_modes_summary">Tamén indicar «Non Molestar» cando as notificacións estean silenciadas ou o teléfono en modo vibración.</string>
     <string name="presence_offline">Sen conexión</string>
+    <string name="rtp_state_no_internet">Sen conexión a internet</string>
 </resources>
