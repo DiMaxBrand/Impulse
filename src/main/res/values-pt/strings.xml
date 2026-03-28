@@ -355,7 +355,7 @@
     <string name="presence_online">Online</string>
     <string name="presence_away">Ausente</string>
     <string name="presence_xa">Não disponível</string>
-    <string name="presence_dnd">Ocupado</string>
+    <string name="presence_dnd">Não Perturbar</string>
     <string name="secure_password_generated">Foi gerada uma palavra-passe segura</string>
     <string name="device_does_not_support_battery_op">O seu dispositivo não suporta o desligamento da optimização da bateria</string>
     <string name="registration_please_wait">Registo falhou: Tente de novo mais tarde</string>
@@ -1174,4 +1174,5 @@
     <string name="pref_include_silent_modes">Incluir modos silenciosos</string>
     <string name="pref_include_silent_modes_summary">Também definir \"Não Perturbar\" quando as notificações estão silenciadas ou o telemóvel está em modo vibrar.</string>
     <string name="presence_offline">Offline</string>
+    <string name="rtp_state_no_internet">Sem conexão à internet</string>
 </resources>
