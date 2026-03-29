@@ -1171,4 +1171,6 @@
     <string name="pref_sync_system_dnd_summary">Configure seu status automaticamente para \"Não Perturbe\" quando o do dispositivo está ativo.</string>
     <string name="pref_include_silent_modes">Incluir modos silenciosos</string>
     <string name="pref_include_silent_modes_summary">Também indicar \"Não Perturbe\" quando as notificações forem silenciosas ou para vibrar.</string>
+    <string name="presence_offline">Off-line</string>
+    <string name="rtp_state_no_internet">Sem conexão à internet</string>
 </resources>
