@@ -7,7 +7,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:8.13.2'
-        classpath 'com.diffplug.spotless:spotless-plugin-gradle:8.2.1'
+        classpath 'com.diffplug.spotless:spotless-plugin-gradle:8.4.0'
     }
 }
 
@@ -61,7 +61,7 @@ dependencies {
     implementation 'androidx.sharetarget:sharetarget:1.2.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.2.0'
     implementation 'androidx.viewpager:viewpager:1.1.0'
-    implementation 'androidx.work:work-runtime:2.11.1'
+    implementation 'androidx.work:work-runtime:2.11.2'
     implementation 'com.github.open-keychain.open-keychain:openpgp-api:v5.7.1'
     implementation 'com.google.android.material:material:1.13.0'
     implementation 'com.google.guava:guava:33.5.0-android'
@@ -86,7 +86,7 @@ dependencies {
     implementation 'org.osmdroid:osmdroid-android:6.1.20'
     implementation 'org.whispersystems:signal-protocol-java:2.6.2'
     conversationsPlaystoreImplementation 'com.android.installreferrer:installreferrer:2.2'
-    quicksyImplementation 'io.michaelrocks:libphonenumber-android:9.0.24'
+    quicksyImplementation 'io.michaelrocks:libphonenumber-android:9.0.26'
     quicksyImplementation "dev.paseto:jpaseto-api:0.7.0"
     quicksyImplementation "dev.paseto:jpaseto-impl:0.7.0"
     quicksyImplementation "dev.paseto:jpaseto-gson:0.7.0"
