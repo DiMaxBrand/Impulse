@@ -35,6 +35,7 @@ import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.XEP0392Helper;
 import eu.siacs.conversations.xmpp.Jid;
 import im.conversations.android.model.DynamicTag;
+import im.conversations.android.xmpp.model.stanza.Presence;
 import java.util.List;
 import java.util.function.Consumer;
 import org.openintents.openpgp.util.OpenPgpUtils;
@@ -199,12 +200,18 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
     }
 
     private static void setBlocked(final TextView textView) {
-        final var context = textView.getContext();
         textView.setText(R.string.blocked);
+        setInverseSurface(textView);
+    }
+
+    private static void setInverseSurface(final TextView textView) {
+        textView.setTextColor(
+                MaterialColors.getColor(
+                        textView, com.google.android.material.R.attr.colorOnSurfaceInverse));
         textView.setBackgroundTintList(
                 ColorStateList.valueOf(
-                        MaterialColors.harmonizeWithPrimary(
-                                context, ContextCompat.getColor(context, R.color.gray_800))));
+                        MaterialColors.getColor(
+                                textView, com.google.android.material.R.attr.colorSurfaceInverse)));
     }
 
     private static void setRosterGroup(
@@ -218,6 +225,11 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
     }
 
     private static void setStatus(final TextView textView, final DynamicTag.Status status) {
+        if (status.availability() == Presence.Availability.OFFLINE) {
+            textView.setText(R.string.presence_offline);
+            setInverseSurface(textView);
+            return;
+        }
         final @StringRes int text;
         final @ColorRes int color =
                 switch (status.availability()) {
@@ -241,10 +253,7 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
                         text = R.string.presence_dnd;
                         yield R.color.red_800;
                     }
-                    case OFFLINE -> {
-                        text = R.string.presence_offline;
-                        yield R.color.gray_800;
-                    }
+                    case OFFLINE -> throw new AssertionError();
                 };
         textView.setText(text);
         textView.setBackgroundTintList(
