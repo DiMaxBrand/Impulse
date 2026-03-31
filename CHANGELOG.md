@@ -1,5 +1,9 @@
 # Changelog
 
+### Version 2.19.15
+
+* Fix Quicksy registration on older devices
+
 ### Version 2.19.14
 
 * Show warning in chat if contact is in different time zone and it is night time for them
