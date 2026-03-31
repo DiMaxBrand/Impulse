@@ -1,3 +1,3 @@
-* Zeige eine Warnung im Chat wenn ein Kontakt in einer anderen Zeitzone ist und es dort nachts ist
-* Zeige eine Warnung im Chat wenn ein Kontakt auf „nicht stören“ ist
-* Überarbeitung der automatischen „nicht-stören“-Behandlung (basierend auf „nicht stören“ des Systems)
+* Anzeige einer Warnung im Chat, wenn sich der Kontakt in einer anderen Zeitzone befindet und dort gerade Nacht ist
+* Anzeige einer Warnung im Chat, wenn der Kontakt den „Bitte nicht stören“-Modus aktiviert hat
+* Überarbeitung der automatischen „Nicht stören“-Verarbeitung (basierend auf dem systemweiten „Bitte nicht stören“-Modus)
