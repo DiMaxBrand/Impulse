@@ -521,7 +521,7 @@
     <string name="presence_online">Online</string>
     <string name="presence_away">Weg</string>
     <string name="presence_xa">Nicht verfügbar</string>
-    <string name="presence_dnd">Bitte nicht stören</string>
+    <string name="presence_dnd">Nicht stören</string>
     <string name="secure_password_generated">Ein sicheres Passwort wurde erstellt</string>
     <string name="device_does_not_support_battery_op">Dein Gerät unterstützt nicht das Ausschalten der Akkuoptimierung</string>
     <string name="registration_please_wait">Registrierung fehlgeschlagen: Bitte später versuchen</string>
@@ -1163,8 +1163,8 @@
     <string name="pref_entity_time_summary">Teile deine aktuelle Uhrzeit mit deinen Kontakten, um im Gegenzug ihre Ortszeit zu erfahren.</string>
     <string name="pref_entity_time">Ortszeit teilen</string>
     <string name="contact_has_paused_their_notifications">%s hat seine Benachrichtigungen pausiert</string>
-    <string name="pref_sync_system_dnd_summary">Deinen Status automatisch auf „Nicht stören“ setzen, wenn der „Nicht stören“-Modus von Android aktiv ist.</string>
-    <string name="pref_sync_system_dnd">Synchronisieren des „Nicht stören“-Modus</string>
+    <string name="pref_sync_system_dnd_summary">Deinen Status automatisch auf „Nicht stören“ setzen, wenn der „Bitte nicht stören“-Modus von Android aktiv ist.</string>
+    <string name="pref_sync_system_dnd">Synchronisieren des „Bitte nicht stören“-Modus</string>
     <string name="pref_include_silent_modes">Lautlos-Modus einbeziehen</string>
     <string name="pref_include_silent_modes_summary">Zusätzlich wird „Nicht stören“ angezeigt, wenn Benachrichtigungen stummgeschaltet sind oder das Telefon auf Vibration eingestellt ist.</string>
     <string name="presence_offline">Offline</string>
