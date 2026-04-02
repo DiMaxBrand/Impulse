@@ -1173,4 +1173,6 @@
     <string name="pref_include_silent_modes_summary">Também indicar \"Não Perturbe\" quando as notificações forem silenciosas ou para vibrar.</string>
     <string name="presence_offline">Off-line</string>
     <string name="rtp_state_no_internet">Sem conexão à internet</string>
+    <string name="server_info_stanzas_rx_tx">Estâncias (rx/tx)</string>
+    <string name="server_info_stanzas_rx_tx_push">Estâncias (rx/tx/push)</string>
 </resources>
