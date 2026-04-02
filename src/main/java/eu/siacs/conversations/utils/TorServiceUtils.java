@@ -7,9 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.widget.Toast;
-
 import eu.siacs.conversations.R;
-import me.drakeet.support.toast.ToastCompat;
 
 public class TorServiceUtils {
 
@@ -36,9 +34,7 @@ public class TorServiceUtils {
         try {
             activity.startActivityForResult(INSTALL_INTENT, requestCode);
         } catch (final ActivityNotFoundException e) {
-            ToastCompat.makeText(
-                            activity, R.string.no_market_app_installed, ToastCompat.LENGTH_SHORT)
-                    .show();
+            Toast.makeText(activity, R.string.no_market_app_installed, Toast.LENGTH_SHORT).show();
         }
     }
 
