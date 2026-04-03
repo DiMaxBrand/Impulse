@@ -53,17 +53,21 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.common.collect.Iterables;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import de.gultsch.common.MiniUri;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.crypto.OmemoSetting;
 import eu.siacs.conversations.databinding.ActivityConversationsBinding;
+import eu.siacs.conversations.entities.Account;
 import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Conversational;
@@ -82,6 +86,7 @@ import eu.siacs.conversations.ui.widget.AccountPickerDialog;
 import eu.siacs.conversations.utils.ExceptionHelper;
 import eu.siacs.conversations.utils.UIHelper;
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist;
+import eu.siacs.conversations.xmpp.manager.EasyOnboardingManager;
 import java.util.Arrays;
 import java.util.List;
 import org.openintents.openpgp.util.OpenPgpApi;
@@ -539,7 +544,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                 requestPermissionAndScanQrCode();
                 return true;
             case R.id.action_show_qr_code:
-                new AccountPickerDialog.Enabled(this).pick(a -> showQrCode(a.getShareableUri()));
+                new AccountPickerDialog.Enabled(this).pick(this::showQrCode);
                 return true;
             case R.id.action_search_all_conversations:
                 startActivity(new Intent(this, SearchActivity.class));
@@ -555,6 +560,26 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                 return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showQrCode(final Account account) {
+        final var connection = account.getXmppConnection();
+        final var manager = connection.getManager(EasyOnboardingManager.class);
+        final var future = manager.inviteOrFallback();
+        Futures.addCallback(
+                future,
+                new FutureCallback<>() {
+                    @Override
+                    public void onSuccess(final MiniUri.Xmpp result) {
+                        showQrCode(result);
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Throwable t) {
+                        Log.e(Config.LOGTAG, "could not fetch invite uri", t);
+                    }
+                },
+                ContextCompat.getMainExecutor(this));
     }
 
     @Override
