@@ -269,6 +269,7 @@ android {
     }
     buildFeatures {
         buildConfig true
+        resValues = true
     }
 
     android.applicationVariants.configureEach { variant ->
