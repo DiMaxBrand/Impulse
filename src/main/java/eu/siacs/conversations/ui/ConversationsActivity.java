@@ -566,11 +566,19 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         final var connection = account.getXmppConnection();
         final var manager = connection.getManager(EasyOnboardingManager.class);
         final var future = manager.inviteOrFallback();
+        final Toast toast;
+        if (future.isDone()) {
+            toast = null;
+        } else {
+            toast = Toast.makeText(this, R.string.please_wait, Toast.LENGTH_LONG);
+            toast.show();
+        }
         Futures.addCallback(
                 future,
                 new FutureCallback<>() {
                     @Override
                     public void onSuccess(final MiniUri.Xmpp result) {
+                        Toasts.hide(toast);
                         showQrCode(result);
                     }
 
