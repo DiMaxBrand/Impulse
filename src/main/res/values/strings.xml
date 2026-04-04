@@ -877,6 +877,7 @@
     <string name="search_participants">Search participants</string>
     <string name="file_too_large">File too large</string>
     <string name="attach">Attach</string>
+    <string name="send">Send</string>
     <string name="discover_channels">Discover channels</string>
     <string name="search_channels">Search channels</string>
     <string name="channel_discovery_opt_in_title">Possible privacy violation!</string>
@@ -1158,6 +1159,8 @@
     <string name="pref_sync_system_dnd_summary">Automatically set your status to \"Do Not Disturb\" when Android\'s DND mode is active.</string>
     <string name="pref_include_silent_modes">Include silent modes</string>
     <string name="pref_include_silent_modes_summary">Also signal \"Do Not Disturb\" when notifications are muted or the phone is on vibrate.</string>
+    <string name="pref_auto_send_recording">Auto-send recordings</string>
+    <string name="pref_auto_send_recording_summary">Send voice messages automatically when you finish recording.</string>
     <plurals name="delete_n_messages">
         <item quantity="one">Delete %d message</item>
         <item quantity="other">Delete %d messages</item>

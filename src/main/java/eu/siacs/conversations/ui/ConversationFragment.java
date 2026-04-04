@@ -1105,15 +1105,22 @@ public class ConversationFragment extends XmppFragment
                 break;
             case ATTACHMENT_CHOICE_CHOOSE_FILE:
             case ATTACHMENT_CHOICE_RECORD_VIDEO:
-            case ATTACHMENT_CHOICE_RECORD_VOICE:
-                final Attachment.Type type =
-                        requestCode == ATTACHMENT_CHOICE_RECORD_VOICE
-                                ? Attachment.Type.RECORDING
-                                : Attachment.Type.FILE;
                 final List<Attachment> fileUris =
-                        Attachment.extractAttachments(requireContext(), data, type);
+                        Attachment.extractAttachments(requireContext(), data, Attachment.Type.FILE);
                 mediaPreviewAdapter.addMediaPreviews(fileUris);
                 toggleInputMethod();
+                break;
+            case ATTACHMENT_CHOICE_RECORD_VOICE:
+                final List<Attachment> recordings =
+                        Attachment.extractAttachments(
+                                requireContext(), data, Attachment.Type.RECORDING);
+                final boolean autoSendRecording =
+                        data.getBooleanExtra(RecordingActivity.EXTRA_AUTO_SEND_RECORDING, false);
+                mediaPreviewAdapter.addMediaPreviews(recordings);
+                toggleInputMethod();
+                if (autoSendRecording) {
+                    commitAttachments();
+                }
                 break;
             case ATTACHMENT_CHOICE_LOCATION:
                 final double latitude = data.getDoubleExtra("latitude", 0);

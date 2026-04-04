@@ -18,6 +18,12 @@
             android:key="video_compression"
             android:title="@string/pref_video_compression"
             app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            android:defaultValue="@bool/auto_send_recording"
+            android:icon="@drawable/ic_mic_24dp"
+            android:key="auto_send_recording"
+            android:summary="@string/pref_auto_send_recording_summary"
+            android:title="@string/pref_auto_send_recording" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/pref_category_receiving">
         <ListPreference

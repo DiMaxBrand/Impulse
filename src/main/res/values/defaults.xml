@@ -51,5 +51,6 @@
     <bool name="require_channel_binding">false</bool>
     <bool name="require_tls_v1_3">true</bool>
     <bool name="call_integration">true</bool>
+    <bool name="auto_send_recording">true</bool>
     <bool name="align_start">false</bool>
 </resources>

@@ -69,6 +69,7 @@ public class AppSettings {
     public static final String BACKUP_LOCATION = "backup_location";
     public static final String AUTO_ACCEPT_FILE_SIZE = "auto_accept_file_size";
     public static final String VIDEO_COMPRESSION = "video_compression";
+    public static final String AUTO_SEND_RECORDING = "auto_send_recording";
 
     private static final String ACCEPT_INVITES_FROM_STRANGERS = "accept_invites_from_strangers";
     private static final String NOTIFICATIONS_FROM_STRANGERS = "notifications_from_strangers";
@@ -155,6 +156,10 @@ public class AppSettings {
 
     public boolean isShowAvatarsAccounts() {
         return getBooleanPreference(SHOW_AVATARS_ACCOUNTS, R.bool.show_avatars_accounts);
+    }
+
+    public boolean isAutoSendRecording() {
+        return getBooleanPreference(AUTO_SEND_RECORDING, R.bool.auto_send_recording);
     }
 
     public boolean isCallIntegration() {
