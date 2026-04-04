@@ -2,7 +2,6 @@ package eu.siacs.conversations.services;
 
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.util.Log;
@@ -18,6 +17,7 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;
 import com.google.common.primitives.Longs;
 import eu.siacs.conversations.Config;
+import eu.siacs.conversations.android.Device;
 import eu.siacs.conversations.android.PhoneNumberContact;
 import eu.siacs.conversations.crypto.sasl.Plain;
 import eu.siacs.conversations.entities.Account;
@@ -153,10 +153,17 @@ public class QuickConversationsService extends AbstractQuickConversationsService
     private void requestVerification(final Phonenumber.PhoneNumber phoneNumber) {
         final var deviceId =
                 new DeviceIdentification(
-                        getInstallationId(),
-                        HttpConnectionManager.getUserAgent(),
-                        String.format("%s %s", Build.MANUFACTURER, Build.MODEL));
+                        getInstallationId(), HttpConnectionManager.getUserAgent(), getDevice());
         requestVerification(phoneNumber, deviceId);
+    }
+
+    private String getDevice() {
+        final var device = new Device(this.service);
+        if (device.isPhysicalDevice()) {
+            return device.getDeviceName();
+        } else {
+            return "Emulator";
+        }
     }
 
     private void requestVerification(
