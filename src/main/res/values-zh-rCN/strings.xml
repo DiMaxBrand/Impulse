@@ -484,7 +484,7 @@
     <string name="shared_images_with_x">图片已分享给 %s</string>
     <string name="shared_text_with_x">文本已分享给 %s</string>
     <string name="no_storage_permission">授予 %1$s 访问外部存储的权限</string>
-    <string name="no_camera_permission">授予 %1$s 相机使用权限</string>
+    <string name="no_camera_permission">授予 %1$s 摄像头使用权限</string>
     <string name="sync_with_contacts">联系人列表集成</string>
     <string name="sync_with_contacts_long">%1$s 在您的设备上本地处理您的联系人列表，以向您显示 XMPP 上匹配联系人的名称和个人资料照片。\n\n任何联系人列表数据都不会离开您的设备！</string>
     <string name="notify_on_all_messages">通知所有消息</string>
@@ -1156,4 +1156,7 @@
     <string name="pref_include_silent_modes_summary">当通知被静音或手机处于振动模式时，也将您的状态设置为忙碌。</string>
     <string name="presence_offline">离线</string>
     <string name="rtp_state_no_internet">未连接到互联网</string>
+    <string name="send">发送</string>
+    <string name="pref_auto_send_recording">自动发送录制内容</string>
+    <string name="pref_auto_send_recording_summary">录制完成后自动发送语音消息。</string>
 </resources>
