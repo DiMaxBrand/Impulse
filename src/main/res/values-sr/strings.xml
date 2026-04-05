@@ -1205,4 +1205,7 @@
     <string name="pref_include_silent_modes_summary">Такође шаљи \"Не узнемиравај\" и када су обавештења утишана или је телефон на вибрацији.</string>
     <string name="presence_offline">Ван мреже</string>
     <string name="rtp_state_no_internet">Нема интернета</string>
+    <string name="send">Пошаљи</string>
+    <string name="pref_auto_send_recording">Аутоматски шаљи снимке</string>
+    <string name="pref_auto_send_recording_summary">Шаљи гласовне поруке аутоматски кад завршиш снимање.</string>
 </resources>
