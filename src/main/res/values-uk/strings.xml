@@ -1219,4 +1219,7 @@
     <string name="pref_include_silent_modes">Включно з безшумними режимами</string>
     <string name="presence_offline">Поза мережею</string>
     <string name="rtp_state_no_internet">Немає підключення до Інтернету</string>
+    <string name="send">Надіслати</string>
+    <string name="pref_auto_send_recording_summary">Надсилати голосові повідомлення автоматично після завершення запису.</string>
+    <string name="pref_auto_send_recording">Автоматичне надсилання записів</string>
 </resources>
