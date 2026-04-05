@@ -295,7 +295,7 @@
     <string name="check_x_filesize">%sgröße prüfen</string>
     <string name="check_x_filesize_on_host">%1$sgröße auf %2$s prüfen</string>
     <string name="message_options">Nachrichtenoptionen</string>
-    <string name="quote">Zitat</string>
+    <string name="quote">Zitieren</string>
     <string name="paste_as_quote">Als Zitat einfügen</string>
     <string name="copy_original_url">Original-URL kopieren</string>
     <string name="send_again">Erneut senden</string>
@@ -1169,4 +1169,7 @@
     <string name="pref_include_silent_modes_summary">Zusätzlich wird „Nicht stören“ angezeigt, wenn Benachrichtigungen stummgeschaltet sind oder das Telefon auf Vibration eingestellt ist.</string>
     <string name="presence_offline">Offline</string>
     <string name="rtp_state_no_internet">Keine Internetverbindung</string>
+    <string name="send">Senden</string>
+    <string name="pref_auto_send_recording">Sprachnachrichten direkt senden</string>
+    <string name="pref_auto_send_recording_summary">Sprachnachrichten nach dem Abschluss der Aufnahme direkt versenden.</string>
 </resources>
