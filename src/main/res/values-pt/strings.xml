@@ -1177,4 +1177,5 @@
     <string name="rtp_state_no_internet">Sem conexão à internet</string>
     <string name="send">Enviar</string>
     <string name="pref_auto_send_recording">Auto enviar gravações</string>
+    <string name="pref_auto_send_recording_summary">Envia mensagens de voz automaticamente quando acaba de gravar.</string>
 </resources>
