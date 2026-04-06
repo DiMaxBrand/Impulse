@@ -1220,4 +1220,7 @@
     <string name="pref_include_silent_modes_summary">Также устанавливать статус \"Не беспокоить\" в приложении, когда на устройстве отключены уведомления или оно находится в режиме вибрации</string>
     <string name="presence_offline">Не в сети</string>
     <string name="rtp_state_no_internet">Нет подключения к интернету</string>
+    <string name="send">Отправить</string>
+    <string name="pref_auto_send_recording_summary">Автоматически отправлять голосовые сообщения после завершения записи</string>
+    <string name="pref_auto_send_recording">Автоматическая отправка записей</string>
 </resources>
