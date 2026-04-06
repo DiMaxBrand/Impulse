@@ -9,4 +9,5 @@
     <string name="unable_to_verify_server_identity">No se ha podido verificar la identidad del servidor.</string>
     <string name="unknown_security_error">Error de seguridad desconocido.</string>
     <string name="timeout_while_connecting_to_server">Se ha superado el tiempo máximo de espera conectando al servidor.</string>
+    <string name="use_physical_device">Por favor, usa un dispositivo físico para registrar tu cuenta.</string>
 </resources>
