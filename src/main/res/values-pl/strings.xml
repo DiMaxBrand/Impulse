@@ -1197,4 +1197,7 @@
     <string name="pref_include_silent_modes_summary">Sygnalizuj „nie przeszkadzać” również gdy powiadomienia są wyciszone lub telefon ma tylko wibrować.</string>
     <string name="presence_offline">Rozłączony</string>
     <string name="rtp_state_no_internet">Brak połączenia z Internetem</string>
+    <string name="send">Wyślij</string>
+    <string name="pref_auto_send_recording">Automatycznie wysyłaj nagrania</string>
+    <string name="pref_auto_send_recording_summary">Wysyła wiadomości głosowe automatycznie gdy zakończysz nagrywanie.</string>
 </resources>
