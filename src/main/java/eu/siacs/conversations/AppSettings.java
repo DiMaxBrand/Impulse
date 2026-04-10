@@ -44,6 +44,8 @@ public class AppSettings {
     public static final String ALLOW_SCREENSHOTS = "allow_screenshots";
     public static final String RINGTONE = "call_ringtone";
     public static final String DISPLAY_ENTER_KEY = "display_enter_key";
+    public static final String ENTER_IS_SEND = "enter_is_send";
+    public static final String SCROLL_TO_BOTTOM = "scroll_to_bottom";
 
     public static final String READ_RECEIPTS = "confirm_messages";
     public static final String ALLOW_MESSAGE_CORRECTION = "allow_message_correction";
@@ -342,6 +344,14 @@ public class AppSettings {
 
     public boolean isDisplayEnterKey() {
         return getBooleanPreference(DISPLAY_ENTER_KEY, R.bool.display_enter_key);
+    }
+
+    public boolean isEnterSend() {
+        return getBooleanPreference(ENTER_IS_SEND, R.bool.enter_is_send);
+    }
+
+    public boolean isScrollToBottom() {
+        return getBooleanPreference(SCROLL_TO_BOTTOM, R.bool.scroll_to_bottom);
     }
 
     public void setSendCrashReports(boolean value) {

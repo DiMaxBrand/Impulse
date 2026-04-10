@@ -1433,7 +1433,7 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         void onContactPictureLongClicked(View v, Message message);
     }
 
-    private static void setBackgroundTint(final LinearLayout view, final BubbleColor bubbleColor) {
+    public static void setBackgroundTint(final LinearLayout view, final BubbleColor bubbleColor) {
         view.setBackgroundTintList(bubbleToColorStateList(view, bubbleColor));
     }
 
@@ -1502,7 +1502,7 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         return MaterialColors.getColor(view, colorAttributeResId);
     }
 
-    private static @ColorInt int bubbleToOnSurfaceColor(
+    public static @ColorInt int bubbleToOnSurfaceColor(
             final View view, final BubbleColor bubbleColor) {
         return MaterialColors.getColor(view, bubbleToOnSurface(bubbleColor));
     }
