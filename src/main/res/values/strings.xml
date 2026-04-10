@@ -467,6 +467,7 @@
     <string name="account_status_host_unknown">Not responsible for domain</string>
     <string name="server_info_broken">Broken</string>
     <string name="pref_presence_settings">Availability</string>
+    <string name="pref_presence_settings_summary">Away on device lock, Sync system DND</string>
     <string name="pref_away_when_screen_off">Away when device is locked</string>
     <string name="pref_away_when_screen_off_summary">Show as Away when the device is locked</string>
     <string name="pref_show_connection_options">Hostname &amp; Port</string>
@@ -1054,9 +1055,9 @@
     <string name="detect_mim_summary">Channel binding can detect some machine-in-the-middle attacks</string>
     <string name="pref_category_server_connection">Server connection</string>
     <string name="pref_category_operating_system">Operating System</string>
-    <string name="pref_privacy_summary">Typing notifications, Last Seen, Availability</string>
+    <string name="pref_privacy_summary">Typing notifications, Last Seen, P2P Relays</string>
     <string name="pref_connection_summary">Hostname &amp; Port, Tor</string>
-    <string name="pref_connection_summary_w_cd">Hostname &amp; Port, Tor, P2P, Channel Discovery</string>
+    <string name="pref_connection_summary_w_cd">Hostname &amp; Port, Tor, Channel Discovery</string>
     <string name="pref_keyboard_options">Keyboard</string>
     <string name="pref_category_engagement_notifications">Engagement notifications</string>
     <string name="pref_category_application">Application</string>

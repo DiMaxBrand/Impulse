@@ -6,20 +6,22 @@ import androidx.annotation.Nullable;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.R;
 
-public class PrivacySettingsFragment extends XmppPreferenceFragment {
+public class AvailabilitySettingsFragment extends XmppPreferenceFragment {
 
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
-        setPreferencesFromResource(R.xml.preferences_privacy, rootKey);
+        setPreferencesFromResource(R.xml.preferences_availability, rootKey);
     }
 
     @Override
     protected void onSharedPreferenceChanged(@NonNull String key) {
         super.onSharedPreferenceChanged(key);
         switch (key) {
-            case AppSettings.READ_RECEIPTS,
-                    AppSettings.BROADCAST_LAST_ACTIVITY,
-                    AppSettings.ALLOW_MESSAGE_CORRECTION ->
+            case AppSettings.AWAY_WHEN_SCREEN_IS_OFF, AppSettings.MANUALLY_CHANGE_PRESENCE -> {
+                requireService().toggleScreenEventReceiver();
+                requireService().refreshAllPresences();
+            }
+            case AppSettings.DND_SYNC_SYSTEM, AppSettings.DND_INCLUDE_SILENT_MODES ->
                     requireService().refreshAllPresences();
         }
     }
@@ -27,6 +29,6 @@ public class PrivacySettingsFragment extends XmppPreferenceFragment {
     @Override
     public void onStart() {
         super.onStart();
-        requireActivity().setTitle(R.string.pref_privacy);
+        requireActivity().setTitle(R.string.pref_presence_settings);
     }
 }
