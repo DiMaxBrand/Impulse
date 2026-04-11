@@ -5,14 +5,26 @@ import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy;
 
 public final class TranscoderStrategies {
 
+    public static final DefaultVideoStrategy VIDEO_1080P = DefaultVideoStrategy.atMost(1080)
+            .bitRate(4L * 1000 * 1000)
+            .frameRate(30)
+            .keyFrameInterval(3F)
+            .build();
+
     public static final DefaultVideoStrategy VIDEO_720P = DefaultVideoStrategy.atMost(720)
             .bitRate(2L * 1000 * 1000)
             .frameRate(30)
             .keyFrameInterval(3F)
             .build();
-    
-    public static final DefaultVideoStrategy VIDEO_360P = DefaultVideoStrategy.atMost(360)
+
+    public static final DefaultVideoStrategy VIDEO_480P = DefaultVideoStrategy.atMost(480)
             .bitRate(1000 * 1000)
+            .frameRate(30)
+            .keyFrameInterval(3F)
+            .build();
+
+    public static final DefaultVideoStrategy VIDEO_360P = DefaultVideoStrategy.atMost(360)
+            .bitRate(500 * 1000)
             .frameRate(30)
             .keyFrameInterval(3F)
             .build();
@@ -27,7 +39,7 @@ public final class TranscoderStrategies {
             .build();
 
     public static final DefaultAudioStrategy AUDIO_MQ = DefaultAudioStrategy.builder()
-            .bitRate(128 * 1000)
+            .bitRate(96 * 1000)
             .channels(2)
             .sampleRate(DefaultAudioStrategy.SAMPLE_RATE_AS_INPUT)
             .build();

@@ -392,7 +392,7 @@ public class AppSettings {
     }
 
     public boolean isCompressVideo() {
-        return Arrays.asList("720", "360").contains(getVideoCompression());
+        return Arrays.asList("1080", "720", "480", "360").contains(getVideoCompression());
     }
 
     public synchronized void resetInstallationId() {

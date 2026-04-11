@@ -780,8 +780,10 @@
     <string name="security_violation_not_attaching_file">File omitted due to security violation.</string>
     <string name="pref_video_compression">Video Quality</string>
     <string name="pref_video_compression_summary">Lower quality means smaller files</string>
-    <string name="video_360p">Medium (360p)</string>
+    <string name="video_360p">Low (360p)</string>
+    <string name="video_480p">Medium (480p)</string>
     <string name="video_720p">High (720p)</string>
+    <string name="video_1080p">Very high (1080p)</string>
     <string name="cancelled">cancelled</string>
     <string name="already_drafting_message">You are already drafting a message.</string>
     <string name="feature_not_implemented">Feature not implemented</string>
