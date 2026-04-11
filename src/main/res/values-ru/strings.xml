@@ -1063,7 +1063,7 @@
     <string name="pref_category_e2ee">Сквозное шифрование</string>
     <string name="pref_title_trust_system_ca_store">Удостоверяющие центры</string>
     <string name="pref_category_operating_system">Операционная система</string>
-    <string name="pref_privacy_summary">Индикация ввода, последняя активность, доступность</string>
+    <string name="pref_privacy_summary">Индикация ввода, последняя активность, P2P</string>
     <string name="pref_connection_summary">Имя хоста и порт, Tor</string>
     <string name="pref_category_application">Приложение</string>
     <string name="pref_category_interaction">Взаимодействие</string>
@@ -1074,7 +1074,7 @@
     <string name="send_encrypted_message">Отправить зашифрованное сообщение</string>
     <string name="corresponding_chats_closed">Соответствующие беседы архивированы.</string>
     <string name="pref_title_trust_system_ca_store_summary">Доверять сертификатам системных УЦ</string>
-    <string name="pref_connection_summary_w_cd">Имя хоста и порт, Tor, P2P, обзор каналов</string>
+    <string name="pref_connection_summary_w_cd">Имя хоста и порт, Tor, обзор каналов</string>
     <string name="allow_private_messages">Разрешить личные сообщения</string>
     <string name="pref_accept_invites_from_strangers_summary">Принимать приглашения в конференции от неизвестных</string>
     <string name="unsupported_operation">Операция не поддерживается</string>
@@ -1223,4 +1223,5 @@
     <string name="send">Отправить</string>
     <string name="pref_auto_send_recording_summary">Автоматически отправлять голосовые сообщения после завершения записи</string>
     <string name="pref_auto_send_recording">Автоматическая отправка записей</string>
+    <string name="pref_presence_settings_summary">\"Отошёл\" при блокировке экрана, синхронизация с системным режимом DND</string>
 </resources>
