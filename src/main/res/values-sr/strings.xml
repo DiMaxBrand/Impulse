@@ -1076,9 +1076,9 @@
     <string name="pref_category_interaction">Интеракција</string>
     <string name="pref_category_on_this_device">На уређају</string>
     <string name="pref_up_long_summary">Када ради као UnifiedPush дистрибутер, трајна, поуздана и економична XMPP веза ће бити употребљена да “пробуди” другу UnifiedPush-компатибилну апликацију, попут Tusky, Ltt.rs, FluffyChat и других.</string>
-    <string name="pref_privacy_summary">Индикатори куцања, Последњи пут виђен/а, Присутност</string>
+    <string name="pref_privacy_summary">Индикатори куцања, Последњи пут виђен/а, P2P релеј</string>
     <string name="pref_connection_summary">Назив сервера и порт, Тор</string>
-    <string name="pref_connection_summary_w_cd">Назив сервера и порт, Тор, P2P, Проналажење канала</string>
+    <string name="pref_connection_summary_w_cd">Назив сервера и порт, Тор, Проналажење канала</string>
     <string name="pref_category_engagement_notifications">Обавештења о учествовању</string>
     <string name="pref_category_application">Апликација</string>
     <string name="pref_large_font_summary">Повећај величину слова у порукама</string>
@@ -1208,4 +1208,5 @@
     <string name="send">Пошаљи</string>
     <string name="pref_auto_send_recording">Аутоматски шаљи снимке</string>
     <string name="pref_auto_send_recording_summary">Шаљи гласовне поруке аутоматски кад завршиш снимање.</string>
+    <string name="pref_presence_settings_summary">Одсутност при закључаном екрану, синхронизација са DND</string>
 </resources>
