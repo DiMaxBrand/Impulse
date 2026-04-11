@@ -1010,7 +1010,7 @@
     <string name="pref_title_trust_system_ca_store">Autoridades de certificación</string>
     <string name="pref_category_operating_system">Sistema operativo</string>
     <string name="pref_connection_summary">Servidor e Porto, Tor</string>
-    <string name="pref_connection_summary_w_cd">Servidor e Porto, Tor, P2P, Descubrimento de Canles</string>
+    <string name="pref_connection_summary_w_cd">Servidor e Porto, Tor, Descubrimento de Canles</string>
     <string name="pref_keyboard_options">Teclado</string>
     <string name="pref_category_application">Aplicación</string>
     <string name="pref_category_engagement_notifications">Notificacións de uso</string>
@@ -1028,7 +1028,7 @@
     <string name="pref_title_trust_system_ca_store_summary">Confiar nos certificados das CA do sistema</string>
     <string name="pref_title_interface">Interface</string>
     <string name="pref_notifications_summary">Período de graza, Ton, Vibración, Estraños</string>
-    <string name="pref_privacy_summary">Notificacións de escritura, Último uso, Dispoñibilidade</string>
+    <string name="pref_privacy_summary">Notificacións de escritura, Último uso, Relés P2P</string>
     <string name="detect_mim_summary">A vinculación de canles pode detectar algúns ataques tipo máquina-interposta</string>
     <string name="detect_mim">Requerir Vinculación de Canles</string>
     <string name="send_encrypted_message">Enviar mensaxe cifrada</string>
@@ -1169,4 +1169,8 @@
     <string name="pref_include_silent_modes_summary">Tamén indicar «Non Molestar» cando as notificacións estean silenciadas ou o teléfono en modo vibración.</string>
     <string name="presence_offline">Sen conexión</string>
     <string name="rtp_state_no_internet">Sen conexión a internet</string>
+    <string name="pref_presence_settings_summary">Non dispoñible se bloqueado, Sincr. con Non molestar</string>
+    <string name="send">Enviar</string>
+    <string name="pref_auto_send_recording">Envío automát. de gravacións</string>
+    <string name="pref_auto_send_recording_summary">Enviar as mensaxes de voz automaticamente cando finalizas a gravación.</string>
 </resources>
