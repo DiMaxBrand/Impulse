@@ -1081,9 +1081,9 @@
     <string name="pref_chat_bubbles_summary">Cor de fundo, Tamanho do texto, Avatares</string>
     <string name="empty_conversations_list_hint">Quando começar uma nova conversa, ela estará aqui</string>
     <string name="pref_category_operating_system">Sistema Operativo</string>
-    <string name="pref_privacy_summary">Notificações de escrita, Última vez visto, Disponibilidade</string>
+    <string name="pref_privacy_summary">Notificações de escrita, Última vez visto, Relays P2P</string>
     <string name="pref_connection_summary">Nome do Host &amp; Porta, Tor</string>
-    <string name="pref_connection_summary_w_cd">Nome do Host &amp; Porta, Tor, P2P, Descoberta de Canais</string>
+    <string name="pref_connection_summary_w_cd">Nome do Host &amp; Porta, Tor, Descoberta de Canais</string>
     <string name="pref_category_engagement_notifications">Notificações de participação</string>
     <string name="pref_category_on_this_device">No dispositivo</string>
     <string name="pref_large_font">Fonte grande</string>
@@ -1178,4 +1178,5 @@
     <string name="send">Enviar</string>
     <string name="pref_auto_send_recording">Auto enviar gravações</string>
     <string name="pref_auto_send_recording_summary">Envia mensagens de voz automaticamente quando acaba de gravar.</string>
+    <string name="pref_presence_settings_summary">Ausente ao bloquear o dispositivo, Sincronizar DND do sistema</string>
 </resources>
