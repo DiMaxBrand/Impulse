@@ -1060,9 +1060,9 @@
     <string name="detect_mim_summary">Edastuskanaliga sidumine võib aidata vahendusrünnete tuvastamisel</string>
     <string name="pref_category_server_connection">Ühendus serveriga</string>
     <string name="pref_category_operating_system">Operatsioonisüsteem</string>
-    <string name="pref_privacy_summary">Kirjutamisteatised, viimati nähtud, kättesaadavus</string>
+    <string name="pref_privacy_summary">Kirjutamisteatised, viimati nähtud, edastus võrdõogusvõrgus</string>
     <string name="pref_connection_summary">Hosti nimi ja port, ühendus Tori võrguga</string>
-    <string name="pref_connection_summary_w_cd">Hosti nimi ja port, ühendus Tori võrguga, võrdõigusvõrk, kanalite tuvastamine</string>
+    <string name="pref_connection_summary_w_cd">Hosti nimi ja port, ühendus Tori võrguga, kanalite tuvastamine</string>
     <string name="pref_keyboard_options">Klahvistik</string>
     <string name="unsupported_operation">Tegevus pole toetatud</string>
     <string name="pref_category_engagement_notifications">Osalusest teavitamine</string>
@@ -1192,4 +1192,5 @@
     <string name="send">Saada</string>
     <string name="pref_auto_send_recording">Salvestiste automaatne saatmine</string>
     <string name="pref_auto_send_recording_summary">Peale salvestamise lõppu saada häälsõnumid automaatselt ära.</string>
+    <string name="pref_presence_settings_summary">Olekud - „Olen ära“ lukustamisel ja süsteemne „Ära sega“</string>
 </resources>
