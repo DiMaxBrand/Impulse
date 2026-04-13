@@ -727,8 +727,8 @@
     <string name="security_violation_not_attaching_file">Файл не долучено через порушення безпеки.</string>
     <string name="pref_video_compression">Якість відео</string>
     <string name="pref_video_compression_summary">Менша якість означає менші файли</string>
-    <string name="video_360p">Середня (360 пікселів)</string>
-    <string name="video_720p">Висока (720 пікселів)</string>
+    <string name="video_360p">Низька (360p)</string>
+    <string name="video_720p">Висока (720p)</string>
     <string name="cancelled">скасовано</string>
     <string name="already_drafting_message">Ви вже маєте чернетку повідомлення.</string>
     <string name="feature_not_implemented">Функція в розробці</string>
@@ -1223,4 +1223,6 @@
     <string name="pref_auto_send_recording_summary">Надсилати голосові повідомлення автоматично після завершення запису.</string>
     <string name="pref_auto_send_recording">Автоматичне надсилання записів</string>
     <string name="pref_presence_settings_summary">Статус «Відійшов» на пристрої, синхронізація «Не турбувати»</string>
+    <string name="video_480p">Середня (480p)</string>
+    <string name="video_1080p">Дуже висока (1080p)</string>
 </resources>
