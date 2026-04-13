@@ -747,7 +747,7 @@
     <string name="security_violation_not_attaching_file">Fișier omis ca urmare a unei probleme de securitate.</string>
     <string name="pref_video_compression">Calitate video</string>
     <string name="pref_video_compression_summary">O calitate mai mică înseamnă fișiere mai mici</string>
-    <string name="video_360p">Medie (360p)</string>
+    <string name="video_360p">Joasă (360p)</string>
     <string name="video_720p">Mare (720p)</string>
     <string name="cancelled">anulat</string>
     <string name="already_drafting_message">Deja aveți ciorna unui mesaj.</string>
@@ -1192,4 +1192,6 @@
     <string name="pref_auto_send_recording">Trimite automat înregistrările</string>
     <string name="pref_auto_send_recording_summary">Mesajele vocale sunt trimise automat atunci când terminați înregistrarea.</string>
     <string name="pref_presence_settings_summary">Plecat(ă) la blocare, Sincronizare Nu Deranja</string>
+    <string name="video_480p">Medie (480p)</string>
+    <string name="video_1080p">Foarte mare (1080p)</string>
 </resources>
