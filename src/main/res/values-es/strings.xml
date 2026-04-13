@@ -742,7 +742,7 @@
     <string name="security_violation_not_attaching_file">El archivo se omitió debido a una violación de seguridad.</string>
     <string name="pref_video_compression">Calidad del video</string>
     <string name="pref_video_compression_summary">Calidad más baja indica archivos más pequeños</string>
-    <string name="video_360p">Medio (360p)</string>
+    <string name="video_360p">Baja (360p)</string>
     <string name="video_720p">Alta (720p)</string>
     <string name="cancelled">cancelado</string>
     <string name="already_drafting_message">Ya estás redactando un mensaje.</string>
@@ -1187,4 +1187,6 @@
     <string name="pref_auto_send_recording">Envío automático de grabaciones</string>
     <string name="send">Enviar</string>
     <string name="pref_presence_settings_summary">Bloqueo del dispositivo cuando no está presente, sincronización del modo «No molestar» del sistema</string>
+    <string name="video_480p">Media (480p)</string>
+    <string name="video_1080p">Muy alta (1080p)</string>
 </resources>
