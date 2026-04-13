@@ -763,7 +763,7 @@
     <string name="security_violation_not_attaching_file">Файл не прикреплён из соображений безопасности.</string>
     <string name="pref_video_compression">Качество видео</string>
     <string name="pref_video_compression_summary">Чем ниже качество, тем меньше размер файлов</string>
-    <string name="video_360p">Среднее (360p)</string>
+    <string name="video_360p">Низкое (360p)</string>
     <string name="video_720p">Высокое (720р)</string>
     <string name="cancelled">отменено</string>
     <string name="already_drafting_message">Вы уже пишите черновик сообщения.</string>
@@ -1224,4 +1224,6 @@
     <string name="pref_auto_send_recording_summary">Автоматически отправлять голосовые сообщения после завершения записи</string>
     <string name="pref_auto_send_recording">Автоматическая отправка записей</string>
     <string name="pref_presence_settings_summary">\"Отошёл\" при блокировке экрана, синхронизация с системным режимом DND</string>
+    <string name="video_480p">Среднее (480p)</string>
+    <string name="video_1080p">Очень высокое (1080p)</string>
 </resources>
