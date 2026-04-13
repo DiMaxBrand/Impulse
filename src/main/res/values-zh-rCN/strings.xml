@@ -729,8 +729,8 @@
     <string name="security_violation_not_attaching_file">由于违反安全规定，文件已删除。</string>
     <string name="pref_video_compression">视频画质</string>
     <string name="pref_video_compression_summary">画质越低，文件越小</string>
-    <string name="video_360p">360p（中）</string>
-    <string name="video_720p">720p（高）</string>
+    <string name="video_360p">低（360p）</string>
+    <string name="video_720p">高（720p）</string>
     <string name="cancelled">已取消</string>
     <string name="already_drafting_message">您已经在起草消息了。</string>
     <string name="feature_not_implemented">功能未实现</string>
@@ -785,7 +785,7 @@
     <string name="no_market_app_installed">未安装应用商店。</string>
     <string name="group_chat_will_make_your_jabber_id_public">此频道将公开您的 XMPP 地址</string>
     <string name="ebook">电子书</string>
-    <string name="video_original">未压缩（原始）</string>
+    <string name="video_original">原始（未压缩）</string>
     <string name="open_with">打开方式…</string>
     <string name="set_profile_picture">头像</string>
     <string name="choose_account">选择账号</string>
@@ -1160,4 +1160,6 @@
     <string name="pref_auto_send_recording">自动发送录制内容</string>
     <string name="pref_auto_send_recording_summary">录制完成后自动发送语音消息。</string>
     <string name="pref_presence_settings_summary">设备锁定时离开、同步系统勿扰模式</string>
+    <string name="video_480p">中（480p）</string>
+    <string name="video_1080p">超高（1080p）</string>
 </resources>
