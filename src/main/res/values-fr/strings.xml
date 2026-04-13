@@ -736,7 +736,7 @@
     <string name="security_violation_not_attaching_file">Fichier omis en raison d\'une violation de la sécurité.</string>
     <string name="pref_video_compression">Qualité des vidéos</string>
     <string name="pref_video_compression_summary">Une qualité inférieure signifie des fichiers plus petits</string>
-    <string name="video_360p">Moyenne (360p)</string>
+    <string name="video_360p">Mauvaise (360p)</string>
     <string name="video_720p">Haute (720p)</string>
     <string name="cancelled">Annulé</string>
     <string name="already_drafting_message">Vous avez déjà un brouillon de message.</string>
@@ -1178,4 +1178,6 @@
     <string name="dismiss_as_admin">Retirer comme admin</string>
     <string name="make_owner">Ajouter comme propriétaire</string>
     <string name="dismiss_as_owner">Retirer comme propriétaire</string>
+    <string name="video_480p">Moyenne (480p)</string>
+    <string name="video_1080p">Très haute (1080p)</string>
 </resources>
