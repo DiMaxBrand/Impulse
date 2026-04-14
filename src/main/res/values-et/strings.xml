@@ -559,7 +559,7 @@
     <string name="security_violation_not_attaching_file">Fail on vahele jäetud turvareeglite rikkumise tõttu.</string>
     <string name="pref_video_compression">Video kvaliteet</string>
     <string name="pref_video_compression_summary">Madalam kvaliteet tähendab väiksemaid faile</string>
-    <string name="video_360p">Keskmine (360p)</string>
+    <string name="video_360p">Madal (360p)</string>
     <string name="video_720p">Kõrge (720p)</string>
     <string name="cancelled">katkestatud</string>
     <string name="already_drafting_message">Sa juba oled koostamas sõnumit.</string>
@@ -1193,4 +1193,6 @@
     <string name="pref_auto_send_recording">Salvestiste automaatne saatmine</string>
     <string name="pref_auto_send_recording_summary">Peale salvestamise lõppu saada häälsõnumid automaatselt ära.</string>
     <string name="pref_presence_settings_summary">Olekud - „Olen ära“ lukustamisel ja süsteemne „Ära sega“</string>
+    <string name="video_480p">Keskmine (480p)</string>
+    <string name="video_1080p">Väga kõrge (1080p)</string>
 </resources>
