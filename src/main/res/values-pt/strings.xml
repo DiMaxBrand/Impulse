@@ -773,7 +773,7 @@
     <string name="media_browser">Galeria</string>
     <string name="security_violation_not_attaching_file">Ficheiro omitido devido a violação de segurança.</string>
     <string name="pref_video_compression_summary">Qualidade baixa significa ficheiros mais pequenos</string>
-    <string name="video_360p">Média (360p)</string>
+    <string name="video_360p">Baixa (360p)</string>
     <string name="video_720p">Alta (720p)</string>
     <string name="messages_channel_name">Mensagens</string>
     <string name="incoming_calls_channel_name">Chamadas recebidas</string>
@@ -1179,4 +1179,6 @@
     <string name="pref_auto_send_recording">Auto enviar gravações</string>
     <string name="pref_auto_send_recording_summary">Envia mensagens de voz automaticamente quando acaba de gravar.</string>
     <string name="pref_presence_settings_summary">Ausente ao bloquear o dispositivo, Sincronizar DND do sistema</string>
+    <string name="video_480p">Média (480p)</string>
+    <string name="video_1080p">Muito alta (1080p)</string>
 </resources>
