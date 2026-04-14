@@ -749,7 +749,7 @@
     <string name="security_violation_not_attaching_file">Plik pominięty w związku z naruszeniem bezpieczeństwa.</string>
     <string name="pref_video_compression">Jakość wideo</string>
     <string name="pref_video_compression_summary">Niższa jakość gwarantuje mniejszy rozmiar</string>
-    <string name="video_360p">Średnia (360p)</string>
+    <string name="video_360p">Niska (360p)</string>
     <string name="video_720p">Wysoka (720p)</string>
     <string name="cancelled">anulowane</string>
     <string name="already_drafting_message">Już tworzysz nową wiadomość.</string>
@@ -1201,4 +1201,6 @@
     <string name="pref_auto_send_recording">Automatycznie wysyłaj nagrania</string>
     <string name="pref_auto_send_recording_summary">Wysyła wiadomości głosowe automatycznie gdy zakończysz nagrywanie.</string>
     <string name="pref_presence_settings_summary">„Zaraz wracam” przy blokadzie urządzenia, synchronizacja systemowego „nie przeszkadzać”</string>
+    <string name="video_480p">Średnia (480p)</string>
+    <string name="video_1080p">Bardzo wysoka (1080p)</string>
 </resources>
