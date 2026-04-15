@@ -735,7 +735,7 @@
     <string name="security_violation_not_attaching_file">Ficheiro omitido debido a transgresión da seguridade.</string>
     <string name="pref_video_compression">Calidade de vídeo</string>
     <string name="pref_video_compression_summary">Menor calidade significa ficheiros máis pequenos</string>
-    <string name="video_360p">Media (360p)</string>
+    <string name="video_360p">Baixa (360p)</string>
     <string name="video_720p">Alta (720p)</string>
     <string name="cancelled">cancelada</string>
     <string name="already_drafting_message">Xa está a escribir un borrador.</string>
@@ -1173,4 +1173,6 @@
     <string name="send">Enviar</string>
     <string name="pref_auto_send_recording">Envío automát. de gravacións</string>
     <string name="pref_auto_send_recording_summary">Enviar as mensaxes de voz automaticamente cando finalizas a gravación.</string>
+    <string name="video_480p">Media (480p)</string>
+    <string name="video_1080p">Moi alta (1080p)</string>
 </resources>
