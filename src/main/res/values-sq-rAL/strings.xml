@@ -560,7 +560,7 @@
     <string name="group_chat_members">Pjesëmarrës</string>
     <string name="media_browser">Shfletues mediash</string>
     <string name="pref_video_compression">Cilësi Video</string>
-    <string name="video_360p">Mesatare (360p)</string>
+    <string name="video_360p">E ulët (360p)</string>
     <string name="video_720p">E lartë (720p)</string>
     <string name="cancelled">anuluar</string>
     <string name="already_drafting_message">Po skiconi tashmë një mesazh.</string>
@@ -1033,9 +1033,9 @@
     <string name="detect_mim_summary">“Channel binding” mund të pikasë disa sulme “machine-in-the-middle”</string>
     <string name="pref_category_server_connection">Lidhje shërbyesi</string>
     <string name="pref_category_operating_system">Sistem Operativ</string>
-    <string name="pref_privacy_summary">Njoftime shtypjeje, Parë Së Fundi, I lirë/I zënë</string>
+    <string name="pref_privacy_summary">Njoftime shtypjeje, Parë Së Fundi, Rele P2P</string>
     <string name="pref_connection_summary">Strehëemër &amp; Portë, Tor</string>
-    <string name="pref_connection_summary_w_cd">Strehëemër &amp; Portë, Tor, P2P, Pikasje Kanalesh</string>
+    <string name="pref_connection_summary_w_cd">Strehëemër &amp; Portë, Tor, Pikasje Kanalesh</string>
     <string name="pref_keyboard_options">Tastierë</string>
     <string name="pref_category_engagement_notifications">Njoftime angazhimi</string>
     <string name="pref_category_application">Aplikacion</string>
@@ -1177,4 +1177,9 @@
     <string name="pref_include_silent_modes_summary">Sinjalizo gjithashtu “Mos më Shqetësoni”, kur njoftimet heshtohen, ose telefoni gjendet nën mënyrën dridhje.</string>
     <string name="presence_offline">Jashtë linje</string>
     <string name="rtp_state_no_internet">S’ka lidhje në internet</string>
+    <string name="video_480p">Mesatare (480p)</string>
+    <string name="video_1080p">Shumë e lartë (1080p)</string>
+    <string name="send">Dërgoje</string>
+    <string name="pref_auto_send_recording">Regjistrimet dërgoji vetvetiu</string>
+    <string name="pref_auto_send_recording_summary">Dërgoni mesazhe zanore automatikisht, kur përfundoni regjistrimin.</string>
 </resources>
