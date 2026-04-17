@@ -91,7 +91,6 @@ import eu.siacs.conversations.entities.Blockable;
 import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Conversational;
-import eu.siacs.conversations.entities.DownloadableFile;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.MucOptions;
 import eu.siacs.conversations.entities.ReadByMarker;
@@ -151,6 +150,7 @@ import im.conversations.android.xmpp.model.muc.Role;
 import im.conversations.android.xmpp.model.stanza.Presence;
 import im.conversations.android.xmpp.model.state.Composing;
 import im.conversations.android.xmpp.model.state.Paused;
+import java.io.File;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -1504,10 +1504,8 @@ public class ConversationFragment extends XmppFragment
                 cancelTransmission.setVisible(true);
             }
             if (m.isFileOrImage() && !deleted && !cancelable) {
-                final String path = m.getRelativeFilePath();
-                if (path == null
-                        || !path.startsWith("/")
-                        || FileBackend.inConversationsDirectory(requireActivity(), path)) {
+                final var path = m.getRelativeFilePath();
+                if (path != null && !path.sharedStorage()) {
                     deleteFile.setVisible(true);
                     deleteFile.setTitle(
                             requireContext()
@@ -2063,19 +2061,24 @@ public class ConversationFragment extends XmppFragment
         builder.create().show();
     }
 
-    private boolean hasPermissions(int requestCode, List<String> permissions) {
-        final List<String> missingPermissions = new ArrayList<>();
-        for (String permission : permissions) {
-            if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                            || Config.ONLY_INTERNAL_STORAGE)
-                    && permission.equals(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                continue;
+    private boolean hasPermissions(final int requestCode, final List<String> permissions) {
+        final var missingPermissionsBuilder = new ImmutableList.Builder<String>();
+        for (final var permission : permissions) {
+            if (permission.equals(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    continue;
+                }
+                final var appSettings = new AppSettings(requireContext());
+                if (!appSettings.isUseSharedStorage()) {
+                    continue;
+                }
             }
-            if (requireActivity().checkSelfPermission(permission)
+            if (requireContext().checkSelfPermission(permission)
                     != PackageManager.PERMISSION_GRANTED) {
-                missingPermissions.add(permission);
+                missingPermissionsBuilder.add(permission);
             }
         }
+        final var missingPermissions = missingPermissionsBuilder.build();
         if (missingPermissions.isEmpty()) {
             return true;
         } else {
@@ -2110,13 +2113,11 @@ public class ConversationFragment extends XmppFragment
                 intent.setAction(MediaStore.ACTION_VIDEO_CAPTURE);
                 break;
             case ATTACHMENT_CHOICE_TAKE_PHOTO:
-                final Uri uri =
-                        requireXmppActivity()
-                                .xmppConnectionService
-                                .getFileBackend()
-                                .getTakePhotoUri();
-                pendingTakePhotoUri.push(uri);
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+                final File takePhotoFile = new FileBackend.Cache(requireContext()).takePicture();
+                pendingTakePhotoUri.push(Uri.fromFile(takePhotoFile));
+                intent.putExtra(
+                        MediaStore.EXTRA_OUTPUT,
+                        FileBackend.getUriForFile(requireContext(), takePhotoFile));
                 intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 intent.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
@@ -2201,7 +2202,7 @@ public class ConversationFragment extends XmppFragment
         if (message.isGeoUri()) {
             GeoHelper.view(getActivity(), message);
         } else {
-            final DownloadableFile file =
+            final var file =
                     requireXmppActivity().xmppConnectionService.getFileBackend().getFile(message);
             ViewUtil.view(requireContext(), file);
         }
@@ -2330,7 +2331,7 @@ public class ConversationFragment extends XmppFragment
             if (!(message.getConversation() instanceof Conversation conversation)) {
                 return;
             }
-            final DownloadableFile file =
+            final var file =
                     requireXmppActivity().xmppConnectionService.getFileBackend().getFile(message);
             if ((file.exists() && file.canRead()) || message.hasFileOnRemoteHost()) {
                 final XmppConnection xmppConnection = conversation.getAccount().getXmppConnection();
@@ -2626,7 +2627,7 @@ public class ConversationFragment extends XmppFragment
             this.binding.textinput.setText(this.conversation.getNextMessage());
             this.binding.textinput.setSelection(this.binding.textinput.length());
         } else {
-            this.binding.textinput.setText(MessageUtils.EMPTY_STRING);
+            this.binding.textinput.setText(CharSequences.EMPTY_STRING);
         }
         this.binding.textinput.setKeyboardListener(this);
         this.messageListAdapter.updatePreferences();

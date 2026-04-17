@@ -6,7 +6,6 @@ import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.FileObserver;
 import android.os.Handler;
 import android.util.Log;
@@ -19,12 +18,10 @@ import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.databinding.ActivityRecordingBinding;
+import eu.siacs.conversations.persistance.FileBackend;
 import eu.siacs.conversations.utils.TimeFrameUtils;
 import java.io.File;
 import java.lang.ref.WeakReference;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -239,32 +236,8 @@ public class RecordingActivity extends BaseActivity implements View.OnClickListe
         }
     }
 
-    private File generateOutputFilename(final int outputFormat) {
-        final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmssSSS", Locale.US);
-        final String extension;
-        if (outputFormat == MediaRecorder.OutputFormat.MPEG_4) {
-            extension = "m4a";
-        } else if (outputFormat == MediaRecorder.OutputFormat.OGG) {
-            extension = "oga";
-        } else {
-            throw new IllegalStateException("Unrecognized output format");
-        }
-        final String filename =
-                String.format("RECORDING_%s.%s", dateFormat.format(new Date()), extension);
-        final File parentDirectory;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            parentDirectory =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_RECORDINGS);
-        } else {
-            parentDirectory =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        }
-        final File conversationsDirectory = new File(parentDirectory, getString(R.string.app_name));
-        return new File(conversationsDirectory, filename);
-    }
-
     private void setupOutputFile(final int outputFormat) {
-        mOutputFile = generateOutputFilename(outputFormat);
+        mOutputFile = new FileBackend.Cache(this).recording(outputFormat);
         final File parentDirectory = mOutputFile.getParentFile();
         if (Objects.requireNonNull(parentDirectory).mkdirs()) {
             Log.d(Config.LOGTAG, "created " + parentDirectory.getAbsolutePath());

@@ -72,6 +72,7 @@ public class AppSettings {
     public static final String AUTO_ACCEPT_FILE_SIZE = "auto_accept_file_size";
     public static final String VIDEO_COMPRESSION = "video_compression";
     public static final String AUTO_SEND_RECORDING = "auto_send_recording";
+    public static final String USE_SHARED_STORAGE = "use_shared_storage";
 
     private static final String ACCEPT_INVITES_FROM_STRANGERS = "accept_invites_from_strangers";
     private static final String NOTIFICATIONS_FROM_STRANGERS = "notifications_from_strangers";
@@ -204,6 +205,10 @@ public class AppSettings {
     public boolean isAwayWhenScreenLocked() {
         return getBooleanPreference(
                 AppSettings.AWAY_WHEN_SCREEN_IS_OFF, R.bool.away_when_screen_off);
+    }
+
+    public boolean isUseSharedStorage() {
+        return getBooleanPreference(USE_SHARED_STORAGE, R.bool.use_shared_storage);
     }
 
     public boolean isUseTor() {

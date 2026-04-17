@@ -10,16 +10,13 @@ import com.otaliastudios.transcoder.Transcoder;
 import com.otaliastudios.transcoder.TranscoderListener;
 import com.otaliastudios.transcoder.strategy.DefaultAudioStrategy;
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy;
-
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
-import eu.siacs.conversations.entities.DownloadableFile;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.persistance.FileBackend;
 import eu.siacs.conversations.utils.MimeUtils;
 import eu.siacs.conversations.utils.TranscoderStrategies;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -63,14 +60,8 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
     }
 
     private void processAsFile() {
-        final String path = mXmppConnectionService.getFileBackend().getOriginalPath(uri);
-        if (path != null && !FileBackend.isPathBlacklisted(path)) {
-            message.setRelativeFilePath(path);
-            mXmppConnectionService.getFileBackend().updateFileParams(message);
-        } else {
-            mXmppConnectionService.getFileBackend().copyFileToPrivateStorage(message, uri, type);
-            mXmppConnectionService.getFileBackend().updateFileParams(message);
-        }
+        mXmppConnectionService.getFileBackend().copyFileToPrivateStorage(message, uri, type);
+        mXmppConnectionService.getFileBackend().updateFileParams(message);
     }
 
     private ListenableFuture<Void> fallbackToProcessAsFile() {
@@ -87,14 +78,14 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
         mXmppConnectionService
                 .getFileBackend()
                 .setupRelativeFilePath(message, String.format("%s.%s", message.getUuid(), "mp4"));
-        final DownloadableFile file = mXmppConnectionService.getFileBackend().getFile(message);
+        final var file = mXmppConnectionService.getFileBackend().getFile(message);
         if (Objects.requireNonNull(file.getParentFile()).mkdirs()) {
             Log.d(Config.LOGTAG, "created parent directory for video file");
         }
 
         final DefaultVideoStrategy selectedVideoTranscoderStrategy;
         final DefaultAudioStrategy derivedAudioTranscoderStrategy;
-        switch(appSettings.getVideoCompression()) {
+        switch (appSettings.getVideoCompression()) {
             case "360":
                 selectedVideoTranscoderStrategy = TranscoderStrategies.VIDEO_360P;
                 derivedAudioTranscoderStrategy = TranscoderStrategies.AUDIO_MQ;
@@ -115,7 +106,6 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
                 selectedVideoTranscoderStrategy = TranscoderStrategies.VIDEO_480P;
                 derivedAudioTranscoderStrategy = TranscoderStrategies.AUDIO_MQ;
                 break;
-
         }
 
         final Future<Void> transcoderFuture;
@@ -161,8 +151,9 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
     @Override
     public void onTranscodeCompleted(int successCode) {
         mXmppConnectionService.stopOngoingVideoTranscodingForegroundNotification();
-        final File file = mXmppConnectionService.getFileBackend().getFile(message);
-        long convertedFileSize = mXmppConnectionService.getFileBackend().getFile(message).getSize();
+        final var file = mXmppConnectionService.getFileBackend().getFile(message);
+        final long convertedFileSize =
+                mXmppConnectionService.getFileBackend().getFile(message).length();
         Log.d(
                 Config.LOGTAG,
                 "originalFileSize=" + originalFileSize + " convertedFileSize=" + convertedFileSize);

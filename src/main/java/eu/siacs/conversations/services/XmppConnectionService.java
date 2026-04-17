@@ -395,7 +395,6 @@ public class XmppConnectionService extends Service {
         final String compressPictures = getCompressPicturesPreference();
 
         if ("never".equals(compressPictures)
-                || ("auto".equals(compressPictures) && getFileBackend().useImageAsIs(uri))
                 || (mimeType != null && mimeType.endsWith("/gif"))
                 || getFileBackend().unusualBounds(uri)) {
             Log.d(
@@ -1181,9 +1180,13 @@ public class XmppConnectionService extends Service {
                         "Stop checking for deleted files because service has been destroyed");
                 return;
             }
-            final File file = fileBackend.getFileForPath(filePath.path);
-            if (filePath.setDeleted(!file.exists())) {
-                changed.add(filePath);
+            if (filePath.path != null
+                    && !filePath.path.isEmpty()
+                    && filePath.path.charAt(0) == '/') {
+                final File file = new File(filePath.path);
+                if (filePath.setDeleted(!file.exists())) {
+                    changed.add(filePath);
+                }
             }
         }
         final long duration = SystemClock.elapsedRealtime() - start;
@@ -1468,7 +1471,7 @@ public class XmppConnectionService extends Service {
         Log.d(
                 Config.LOGTAG,
                 account.getJid().asBareJid() + ": send file message. forceP2P=" + forceP2P);
-        if ((account.httpUploadAvailable(fileBackend.getFile(message, false).getSize())
+        if ((account.httpUploadAvailable(fileBackend.getFile(message, false).length())
                         || message.getConversation().getMode() == Conversation.MODE_MULTI)
                 && !forceP2P) {
             mHttpConnectionManager.createNewUploadConnection(message, delay);
@@ -1544,7 +1547,7 @@ public class XmppConnectionService extends Service {
                 case Message.ENCRYPTION_NONE:
                     if (message.needsUploading()) {
                         if (account.httpUploadAvailable(
-                                        fileBackend.getFile(message, false).getSize())
+                                        fileBackend.getFile(message, false).length())
                                 || conversation.getMode() == Conversation.MODE_MULTI
                                 || message.fixCounterpart()) {
                             this.sendFileMessage(message, delay, forceP2P);
@@ -1559,7 +1562,7 @@ public class XmppConnectionService extends Service {
                 case Message.ENCRYPTION_DECRYPTED:
                     if (message.needsUploading()) {
                         if (account.httpUploadAvailable(
-                                        fileBackend.getFile(message, false).getSize())
+                                        fileBackend.getFile(message, false).length())
                                 || conversation.getMode() == Conversation.MODE_MULTI
                                 || message.fixCounterpart()) {
                             this.sendFileMessage(message, delay, forceP2P);
@@ -1574,7 +1577,7 @@ public class XmppConnectionService extends Service {
                     message.setFingerprint(account.getAxolotlService().getOwnFingerprint());
                     if (message.needsUploading()) {
                         if (account.httpUploadAvailable(
-                                        fileBackend.getFile(message, false).getSize())
+                                        fileBackend.getFile(message, false).length())
                                 || conversation.getMode() == Conversation.MODE_MULTI
                                 || message.fixCounterpart()) {
                             this.sendFileMessage(message, delay, forceP2P);
@@ -1858,7 +1861,7 @@ public class XmppConnectionService extends Service {
                 return;
             }
         }
-        final boolean isInternalFile = fileBackend.isInternalFile(file);
+        final boolean isInternalFile = false; // fileBackend.isInternalFile(file);
         final List<String> uuids = databaseBackend.markFileAsDeleted(file, isInternalFile);
         Log.d(
                 Config.LOGTAG,
@@ -2806,7 +2809,7 @@ public class XmppConnectionService extends Service {
         final var future = account.getXmppConnection().getManager(PepManager.class).delete(node);
         Futures.addCallback(
                 future,
-                new FutureCallback<Void>() {
+                new FutureCallback<>() {
                     @Override
                     public void onSuccess(Void result) {
                         Log.d(

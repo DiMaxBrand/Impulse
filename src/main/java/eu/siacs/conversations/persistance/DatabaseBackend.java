@@ -71,7 +71,7 @@ import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 public class DatabaseBackend extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "history";
-    private static final int DATABASE_VERSION = 54;
+    private static final int DATABASE_VERSION = 55;
 
     private static boolean requiresMessageIndexRebuild = false;
     private static DatabaseBackend instance = null;
@@ -328,8 +328,11 @@ public class DatabaseBackend extends SQLiteOpenHelper {
     private static final String COPY_PREEXISTING_ENTRIES =
             "INSERT INTO messages_index(messages_index) VALUES('rebuild');";
 
+    private final Context context;
+
     private DatabaseBackend(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        this.context = context.getApplicationContext();
     }
 
     private static ContentValues createFingerprintStatusContentValues(
@@ -458,6 +461,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + " NUMBER, "
                         + Message.RELATIVE_FILE_PATH
                         + " TEXT, "
+                        + Message.SHARED_STORAGE
+                        + " BOOLEAN NOT NULL DEFAULT 1,"
                         + Message.SERVER_MSG_ID
                         + " TEXT, "
                         + Message.FINGERPRINT
@@ -1088,6 +1093,14 @@ public class DatabaseBackend extends SQLiteOpenHelper {
             db.execSQL(CREATE_CAPS_CACHE_INDEX_CAPS);
             db.execSQL(CREATE_CAPS_CACHE_INDEX_CAPS2);
         }
+        if (oldVersion < 55 && newVersion >= 55) {
+            db.execSQL(
+                    "ALTER TABLE "
+                            + Message.TABLENAME
+                            + " ADD COLUMN "
+                            + Message.SHARED_STORAGE
+                            + " BOOLEAN NOT NULL DEFAULT 1");
+        }
     }
 
     private void canonicalizeJids(SQLiteDatabase db) {
@@ -1358,7 +1371,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         CursorUtils.upgradeCursorWindowSize(cursor);
         while (cursor.moveToNext()) {
             try {
-                list.add(0, Message.fromCursor(cursor, conversation));
+                list.add(0, Message.fromCursor(context, cursor, conversation));
             } catch (final Exception e) {
                 Log.e(Config.LOGTAG, "unable to restore message", e);
             }
@@ -1551,7 +1564,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         }
         final Message message;
         if (cursor.moveToFirst()) {
-            message = Message.fromCursor(cursor, conversation);
+            message = Message.fromCursor(context, cursor, conversation);
         } else {
             message = null;
         }
@@ -1572,7 +1585,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         }
         final Message message;
         if (cursor.moveToFirst()) {
-            message = Message.fromCursor(cursor, conversation);
+            message = Message.fromCursor(context, cursor, conversation);
         } else {
             message = null;
         }

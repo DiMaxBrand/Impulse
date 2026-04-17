@@ -1164,6 +1164,8 @@
     <string name="pref_include_silent_modes_summary">Also signal \"Do Not Disturb\" when notifications are muted or the phone is on vibrate.</string>
     <string name="pref_auto_send_recording">Auto-send recordings</string>
     <string name="pref_auto_send_recording_summary">Send voice messages automatically when you finish recording.</string>
+    <string name="pref_save_to_gallery">Save to Gallery</string>
+    <string name="pref_save_to_gallery_summary">Automatically store media in public folders so they appear in your gallery and file manager.</string>
     <plurals name="delete_n_messages">
         <item quantity="one">Delete %d message</item>
         <item quantity="other">Delete %d messages</item>

@@ -1,10 +1,12 @@
 package eu.siacs.conversations.entities;
 
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.util.Log;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
@@ -14,6 +16,7 @@ import eu.siacs.conversations.Config;
 import eu.siacs.conversations.crypto.axolotl.AxolotlService;
 import eu.siacs.conversations.crypto.axolotl.FingerprintStatus;
 import eu.siacs.conversations.http.URL;
+import eu.siacs.conversations.persistance.FileBackend;
 import eu.siacs.conversations.services.AvatarService;
 import eu.siacs.conversations.utils.CryptoHelper;
 import eu.siacs.conversations.utils.Emoticons;
@@ -21,6 +24,7 @@ import eu.siacs.conversations.utils.MessageUtils;
 import eu.siacs.conversations.utils.MimeUtils;
 import eu.siacs.conversations.utils.UIHelper;
 import eu.siacs.conversations.xmpp.Jid;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -76,6 +80,7 @@ public class Message extends AbstractEntity
     public static final String REMOTE_MSG_ID = "remoteMsgId";
     public static final String SERVER_MSG_ID = "serverMsgId";
     public static final String RELATIVE_FILE_PATH = "relativeFilePath";
+    public static final String SHARED_STORAGE = "sharedStorage";
     public static final String FINGERPRINT = "axolotl_fingerprint";
     public static final String READ = "read";
     public static final String ERROR_MESSAGE = "errorMsg";
@@ -102,7 +107,7 @@ public class Message extends AbstractEntity
     protected boolean carbon = false;
     protected boolean oob = false;
     protected List<Edit> edits = new ArrayList<>();
-    protected String relativeFilePath;
+    protected StorageLocation storageLocation;
     protected boolean read = true;
     protected String remoteMsgId = null;
     private String bodyLanguage = null;
@@ -206,7 +211,7 @@ public class Message extends AbstractEntity
             final int type,
             final boolean carbon,
             final String remoteMsgId,
-            final String relativeFilePath,
+            final StorageLocation storageLocation,
             final String serverMsgId,
             final String fingerprint,
             final boolean read,
@@ -231,7 +236,7 @@ public class Message extends AbstractEntity
         this.type = type;
         this.carbon = carbon;
         this.remoteMsgId = remoteMsgId;
-        this.relativeFilePath = relativeFilePath;
+        this.storageLocation = storageLocation;
         this.serverMsgId = serverMsgId;
         this.axolotlFingerprint = fingerprint;
         this.read = read;
@@ -246,7 +251,8 @@ public class Message extends AbstractEntity
         this.reactions = reactions;
     }
 
-    public static Message fromCursor(final Cursor cursor, final Conversation conversation) {
+    public static Message fromCursor(
+            final Context context, final Cursor cursor, final Conversation conversation) {
         return new Message(
                 conversation,
                 cursor.getString(cursor.getColumnIndexOrThrow(UUID)),
@@ -260,7 +266,7 @@ public class Message extends AbstractEntity
                 cursor.getInt(cursor.getColumnIndexOrThrow(TYPE)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(CARBON)) > 0,
                 cursor.getString(cursor.getColumnIndexOrThrow(REMOTE_MSG_ID)),
-                cursor.getString(cursor.getColumnIndexOrThrow(RELATIVE_FILE_PATH)),
+                storageLocationFromCursor(context, cursor),
                 cursor.getString(cursor.getColumnIndexOrThrow(SERVER_MSG_ID)),
                 cursor.getString(cursor.getColumnIndexOrThrow(FINGERPRINT)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(READ)) > 0,
@@ -274,6 +280,20 @@ public class Message extends AbstractEntity
                 cursor.getString(cursor.getColumnIndexOrThrow(BODY_LANGUAGE)),
                 cursor.getString(cursor.getColumnIndexOrThrow(OCCUPANT_ID)),
                 Reaction.fromString(cursor.getString(cursor.getColumnIndexOrThrow(REACTIONS))));
+    }
+
+    protected static StorageLocation storageLocationFromCursor(
+            final Context context, final Cursor cursor) {
+        final var filePath = cursor.getString(cursor.getColumnIndexOrThrow(RELATIVE_FILE_PATH));
+        final var sharedStorage = cursor.getInt(cursor.getColumnIndexOrThrow(SHARED_STORAGE)) > 0;
+        if (Strings.isNullOrEmpty(filePath)) {
+            return null;
+        } else if (filePath.charAt(0) == '/') {
+            return new StorageLocation(new File(filePath), sharedStorage);
+        } else {
+            final var file = FileBackend.getLegacyFileForFilename(context, filePath);
+            return new StorageLocation(file, sharedStorage);
+        }
     }
 
     private static Jid fromString(String value) {
@@ -328,7 +348,12 @@ public class Message extends AbstractEntity
         values.put(TYPE, type);
         values.put(CARBON, carbon ? 1 : 0);
         values.put(REMOTE_MSG_ID, remoteMsgId);
-        values.put(RELATIVE_FILE_PATH, relativeFilePath);
+        if (storageLocation != null) {
+            values.put(RELATIVE_FILE_PATH, storageLocation.file().getAbsolutePath());
+            values.put(SHARED_STORAGE, storageLocation.sharedStorage());
+        } else {
+            values.putNull(RELATIVE_FILE_PATH);
+        }
         values.put(SERVER_MSG_ID, serverMsgId);
         values.put(FINGERPRINT, axolotlFingerprint);
         values.put(READ, read ? 1 : 0);
@@ -438,12 +463,12 @@ public class Message extends AbstractEntity
         this.status = status;
     }
 
-    public String getRelativeFilePath() {
-        return this.relativeFilePath;
+    public StorageLocation getRelativeFilePath() {
+        return this.storageLocation;
     }
 
-    public void setRelativeFilePath(String path) {
-        this.relativeFilePath = path;
+    public void setRelativeFilePath(final StorageLocation storageLocation) {
+        this.storageLocation = storageLocation;
     }
 
     public String getRemoteMsgId() {
@@ -783,8 +808,8 @@ public class Message extends AbstractEntity
 
     public String getMimeType() {
         String extension;
-        if (relativeFilePath != null) {
-            extension = MimeUtils.extractRelevantExtension(relativeFilePath);
+        if (storageLocation != null) {
+            extension = MimeUtils.extractRelevantExtension(storageLocation.file().getName());
         } else {
             final String url = URL.tryParse(body.split("\n")[0]);
             if (url == null) {
@@ -1027,4 +1052,6 @@ public class Message extends AbstractEntity
         message.setType(isFile ? Message.TYPE_PRIVATE_FILE : Message.TYPE_PRIVATE);
         return true;
     }
+
+    public record StorageLocation(File file, boolean sharedStorage) {}
 }

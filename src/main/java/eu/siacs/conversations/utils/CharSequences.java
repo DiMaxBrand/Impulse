@@ -36,6 +36,8 @@ import java.util.List;
 
 public class CharSequences {
 
+    public static final String EMPTY_STRING = "";
+
     private static int getStartIndex(CharSequence input) {
         int length = input.length();
         int index = 0;

@@ -530,6 +530,16 @@ public final class MimeUtils {
         return extensionToMimeTypeMap.get(extension.toLowerCase());
     }
 
+    public static String getMimeType(final File file) {
+        final var path = file.getAbsolutePath();
+        final int start = path.lastIndexOf('.') + 1;
+        if (start < path.length()) {
+            return Strings.nullToEmpty(MimeUtils.guessMimeTypeFromExtension(path.substring(start)));
+        } else {
+            return CharSequences.EMPTY_STRING;
+        }
+    }
+
     /**
      * Returns true if the given extension has a registered MIME type.
      *

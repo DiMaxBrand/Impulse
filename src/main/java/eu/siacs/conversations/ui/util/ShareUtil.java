@@ -37,7 +37,6 @@ import androidx.annotation.StringRes;
 import com.google.common.collect.Iterables;
 import de.gultsch.common.Linkify;
 import eu.siacs.conversations.R;
-import eu.siacs.conversations.entities.DownloadableFile;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.persistance.FileBackend;
 import eu.siacs.conversations.ui.ConversationsActivity;
@@ -63,8 +62,7 @@ public class ShareUtil {
                     ConversationsActivity.EXTRA_AS_QUOTE,
                     message.getStatus() == Message.STATUS_RECEIVED);
         } else {
-            final DownloadableFile file =
-                    activity.xmppConnectionService.getFileBackend().getFile(message);
+            final var file = activity.xmppConnectionService.getFileBackend().getFile(message);
             try {
                 shareIntent.putExtra(
                         Intent.EXTRA_STREAM, FileBackend.getUriForFile(activity, file));

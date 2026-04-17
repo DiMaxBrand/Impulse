@@ -60,7 +60,6 @@ import eu.siacs.conversations.databinding.ItemMessageStatusBinding;
 import eu.siacs.conversations.entities.Account;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Conversational;
-import eu.siacs.conversations.entities.DownloadableFile;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.Message.FileParams;
 import eu.siacs.conversations.entities.RtpSessionStatus;
@@ -1391,8 +1390,7 @@ public class MessageAdapter extends ArrayAdapter<Message> {
                     ConversationsActivity.REQUEST_OPEN_MESSAGE);
             return;
         }
-        final DownloadableFile file =
-                activity.xmppConnectionService.getFileBackend().getFile(message);
+        final var file = activity.xmppConnectionService.getFileBackend().getFile(message);
         ViewUtil.view(activity, file);
     }
 
