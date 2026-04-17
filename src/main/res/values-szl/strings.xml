@@ -94,7 +94,7 @@
     <string name="send_unencrypted">Wyślij bez szyfrowanio</string>
     <string name="decryption_failed">Niy idzie ôdszyfrować. Możno niy mosz noleznego prywatnego klucza.</string>
     <string name="openkeychain_required">OpenKeychain</string>
-    <string name="openkeychain_required_long">%1$s używo &lt;b&gt;OpenKeychain&lt;/b&gt;, żeby szyfrować i ôdszyfrowować wiadōmości i zarzōndzać twojimi publicznymi kluczami.&lt;br&gt;&lt;br&gt;OpenKeychain je na licyncyji GPLv3+ i je dostympny we F-Droid abo Google Play.&lt;br&gt;&lt;br&gt;&lt;small&gt;(Puść %1$s na nowo po zainstalowaniu.)&lt;/small&gt;</string>
+    <string name="openkeychain_required_long"><![CDATA[%1$s używo <b>OpenKeychain</b>, żeby szyfrować i ôdszyfrowować wiadōmości i zarzōndzać twojimi publicznymi kluczami.<br><br>OpenKeychain je na licyncyji GPLv3+ i je dostympny we F-Droid abo Google Play.<br><br><small>(Puść %1$s na nowo po zainstalowaniu.)</small>]]></string>
     <string name="restart">Zresztartuj</string>
     <string name="install">Zainstaluj</string>
     <string name="openkeychain_not_installed">Zainstaluj OpenKeychain</string>
@@ -769,12 +769,12 @@
     <string name="phone_number">numer telefōnu</string>
     <string name="verify_your_phone_number">Zweryfikuj swōj numer telefōnu</string>
     <string name="enter_country_code_and_phone_number">Quicksy wyśle SMS (mogōm być naliczane płaty) coby zweryfikować numer telefōnu. Wpisz kod ôd kraju i numer telefōnu:</string>
-    <string name="we_will_be_verifying">Zweryfikujymy numer telefōnu <br/><br/><b>%s</b><br/><br/>Zgodzo sie wszysko, abo chcesz zmiynić numer?</string>
+    <string name="we_will_be_verifying"><![CDATA[Zweryfikujymy numer telefōnu <br/><br/><b>%s</b><br/><br/>Zgodzo sie wszysko, abo chcesz zmiynić numer?]]></string>
     <string name="not_a_valid_phone_number">%s to niy ma noleżny numer telefōnu.</string>
     <string name="please_enter_your_phone_number">Wkludź swōj numer telefōnu.</string>
     <string name="search_countries">Przeszukej kraje</string>
     <string name="verify_x">Zweryfikuj %s</string>
-    <string name="we_have_sent_you_an_sms_to_x">Wysłali my SMS do <b>%s</b>.</string>
+    <string name="we_have_sent_you_an_sms_to_x"><![CDATA[Wysłali my SMS do <b>%s</b>.]]></string>
     <string name="we_have_sent_you_another_sms">Wysłali my dalszy SMS z 6 cyfrowym kodym.</string>
     <string name="please_enter_pin_below">Wkludź 6-cyfrowy kod PIN niżyj.</string>
     <string name="resend_sms">Wyślij SMS zaś</string>
@@ -874,7 +874,7 @@
     <string name="unable_to_perform_this_action">Niy idzie wykōnać tyj akcyje</string>
     <string name="open_join_dialog">Przistōmp do publicznego kanału…</string>
     <string name="sharing_application_not_grant_permission">Aplikacyjo, co udostympnio, niy dała zwōle na dostymp do tego zbioru.</string>
-    <string name="group_chats_and_channels">Grupowe godki i kanały</string>
+    <string name="group_chats_and_channels"><![CDATA[Grupowe godki i kanały]]></string>
     <string name="jabber_network">jabber.network</string>
     <string name="local_server">Serwer lokalny</string>
     <string name="pref_channel_discovery_summary">Wiynkszość używoczōw powinna ôbrać “jabber.network” dlo lepszych dorad ze cołkigo ekosystymu XMPP.</string>
