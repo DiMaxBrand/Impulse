@@ -1189,4 +1189,6 @@
     <string name="pref_presence_settings_summary">Bloqueo del dispositivo cuando no está presente, sincronización del modo «No molestar» del sistema</string>
     <string name="video_480p">Media (480p)</string>
     <string name="video_1080p">Muy alta (1080p)</string>
+    <string name="pref_save_to_gallery">Guardar en la galería</string>
+    <string name="pref_save_to_gallery_summary">Almacena automáticamente los archivos multimedia en carpetas públicas para que aparezcan en tu galería y administrador de archivos.</string>
 </resources>
