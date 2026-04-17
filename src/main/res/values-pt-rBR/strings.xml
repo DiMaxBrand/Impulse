@@ -1060,9 +1060,9 @@
     <string name="pref_allow_screenshots_summary">Mostrar o conteúdo do app nos recentes e permitir que a tela seja capturada</string>
     <string name="detect_mim">Exigir vínculo do canal</string>
     <string name="detect_mim_summary">A vinculação de canal pode detectar alguns ataques de máquina-no-meio</string>
-    <string name="pref_privacy_summary">Indicadores de digitação, visto por último, disponibilidade</string>
+    <string name="pref_privacy_summary">Indicadores de digitação, visto por último, Relays P2P</string>
     <string name="pref_connection_summary">Nome do servidor e porta, Tor</string>
-    <string name="pref_connection_summary_w_cd">Nome do servidor e porta, Tor, conexões diretas, descoberta de canais</string>
+    <string name="pref_connection_summary_w_cd">Nome do servidor e porta, Tor, descoberta de canais</string>
     <string name="pref_keyboard_options">Teclado</string>
     <string name="pref_category_engagement_notifications">Notificações de engajamento</string>
     <string name="pref_category_application">Aplicativo</string>
