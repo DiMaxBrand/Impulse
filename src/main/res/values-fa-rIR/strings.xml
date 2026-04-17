@@ -506,7 +506,7 @@
     <string name="url_copied_to_clipboard">نشانی کپی شد</string>
     <string name="never">هرگز</string>
     <string name="omemo_fingerprint_selected_message">اثر انگشت OMEMO (منبع پیام)</string>
-    <string name="openkeychain_required_long">%1$s برنامهٔ &lt;b&gt;OpenKeychain&lt;/b&gt; را به کار می‌برد تا پیام‌ها را رمزنگاری کند و کلید عمومی شما را مدیریت کند.&lt;br&gt;&lt;br&gt;با پروانهٔ ‪GPLv3+‬ منتشر شده است و روی اف-دروید و گوگل‌پلی در دسترس است.&lt;br&gt;&lt;br&gt;&lt;small&gt;(لطفاً پس از آن %1$s را دوباره اجرا کنید.)&lt;/small&gt;</string>
+    <string name="openkeychain_required_long"><![CDATA[%1$s برنامهٔ <b>OpenKeychain</b> را به کار می‌برد تا پیام‌ها را رمزنگاری کند و کلید عمومی شما را مدیریت کند.<br><br>با پروانهٔ ‪GPLv3+‬ منتشر شده است و روی اف-دروید و گوگل‌پلی در دسترس است.<br><br><small>(لطفاً پس از آن %1$s را دوباره اجرا کنید.)</small>]]></string>
     <string name="conference_options">پیکربندی گفتگوی گروهی خصوصی</string>
     <string name="contact_added_you">مخاطب به فهرست مخاطبان افزوده شد</string>
     <string name="destroy_room">حذف گفتگوی گروهی</string>
@@ -747,7 +747,7 @@
         <item quantity="other">%d ثانیه</item>
     </plurals>
     <string name="abort_registration_procedure">آیا می‌خواهید فرایند ثبت‌نام را متوقف کنید؟</string>
-    <string name="we_have_sent_you_an_sms_to_x">ما به شما پیامکی به <b>%s</b> فرستاده‌ایم.</string>
+    <string name="we_have_sent_you_an_sms_to_x"><![CDATA[ما به شما پیامکی به <b>%s</b> فرستاده‌ایم.]]></string>
     <string name="outdated_backup_file_format">شما دارید یک قالب قدیمی نسخهٔ پشتیبان را وارد می‌کنید</string>
     <string name="creating_channel">کانال عمومی ساخته می‌شود…</string>
     <string name="location_disabled">هم‌رسانی موقعیت مکانی غیرفعال است</string>
@@ -842,7 +842,7 @@
     <string name="send_corrected_message">فرستادن پیام ویرایش‌شده</string>
     <string name="session_failure">خطای نشست</string>
     <string name="message_copied_to_clipboard">پیام کپی شد</string>
-    <string name="group_chats_and_channels">گفتگوهای گروهی و کانال‌ها</string>
+    <string name="group_chats_and_channels"><![CDATA[گفتگوهای گروهی و کانال‌ها]]></string>
     <string name="start_orbot">اجرای Orbot</string>
     <string name="invalid_country_code">کد کشور نامعتبر</string>
     <string name="create_group_chat">گفتگوی گروهی بسازید</string>
@@ -927,7 +927,7 @@
     <string name="pref_show_connection_options_summary">نمایش تنظیمات نام میزبان و پورت هنگام ساخت حساب</string>
     <string name="add_existing_account">افزودن حساب فعلی</string>
     <string name="unable_to_decrypt_backup">رمزگشایی از پشتیبان ممکن نبود. رمز درست است؟</string>
-    <string name="we_will_be_verifying">ما این شماره را تأیید خواهیم کرد<br/><br/><b>%s</b><br/><br/>. آیا درست است یا می‌خواهید شماره را ویرایش کنید؟</string>
+    <string name="we_will_be_verifying"><![CDATA[ما این شماره را تأیید خواهیم کرد<br/><br/><b>%s</b><br/><br/>. آیا درست است یا می‌خواهید شماره را ویرایش کنید؟]]></string>
     <string name="unknown_api_error_network">خطای ناشناخته در شبکه.</string>
     <string name="this_account_is_disabled">شما این حساب را غیرفعال کرده‌اید</string>
     <string name="pref_connection_options">اتصال</string>
