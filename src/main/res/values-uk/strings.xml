@@ -1225,4 +1225,6 @@
     <string name="pref_presence_settings_summary">Статус «Відійшов» на пристрої, синхронізація «Не турбувати»</string>
     <string name="video_480p">Середня (480p)</string>
     <string name="video_1080p">Дуже висока (1080p)</string>
+    <string name="pref_save_to_gallery_summary">Автоматично зберігати медіафайли у загальнодоступних папках, щоб вони відображалися у Вашій галереї та файловому менеджері.</string>
+    <string name="pref_save_to_gallery">Зберігати в галерею</string>
 </resources>
