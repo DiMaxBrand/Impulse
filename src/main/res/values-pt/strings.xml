@@ -1181,4 +1181,6 @@
     <string name="pref_presence_settings_summary">Ausente ao bloquear o dispositivo, Sincronizar DND do sistema</string>
     <string name="video_480p">Média (480p)</string>
     <string name="video_1080p">Muito alta (1080p)</string>
+    <string name="pref_save_to_gallery">Salvar para a Galeria</string>
+    <string name="pref_save_to_gallery_summary">Automaticamente armazenar media em pastas públicas para aparecerem na sua galeria e gestor de ficheiros.</string>
 </resources>
