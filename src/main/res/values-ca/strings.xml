@@ -710,7 +710,7 @@
     <string name="security_violation_not_attaching_file">Arxiu omès per violació de seguretat.</string>
     <string name="pref_video_compression">Qualitat del vídeo</string>
     <string name="pref_video_compression_summary">Una menor qualitat significa arxius més petits</string>
-    <string name="video_360p">Mitjà (360p)</string>
+    <string name="video_360p">Baixa (360p)</string>
     <string name="video_720p">Alt (720p)</string>
     <string name="cancelled">cancel·lat</string>
     <string name="already_drafting_message">Ja està redactant un missatge.</string>
@@ -1104,4 +1104,20 @@
         <item quantity="many">Elimina %d missatges</item>
         <item quantity="other">Elimina %d missatges</item>
     </plurals>
+    <string name="pref_presence_settings_summary">Absent en bloquejar el dispositiu, Sincronitza el mode No molesteu del sistema</string>
+    <string name="video_480p">Mitjana (480p)</string>
+    <string name="video_1080p">Molt alta (1080p)</string>
+    <string name="edit_name_and_topic">Edita el nom i el tema</string>
+    <string name="edit_configuration">Canviar la configuració</string>
+    <string name="change_notification_settings">Canvia la configuració de les notificacions</string>
+    <string name="call_is_using_earpiece_tap_to_switch_to_speaker">La trucada utilitza l\'auricular. Toca per canviar a l\'altaveu.</string>
+    <string name="call_is_using_earpiece">La trucada utilitza auricular.</string>
+    <string name="call_is_using_wired_headset">La trucada està utilitzant un auricular amb cable</string>
+    <string name="call_is_using_speaker_tap_to_switch_to_earpiece">La trucada està fent servir l\'altaveu. Toca per canviar al receptor d\'orella.</string>
+    <string name="call_is_using_speaker">La trucada està fent servir l\'altaveu.</string>
+    <string name="call_is_using_bluetooth">La trucada utilitza Bluetooth.</string>
+    <string name="flip_camera">Gira la càmera</string>
+    <string name="video_is_enabled_tap_to_disable">El vídeo està habilitat. Toca per desactivar.</string>
+    <string name="video_is_disabled_tap_to_enable">El vídeo està desactivat. Toca per activar-lo.</string>
+    <string name="server_info_login_mechanism">Mecanisme d\'inici de sessió</string>
 </resources>
