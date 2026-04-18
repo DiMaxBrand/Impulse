@@ -118,7 +118,7 @@
     <string name="pref_notification_grace_period">Periodo de gracia</string>
     <string name="pref_notification_grace_period_summary">El tiempo que se silencian las notificaciones tras detectar actividad en otro de tus dispositivos.</string>
     <string name="pref_advanced_options">Avanzado</string>
-    <string name="pref_never_send_crash_summary">Al enviar los informes, estás ayudando al desarrollo</string>
+    <string name="pref_never_send_crash_summary">Al enviar informes de fallos, ayudas en el desarrollo continuo</string>
     <string name="pref_confirm_messages">Marcas de lectura</string>
     <string name="pref_confirm_messages_summary">Al activarlo, tus contactos verán cuándo has leído sus mensajes.</string>
     <string name="pref_prevent_screenshots">Impedir capturas de pantalla</string>
@@ -752,7 +752,7 @@
     <string name="phone_number">número de teléfono</string>
     <string name="verify_your_phone_number">Verifica tu número de teléfono</string>
     <string name="enter_country_code_and_phone_number">Quicksy te enviará un mensaje SMS (se podrían aplicar cargos) para verificar tu número de teléfono. Introduce tu código de país y tu número de teléfono:</string>
-    <string name="we_will_be_verifying"><![CDATA[Vamos a verificar que el número de teléfono sea correcto<br/><br/><b>%s</b><br/><br/>¿Quieres continuar o te gustaría modificar el número?]]></string>
+    <string name="we_will_be_verifying"><![CDATA[Vamos a verificar que el número de teléfono sea correcto<br><br><b>%s</b><br><br>¿Quieres continuar o te gustaría modificar el número?]]></string>
     <string name="not_a_valid_phone_number">%sno es un número válido.</string>
     <string name="please_enter_your_phone_number">Por favor, introduce tu número de teléfono.</string>
     <string name="search_countries">Buscar países</string>
@@ -857,7 +857,7 @@
     <string name="unable_to_perform_this_action">No se ha podido realizar esta acción</string>
     <string name="open_join_dialog">Uniéndose a un canal público…</string>
     <string name="sharing_application_not_grant_permission">La aplicación de compartir no concedió permisos para acceder a este fichero.</string>
-    <string name="group_chats_and_channels"><![CDATA[Conversaciones en grupo & Canales]]></string>
+    <string name="group_chats_and_channels"><![CDATA[Chats y canales grupales]]></string>
     <string name="jabber_network">jabber.network</string>
     <string name="local_server">Servidor local</string>
     <string name="pref_channel_discovery_summary">La mayoría de los usuarios deberían elegir \'jabber.network\' para mejores sugerencias de todo el ecosistema público XMPP.</string>
