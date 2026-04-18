@@ -86,7 +86,7 @@
     <string name="send_omemo_x509_message">发送 v\\OMEMO 加密消息</string>
     <string name="your_nick_has_been_changed">您的昵称已更改</string>
     <string name="send_unencrypted">发送未加密</string>
-    <string name="decryption_failed">解密失败。也许您没有合适的私钥。</string>
+    <string name="decryption_failed">解密失败。可能是您没有正确的私钥。</string>
     <string name="openkeychain_required">OpenKeychain</string>
     <string name="openkeychain_required_long"><![CDATA[%1$s 使用 <b>OpenKeychain</b> 来加密和解密消息并管理公钥。<br><br>它采用 GPLv3+ 许可，可在 F-Droid 和 Google Play 上获取。<br><br><small>（之后请重启 %1$s。）</small>]]></string>
     <string name="restart">重启</string>
@@ -95,9 +95,9 @@
     <string name="offering">正在提供…</string>
     <string name="waiting">正在等待…</string>
     <string name="no_pgp_key">未找到 OpenPGP 密钥</string>
-    <string name="contact_has_no_pgp_key">无法加密您的消息，因为您的联系人未公布其公钥。\n\n<small>请让您的联系人设置 OpenPGP。</small></string>
+    <string name="contact_has_no_pgp_key">无法加密您的消息，因为您的联系人未宣告其公钥。\n\n<small>请让您的联系人设置 OpenPGP。</small></string>
     <string name="no_pgp_keys">未找到 OpenPGP 密钥</string>
-    <string name="contacts_have_no_pgp_keys">无法加密您的消息，因为您的联系人未公布其公钥。\n\n<small>请让您的联系人设置 OpenPGP。</small></string>
+    <string name="contacts_have_no_pgp_keys">无法加密您的消息，因为您的联系人未宣告其公钥。\n\n<small>请让您的联系人设置 OpenPGP。</small></string>
     <string name="pref_general">常规</string>
     <string name="pref_accept_files">接受文件</string>
     <string name="pref_accept_files_summary">自动接受小于此大小的文件…</string>
@@ -135,7 +135,7 @@
     <string name="error_not_an_image_file">您选择的文件不是图片</string>
     <string name="error_compressing_image">无法转换图片文件</string>
     <string name="error_file_not_found">未找到文件</string>
-    <string name="error_io_exception">常规 I/O 错误。也许存储空间已用完？</string>
+    <string name="error_io_exception">常规 I/O 错误。可能是您的存储空间不足？</string>
     <string name="error_security_exception_during_image_copy">您用于选择此图片的应用未提供足够的权限来读取文件。\n\n<small>请使用其他文件管理器选择图片</small>。</string>
     <string name="error_security_exception">您用于分享此文件的应用未提供足够的权限。</string>
     <string name="account_status_unknown">未知</string>
@@ -167,7 +167,7 @@
     <string name="mgmt_account_publish_avatar">发布头像</string>
     <string name="mgmt_account_publish_pgp">发布 OpenPGP 公钥</string>
     <string name="unpublish_pgp">移除 OpenPGP 公钥</string>
-    <string name="unpublish_pgp_message">您确定要从在线状态公布中移除 OpenPGP 公钥吗？\n您的联系人将无法再向您发送 OpenPGP 加密消息。</string>
+    <string name="unpublish_pgp_message">您确定要从在线状态宣告中移除您的 OpenPGP 公钥吗？\n您的联系人将无法再向您发送 OpenPGP 加密消息。</string>
     <string name="openpgp_has_been_published">OpenPGP 公钥已发布。</string>
     <string name="mgmt_account_enable">启用账号</string>
     <string name="mgmt_account_delete_confirm_text">您确定要删除账号吗？删除您的账号会清空全部聊天记录</string>
@@ -192,8 +192,8 @@
     <string name="server_info_push">XEP-0357：推送</string>
     <string name="server_info_available">有效</string>
     <string name="server_info_unavailable">无效</string>
-    <string name="missing_public_keys">缺少公钥公布</string>
-    <string name="install_openkeychain">加密消息。请安装 OpenKeychain 解密。</string>
+    <string name="missing_public_keys">缺少公钥宣告</string>
+    <string name="install_openkeychain">加密消息。请安装 OpenKeychain 进行解密。</string>
     <string name="openpgp_messages_found">发现新的 OpenPGP 加密消息</string>
     <string name="openpgp_key_id">OpenPGP 密钥 ID</string>
     <string name="omemo_fingerprint">OMEMO 指纹</string>
@@ -255,9 +255,7 @@
     <string name="enable">启用</string>
     <string name="conference_requires_password">进入群聊需要密码</string>
     <string name="enter_password">输入密码</string>
-    <string name="request_presence_updates">请先向您的联系人请求在线状态更新。
-\n
-\n<small>将用于确定对方正在使用的聊天应用</small>。</string>
+    <string name="request_presence_updates">请先向您的联系人请求在线状态更新。\n\n<small>这将用于确定您的联系人正在使用的聊天应用</small>。</string>
     <string name="request_now">立即请求</string>
     <string name="ignore">忽略</string>
     <string name="without_mutual_presence_updates"><b>警告：</b>在双方未更新在线状态的情况下发送此消息将会出现未知问题。
@@ -339,12 +337,12 @@
     <string name="no_conference_server_found">未找到群聊服务器</string>
     <string name="conference_creation_failed">无法创建群聊</string>
     <string name="account_image_description">账号头像</string>
-    <string name="copy_omemo_clipboard_description">复制 OMEMO 指纹到剪贴板</string>
+    <string name="copy_omemo_clipboard_description">将 OMEMO 指纹复制到剪贴板</string>
     <string name="regenerate_omemo_key">重新生成 OMEMO 密钥</string>
     <string name="clear_other_devices">清除设备</string>
-    <string name="clear_other_devices_desc">是否确定要从 OMEMO 公布中清除所有其他设备？下次您的设备连接时将会重新公布自身，但可能无法接收在此期间发送的消息。</string>
-    <string name="error_no_keys_to_trust_server_error">此联系人没有可用密钥。 \n无法从服务器获取新密钥。也许是对方的服务器有问题？</string>
-    <string name="error_no_keys_to_trust_presence">此联系人没有可用密钥。 \n请确保双方都有在线状态订阅。</string>
+    <string name="clear_other_devices_desc">您确定要从 OMEMO 宣告中清除所有其他设备吗？下次您的设备连接时将会重新宣告自身，但可能无法接收在此期间发送的消息。</string>
+    <string name="error_no_keys_to_trust_server_error">此联系人没有可用的密钥。\n无法从服务器获取新密钥。可能是您的联系人的服务器出现了问题？</string>
+    <string name="error_no_keys_to_trust_presence">此联系人没有可用的密钥。\n请确保双方都有在线状态订阅。</string>
     <string name="error_trustkeys_title">出了点问题</string>
     <string name="fetching_history_from_server">正在从服务器获取历史记录</string>
     <string name="no_more_history_on_server">服务器上没有更多历史记录</string>
@@ -553,7 +551,7 @@
     <string name="pref_delete_omemo_identities">删除 OMEMO 身份</string>
     <string name="pref_delete_omemo_identities_summary">重新生成 OMEMO 密钥。您的所有联系人将必须再次验证您。仅将此作为最后的方法。</string>
     <string name="delete_selected_keys">删除所选密钥</string>
-    <string name="error_publish_avatar_offline">连接后才能发布头像。</string>
+    <string name="error_publish_avatar_offline">您必须处于连接状态才能发布您的头像。</string>
     <string name="show_error_message">显示错误消息</string>
     <string name="error_message">错误消息</string>
     <string name="data_saver_enabled">流量节省程序已启用</string>
@@ -584,7 +582,7 @@
     <string name="show_inactive_devices">显示非活动设备</string>
     <string name="hide_inactive_devices">隐藏非活动设备</string>
     <string name="distrust_omemo_key">不信任设备</string>
-    <string name="distrust_omemo_key_text">是否确定要移除此设备的验证状态？\n此设备及其消息将被标记为“不受信任”。</string>
+    <string name="distrust_omemo_key_text">您确定要移除此设备的验证状态吗？\n此设备及其发送的消息将被标记为“不受信任”。</string>
     <plurals name="seconds">
         <item quantity="other">%d 秒</item>
     </plurals>
@@ -647,7 +645,7 @@
     <string name="edit_status_message_title">编辑状态消息</string>
     <string name="edit_status_message">编辑状态消息</string>
     <string name="disable_encryption">禁用加密</string>
-    <string name="error_trustkey_general">%1$s 无法向 %2$s 发送加密消息。可能是由于联系人使用了无法处理 OMEMO 的过时服务器或客户端。</string>
+    <string name="error_trustkey_general">%1$s 无法向 %2$s 发送加密消息。这可能是由于您的联系人使用了过时的服务器或客户端，无法处理 OMEMO。</string>
     <string name="error_trustkey_device_list">无法获取设备列表</string>
     <string name="error_trustkey_bundle">无法获取密钥</string>
     <string name="error_trustkey_hint_mutual">提示：某些情况下，双方相互添加到联系人列表即可解决此问题。</string>
@@ -717,7 +715,7 @@
     <string name="view_media">查看媒体</string>
     <string name="group_chat_members">参与者</string>
     <string name="media_browser">媒体浏览器</string>
-    <string name="security_violation_not_attaching_file">由于违反安全规定，文件已删除。</string>
+    <string name="security_violation_not_attaching_file">由于违反安全规定，文件已被删除。</string>
     <string name="pref_video_compression">视频画质</string>
     <string name="pref_video_compression_summary">画质越低，文件越小</string>
     <string name="video_360p">低（360p）</string>
@@ -885,8 +883,8 @@
     <string name="audio_call">音频通话</string>
     <string name="video_call">视频通话</string>
     <string name="help">帮助</string>
-    <string name="microphone_unavailable">麦克风无法使用</string>
-    <string name="only_one_call_at_a_time">每次只能有一个通话。</string>
+    <string name="microphone_unavailable">您的麦克风无法使用</string>
+    <string name="only_one_call_at_a_time">您一次只能进行一个通话。</string>
     <string name="return_to_ongoing_call">返回当前通话</string>
     <string name="could_not_switch_camera">无法切换摄像头</string>
     <string name="add_to_favorites">置顶</string>
@@ -947,10 +945,10 @@
     <string name="this_account_is_logged_out">您已退出此账号的登录</string>
     <string name="log_in">登录</string>
     <string name="hide_notification">隐藏通知</string>
-    <string name="contact_uses_unverified_keys">联系人使用未经验证的设备。扫描其二维码进行验证并阻止主动式中间人攻击。</string>
+    <string name="contact_uses_unverified_keys">您的联系人正在使用未经验证的设备。请扫描其二维码进行验证以阻止主动式中间人攻击。</string>
     <string name="log_out">退出登录</string>
     <string name="account_state_logged_out">已退出登录</string>
-    <string name="unverified_devices">您正在使用未经验证的设备。扫描您其他设备的二维码进行验证并阻止主动式中间人攻击。</string>
+    <string name="unverified_devices">您正在使用未经验证的设备。请扫描您其他设备上的二维码进行验证以阻止主动式中间人攻击。</string>
     <string name="report_spam_and_block">举报垃圾信息并屏蔽垃圾信息发送者</string>
     <string name="report_spam">举报垃圾信息</string>
     <string name="welcome_header_quicksy">欢迎使用 Quicksy！</string>
@@ -1047,7 +1045,7 @@
     <string name="more_reactions">更多回应</string>
     <string name="add_reaction_title">添加回应</string>
     <string name="could_not_modify_call">无法修改通话</string>
-    <string name="clients_may_not_support_av">联系人的 XMPP 客户端可能不支持音频/视频通话。</string>
+    <string name="clients_may_not_support_av">您的联系人的 XMPP 客户端可能不支持音频/视频通话。</string>
     <string name="pref_chat_bubbles_summary">背景颜色、字体大小、头像</string>
     <string name="pref_chat_bubbles">消息气泡</string>
     <string name="pref_title_bubbles">消息气泡</string>
