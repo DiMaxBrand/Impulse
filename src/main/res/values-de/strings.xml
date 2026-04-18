@@ -1175,6 +1175,6 @@
     <string name="pref_presence_settings_summary">Abwesend bei gesperrtem Gerät, Systemsynchronisierung von „Bitte nicht stören“</string>
     <string name="video_1080p">Sehr hoch (1080p)</string>
     <string name="video_480p">Mittel (480p)</string>
-    <string name="pref_save_to_gallery">In der Gallerie speichern</string>
-    <string name="pref_save_to_gallery_summary">Mediendateien werden in öffentlichen Ordnern gespeichert, so dass sie in deiner Gallerie und im Dateimanager auftauchen.</string>
+    <string name="pref_save_to_gallery">In Galerie speichern</string>
+    <string name="pref_save_to_gallery_summary">Medien werden automatisch in öffentlichen Ordnern gespeichert, sodass sie in deiner Galerie und deinem Dateimanager angezeigt werden.</string>
 </resources>
