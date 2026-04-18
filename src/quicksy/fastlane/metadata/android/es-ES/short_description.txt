@@ -1,1 +1,1 @@
-Jabber/XMPP fácil de usar y encuentra tus contactos
+Jabber/XMPP con registro y detección sencillos
