@@ -350,7 +350,7 @@
     <string name="enable_all_accounts">Habilitar tots els comptes</string>
     <string name="disable_all_accounts">Deshabilitar tots els comptes</string>
     <string name="perform_action_with">Realitzar l\'acció amb</string>
-    <string name="outcast">Outcast</string>
+    <string name="outcast">Sortida</string>
     <string name="member">Membre</string>
     <string name="remove_from_room">Suprimeix del xat de grup</string>
     <string name="remove_from_channel">Eliminar del canal</string>
@@ -406,6 +406,7 @@
     <string name="dialog_manage_certs_positivebutton">Esborrar selecció</string>
     <plurals name="toast_delete_certificates">
         <item quantity="one">%d certificat esborrat</item>
+        <item quantity="many">%d certificats esborrats</item>
         <item quantity="other">%d certificats esborrats</item>
     </plurals>
     <string name="pref_quick_action_summary">Substituir el botó \"Enviar\" per una acció ràpida</string>
@@ -455,8 +456,9 @@
     <string name="not_valid_hostname">Aquest no és un nom de host vàlid</string>
     <string name="connected_accounts">%1$d of %2$d comptes connectats</string>
     <plurals name="x_messages">
-        <item quantity="one">%dmissatge</item>
-        <item quantity="other">%d messages</item>
+        <item quantity="one">%d missatge</item>
+        <item quantity="many">%d missatges</item>
+        <item quantity="other">%d missatges</item>
     </plurals>
     <string name="load_more_messages">Carregueu més missatges</string>
     <string name="shared_file_with_x">Arxiu compartit amb %s</string>
@@ -565,28 +567,34 @@
     <string name="distrust_omemo_key">Dispositiu no confiable</string>
     <string name="distrust_omemo_key_text">Està segur que vol eliminar la verificació d\'aquest dispositiu?\nAquest dispositiu i els missatges que provinguin d\'ell es marcaran com \"No fiable\".</string>
     <plurals name="seconds">
-        <item quantity="one">1%d segons</item>
+        <item quantity="one">%d segon</item>
+        <item quantity="many">%d segons</item>
         <item quantity="other">%d segons</item>
     </plurals>
     <plurals name="minutes">
-        <item quantity="one">1%d minuts</item>
+        <item quantity="one">%d minut</item>
+        <item quantity="many">%d minuts</item>
         <item quantity="other">%d minuts</item>
     </plurals>
     <plurals name="hours">
-        <item quantity="one">1%d hores</item>
+        <item quantity="one">%d hora</item>
+        <item quantity="many">%d hores</item>
         <item quantity="other">%d hores</item>
     </plurals>
     <plurals name="days">
-        <item quantity="one">1%d dies</item>
+        <item quantity="one">%d dia</item>
+        <item quantity="many">%d dies</item>
         <item quantity="other">%d dies</item>
     </plurals>
     <plurals name="weeks">
-        <item quantity="one">1%d setmanes</item>
+        <item quantity="one">%d setmana</item>
+        <item quantity="many">%d setmanes</item>
         <item quantity="other">%d setmanes</item>
     </plurals>
     <plurals name="months">
-        <item quantity="one">1%d meses</item>
-        <item quantity="other">%d meses</item>
+        <item quantity="one">%d mes</item>
+        <item quantity="many">%d mesos</item>
+        <item quantity="other">%d mesos</item>
     </plurals>
     <string name="pref_automatically_delete_messages">Supressió de missatge automàtic</string>
     <string name="pref_automatically_delete_messages_description">Suprimiu automàticament missatges d\'aquest dispositiu que són més grans que el marc de temps configurat.</string>
@@ -712,7 +720,7 @@
     <string name="phone_number">número de telèfon</string>
     <string name="verify_your_phone_number">Verifiqui el seu número de telèfon</string>
     <string name="enter_country_code_and_phone_number">Quicksy enviarà un missatge SMS (poden aplicar-se càrrecs de l\'operador) per a verificar el teu número de telèfon. Introdueix el codi del teu país i el número de telèfon:</string>
-    <string name="we_will_be_verifying"><![CDATA[Verificarem el número de telèfon<br/><br/><b>%s</b><br/><br/>Està bé, o vol editar el número?]]></string>
+    <string name="we_will_be_verifying"><![CDATA[Verificarem el número de telèfon<br><br><b>%s</b><br><br>Està bé, o vols editar el número?]]></string>
     <string name="not_a_valid_phone_number">%s no és un número de telèfon vàlid.</string>
     <string name="please_enter_your_phone_number">Si us plau, introdueixi el seu número de telèfon.</string>
     <string name="search_countries">Buscar països</string>
@@ -877,8 +885,9 @@
         <item quantity="other">Mostra %1$d participants</item>
     </plurals>
     <plurals name="some_messages_could_not_be_delivered">
-        <item quantity="one">Alguns missatges no han pogut ser lliurats</item>
-        <item quantity="other">Alguns missatges no han pogut ser lliurats</item>
+        <item quantity="one">No s\'ha pogut enviar un missatge</item>
+        <item quantity="many">No s\'han pogut enviar alguns missatges</item>
+        <item quantity="other">No s\'han pogut enviar alguns missatges</item>
     </plurals>
     <string name="failed_deliveries">Lliuraments fallits</string>
     <string name="more_options">Més opcions</string>
@@ -1066,10 +1075,10 @@
     <string name="detect_mim_summary">El lligam de canals pot detectar alguns atacs d\'intermediari</string>
     <string name="pref_category_server_connection">Connexió al servidor</string>
     <string name="pref_category_operating_system">Sistema operatiu</string>
-    <string name="pref_privacy_summary">Notificacions d\'escriptura, Última connexió, Disponibilitat</string>
+    <string name="pref_privacy_summary">Notificacions d\'escriptura, Última connexió, Relés P2P</string>
     <string name="pref_connection_summary">Nom d\'host i port, Tor</string>
-    <string name="pref_connection_summary_w_cd">Nom d\'amfitrió i port, Tor, P2P, descoberta de canals</string>
-    <string name="pref_keyboard_options">teclat</string>
+    <string name="pref_connection_summary_w_cd">Nom d\'amfitrió i port, Tor, descoberta de canals</string>
+    <string name="pref_keyboard_options">Teclat</string>
     <string name="pref_category_engagement_notifications">Notificacions d\'interacció</string>
     <string name="pref_category_application">Aplicació</string>
     <string name="pref_category_interaction">Interacció</string>
