@@ -1203,4 +1203,6 @@
     <string name="pref_presence_settings_summary">„Zaraz wracam” przy blokadzie urządzenia, synchronizacja systemowego „nie przeszkadzać”</string>
     <string name="video_480p">Średnia (480p)</string>
     <string name="video_1080p">Bardzo wysoka (1080p)</string>
+    <string name="pref_save_to_gallery">Zapisz do galerii</string>
+    <string name="pref_save_to_gallery_summary">Automatycznie zapisuj multimedia w publicznych katalogach, tak żeby były widoczne w Twojej galerii i menedżerze plików.</string>
 </resources>
