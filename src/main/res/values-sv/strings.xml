@@ -810,7 +810,7 @@
     <string name="unable_to_perform_this_action">Det gick inte att utföra den här åtgärden</string>
     <string name="open_join_dialog">Anslut till publik gruppchatt…</string>
     <string name="sharing_application_not_grant_permission">Delningsappen gav inte behörighet att komma åt den här filen.</string>
-    <string name="group_chats_and_channels"><![CDATA[Grupp-chatter & Kanaler]]></string>
+    <string name="group_chats_and_channels"><![CDATA[Grupp-chattar &amp; kanaler]]></string>
     <string name="jabber_network">jabber.network</string>
     <string name="local_server">Lokal server</string>
     <string name="pref_channel_discovery_summary">De flesta användare bör välja \"jabber.network\", för att få bättre förslag från hela det offentliga XMPP-ekosystemet.</string>
@@ -910,7 +910,7 @@
     <string name="resend_sms">Skicka SMS igen</string>
     <string name="resend_sms_in">Skicka SMS igen (%s)</string>
     <string name="wait_x">Var god vänta (%s)</string>
-    <string name="we_will_be_verifying"><![CDATA[Vi kommer att bekräfta telefonnumret<br/><br/><b>%s</b><br/><br/>Är detta OK eller vill du redigera numret?]]></string>
+    <string name="we_will_be_verifying"><![CDATA[Vi kommer att bekräfta telefonnumret<br><br><b>%s</b><br><br>Är detta OK eller vill du redigera numret?]]></string>
     <string name="not_a_valid_phone_number">%s är inte ett giltigt telefonnummer.</string>
     <string name="security_violation_not_attaching_file">Filen har utelämnats på grund av säkerhetsöverträdelse.</string>
     <string name="pref_video_compression_summary">Lägre kvalitet resulterar i mindre filer</string>
@@ -1190,4 +1190,6 @@
     <string name="pref_presence_settings_summary">Frånvarande när enheten är låst, synkronisera systemets \"stör ej\"-läge</string>
     <string name="video_480p">Medium (480p)</string>
     <string name="video_1080p">Väldigt hög (1080p)</string>
+    <string name="pref_save_to_gallery">Spara till galleri</string>
+    <string name="pref_save_to_gallery_summary">Lagra media automatiskt i offentliga mappar så att de visas i ditt galleri och filhanterare.</string>
 </resources>
