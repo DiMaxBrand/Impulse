@@ -14,6 +14,8 @@ import java.util.Objects;
 
 public class ViewUtil {
 
+    public static final String WILDCARD = "*/*";
+
     public static void view(final Context context, final Attachment attachment) {
         File file = new File(Objects.requireNonNull(attachment.getUri().getPath()));
         view(context, file, attachment.getUuid().toString(), nullToWildcard(attachment.getMime()));
@@ -29,7 +31,7 @@ public class ViewUtil {
     }
 
     public static String nullToWildcard(final String mime) {
-        return Strings.isNullOrEmpty(mime) ? "*/*" : mime;
+        return Strings.isNullOrEmpty(mime) ? WILDCARD : mime;
     }
 
     private static void view(

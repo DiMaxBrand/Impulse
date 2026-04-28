@@ -1386,6 +1386,7 @@ public class ConversationFragment extends XmppFragment
             final MenuItem deleteFile = menu.findItem(R.id.delete_file);
             final MenuItem moderateMessage = menu.findItem(R.id.moderation);
             final MenuItem showErrorMessage = menu.findItem(R.id.show_error_message);
+            final MenuItem saveFile = menu.findItem(R.id.save_file);
             final boolean unInitiatedButKnownSize = MessageUtils.unInitiatedButKnownSize(m);
             final boolean showError =
                     m.getStatus() == Message.STATUS_SEND_FAILED
@@ -1527,6 +1528,7 @@ public class ConversationFragment extends XmppFragment
                                             R.string.delete_x_file,
                                             UIHelper.getFileDescriptionString(
                                                     requireContext(), m)));
+                    saveFile.setVisible(true);
                 }
             }
             if (showError) {
@@ -1589,6 +1591,10 @@ public class ConversationFragment extends XmppFragment
             }
             case R.id.delete_file -> {
                 deleteFile(selectedMessage);
+                yield true;
+            }
+            case R.id.save_file -> {
+                saveFile(selectedMessage);
                 yield true;
             }
             case R.id.moderation -> {
@@ -2314,6 +2320,52 @@ public class ConversationFragment extends XmppFragment
                     }
                 });
         builder.create().show();
+    }
+
+    private void saveFile(final Message message) {
+        final var storageLocation = message.getRelativeFilePath();
+        if (storageLocation == null || storageLocation.sharedStorage()) {
+            return;
+        }
+        final var future =
+                requireXmppActivity()
+                        .xmppConnectionService
+                        .getFileBackend()
+                        .saveInternalToExternal(storageLocation);
+        Futures.addCallback(
+                future,
+                new FutureCallback<>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        final var context = getContext();
+                        if (context == null) {
+                            return;
+                        }
+                        Toast.makeText(
+                                        context,
+                                        getResources()
+                                                .getQuantityString(R.plurals.attachments_saved, 1),
+                                        Toast.LENGTH_LONG)
+                                .show();
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Throwable t) {
+                        Log.e(Config.LOGTAG, "could not save attachment", t);
+                        final var context = getContext();
+                        if (context == null) {
+                            return;
+                        }
+                        Toast.makeText(
+                                        context,
+                                        getResources()
+                                                .getQuantityString(
+                                                        R.plurals.attachments_not_saved, 1),
+                                        Toast.LENGTH_LONG)
+                                .show();
+                    }
+                },
+                ContextCompat.getMainExecutor(requireContext()));
     }
 
     private void moderate(final Message message) {

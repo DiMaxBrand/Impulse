@@ -29,10 +29,15 @@ import androidx.annotation.StringRes;
 import androidx.core.content.FileProvider;
 import androidx.exifinterface.media.ExifInterface;
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
+import com.google.common.collect.Collections2;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.io.ByteStreams;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
@@ -58,7 +63,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class FileBackend {
@@ -462,11 +469,11 @@ public class FileBackend {
         return bitmap;
     }
 
-    public void updateMediaScanner(File file) {
+    public void updateMediaScanner(final File file) {
         updateMediaScanner(file, null);
     }
 
-    public void updateMediaScanner(File file, final Runnable callback) {
+    public void updateMediaScanner(final File file, final Runnable callback) {
         MediaScannerConnection.scanFile(
                 mXmppConnectionService,
                 new String[] {file.getAbsolutePath()},
@@ -476,14 +483,12 @@ public class FileBackend {
                     public void onMediaScannerConnected() {}
 
                     @Override
-                    public void onScanCompleted(String path, Uri uri) {
-                        if (callback != null && file.getAbsolutePath().equals(path)) {
+                    public void onScanCompleted(final String path, final Uri uri) {
+                        if (!file.getAbsolutePath().equals(path)) {
+                            Log.w(Config.LOGTAG, "media scanner scanned wrong file");
+                        }
+                        if (callback != null) {
                             callback.run();
-                        } else {
-                            Log.d(Config.LOGTAG, "media scanner scanned wrong file");
-                            if (callback != null) {
-                                callback.run();
-                            }
                         }
                     }
                 });
@@ -889,6 +894,22 @@ public class FileBackend {
         final var filesDir = mXmppConnectionService.getFilesDir();
         final var attachments = new File(filesDir, "attachments");
         return new File(attachments, filename);
+    }
+
+    public List<Message.StorageLocation> inferStorageLocation(
+            final Collection<Attachment> attachments) {
+        final var filesDir = mXmppConnectionService.getFilesDir();
+        final var attachmentsDir = new File(filesDir, "attachments");
+        final var builder = new ImmutableList.Builder<Message.StorageLocation>();
+        for (final var attachment : attachments) {
+            final var file = getFile(attachment.getUri());
+            if (file.isPresent()) {
+                final var parent = file.get().getParentFile();
+                final var sharedStorage = parent == null || !parent.equals(attachmentsDir);
+                builder.add(new Message.StorageLocation(file.get(), sharedStorage));
+            }
+        }
+        return builder.build();
     }
 
     public void setupRelativeFilePath(
@@ -1463,6 +1484,54 @@ public class FileBackend {
             return null;
         }
         return cropCenterSquare(mXmppConnectionService, getAvatarUri(avatar), size);
+    }
+
+    public ListenableFuture<List<Void>> saveInternalToExternal(
+            final Collection<Message.StorageLocation> storageLocations) {
+        final var internalOnly =
+                Collections2.filter(storageLocations, sl -> sl != null && !sl.sharedStorage());
+        final var futures =
+                Collections2.transform(
+                        internalOnly, sl -> saveInternalToExternal(Objects.requireNonNull(sl)));
+        return Futures.successfulAsList(futures);
+    }
+
+    public ListenableFuture<Void> saveInternalToExternal(
+            final Message.StorageLocation storageLocation) {
+        Preconditions.checkArgument(!storageLocation.sharedStorage());
+        final var internal = storageLocation.file();
+        final var external =
+                getSharedStorageLocation(internal.getName(), MimeUtils.getMimeType(internal));
+        if (external.exists() && internal.length() == external.length()) {
+            Log.i(Config.LOGTAG, "file is already available on shared storage");
+            updateMediaScanner(external);
+            return Futures.immediateVoidFuture();
+        }
+        final var parent = external.getParentFile();
+        if (parent != null && parent.mkdirs()) {
+            Log.d(Config.LOGTAG, "created parent directory: " + parent.getAbsolutePath());
+            mXmppConnectionService.restartFileObserver();
+        }
+        return Futures.submit(
+                () -> {
+                    try {
+                        if (external.createNewFile()) {
+                            Log.d(
+                                    Config.LOGTAG,
+                                    "created empty file " + external.getAbsolutePath());
+                        }
+                    } catch (final IOException e) {
+                        throw new IllegalStateException(e);
+                    }
+                    try (final var is = new FileInputStream(internal);
+                            final var os = new FileOutputStream(external)) {
+                        ByteStreams.copy(is, os);
+                    } catch (final IOException e) {
+                        throw new IllegalStateException(e);
+                    }
+                    updateMediaScanner(external);
+                },
+                XmppConnectionService.FILE_ATTACHMENT_EXECUTOR);
     }
 
     public static class Cache {

@@ -1515,23 +1515,22 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         return builder.build();
     }
 
-    public List<FilePath> getRelativeFilePaths(String account, Jid jid, int limit) {
-        SQLiteDatabase db = this.getReadableDatabase();
+    public List<FilePath> getRelativeFilePaths(
+            final String account, final Jid jid, final int limit) {
+        final var db = this.getReadableDatabase();
         final String SQL =
                 "select uuid,relativeFilePath from messages where type in (1,2,5) and deleted=0 and"
-                        + " "
-                        + Message.RELATIVE_FILE_PATH
-                        + " is not null and conversationUuid=(select uuid from conversations where"
-                        + " accountUuid=? and (contactJid=? or contactJid like ?)) order by"
-                        + " timeSent desc";
+                    + " relativeFilePath is not null and conversationUuid=(select uuid from"
+                    + " conversations where accountUuid=? and (contactJid=? or contactJid like ?))"
+                    + " GROUP BY relativeFilePath ORDER BY timeSent desc";
         final String[] args = {account, jid.toString(), jid + "/%"};
-        Cursor cursor = db.rawQuery(SQL + (limit > 0 ? " limit " + limit : ""), args);
-        List<FilePath> filesPaths = new ArrayList<>();
-        while (cursor.moveToNext()) {
-            filesPaths.add(new FilePath(cursor.getString(0), cursor.getString(1)));
+        final var builder = new ImmutableList.Builder<FilePath>();
+        try (final var cursor = db.rawQuery(SQL + (limit > 0 ? " limit " + limit : ""), args)) {
+            while (cursor.moveToNext()) {
+                builder.add(new FilePath(cursor.getString(0), cursor.getString(1)));
+            }
         }
-        cursor.close();
-        return filesPaths;
+        return builder.build();
     }
 
     public Set<String> getExistingUrlsForPath(final String account, final String path) {

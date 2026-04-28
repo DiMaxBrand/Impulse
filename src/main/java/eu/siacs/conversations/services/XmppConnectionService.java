@@ -1931,6 +1931,22 @@ public class XmppConnectionService extends Service {
         return this.conversations;
     }
 
+    public ListenableFuture<Void> deleteMediaFiles(final Collection<File> files) {
+        return Futures.submit(
+                () -> {
+                    for (final var file : files) {
+                        synchronized (FILENAMES_TO_IGNORE_DELETION) {
+                            FILENAMES_TO_IGNORE_DELETION.add(file.getAbsolutePath());
+                        }
+                        if (file.delete()) {
+                            markFileDeleted(file);
+                            fileBackend.updateMediaScanner(file);
+                        }
+                    }
+                },
+                FILE_ATTACHMENT_EXECUTOR);
+    }
+
     private void markFileDeleted(final File file) {
         synchronized (FILENAMES_TO_IGNORE_DELETION) {
             if (FILENAMES_TO_IGNORE_DELETION.remove(file.getAbsolutePath())) {

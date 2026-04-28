@@ -17,7 +17,9 @@ import androidx.core.widget.ImageViewCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.color.MaterialColors;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.databinding.ItemMediaBinding;
@@ -29,8 +31,15 @@ import eu.siacs.conversations.worker.ExportBackupWorker;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHolder> {
 
@@ -67,14 +76,29 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
     public static final List<String> CODE_MIMES = Arrays.asList("text/html", "text/xml");
 
     private final ArrayList<Attachment> attachments = new ArrayList<>();
+    private final Set<UUID> selectedAttachments = new HashSet<>();
 
     private final XmppActivity activity;
 
+    private Consumer<Attachment> onAttachmentClicked = null;
+    private Function<Attachment, Boolean> onAttachmentLongClicked = attachment -> false;
+
     private int mediaSize = 0;
 
-    public MediaAdapter(XmppActivity activity, @DimenRes int mediaSize) {
+    public MediaAdapter(final XmppActivity activity, final @DimenRes int mediaSize) {
         this.activity = activity;
         this.mediaSize = Math.round(activity.getResources().getDimension(mediaSize));
+        this.onAttachmentClicked = attachment -> ViewUtil.view(activity, attachment);
+    }
+
+    public void setOnAttachmentClicked(final Consumer<Attachment> callback) {
+        Preconditions.checkNotNull(callback);
+        this.onAttachmentClicked = callback;
+    }
+
+    public void setOnAttachmentLongClicked(final Function<Attachment, Boolean> callback) {
+        Preconditions.checkNotNull(callback);
+        this.onAttachmentLongClicked = callback;
     }
 
     public static void setMediaSize(final RecyclerView recyclerView, final int mediaSize) {
@@ -94,12 +118,6 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
     }
 
     private static @DrawableRes int getImageDrawable(final String mime) {
-
-        // TODO ideas for more mime types: XML, HTML documents, GPG/PGP files, eml files,
-        // spreadsheets (table symbol)
-
-        // add bz2 and tar.gz to archive detection
-
         if (Strings.isNullOrEmpty(mime)) {
             return R.drawable.ic_help_center_48dp;
         } else if (mime.equals("audio/x-m4b")) {
@@ -200,13 +218,64 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
             cancelPotentialWork(attachment, holder.binding.media);
             renderPreview(attachment, holder.binding.media);
         }
-        holder.binding.getRoot().setOnClickListener(v -> ViewUtil.view(activity, attachment));
+        holder.binding.getRoot().setOnClickListener(v -> onAttachmentClicked.accept(attachment));
+        holder.binding
+                .getRoot()
+                .setOnLongClickListener(
+                        v -> {
+                            final var wrapper = v.findViewById(R.id.wrapper);
+                            if (wrapper != null
+                                    && wrapper.getBackground() instanceof Drawable drawable) {
+                                drawable.jumpToCurrentState();
+                            }
+                            return onAttachmentLongClicked.apply(attachment);
+                        });
+        if (selectedAttachments.contains(attachment.getUuid())) {
+            holder.binding.selectionIndicator.setVisibility(ImageView.VISIBLE);
+            holder.binding
+                    .getRoot()
+                    .setBackgroundColor(
+                            MaterialColors.getColor(
+                                    holder.binding.getRoot(),
+                                    com.google.android.material.R.attr
+                                            .colorSurfaceContainerHighest));
+        } else {
+            holder.binding.selectionIndicator.setVisibility(ImageView.INVISIBLE);
+            holder.binding.getRoot().setBackground(null);
+        }
     }
 
     public void setAttachments(final List<Attachment> attachments) {
         this.attachments.clear();
         this.attachments.addAll(attachments);
         notifyDataSetChanged();
+    }
+
+    public boolean toggleSelection(final Attachment attachment) {
+        final var position = this.attachments.indexOf(attachment);
+        final var uuid = attachment.getUuid();
+        final boolean hasSelections;
+        if (this.selectedAttachments.remove(uuid)) {
+            hasSelections = !this.selectedAttachments.isEmpty();
+        } else {
+            this.selectedAttachments.add(uuid);
+            hasSelections = true;
+        }
+        if (position >= 0) {
+            notifyItemChanged(position);
+        }
+        return hasSelections;
+    }
+
+    public void clearSelection() {
+        synchronized (this.selectedAttachments) {
+            for (int i = 0; i < this.attachments.size(); ++i) {
+                final var attachment = this.attachments.get(i);
+                if (this.selectedAttachments.remove(attachment.getUuid())) {
+                    notifyItemChanged(i);
+                }
+            }
+        }
     }
 
     private void setMediaSize(int mediaSize) {
@@ -242,6 +311,24 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
     @Override
     public int getItemCount() {
         return attachments.size();
+    }
+
+    public int countSelections() {
+        return this.selectedAttachments.size();
+    }
+
+    public List<Attachment> getSelectedAttachments() {
+        return ImmutableList.copyOf(
+                Collections2.filter(
+                        this.attachments,
+                        a ->
+                                this.selectedAttachments.contains(
+                                        Objects.requireNonNull(a).getUuid())));
+    }
+
+    public void setSelection(final Collection<UUID> selection) {
+        this.selectedAttachments.clear();
+        this.selectedAttachments.addAll(selection);
     }
 
     static class AsyncDrawable extends BitmapDrawable {

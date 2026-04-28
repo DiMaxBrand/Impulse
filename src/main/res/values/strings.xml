@@ -86,6 +86,14 @@
     <string name="clear_histor_msg">Do you want to delete all messages in this chat?\n\n<b>Warning:</b> This will not influence messages stored on other devices or servers.</string>
     <string name="delete_file_dialog">Delete file</string>
     <string name="delete_file_dialog_msg">Are you sure you want to delete this file?\n\n<b>Warning:</b> This will not delete copies of this file that are stored on other devices or servers. </string>
+    <plurals name="delete_files_dialog">
+        <item quantity="one">Delete file</item>
+        <item quantity="other">Delete %d files</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="one">Are you sure you want to delete this file?</item>
+        <item quantity="other">Are you sure you want to delete these files?</item>
+    </plurals>
     <string name="archive_this_chat">Delete chat afterwards</string>
     <string name="choose_presence">Choose device</string>
     <string name="send_unencrypted_message">Send clear text message</string>
@@ -1165,6 +1173,12 @@
     <string name="pref_auto_send_recording_summary">Send voice messages automatically when you finish recording.</string>
     <string name="pref_save_to_gallery">Save to Gallery</string>
     <string name="pref_save_to_gallery_summary">Automatically store media in public folders so they appear in your gallery and file manager.</string>
+    <plurals name="attachments_saved">
+        <item quantity="other">Media saved</item>
+    </plurals>
+    <plurals name="attachments_not_saved">
+        <item quantity="other">Could not save media</item>
+    </plurals>
     <plurals name="delete_n_messages">
         <item quantity="one">Delete %d message</item>
         <item quantity="other">Delete %d messages</item>
