@@ -1195,4 +1195,24 @@
     <string name="video_1080p">Foarte mare (1080p)</string>
     <string name="pref_save_to_gallery">Salvează în galerie</string>
     <string name="pref_save_to_gallery_summary">Stocați automat fișierele în dosare publice, astfel încât acestea să apară în galeria și managerul dvs. de fișiere.</string>
+    <plurals name="delete_files_dialog">
+        <item quantity="one">Ștergere fișier</item>
+        <item quantity="few">Ștergere %d fișiere</item>
+        <item quantity="other">Ștergere %d de fișiere</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="one">Sigur doriți să ștergeți acest fișier?</item>
+        <item quantity="few">Sigur doriți să ștergeți aceste fișiere?</item>
+        <item quantity="other">Sigur doriți să ștergeți aceste fișiere?</item>
+    </plurals>
+    <plurals name="attachments_saved">
+        <item quantity="one">Fișier salvat</item>
+        <item quantity="few">Fișiere salvate</item>
+        <item quantity="other">Fișiere salvate</item>
+    </plurals>
+    <plurals name="attachments_not_saved">
+        <item quantity="one">Nu s-a putut salva fișierul</item>
+        <item quantity="few">Nu s-au putut salva fișierele</item>
+        <item quantity="other">Nu s-au putut salva fișierele</item>
+    </plurals>
 </resources>
