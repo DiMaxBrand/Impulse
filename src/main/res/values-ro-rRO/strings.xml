@@ -862,7 +862,7 @@
     <string name="unable_to_perform_this_action">Nu s-a putut realiza această acțiune</string>
     <string name="open_join_dialog">Alătură-te unui canal public…</string>
     <string name="sharing_application_not_grant_permission">Aplicația care a partajat nu a permis accesul la acest fișier.</string>
-    <string name="group_chats_and_channels"><![CDATA[Discuții de grup & Canale]]></string>
+    <string name="group_chats_and_channels"><![CDATA[Discuții de grup &amp; Canale]]></string>
     <string name="jabber_network">jabber.network</string>
     <string name="local_server">Server local</string>
     <string name="pref_channel_discovery_summary">Cei mai mulți utilizatori ar trebui să aleagă \'jabber.network\' pentru a primi sugestii mai bune din întregul ecosistem XMPP.</string>
@@ -1206,9 +1206,9 @@
         <item quantity="other">Sigur doriți să ștergeți aceste fișiere?</item>
     </plurals>
     <plurals name="attachments_saved">
-        <item quantity="one">Fișier salvat</item>
-        <item quantity="few">Fișiere salvate</item>
-        <item quantity="other">Fișiere salvate</item>
+        <item quantity="one">%d fișier salvat</item>
+        <item quantity="few">%d fișiere salvate</item>
+        <item quantity="other">%d de fișiere salvate</item>
     </plurals>
     <plurals name="attachments_not_saved">
         <item quantity="one">Nu s-a putut salva fișierul</item>
