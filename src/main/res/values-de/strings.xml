@@ -1191,4 +1191,5 @@
     <plurals name="attachments_not_saved">
         <item quantity="one">Dateien konnten nicht gespeichert werden</item>
     </plurals>
+    <string name="could_not_save_files">Datein konnten nicht gespeichert werden</string>
 </resources>
