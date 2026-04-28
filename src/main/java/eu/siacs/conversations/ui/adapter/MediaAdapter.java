@@ -173,7 +173,7 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
         imageView.setBackgroundColor(
                 MaterialColors.getColor(
                         imageView,
-                        com.google.android.material.R.attr.colorSurfaceContainerHighest));
+                        com.google.android.material.R.attr.colorSurfaceContainer));
     }
 
     private static boolean cancelPotentialWork(Attachment attachment, ImageView imageView) {
@@ -237,7 +237,7 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
                     .setBackgroundColor(
                             MaterialColors.getColor(
                                     holder.binding.getRoot(),
-                                    com.google.android.material.R.attr.colorPrimaryFixed));
+                                    com.google.android.material.R.attr.colorSurfaceContainerHighest));
         } else {
             holder.binding.selectionIndicator.setVisibility(ImageView.INVISIBLE);
             holder.binding.getRoot().setBackground(null);

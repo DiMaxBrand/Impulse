@@ -1520,7 +1520,7 @@ public class ConversationFragment extends XmppFragment
             }
             if (m.isFileOrImage() && !deleted && !cancelable) {
                 final var path = m.getRelativeFilePath();
-                if (path != null && !path.sharedStorage()) {
+                if (path != null) {
                     deleteFile.setVisible(true);
                     deleteFile.setTitle(
                             requireContext()
@@ -1528,7 +1528,7 @@ public class ConversationFragment extends XmppFragment
                                             R.string.delete_x_file,
                                             UIHelper.getFileDescriptionString(
                                                     requireContext(), m)));
-                    saveFile.setVisible(true);
+                    saveFile.setVisible(!path.sharedStorage());
                 }
             }
             if (showError) {
