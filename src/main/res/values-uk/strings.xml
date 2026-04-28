@@ -1226,4 +1226,16 @@
     <string name="video_1080p">Дуже висока (1080p)</string>
     <string name="pref_save_to_gallery_summary">Автоматично зберігати медіафайли у загальнодоступних папках, щоб вони відображалися у Вашій галереї та файловому менеджері.</string>
     <string name="pref_save_to_gallery">Зберігати в галерею</string>
+    <plurals name="delete_files_dialog">
+        <item quantity="one">Видалити %d файл</item>
+        <item quantity="few">Видалити %d файли</item>
+        <item quantity="many">Видалити %d файлів</item>
+        <item quantity="other">Видалити %d файлів</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="one">Ви впевнені, що хочете вилучити цей файл?</item>
+        <item quantity="few">Ви впевнені, що хочете вилучити ці файли?</item>
+        <item quantity="many">Ви впевнені, що хочете вилучити ці файли?</item>
+        <item quantity="other">Ви впевнені, що хочете вилучити ці файли?</item>
+    </plurals>
 </resources>
