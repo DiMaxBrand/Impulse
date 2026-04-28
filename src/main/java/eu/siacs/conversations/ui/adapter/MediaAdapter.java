@@ -290,8 +290,7 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
                             .getPreviewForUri(attachment, mediaSize, true);
             if (bm != null) {
                 cancelPotentialWork(attachment, imageView);
-                imageView.setImageBitmap(bm);
-                imageView.setBackgroundColor(Color.TRANSPARENT);
+                setImageBitmap(imageView, bm);
             } else {
                 // TODO consider if this is still a good, general purpose loading color
                 imageView.setBackgroundColor(0xff333333);
@@ -306,6 +305,13 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
                 }
             }
         }
+    }
+
+    public static void setImageBitmap(final ImageView imageView, final Bitmap bitmap) {
+        imageView.setImageTintList(null);
+        imageView.setImageBitmap(bitmap);
+        imageView.invalidate();
+        imageView.setBackgroundColor(Color.TRANSPARENT);
     }
 
     @Override
@@ -377,14 +383,15 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
         }
 
         @Override
-        protected void onPostExecute(Bitmap bitmap) {
-            if (bitmap != null && !isCancelled()) {
-                final ImageView imageView = imageViewReference.get();
-                if (imageView != null) {
-                    imageView.setImageBitmap(bitmap);
-                    imageView.setBackgroundColor(0x00000000);
-                }
+        protected void onPostExecute(final Bitmap bitmap) {
+            if (bitmap == null || isCancelled()) {
+                return;
             }
+            final var imageView = imageViewReference.get();
+            if (imageView == null) {
+                return;
+            }
+            setImageBitmap(imageView, bitmap);
         }
     }
 }

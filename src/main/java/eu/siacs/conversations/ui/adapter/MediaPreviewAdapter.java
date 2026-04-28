@@ -120,8 +120,7 @@ public class MediaPreviewAdapter
                                     true);
             if (bm != null) {
                 cancelPotentialWork(attachment, imageView);
-                imageView.setImageBitmap(bm);
-                imageView.setBackgroundColor(0x00000000);
+                MediaAdapter.setImageBitmap(imageView, bm);
             } else {
                 imageView.setBackgroundColor(
                         ContextCompat.getColor(imageView.getContext(), R.color.gray_800));
@@ -229,14 +228,15 @@ public class MediaPreviewAdapter
         }
 
         @Override
-        protected void onPostExecute(Bitmap bitmap) {
-            if (bitmap != null && !isCancelled()) {
-                final ImageView imageView = imageViewReference.get();
-                if (imageView != null) {
-                    imageView.setImageBitmap(bitmap);
-                    imageView.setBackgroundColor(0x00000000);
-                }
+        protected void onPostExecute(final Bitmap bitmap) {
+            if (bitmap == null || isCancelled()) {
+                return;
             }
+            final ImageView imageView = imageViewReference.get();
+            if (imageView == null) {
+                return;
+            }
+            MediaAdapter.setImageBitmap(imageView, bitmap);
         }
     }
 }
