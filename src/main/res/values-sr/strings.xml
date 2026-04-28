@@ -1212,4 +1212,20 @@
     <string name="video_1080p">Веома висок (1080p)</string>
     <string name="pref_save_to_gallery">Чувај у галерији</string>
     <string name="pref_save_to_gallery_summary">Аутоматски чувај садржаје у јавним фолдерима како би се појавили у галерији и фајл менаџеру.</string>
+    <plurals name="delete_files_dialog">
+        <item quantity="one">Обриши %d фајл</item>
+        <item quantity="few">Обриши %d фајла</item>
+        <item quantity="other">Обриши %d фајлова</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="one">Да ли си сигуран/на да желиш да обришеш фајл?</item>
+        <item quantity="few">Да ли си сигуран/на да желиш да обришеш фајла?</item>
+        <item quantity="other">Да ли си сигуран/на да желиш да обришеш фајлова?</item>
+    </plurals>
+    <plurals name="attachments_saved">
+        <item quantity="one">%d фајл сачуван</item>
+        <item quantity="few">%d фајла сачувана</item>
+        <item quantity="other">%d фајлова сачувани</item>
+    </plurals>
+    <string name="could_not_save_files">Није могуће сачувати фајлове</string>
 </resources>
