@@ -1174,11 +1174,10 @@
     <string name="pref_save_to_gallery">Save to Gallery</string>
     <string name="pref_save_to_gallery_summary">Automatically store media in public folders so they appear in your gallery and file manager.</string>
     <plurals name="attachments_saved">
-        <item quantity="other">Media saved</item>
+        <item quantity="one">%d media file saved</item>
+        <item quantity="other">%d media files saved</item>
     </plurals>
-    <plurals name="attachments_not_saved">
-        <item quantity="other">Could not save media</item>
-    </plurals>
+    <string name="attachments_not_saved">Could not save media files</string>
     <plurals name="delete_n_messages">
         <item quantity="one">Delete %d message</item>
         <item quantity="other">Delete %d messages</item>

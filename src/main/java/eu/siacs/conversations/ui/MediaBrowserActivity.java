@@ -166,8 +166,10 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
                         Toast.makeText(
                                         getApplicationContext(),
                                         getResources()
-                                                .getQuantityText(
-                                                        R.plurals.attachments_saved, result.size()),
+                                                .getQuantityString(
+                                                        R.plurals.attachments_saved,
+                                                        result.size(),
+                                                        result.size()),
                                         Toast.LENGTH_LONG)
                                 .show();
                     }
@@ -177,10 +179,7 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
                         Log.e(Config.LOGTAG, "could not save attachments", t);
                         Toast.makeText(
                                         getApplicationContext(),
-                                        getResources()
-                                                .getQuantityText(
-                                                        R.plurals.attachments_not_saved,
-                                                        storageLocations.size()),
+                                        R.string.attachments_not_saved,
                                         Toast.LENGTH_LONG)
                                 .show();
                     }

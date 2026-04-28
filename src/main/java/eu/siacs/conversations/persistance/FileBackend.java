@@ -1210,6 +1210,7 @@ public class FileBackend {
         try {
             options.inSampleSize = calcSampleSize(context, image, size);
         } catch (final IOException | SecurityException e) {
+            // TODO this can throw NPE?
             Log.d(Config.LOGTAG, "unable to calculate sample size for " + image, e);
             return null;
         }

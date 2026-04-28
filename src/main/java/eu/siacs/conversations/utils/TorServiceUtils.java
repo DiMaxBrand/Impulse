@@ -25,7 +25,7 @@ public class TorServiceUtils {
         try {
             context.getPackageManager().getPackageInfo(URI_ORBOT, PackageManager.GET_ACTIVITIES);
             return true;
-        } catch (final PackageManager.NameNotFoundException e) {
+        } catch (final PackageManager.NameNotFoundException | RuntimeException e) {
             return false;
         }
     }

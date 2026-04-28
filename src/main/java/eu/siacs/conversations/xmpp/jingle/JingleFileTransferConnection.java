@@ -592,6 +592,7 @@ public class JingleFileTransferConnection extends AbstractJingleConnection
     private synchronized void receiveSessionTerminate(final Iq jinglePacket, final Jingle jingle) {
         respondOk(jinglePacket);
         final var wrapper = jingle.getReason();
+        // TODO null check wrapper
         final State previous = this.state;
         Log.d(
                 Config.LOGTAG,

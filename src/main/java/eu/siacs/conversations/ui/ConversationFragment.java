@@ -2344,7 +2344,8 @@ public class ConversationFragment extends XmppFragment
                         Toast.makeText(
                                         context,
                                         getResources()
-                                                .getQuantityString(R.plurals.attachments_saved, 1),
+                                                .getQuantityString(
+                                                        R.plurals.attachments_saved, 1, 1),
                                         Toast.LENGTH_LONG)
                                 .show();
                     }
@@ -2356,12 +2357,7 @@ public class ConversationFragment extends XmppFragment
                         if (context == null) {
                             return;
                         }
-                        Toast.makeText(
-                                        context,
-                                        getResources()
-                                                .getQuantityString(
-                                                        R.plurals.attachments_not_saved, 1),
-                                        Toast.LENGTH_LONG)
+                        Toast.makeText(context, R.string.attachments_not_saved, Toast.LENGTH_LONG)
                                 .show();
                     }
                 },

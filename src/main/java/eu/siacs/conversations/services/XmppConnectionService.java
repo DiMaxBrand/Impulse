@@ -1223,6 +1223,7 @@ public class XmppConnectionService extends Service {
     }
 
     public void startContactObserver() {
+        // TODO catch runtime exception
         getContentResolver()
                 .registerContentObserver(
                         ContactsContract.Contacts.CONTENT_URI,
