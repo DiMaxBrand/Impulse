@@ -1204,4 +1204,23 @@
     <string name="video_1080p">Bardzo wysoka (1080p)</string>
     <string name="pref_save_to_gallery">Zapisz do galerii</string>
     <string name="pref_save_to_gallery_summary">Automatycznie zapisuj multimedia w publicznych katalogach, tak żeby były widoczne w Twojej galerii i menedżerze plików.</string>
+    <plurals name="delete_files_dialog">
+        <item quantity="one">Usuń plik</item>
+        <item quantity="few">Usuń %d pliki</item>
+        <item quantity="many">Usuń %d plików</item>
+        <item quantity="other">Usuń %d plików</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="one">Czy na pewno chcesz usunąć ten plik?</item>
+        <item quantity="few">Czy na pewno chcesz usunąć te pliki?</item>
+        <item quantity="many">Czy na pewno chcesz usunąć te pliki?</item>
+        <item quantity="other">Czy na pewno chcesz usunąć te pliki?</item>
+    </plurals>
+    <plurals name="attachments_saved">
+        <item quantity="one">%d plik zapisano</item>
+        <item quantity="few">%d pliki zapisano</item>
+        <item quantity="many">%d plików zapisano</item>
+        <item quantity="other">%d plików zapisano</item>
+    </plurals>
+    <string name="could_not_save_files">Nie udało się zapisać plików</string>
 </resources>
