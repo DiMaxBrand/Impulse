@@ -1228,4 +1228,11 @@
         <item quantity="other">%d фајлова сачувани</item>
     </plurals>
     <string name="could_not_save_files">Није могуће сачувати фајлове</string>
+    <string name="filter_type_images">Слике</string>
+    <string name="filter_type_videos">Видео</string>
+    <string name="filter_type_audio">Аудио</string>
+    <string name="filter_type_documents">Документа</string>
+    <string name="filter_type_other">Остало</string>
+    <string name="filter_media">Филтрирај садржај</string>
+    <string name="apply_filter">Примени</string>
 </resources>
