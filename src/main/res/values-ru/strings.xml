@@ -402,9 +402,9 @@
     <string name="video">видео</string>
     <string name="image">изображение</string>
     <string name="vector_graphic">векторная графика</string>
-    <string name="pdf_document">Документ PDF</string>
-    <string name="apk">Приложение Android</string>
-    <string name="vcard">Контакт</string>
+    <string name="pdf_document">документ PDF</string>
+    <string name="apk">приложение Android</string>
+    <string name="vcard">контакт</string>
     <string name="avatar_has_been_published">Аватар загружен!</string>
     <string name="sending_x_file">Отправляется %s</string>
     <string name="offering_x_file">Предложен %s</string>
@@ -1009,7 +1009,7 @@
         <item quantity="many">%1$d пропущенных вызовов от %2$d контактов</item>
         <item quantity="other">%1$d пропущенных вызовов от %2$d контактов</item>
     </plurals>
-    <string name="audiobook">Аудиокнига</string>
+    <string name="audiobook">аудиокнига</string>
     <string name="this_account_is_logged_out">Вы вышли из этого аккаунта</string>
     <string name="log_in">Войти</string>
     <string name="hide_notification">Скрыть уведомление</string>
@@ -1128,7 +1128,7 @@
     <string name="account_status_connection_timeout">Истекло время ожидания подключения</string>
     <string name="retry_with_p2p">Повторить через P2P</string>
     <string name="account_status_channel_binding">Нет привязки канала</string>
-    <string name="word_document">Документ Word</string>
+    <string name="word_document">документ Word</string>
     <string name="restore_omemo_key">Восстановить ключи OMEMO</string>
     <string name="non_quicksy_backup">Quicksy может восстанавливать резервные копии только для аккаунтов quicksy.im</string>
     <string name="pref_backup_location">Расположение резервной копии</string>
@@ -1227,4 +1227,23 @@
     <string name="video_1080p">Очень высокое (1080p)</string>
     <string name="pref_save_to_gallery">Сохранять в галерею</string>
     <string name="pref_save_to_gallery_summary">Автоматически сохранять медиафайлы в общедоступных папках, чтобы они отображались в галерее и файловом менеджере</string>
+    <plurals name="delete_files_dialog">
+        <item quantity="one">Удалить %d файл</item>
+        <item quantity="few">Удалить %d файла</item>
+        <item quantity="many">Удалить %d файлов</item>
+        <item quantity="other">Удалить %d файлов</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="one">Удалить этот файл?</item>
+        <item quantity="few">Удалить эти файлы?</item>
+        <item quantity="many">Удалить эти файлы?</item>
+        <item quantity="other">Удалить эти файлы?</item>
+    </plurals>
+    <plurals name="attachments_saved">
+        <item quantity="one">%d медиафайл сохранён</item>
+        <item quantity="few">%d медиафайла сохранены</item>
+        <item quantity="many">%d медиафайлов сохранено</item>
+        <item quantity="other">%d медиафайлов сохранено</item>
+    </plurals>
+    <string name="could_not_save_files">Невозможно сохранить файлы</string>
 </resources>
