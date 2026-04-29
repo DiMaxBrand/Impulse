@@ -1209,4 +1209,5 @@
         <item quantity="other">%d multimeediafaili on salvestatud</item>
     </plurals>
     <string name="attachments_not_saved">Multimeediafailide salvestamine ei õnnestunud</string>
+    <string name="could_not_save_files">Failide salvestamine ei õnnestunud</string>
 </resources>
