@@ -21,6 +21,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.databinding.ItemMediaBinding;
 import eu.siacs.conversations.ui.XmppActivity;
@@ -50,6 +51,10 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
                     .add("text/plain")
                     .addAll(MimeUtils.WORD_DOCUMENT_MIMES)
                     .build();
+
+    public static final List<String> EBOOK_MIMES =
+            Arrays.asList("application/epub+zip", "application/vnd.amazon.mobi8-ebook");
+
     public static final List<String> SPREAD_SHEET_MIMES =
             Arrays.asList(
                     "text/comma-separated-values",
@@ -65,6 +70,14 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
                     "application/vnd.oasis.opendocument.presentation",
                     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
                     "application/vnd.openxmlformats-officedocument.presentationml.slideshow");
+
+    public static final Collection<String> ALL_DOCUMENT_MIMES =
+            new ImmutableSet.Builder<String>()
+                    .addAll(DOCUMENT_MIMES)
+                    .addAll(EBOOK_MIMES)
+                    .addAll(SPREAD_SHEET_MIMES)
+                    .addAll(SLIDE_SHOW_MIMES)
+                    .build();
 
     private static final List<String> ARCHIVE_MIMES =
             Arrays.asList(
@@ -134,8 +147,7 @@ public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHol
             return R.drawable.ic_mobile_ticket_48dp;
         } else if (ARCHIVE_MIMES.contains(mime)) {
             return R.drawable.ic_archive_48dp;
-        } else if (mime.equals("application/epub+zip")
-                || mime.equals("application/vnd.amazon.mobi8-ebook")) {
+        } else if (EBOOK_MIMES.contains(mime)) {
             return R.drawable.ic_book_48dp;
         } else if (mime.equals(ExportBackupWorker.MIME_TYPE)) {
             return R.drawable.ic_backup_48dp;

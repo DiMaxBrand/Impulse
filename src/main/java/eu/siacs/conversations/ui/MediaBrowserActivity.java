@@ -6,22 +6,32 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Button;
 import android.widget.Toast;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.StringRes;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.view.ActionMode;
 import androidx.core.content.ContextCompat;
 import androidx.databinding.DataBindingUtil;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.common.base.Enums;
+import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.databinding.ActivityMediaBrowserBinding;
+import eu.siacs.conversations.databinding.DialogFiltersBinding;
+import eu.siacs.conversations.databinding.ItemFilterTypeBinding;
 import eu.siacs.conversations.entities.Account;
 import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
@@ -36,13 +46,63 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded {
 
+    private static final AttachmentFilter IMAGE_FILTER =
+            new AttachmentFilter(
+                    R.string.filter_type_images,
+                    R.drawable.ic_image_24dp,
+                    a -> Strings.nullToEmpty(a.getMime()).startsWith("image/"));
+    private static final AttachmentFilter VIDEO_FILTER =
+            new AttachmentFilter(
+                    R.string.filter_type_videos,
+                    R.drawable.ic_movie_24dp,
+                    a -> Strings.nullToEmpty(a.getMime()).startsWith("video/"));
+    private static final AttachmentFilter AUDIO_FILTER =
+            new AttachmentFilter(
+                    R.string.filter_type_audio,
+                    R.drawable.ic_headphones_48dp,
+                    a -> Strings.nullToEmpty(a.getMime()).startsWith("audio/"));
+    private static final AttachmentFilter DOCUMENT_FILTER =
+            new AttachmentFilter(
+                    R.string.filter_type_documents,
+                    R.drawable.ic_description_24dp,
+                    a -> MediaAdapter.ALL_DOCUMENT_MIMES.contains(a.getMime()));
+    private static final AttachmentFilter OTHER_FILTER =
+            new AttachmentFilter(
+                    R.string.filter_type_other,
+                    R.drawable.ic_category_24dp,
+                    a ->
+                            !IMAGE_FILTER.condition.apply(a)
+                                    && !VIDEO_FILTER.condition.apply(a)
+                                    && !AUDIO_FILTER.condition.apply(a)
+                                    && !DOCUMENT_FILTER.condition.apply(a));
+
+    private static final Map<FilterType, AttachmentFilter> FILTERS;
+
+    static {
+        FILTERS =
+                Maps.immutableEnumMap(
+                        new ImmutableMap.Builder<FilterType, AttachmentFilter>()
+                                .put(FilterType.IMAGES, IMAGE_FILTER)
+                                .put(FilterType.VIDEOS, VIDEO_FILTER)
+                                .put(FilterType.AUDIO, AUDIO_FILTER)
+                                .put(FilterType.DOCUMENTS, DOCUMENT_FILTER)
+                                .put(FilterType.OTHER, OTHER_FILTER)
+                                .buildOrThrow());
+    }
+
     private static final String EXTRA_SELECTION = "selection";
+    private static final String EXTRA_APPLIED_FILTER = "applied-filter";
 
     private final ActionMode.Callback actionModeCallBack =
             new ActionMode.Callback() {
@@ -100,27 +160,35 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
                 }
             };
 
-    private ActivityMediaBrowserBinding binding;
-
     private MediaAdapter mMediaAdapter;
     private ActionMode actionMode;
+    private EnumSet<FilterType> appliedFilter = EnumSet.allOf(FilterType.class);
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        this.binding = DataBindingUtil.setContentView(this, R.layout.activity_media_browser);
+        final ActivityMediaBrowserBinding binding =
+                DataBindingUtil.setContentView(this, R.layout.activity_media_browser);
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
         setSupportActionBar(binding.toolbar);
         configureActionBar(getSupportActionBar());
         this.mMediaAdapter = new MediaAdapter(this, R.dimen.media_size);
         if (savedInstanceState != null) {
             final String[] selection = savedInstanceState.getStringArray(EXTRA_SELECTION);
+            final String[] filters = savedInstanceState.getStringArray(EXTRA_APPLIED_FILTER);
             if (selection != null) {
                 final var uuids = Lists.transform(Arrays.asList(selection), UUID::fromString);
                 this.mMediaAdapter.setSelection(uuids);
                 if (!uuids.isEmpty()) {
                     startSupportActionMode(this.actionModeCallBack);
                 }
+            }
+            if (filters != null) {
+                final Collection<FilterType> test =
+                        Collections2.transform(
+                                Arrays.asList(filters),
+                                f -> Enums.stringConverter(FilterType.class).convert(f));
+                this.appliedFilter = EnumSet.copyOf(test);
             }
         }
         this.mMediaAdapter.setOnAttachmentClicked(
@@ -136,8 +204,74 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
                     toggleSelection(attachment);
                     return true;
                 });
-        this.binding.media.setAdapter(mMediaAdapter);
-        GridManager.setupLayoutManager(this, this.binding.media, R.dimen.browser_media_size);
+        binding.media.setAdapter(mMediaAdapter);
+        GridManager.setupLayoutManager(this, binding.media, R.dimen.browser_media_size);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(final Menu menu) {
+        getMenuInflater().inflate(R.menu.activity_media_browser, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(final MenuItem item) {
+        final var itemItem = item.getItemId();
+        if (itemItem == R.id.action_filter) {
+            showFilterSelection();
+            return true;
+        } else {
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void showFilterSelection() {
+        final var dialogBuilder = new MaterialAlertDialogBuilder(this);
+        dialogBuilder.setTitle(R.string.filter_media);
+        final DialogFiltersBinding dialogViewBinding =
+                DataBindingUtil.inflate(getLayoutInflater(), R.layout.dialog_filters, null, false);
+        final HashSet<FilterType> current = new HashSet<>(this.appliedFilter);
+        final AtomicReference<Button> positiveButton = new AtomicReference<>();
+        for (final var entry : FILTERS.entrySet()) {
+            final var filterType = entry.getKey();
+            final var attachmentFilter = entry.getValue();
+            final ItemFilterTypeBinding filterItemBinding =
+                    DataBindingUtil.inflate(
+                            getLayoutInflater(), R.layout.item_filter_type, null, false);
+            filterItemBinding.icon.setImageResource(attachmentFilter.icon());
+            filterItemBinding.name.setText(attachmentFilter.name());
+            dialogViewBinding.filterContainer.addView(filterItemBinding.getRoot());
+            filterItemBinding.checkbox.setChecked(current.contains(filterType));
+            filterItemBinding
+                    .getRoot()
+                    .setOnClickListener(v -> filterItemBinding.checkbox.toggle());
+            filterItemBinding.checkbox.setOnCheckedChangeListener(
+                    (buttonView, isChecked) -> {
+                        final var button = positiveButton.get();
+                        if (isChecked) {
+                            current.add(filterType);
+                        } else {
+                            current.remove(filterType);
+                        }
+                        button.setEnabled(!current.isEmpty());
+                    });
+        }
+        dialogBuilder.setView(dialogViewBinding.getRoot());
+        dialogBuilder.setPositiveButton(
+                R.string.apply_filter,
+                (dialog, which) -> {
+                    this.appliedFilter = EnumSet.copyOf(current);
+                    reloadMediaFiles();
+                });
+        dialogBuilder.setNegativeButton(R.string.cancel, null);
+        final var dialog = dialogBuilder.create();
+        dialog.setOnShowListener(
+                d -> {
+                    if (d instanceof AlertDialog ad) {
+                        positiveButton.set(ad.getButton(AlertDialog.BUTTON_POSITIVE));
+                    }
+                });
+        dialog.show();
     }
 
     private void toggleSelection(final Attachment attachment) {
@@ -235,13 +369,7 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
                 new FutureCallback<>() {
                     @Override
                     public void onSuccess(Void result) {
-                        final var service = xmppConnectionService;
-                        if (service == null) {
-                            return;
-                        }
-                        final var gallery = gallery(getIntent());
-                        service.getAttachments(
-                                gallery.account, gallery.contact, 0, MediaBrowserActivity.this);
+                        reloadMediaFiles();
                     }
 
                     @Override
@@ -285,6 +413,11 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
                                 this.mMediaAdapter.getSelectedAttachments(),
                                 a -> Objects.requireNonNull(a).getUuid().toString())
                         .toArray(new String[0]));
+        bundle.putStringArray(
+                EXTRA_APPLIED_FILTER,
+                Collections2.transform(
+                                this.appliedFilter, f -> Objects.requireNonNull(f).toString())
+                        .toArray(new String[0]));
         super.onSaveInstanceState(bundle);
     }
 
@@ -293,8 +426,16 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
 
     @Override
     protected void onBackendConnected() {
+        this.reloadMediaFiles();
+    }
+
+    private void reloadMediaFiles() {
+        final var service = xmppConnectionService;
+        if (service == null) {
+            return;
+        }
         final var gallery = gallery(getIntent());
-        xmppConnectionService.getAttachments(gallery.account, gallery.contact, 0, this);
+        service.getAttachments(gallery.account, gallery.contact, 0, this);
     }
 
     private static Gallery gallery(final Intent intent) {
@@ -330,12 +471,53 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
         runOnUiThread(
                 () -> {
                     final var actionMode = this.actionMode;
-                    mMediaAdapter.setAttachments(attachments);
+                    setFilteredAttachments(attachments);
                     if (actionMode != null) {
                         actionMode.invalidate();
                     }
                 });
     }
 
+    private void setFilteredAttachments(final List<Attachment> attachments) {
+        final var applied = this.appliedFilter;
+        if (EnumSet.complementOf(applied).isEmpty()) {
+            mMediaAdapter.setAttachments(attachments);
+        } else {
+            final var filters = Maps.filterKeys(FILTERS, applied::contains).values();
+            final var filteredAttachments =
+                    ImmutableList.copyOf(
+                            Collections2.filter(
+                                    attachments,
+                                    a -> {
+                                        for (final var filter : filters) {
+                                            if (filter.condition.apply(a)) {
+                                                return true;
+                                            }
+                                        }
+                                        return false;
+                                    }));
+            Log.d(
+                    Config.LOGTAG,
+                    "applying filters "
+                            + applied
+                            + " "
+                            + attachments.size()
+                            + "->"
+                            + filteredAttachments.size());
+            mMediaAdapter.setAttachments(filteredAttachments);
+        }
+    }
+
     private record Gallery(String account, Jid contact) {}
+
+    private record AttachmentFilter(
+            @StringRes int name, @DrawableRes int icon, Function<Attachment, Boolean> condition) {}
+
+    public enum FilterType {
+        IMAGES,
+        VIDEOS,
+        AUDIO,
+        DOCUMENTS,
+        OTHER
+    }
 }
