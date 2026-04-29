@@ -1189,4 +1189,11 @@
         <item quantity="other">%d Dateien gespeichert</item>
     </plurals>
     <string name="could_not_save_files">Dateien konnten nicht gespeichert werden</string>
+    <string name="filter_type_images">Bilder</string>
+    <string name="filter_type_videos">Videos</string>
+    <string name="filter_type_audio">Audio</string>
+    <string name="filter_type_documents">Dokumente</string>
+    <string name="filter_type_other">Andere</string>
+    <string name="filter_media">Medien filtern</string>
+    <string name="apply_filter">Anwenden</string>
 </resources>
