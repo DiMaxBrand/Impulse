@@ -1206,4 +1206,11 @@
         <item quantity="other">%d archivos multimedia guardados</item>
     </plurals>
     <string name="could_not_save_files">No se han podido guardar los archivos</string>
+    <string name="filter_type_images">Imágenes</string>
+    <string name="filter_type_videos">Vídeos</string>
+    <string name="filter_type_audio">Audio</string>
+    <string name="filter_type_documents">Documentos</string>
+    <string name="filter_type_other">Otros</string>
+    <string name="filter_media">Filtro multimedia</string>
+    <string name="apply_filter">Aplicar</string>
 </resources>
