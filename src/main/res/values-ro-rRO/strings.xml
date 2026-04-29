@@ -1211,4 +1211,11 @@
         <item quantity="other">%d de fișiere salvate</item>
     </plurals>
     <string name="could_not_save_files">Nu s-au putut salva fișierele</string>
+    <string name="filter_type_images">Imagini</string>
+    <string name="filter_type_videos">Videoclipuri</string>
+    <string name="filter_type_audio">Fișiere audio</string>
+    <string name="filter_type_documents">Documente</string>
+    <string name="filter_type_other">Altele</string>
+    <string name="filter_media">Filtrare fișiere</string>
+    <string name="apply_filter">Aplică</string>
 </resources>
