@@ -1245,4 +1245,11 @@
         <item quantity="other">%d файлів збережено</item>
     </plurals>
     <string name="could_not_save_files">Не вдалося зберегти файли</string>
+    <string name="filter_type_other">Інше</string>
+    <string name="apply_filter">Застосувати</string>
+    <string name="filter_type_images">Зображення</string>
+    <string name="filter_type_videos">Відео</string>
+    <string name="filter_type_audio">Аудіо</string>
+    <string name="filter_type_documents">Документи</string>
+    <string name="filter_media">Фільтр файлів</string>
 </resources>
