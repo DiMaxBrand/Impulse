@@ -1191,4 +1191,17 @@
     <string name="video_1080p">Väldigt hög (1080p)</string>
     <string name="pref_save_to_gallery">Spara till galleriet</string>
     <string name="pref_save_to_gallery_summary">Spara media automatiskt i publika kataloger för att kunna visa dem i ditt galleri och din filhanterare.</string>
+    <plurals name="delete_files_dialog">
+        <item quantity="one">Ta bort fil</item>
+        <item quantity="other">Ta bort %d filer</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="one">Är du säker på att du vill ta bort den här filen?</item>
+        <item quantity="other">Är du säker på att du vill ta bort dessa filer?</item>
+    </plurals>
+    <plurals name="attachments_saved">
+        <item quantity="one">%d media fil sparad</item>
+        <item quantity="other">%d media filer sparade</item>
+    </plurals>
+    <string name="could_not_save_files">Kunde inte spara filer</string>
 </resources>
