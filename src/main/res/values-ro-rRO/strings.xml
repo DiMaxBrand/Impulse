@@ -1215,4 +1215,5 @@
         <item quantity="few">Nu s-au putut salva fișierele</item>
         <item quantity="other">Nu s-au putut salva fișierele</item>
     </plurals>
+    <string name="could_not_save_files">Nu s-au putut salva fișierele</string>
 </resources>
