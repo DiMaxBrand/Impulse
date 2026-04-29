@@ -400,7 +400,11 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
                                                         "uuid", a.getUuid().toString())
                                                 .build()));
         final var intent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-        intent.setType(Iterables.getOnlyElement(mimes, ViewUtil.WILDCARD));
+        if (mimes.size() == 1) {
+            intent.setType(Iterables.getOnlyElement(mimes));
+        } else {
+            intent.setType(ViewUtil.WILDCARD);
+        }
         intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, new ArrayList<>(uris));
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(Intent.createChooser(intent, null));
