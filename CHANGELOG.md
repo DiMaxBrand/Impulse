@@ -1,5 +1,12 @@
 # Changelog
 
+### Version 2.19.16
+
+* Improved media browser with ability to share and delete media files
+* Store media internally by default (with setting to automatically save to gallery)
+* Send audio recordings immediately instead of attaching (plus setting to restore the old behaviour)
+* 'Show QR code' includes preauth parameter on servers with easy invites
+
 ### Version 2.19.15
 
 * Fix Quicksy registration on older devices
