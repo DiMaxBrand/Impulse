@@ -1223,4 +1223,11 @@
         <item quantity="other">%d plików zapisano</item>
     </plurals>
     <string name="could_not_save_files">Nie udało się zapisać plików</string>
+    <string name="filter_type_images">Obrazy</string>
+    <string name="filter_type_videos">Wideo</string>
+    <string name="filter_type_audio">Audio</string>
+    <string name="filter_type_documents">Dokumenty</string>
+    <string name="filter_type_other">Inne</string>
+    <string name="filter_media">Filtruj multimedia</string>
+    <string name="apply_filter">Zastosuj</string>
 </resources>
