@@ -1,4 +1,4 @@
-* Medienbrowser verbessert mit der Möglichkeit Dateien zu teilen und zu löschen
-* Medien werden standardmäßig intern gespeichert (Mit einer Einstellung um sie automatisch in der Galerie zu speichern)
-* Sprachnachrichten werden sofort versendet (und eine Einstellung um das alte Verhalten wiederherzustellen)
-* 'QR Code anzeigen' enthält nun den 'preauth' Parameter auf Servern die 'Easy invites' können
+* Verbesserter Medienbrowser mit der Möglichkeit, Mediendateien zu teilen und zu löschen
+* Medien werden standardmäßig intern gespeichert (mit einer Einstellung zum automatischen Speichern in der Galerie)
+* Sprachnachrichten werden sofort versendet (sowie einer Einstellung zur Wiederherstellung der alten Funktionsweise)
+* "QR-Code anzeigen" enthält nun den "preauth"-Parameter auf Servern, die 'Easy invites' können
