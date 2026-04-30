@@ -1223,20 +1223,26 @@ public class XmppConnectionService extends Service {
     }
 
     public void startContactObserver() {
-        // TODO catch runtime exception
+        try {
+            startContactObserverOrThrow();
+        } catch (final RuntimeException e) {
+            Log.e(Config.LOGTAG, "could not start contact observer", e);
+        }
+    }
+
+    private void startContactObserverOrThrow() {
+        final var observer =
+                new ContentObserver(null) {
+                    @Override
+                    public void onChange(boolean selfChange) {
+                        super.onChange(selfChange);
+                        if (restoredFromDatabaseLatch.getCount() == 0) {
+                            loadPhoneContacts();
+                        }
+                    }
+                };
         getContentResolver()
-                .registerContentObserver(
-                        ContactsContract.Contacts.CONTENT_URI,
-                        true,
-                        new ContentObserver(null) {
-                            @Override
-                            public void onChange(boolean selfChange) {
-                                super.onChange(selfChange);
-                                if (restoredFromDatabaseLatch.getCount() == 0) {
-                                    loadPhoneContacts();
-                                }
-                            }
-                        });
+                .registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, observer);
     }
 
     @Override
