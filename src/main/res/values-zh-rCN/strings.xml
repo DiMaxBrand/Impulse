@@ -1169,4 +1169,5 @@
     <string name="filter_type_other">其他</string>
     <string name="filter_media">筛选媒体</string>
     <string name="apply_filter">应用</string>
+    <string name="select_all">全选</string>
 </resources>
