@@ -1252,4 +1252,5 @@
     <string name="filter_type_audio">Аудіо</string>
     <string name="filter_type_documents">Документи</string>
     <string name="filter_media">Фільтр файлів</string>
+    <string name="select_all">Вибрати все</string>
 </resources>
