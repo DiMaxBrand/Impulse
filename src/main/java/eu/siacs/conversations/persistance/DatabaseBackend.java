@@ -11,6 +11,7 @@ import android.os.SystemClock;
 import android.util.Base64;
 import android.util.Log;
 import com.google.common.base.Stopwatch;
+import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -1919,7 +1920,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + (SystemClock.elapsedRealtime() - start)
                         + "ms");
         updateConversation(conversation);
-        return filePathInfos;
+        return filterUnusedFiles(filePathInfos);
     }
 
     public List<FilePathInfo> expireOldMessages(final long timestamp) {
@@ -1933,7 +1934,25 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         db.delete(Message.TABLENAME, "timeSent<?", args);
         db.setTransactionSuccessful();
         db.endTransaction();
-        return files;
+        return filterUnusedFiles(files);
+    }
+
+    private List<FilePathInfo> filterUnusedFiles(final List<FilePathInfo> filePathInfos) {
+        final var builder = new ImmutableList.Builder<FilePathInfo>();
+        for (final var info : filePathInfos) {
+            if (Strings.isNullOrEmpty(info.path) || info.deleted) {
+                continue;
+            }
+            if (info.path.charAt(0) == '/') {
+                final var uuids = getMessagesWithFile(new File(info.path));
+                if (uuids.isEmpty()) {
+                    builder.add(info);
+                } else {
+                    Log.d(Config.LOGTAG, "omitting " + info.path + " used by " + uuids);
+                }
+            }
+        }
+        return builder.build();
     }
 
     public MamReference getLastMessageReceived(Account account) {
