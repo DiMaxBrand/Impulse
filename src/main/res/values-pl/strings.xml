@@ -1230,4 +1230,5 @@
     <string name="filter_type_other">Inne</string>
     <string name="filter_media">Filtruj multimedia</string>
     <string name="apply_filter">Zastosuj</string>
+    <string name="select_all">Wybierz wszystkie</string>
 </resources>
