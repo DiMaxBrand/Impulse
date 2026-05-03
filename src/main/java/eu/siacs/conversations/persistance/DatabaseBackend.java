@@ -1495,14 +1495,14 @@ public class DatabaseBackend extends SQLiteOpenHelper {
     }
 
     public List<FilePathInfo> getFilePathInfo() {
-        final var selection = "type in (1,2,5) and relativeFilePath  is not null";
+        final var selection = "type in (1,2,5) and relativeFilePath is not null";
         return getFilePathInfoInternal(selection, null);
     }
 
     private List<FilePathInfo> getFilePathInfoInternal(
             final String selection, final String[] selectionArgs) {
         final var builder = new ImmutableList.Builder<FilePathInfo>();
-        final SQLiteDatabase db = this.getReadableDatabase();
+        final var db = this.getReadableDatabase();
         try (final Cursor cursor =
                 db.query(
                         Message.TABLENAME,
@@ -1517,6 +1517,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         new FilePathInfo(
                                 cursor.getString(0), cursor.getString(1), cursor.getInt(2) > 0));
             }
+        } catch (final Throwable throwable) {
+            Log.e(Config.LOGTAG, "could not get file infos from database", throwable);
         }
         return builder.build();
     }
