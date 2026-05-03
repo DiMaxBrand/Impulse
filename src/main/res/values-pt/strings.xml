@@ -1182,4 +1182,28 @@
     <string name="video_1080p">Muito alta (1080p)</string>
     <string name="pref_save_to_gallery">Salvar para a Galeria</string>
     <string name="pref_save_to_gallery_summary">Automaticamente armazenar media em pastas públicas para aparecerem na sua galeria e gestor de ficheiros.</string>
+    <plurals name="delete_files_dialog">
+        <item quantity="one">Apagar ficheiro</item>
+        <item quantity="many">Apagar %d de ficheiros</item>
+        <item quantity="other">Apagar %d ficheiros</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="one">Tem a certeza que quer apagar este ficheiro?</item>
+        <item quantity="many">Tem a certeza que quer apagar estes ficheiros?</item>
+        <item quantity="other">Tem a certeza que quer apagar estes ficheiros?</item>
+    </plurals>
+    <plurals name="attachments_saved">
+        <item quantity="one">%d ficheiros média guardado</item>
+        <item quantity="many">%d de ficheiros média guardados</item>
+        <item quantity="other">%d ficheiros média guardados</item>
+    </plurals>
+    <string name="could_not_save_files">Não foi possível guardar ficheiros</string>
+    <string name="filter_type_images">Imagens</string>
+    <string name="filter_type_videos">Vídeos</string>
+    <string name="filter_type_audio">Áudios</string>
+    <string name="filter_type_documents">Documentos</string>
+    <string name="filter_type_other">Outros</string>
+    <string name="filter_media">Filtrar média</string>
+    <string name="apply_filter">Aplicar</string>
+    <string name="select_all">Selecionar tudo</string>
 </resources>
