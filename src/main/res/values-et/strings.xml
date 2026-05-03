@@ -1216,4 +1216,5 @@
     <string name="filter_type_other">Muu</string>
     <string name="filter_media">Filtreeri meediumi</string>
     <string name="apply_filter">Rakenda</string>
+    <string name="select_all">Vali kõik</string>
 </resources>
