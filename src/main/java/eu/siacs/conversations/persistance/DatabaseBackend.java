@@ -1907,7 +1907,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         final String[] args = {conversation.getUuid()};
         final var selection =
                 "conversationUuid=? AND type in (1,2,5) AND relativeFilePath is not null AND"
-                        + " sharedStorage=false";
+                        + " sharedStorage=0";
         final var filePathInfos = getFilePathInfoInternal(selection, args);
         final int num = db.delete(Message.TABLENAME, Message.CONVERSATION + "=?", args);
         db.setTransactionSuccessful();
@@ -1929,7 +1929,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         final String[] args = {String.valueOf(timestamp)};
         final var db = this.getWritableDatabase();
         final var selection =
-                "type in (1,2,5) AND relativeFilePath is not null AND sharedStorage=false AND"
+                "type in (1,2,5) AND relativeFilePath is not null AND sharedStorage=0 AND"
                         + " timeSent<?";
         final var files = getFilePathInfoInternal(selection, args);
         db.beginTransaction();
