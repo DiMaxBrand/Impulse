@@ -1196,4 +1196,5 @@
     <string name="filter_type_other">Outros</string>
     <string name="filter_media">Filtrar multimedia</string>
     <string name="apply_filter">Aplicar</string>
+    <string name="select_all">Seleccionar todo</string>
 </resources>
