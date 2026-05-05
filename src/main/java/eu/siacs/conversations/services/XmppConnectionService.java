@@ -36,7 +36,6 @@ import android.security.KeyChain;
 import android.util.Log;
 import android.util.LruCache;
 import android.util.Pair;
-import androidx.annotation.IntegerRes;
 import androidx.annotation.NonNull;
 import androidx.core.app.RemoteInput;
 import androidx.core.content.ContextCompat;
@@ -74,7 +73,6 @@ import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.MucOptions;
 import eu.siacs.conversations.entities.PresenceTemplate;
 import eu.siacs.conversations.entities.Presences;
-import eu.siacs.conversations.generator.AbstractGenerator;
 import eu.siacs.conversations.generator.IqGenerator;
 import eu.siacs.conversations.generator.MessageGenerator;
 import eu.siacs.conversations.http.HttpConnectionManager;
@@ -1022,14 +1020,14 @@ public class XmppConnectionService extends Service {
         final ListenableFuture<List<DatabaseBackend.FilePathInfo>> filesFuture =
                 Futures.submit(
                         () -> {
-                            final long timestamp = getAutomaticMessageDeletionDate();
-                            if (timestamp <= 0) {
+                            final var deletion = appSettings.getAutomaticMessageDeletionInstant();
+                            if (deletion.isEmpty()) {
                                 return Collections.emptyList();
                             }
-                            final var files = databaseBackend.expireOldMessages(timestamp);
+                            final var files = databaseBackend.expireOldMessages(deletion.get());
                             synchronized (this.conversations) {
                                 for (final var conversation : this.conversations) {
-                                    conversation.expireOldMessages(timestamp);
+                                    conversation.expireOldMessages(deletion.get());
                                     if (resetHasMessagesLeftOnServer) {
                                         conversation.messagesLoaded.set(true);
                                         conversation.setHasMessagesLeftOnServer(true);
@@ -1839,14 +1837,13 @@ public class XmppConnectionService extends Service {
                         if (DatabaseBackend.requiresMessageIndexRebuild()) {
                             DatabaseBackend.getInstance(this).rebuildMessagesIndex();
                         }
-                        final long deletionDate = getAutomaticMessageDeletionDate();
+                        final var deletion = appSettings.getAutomaticMessageDeletionInstant();
                         mLastExpiryRun.set(SystemClock.elapsedRealtime());
-                        if (deletionDate > 0) {
+                        if (deletion.isPresent()) {
                             Log.d(
                                     Config.LOGTAG,
-                                    "deleting messages that are older than "
-                                            + AbstractGenerator.getTimestamp(deletionDate));
-                            final var files = databaseBackend.expireOldMessages(deletionDate);
+                                    "deleting messages that are older than " + deletion.get());
+                            final var files = databaseBackend.expireOldMessages(deletion.get());
                             FILE_ATTACHMENT_EXECUTOR.execute(() -> deleteFiles(files));
                         }
                         Log.d(Config.LOGTAG, "restoring roster...");
@@ -3394,24 +3391,6 @@ public class XmppConnectionService extends Service {
 
     private SharedPreferences getPreferences() {
         return PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-    }
-
-    // TODO move to AppSettings. Migrate to Optional
-    public long getAutomaticMessageDeletionDate() {
-        final long timeout =
-                getLongPreference(
-                        AppSettings.AUTOMATIC_MESSAGE_DELETION,
-                        R.integer.automatic_message_deletion);
-        return timeout == 0 ? timeout : (System.currentTimeMillis() - (timeout * 1000));
-    }
-
-    public long getLongPreference(String name, @IntegerRes int res) {
-        long defaultValue = getResources().getInteger(res);
-        try {
-            return Long.parseLong(getPreferences().getString(name, String.valueOf(defaultValue)));
-        } catch (NumberFormatException e) {
-            return defaultValue;
-        }
     }
 
     public boolean allowMessageCorrection() {

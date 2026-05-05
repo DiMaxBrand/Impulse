@@ -48,6 +48,7 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1925,8 +1926,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         return filterUnusedFiles(filePathInfos);
     }
 
-    public List<FilePathInfo> expireOldMessages(final long timestamp) {
-        final String[] args = {String.valueOf(timestamp)};
+    public List<FilePathInfo> expireOldMessages(final Instant instant) {
+        final String[] args = {String.valueOf(instant.toEpochMilli())};
         final var db = this.getWritableDatabase();
         final var selection =
                 "type in (1,2,5) AND relativeFilePath is not null AND sharedStorage=0 AND"

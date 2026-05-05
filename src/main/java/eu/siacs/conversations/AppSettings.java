@@ -22,6 +22,7 @@ import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.Random;
 import eu.siacs.conversations.xmpp.Jid;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
@@ -414,6 +415,19 @@ public class AppSettings {
 
     private SendButtonAction getDefaultQuickAction() {
         return SendButtonAction.valueOf(context.getString(R.string.quick_action));
+    }
+
+    public Optional<Duration> getAutomaticMessageDeletion() {
+        final var value =
+                getLongPreference(AUTOMATIC_MESSAGE_DELETION, R.integer.automatic_message_deletion);
+        if (value <= 0) {
+            return Optional.empty();
+        }
+        return Optional.of(Duration.ofSeconds(value));
+    }
+
+    public Optional<Instant> getAutomaticMessageDeletionInstant() {
+        return getAutomaticMessageDeletion().map(duration -> Instant.now().minus(duration));
     }
 
     public boolean isCompressVideo() {
