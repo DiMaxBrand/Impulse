@@ -1233,4 +1233,5 @@
     <string name="filter_type_other">Остало</string>
     <string name="filter_media">Филтрирај садржај</string>
     <string name="apply_filter">Примени</string>
+    <string name="select_all">Означи све</string>
 </resources>
