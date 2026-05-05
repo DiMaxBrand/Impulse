@@ -3191,7 +3191,7 @@ public class ConversationFragment extends XmppFragment
         if (hasAttachments) {
             action = SendButtonAction.TEXT;
         } else {
-            action = SendButtonTool.getAction(getActivity(), c, text);
+            action = SendButtonTool.getAction(getContext(), c, text);
         }
         if (c.getAccount().getStatus() == Account.State.ONLINE) {
             if (connection.getManager(MessageArchiveManager.class).isCatchingUp(c)) {

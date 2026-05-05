@@ -7,6 +7,7 @@ import android.os.Environment;
 import androidx.annotation.BoolRes;
 import androidx.annotation.IntegerRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.preference.PreferenceManager;
 import com.google.common.base.Joiner;
@@ -15,6 +16,8 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import eu.siacs.conversations.persistance.FileBackend;
 import eu.siacs.conversations.services.QuickConversationsService;
+import eu.siacs.conversations.ui.ConversationFragment;
+import eu.siacs.conversations.ui.util.SendButtonAction;
 import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.Random;
 import eu.siacs.conversations.xmpp.Jid;
@@ -73,6 +76,7 @@ public class AppSettings {
     public static final String VIDEO_COMPRESSION = "video_compression";
     public static final String AUTO_SEND_RECORDING = "auto_send_recording";
     public static final String USE_SHARED_STORAGE = "use_shared_storage";
+    public static final String QUICK_ACTION = "quick_action";
 
     private static final String ACCEPT_INVITES_FROM_STRANGERS = "accept_invites_from_strangers";
     private static final String NOTIFICATIONS_FROM_STRANGERS = "notifications_from_strangers";
@@ -101,11 +105,8 @@ public class AppSettings {
     }
 
     public Uri getRingtone() {
-        final SharedPreferences sharedPreferences =
-                PreferenceManager.getDefaultSharedPreferences(context);
-        final String incomingCallRingtone =
-                sharedPreferences.getString(
-                        RINGTONE, context.getString(R.string.incoming_call_ringtone));
+        final var incomingCallRingtone =
+                getStringPreference(RINGTONE, R.string.incoming_call_ringtone);
         return Strings.isNullOrEmpty(incomingCallRingtone) ? null : Uri.parse(incomingCallRingtone);
     }
 
@@ -116,12 +117,8 @@ public class AppSettings {
     }
 
     public Uri getNotificationTone() {
-        final SharedPreferences sharedPreferences =
-                PreferenceManager.getDefaultSharedPreferences(context);
-        final String incomingCallRingtone =
-                sharedPreferences.getString(
-                        NOTIFICATION_RINGTONE, context.getString(R.string.notification_ringtone));
-        return Strings.isNullOrEmpty(incomingCallRingtone) ? null : Uri.parse(incomingCallRingtone);
+        final var tone = getStringPreference(NOTIFICATION_RINGTONE, R.string.notification_ringtone);
+        return Strings.isNullOrEmpty(tone) ? null : Uri.parse(tone);
     }
 
     public void setNotificationTone(final Uri uri) {
@@ -254,9 +251,7 @@ public class AppSettings {
     }
 
     public int getDesiredNightMode() {
-        final SharedPreferences sharedPreferences =
-                PreferenceManager.getDefaultSharedPreferences(context);
-        final var theme = sharedPreferences.getString(THEME, context.getString(R.string.theme));
+        final var theme = getStringPreference(THEME, R.string.theme);
         return getDesiredNightMode(theme);
     }
 
@@ -268,6 +263,12 @@ public class AppSettings {
         } else {
             return AppCompatDelegate.MODE_NIGHT_YES;
         }
+    }
+
+    private String getStringPreference(@NonNull final String name, @StringRes final int res) {
+        final SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(context);
+        return sharedPreferences.getString(name, context.getResources().getString(res));
     }
 
     private boolean getBooleanPreference(@NonNull final String name, @BoolRes final int res) {
@@ -293,10 +294,7 @@ public class AppSettings {
     }
 
     public String getOmemo() {
-        final SharedPreferences sharedPreferences =
-                PreferenceManager.getDefaultSharedPreferences(context);
-        return sharedPreferences.getString(
-                OMEMO, context.getString(R.string.omemo_setting_default));
+        return getStringPreference(OMEMO, R.string.omemo_setting_default);
     }
 
     public Uri getBackupLocation() {
@@ -391,9 +389,31 @@ public class AppSettings {
     }
 
     public String getVideoCompression() {
-        final var sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        return sharedPreferences.getString(
-                VIDEO_COMPRESSION, context.getResources().getString(R.string.video_compression));
+        return getStringPreference(VIDEO_COMPRESSION, R.string.video_compression);
+    }
+
+    public SendButtonAction getQuickAction() {
+        final var setting = getStringPreference(QUICK_ACTION, R.string.quick_action);
+        if (Strings.isNullOrEmpty(setting) || "none".equals(setting)) {
+            return SendButtonAction.TEXT;
+        }
+        final String asString;
+        if ("recent".equals(setting)) {
+            asString =
+                    getStringPreference(
+                            ConversationFragment.RECENTLY_USED_QUICK_ACTION, R.string.quick_action);
+        } else {
+            asString = setting;
+        }
+        try {
+            return SendButtonAction.valueOf(asString);
+        } catch (final IllegalArgumentException e) {
+            return getDefaultQuickAction();
+        }
+    }
+
+    private SendButtonAction getDefaultQuickAction() {
+        return SendButtonAction.valueOf(context.getString(R.string.quick_action));
     }
 
     public boolean isCompressVideo() {
