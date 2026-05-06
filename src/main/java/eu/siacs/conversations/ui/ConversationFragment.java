@@ -64,6 +64,7 @@ import androidx.core.view.inputmethod.InputConnectionCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
+import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.Lifecycle;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.common.base.Optional;
@@ -117,6 +118,7 @@ import eu.siacs.conversations.ui.util.ScrollState;
 import eu.siacs.conversations.ui.util.SendButtonAction;
 import eu.siacs.conversations.ui.util.SendButtonTool;
 import eu.siacs.conversations.ui.util.ShareUtil;
+import eu.siacs.conversations.ui.util.ToolbarUtils;
 import eu.siacs.conversations.ui.util.ViewUtil;
 import eu.siacs.conversations.ui.widget.EditMessage;
 import eu.siacs.conversations.utils.AccountUtils;
@@ -228,11 +230,28 @@ public class ConversationFragment extends XmppFragment
                         }
                     });
     private InputSettings inputSettings = new InputSettings(true, false, false, true);
+    private boolean mShowLastUserInteraction = false;
     public Uri mPendingEditorContent = null;
     protected MessageAdapter messageListAdapter;
     private String lastMessageUuid = null;
     private Conversation conversation;
     private FragmentConversationBinding binding;
+    private final FragmentManager.OnBackStackChangedListener backStackListener =
+            new FragmentManager.OnBackStackChangedListener() {
+                @Override
+                public void onBackStackChanged() {
+                    final var up =
+                            isAdded() && getParentFragmentManager().getBackStackEntryCount() > 0;
+                    if (up) {
+                        binding.toolbar.setNavigationIcon(R.drawable.ic_arrow_back_24dp);
+                        binding.toolbar.setNavigationOnClickListener(
+                                v -> getParentFragmentManager().popBackStack());
+                    } else {
+                        binding.toolbar.setNavigationIcon(null);
+                        binding.toolbar.setNavigationOnClickListener(null);
+                    }
+                }
+            };
     private Toast messageLoaderToast;
     private boolean reInitRequiredOnStart = true;
     private final OnClickListener clickToMuc =
@@ -1258,8 +1277,6 @@ public class ConversationFragment extends XmppFragment
 
     @Override
     public void onViewCreated(@NonNull final View view, final Bundle savedInstanceState) {
-        requireActivity()
-                .addMenuProvider(menuProvider, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
         if (savedInstanceState == null) {
             return;
         }
@@ -1274,6 +1291,10 @@ public class ConversationFragment extends XmppFragment
         this.binding =
                 DataBindingUtil.inflate(inflater, R.layout.fragment_conversation, container, false);
         binding.getRoot().setOnClickListener(null); // TODO why the fuck did we do this?
+        binding.toolbar.addMenuProvider(
+                menuProvider, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
+        getParentFragmentManager().addOnBackStackChangedListener(backStackListener);
+        backStackListener.onBackStackChanged();
 
         binding.textinput.addTextChangedListener(
                 new StylingHelper.MessageEditorStyler(binding.textinput));
@@ -1304,6 +1325,7 @@ public class ConversationFragment extends XmppFragment
     public void onDestroyView() {
         super.onDestroyView();
         Log.d(Config.LOGTAG, "ConversationFragment.onDestroyView()");
+        getParentFragmentManager().removeOnBackStackChangedListener(backStackListener);
         messageListAdapter.setOnContactPictureClicked(null);
         messageListAdapter.setOnContactPictureLongClicked(null);
     }
@@ -2726,6 +2748,7 @@ public class ConversationFragment extends XmppFragment
                         appSettings.isDisplayEnterKey(),
                         appSettings.isEnterSend(),
                         appSettings.isScrollToBottom());
+        this.mShowLastUserInteraction = appSettings.isBroadcastLastActivity();
         this.binding.textinput.refreshIme(this.inputSettings);
         setTextInputColors();
         refresh(false);
@@ -3115,6 +3138,7 @@ public class ConversationFragment extends XmppFragment
                 }
                 updateSendButton();
                 updateEditablity();
+                updateToolbar();
             }
         }
     }
@@ -3213,6 +3237,55 @@ public class ConversationFragment extends XmppFragment
         this.binding.textSendButton.setIconTint(
                 ColorStateList.valueOf(
                         SendButtonTool.getSendButtonColor(this.binding.textSendButton, status)));
+    }
+
+    private void updateToolbar() {
+        final boolean isTabletView = ConversationsActivity.isTabletView(getActivity());
+        this.binding.toolbar.setSubtitleCentered(isTabletView);
+        this.binding.toolbar.setTitleCentered(isTabletView);
+        final var c = this.conversation;
+        this.binding.toolbar.setTitle(c.getName());
+        if (c.getMode() == Conversation.MODE_SINGLE && this.mShowLastUserInteraction) {
+            final var contact = conversation.getContact();
+            this.binding.toolbar.setSubtitle(
+                    UIHelper.lastUserInteraction(
+                            requireContext(), contact.getLastUserInteraction()));
+        } else if (c.getMode() == Conversation.MODE_MULTI) {
+            final var mucOptions = conversation.getMucOptions();
+            final var userCount = mucOptions.getUserCount();
+            if (mucOptions.isPrivateAndNonAnonymous() || userCount < 1) {
+                this.binding.toolbar.setSubtitle(null);
+            } else {
+                this.binding.toolbar.setSubtitle(
+                        getResources()
+                                .getQuantityString(R.plurals.x_participants, userCount, userCount));
+            }
+        } else {
+            this.binding.toolbar.setSubtitle(null);
+        }
+        ToolbarUtils.setActionBarOnClickListener(
+                this.binding.toolbar, v -> openConversationDetails(c));
+        this.binding.toolbar.invalidateMenu();
+    }
+
+    private void openConversationDetails(final Conversation conversation) {
+        if (conversation.getMode() == Conversational.MODE_MULTI) {
+            ConferenceDetailsActivity.open(requireActivity(), conversation);
+        } else {
+            final Intent intent;
+            final var contact = conversation.getContact();
+            final var account = contact.getAccount();
+            if (contact.isSelf()) {
+                intent = new Intent(requireContext(), EditAccountActivity.class);
+                intent.putExtra("jid", account.getJid().asBareJid().toString());
+            } else {
+                intent = new Intent(requireContext(), ContactDetailsActivity.class);
+                intent.setAction(ContactDetailsActivity.ACTION_VIEW_CONTACT);
+                intent.putExtra(EXTRA_ACCOUNT, account.getJid().asBareJid().toString());
+                intent.putExtra("contact", contact.getAddress().toString());
+            }
+            startActivity(intent);
+        }
     }
 
     protected void updateStatusMessages() {

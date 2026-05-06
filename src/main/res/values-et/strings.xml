@@ -672,8 +672,6 @@
     <string name="remove_from_favorites">Eemalda esiletõstetute hulgast</string>
     <string name="gpx_track">GPX-rada</string>
     <string name="could_not_correct_message">Sõnumi muutmine ei õnnestunud</string>
-    <string name="search_all_conversations">Kõik vestlused</string>
-    <string name="search_this_conversation">See vestlus</string>
     <string name="pref_up_push_account_title">XMPP konto</string>
     <string name="hide_notification">Peida teavitus</string>
     <string name="no_storage_permission">Anna rakendusele %1$s õigus kasutada välist andmeruumi</string>

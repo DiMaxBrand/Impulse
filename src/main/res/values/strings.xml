@@ -978,8 +978,6 @@
     <string name="remove_from_favorites">Unpin from top</string>
     <string name="gpx_track">GPX track</string>
     <string name="could_not_correct_message">Could not edit message</string>
-    <string name="search_all_conversations">All chats</string>
-    <string name="search_this_conversation">This chat</string>
     <string name="your_avatar">Your avatar</string>
     <string name="your_avatar_tap_to_select_new_avatar">Your avatar. Tap to select new avatar from gallery.</string>
     <string name="avatar_for_x">Avatar for %s</string>
@@ -1190,4 +1188,5 @@
     <string name="filter_media">Filter media</string>
     <string name="apply_filter">Apply</string>
     <string name="select_all">Select all</string>
+    <string name="search_in_chats">Search in chats</string>
 </resources>

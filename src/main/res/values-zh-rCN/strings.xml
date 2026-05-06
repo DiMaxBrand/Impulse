@@ -890,8 +890,6 @@
     <string name="remove_from_favorites">取消置顶</string>
     <string name="gpx_track">GPX 轨迹</string>
     <string name="could_not_correct_message">无法编辑消息</string>
-    <string name="search_all_conversations">所有对话</string>
-    <string name="search_this_conversation">此对话</string>
     <string name="your_avatar">您的头像</string>
     <string name="avatar_for_x">%s 的头像</string>
     <string name="encrypted_with_omemo">使用 OMEMO 加密</string>

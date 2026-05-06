@@ -523,7 +523,6 @@
     <string name="pref_autojoin_summary">تنظیم ‪“autojoin”‬ را فعال کنید تا ورود و خروج در گفتگوهای گروهی از دستگاه‌های دیگر این‌جا هم اعمال شود.</string>
     <string name="could_not_change_password">تغییر رمز ممکن نبود</string>
     <string name="pref_show_dynamic_tags">برچسب‌های پویا</string>
-    <string name="search_this_conversation">این گفتگو</string>
     <string name="copy_original_url">کپی نشانی اصلی</string>
     <string name="no_application_found_to_display_location">برنامه‌ای برای نمایش موقعیت مکانی پیدا نشد</string>
     <string name="contacts_have_stopped_typing">%s دیگر تایپ نمی‌کنند</string>
@@ -546,7 +545,6 @@
     <string name="recording_error">خطا</string>
     <string name="download_failed_server_not_found">بارگیری شکست خورد: سرور پیدا نشد</string>
     <string name="server_info_stream_management">XEP-0198: Stream Management</string>
-    <string name="search_all_conversations">همهٔ گفتگوها</string>
     <string name="disable_notifications">قطع اعلان‌ها</string>
     <string name="return_to_ongoing_call">بازگشت به تماس جاری</string>
     <string name="could_not_change_affiliation">تغییر نسبت %s ممکن نبود</string>

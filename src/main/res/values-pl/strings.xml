@@ -930,8 +930,6 @@
     <string name="remove_from_favorites">Odepnij</string>
     <string name="gpx_track">Ścieżka GPX</string>
     <string name="could_not_correct_message">Nie można zedytować wiadomości</string>
-    <string name="search_all_conversations">Wszystkie rozmowy</string>
-    <string name="search_this_conversation">Ta rozmowa</string>
     <string name="your_avatar">Twój awatar</string>
     <string name="avatar_for_x">Awatar dla %s</string>
     <string name="encrypted_with_omemo">Zaszyfrowane OMEMO</string>

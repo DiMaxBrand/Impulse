@@ -1045,8 +1045,6 @@
     <string name="missed_call">Пропуштен позив</string>
     <string name="audio_call">Аудио позив</string>
     <string name="video_call">Видео позив</string>
-    <string name="search_all_conversations">Све преписке</string>
-    <string name="search_this_conversation">Ова преписка</string>
     <string name="unified_push_distributor">UnifiedPush дистрибутер</string>
     <string name="pref_up_push_account_summary">Налог кроз који ће “push” поруке бити примљене.</string>
     <string name="no_account_deactivated">Ниједан (искључен)</string>

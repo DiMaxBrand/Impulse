@@ -893,8 +893,6 @@
     <string name="remove_from_favorites">最上部へのピン止めを外す</string>
     <string name="gpx_track">GPX 追跡</string>
     <string name="could_not_correct_message">メッセージを修正できません</string>
-    <string name="search_all_conversations">すべての会話</string>
-    <string name="search_this_conversation">この会話</string>
     <string name="your_avatar">あなたのアバター</string>
     <string name="avatar_for_x">%s のアバター</string>
     <string name="encrypted_with_omemo">OMEMO で暗号化</string>

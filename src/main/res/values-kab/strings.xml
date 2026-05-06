@@ -188,7 +188,6 @@
     <string name="incoming_call">Asiwel i ikcem-d</string>
     <string name="video_call">Asiwel s uvidyu</string>
     <string name="exit">Ffeɣ</string>
-    <string name="search_this_conversation">Asqerdec-a</string>
     <string name="pref_up_push_account_title">Amiḍan XMPP</string>
     <string name="decline">Agi</string>
     <string name="pref_up_push_server_title">Aqeddac Push</string>
@@ -558,7 +557,6 @@
     </plurals>
     <string name="conversations_backup">Aḥraz n idiwenniyen</string>
     <string name="not_a_backup_file">Afaylu yettwafernen mačči d afaylu n weḥraz n Useqerdec</string>
-    <string name="search_all_conversations">Akk idiwenniyen</string>
     <string name="empty_conversations_list_hint">Mi ara tebduḍ adiwenni amaynut, ad t-twaliḍ dagi</string>
     <string name="create_private_group_chat">Snulfu-d agraw udiwenni uslig</string>
     <string name="join_public_channel">Ddu ɣer ubadu azayez</string>

@@ -879,8 +879,6 @@
     <string name="add_to_favorites">Закачане горе</string>
     <string name="remove_from_favorites">Откачане от горе</string>
     <string name="could_not_correct_message">Съобщението не може да бъде поправено</string>
-    <string name="search_all_conversations">Всички разговори</string>
-    <string name="search_this_conversation">Този разговор</string>
     <string name="your_avatar">Вашият аватар</string>
     <string name="avatar_for_x">Аватар за %s</string>
     <string name="encrypted_with_omemo">Шифровано с OMEMO</string>

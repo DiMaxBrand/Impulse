@@ -897,8 +897,6 @@
     <string name="remove_from_favorites">Détacher du haut de la liste</string>
     <string name="gpx_track">Trace GPX</string>
     <string name="could_not_correct_message">Impossible d\'éditer le message</string>
-    <string name="search_all_conversations">Toutes les conversations</string>
-    <string name="search_this_conversation">Cette conversation</string>
     <string name="your_avatar">Votre image de profil</string>
     <string name="avatar_for_x">Image de profil pour %s</string>
     <string name="encrypted_with_omemo">Chiffré avec OMEMO</string>

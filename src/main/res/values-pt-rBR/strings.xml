@@ -912,8 +912,6 @@
     <string name="remove_from_favorites">Desafixar do topo</string>
     <string name="gpx_track">Trilha GPX</string>
     <string name="could_not_correct_message">Não foi possível editar a mensagem</string>
-    <string name="search_all_conversations">Todos as conversas</string>
-    <string name="search_this_conversation">Esta conversa</string>
     <string name="your_avatar">Seu avatar</string>
     <string name="avatar_for_x">Avatar de %s</string>
     <string name="encrypted_with_omemo">Criptografada com OMEMO</string>

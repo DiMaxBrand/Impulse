@@ -920,8 +920,6 @@
     <string name="remove_from_favorites">Desfijar de la parte superior</string>
     <string name="gpx_track">Recorrido GPX</string>
     <string name="could_not_correct_message">No se pudo editar el mensaje</string>
-    <string name="search_all_conversations">Todos los chats</string>
-    <string name="search_this_conversation">Este chat</string>
     <string name="your_avatar">Tu imagen de perfil</string>
     <string name="avatar_for_x">Imagen de perfil de %s</string>
     <string name="encrypted_with_omemo">Encriptado con OMEMO</string>

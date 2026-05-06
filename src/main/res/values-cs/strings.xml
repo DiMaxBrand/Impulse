@@ -885,8 +885,6 @@
     <string name="remove_from_favorites">Odepnout shora</string>
     <string name="gpx_track">GPX trasa</string>
     <string name="could_not_correct_message">Nebylo možné opravit zprávu</string>
-    <string name="search_all_conversations">Všechny chaty</string>
-    <string name="search_this_conversation">Tento chat</string>
     <string name="your_avatar">Váš avatar</string>
     <string name="avatar_for_x">Avatar uživatele %s</string>
     <string name="encrypted_with_omemo">Šifrováno pomocí OMEMO</string>

@@ -61,7 +61,6 @@ import com.google.common.util.concurrent.Futures;
 import com.leinardi.android.speeddial.SpeedDialActionItem;
 import com.leinardi.android.speeddial.SpeedDialView;
 import de.gultsch.common.MiniUri;
-import eu.siacs.conversations.BuildConfig;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.databinding.ActivityStartConversationBinding;
@@ -777,10 +776,6 @@ public class StartConversationActivity extends XmppActivity
         getMenuInflater().inflate(R.menu.start_conversation, menu);
         AccountUtils.showHideMenuItems(menu);
         final MenuItem menuHideOffline = menu.findItem(R.id.action_hide_offline);
-        final MenuItem privacyPolicyMenuItem = menu.findItem(R.id.action_privacy_policy);
-        privacyPolicyMenuItem.setVisible(
-                BuildConfig.PRIVACY_POLICY != null
-                        && QuickConversationsService.isPlayStoreFlavor());
         if (QuickConversationsService.isQuicksy()) {
             menuHideOffline.setVisible(false);
         } else {

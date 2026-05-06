@@ -59,8 +59,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.zxing.WriterException;
 import de.gultsch.common.MiniUri;
-import eu.siacs.conversations.AppSettings;
-import eu.siacs.conversations.BuildConfig;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.crypto.PgpEngine;
@@ -113,7 +111,6 @@ public abstract class XmppActivity extends ActionBarActivity {
 
     private boolean isCameraFeatureAvailable = false;
 
-    protected boolean mShowLastUserInteraction = false;
     protected Toast mToast;
     public Runnable onOpenPGPKeyPublished =
             () ->
@@ -234,8 +231,6 @@ public abstract class XmppActivity extends ActionBarActivity {
             this.registerListeners();
             this.onBackendConnected();
         }
-        final var appSettings = new AppSettings(this);
-        this.mShowLastUserInteraction = appSettings.isBroadcastLastActivity();
     }
 
     public void connectToBackend() {
@@ -563,9 +558,6 @@ public abstract class XmppActivity extends ActionBarActivity {
                         new Intent(
                                 this, eu.siacs.conversations.ui.activity.SettingsActivity.class));
                 break;
-            case R.id.action_privacy_policy:
-                openPrivacyPolicy();
-                break;
             case R.id.action_accounts:
                 AccountUtils.launchManageAccounts(this);
                 break;
@@ -580,20 +572,6 @@ public abstract class XmppActivity extends ActionBarActivity {
                 break;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    private void openPrivacyPolicy() {
-        if (BuildConfig.PRIVACY_POLICY == null) {
-            return;
-        }
-        final var viewPolicyIntent = new Intent(Intent.ACTION_VIEW);
-        viewPolicyIntent.setData(Uri.parse(BuildConfig.PRIVACY_POLICY));
-        try {
-            startActivity(viewPolicyIntent);
-        } catch (final ActivityNotFoundException e) {
-            Toast.makeText(this, R.string.no_application_found_to_open_link, Toast.LENGTH_SHORT)
-                    .show();
-        }
     }
 
     public void selectPresence(

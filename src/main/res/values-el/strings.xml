@@ -885,8 +885,6 @@
     <string name="remove_from_favorites">Ξεκαρφίτσωμα από την κορυφή</string>
     <string name="gpx_track">Ίχνος GPX</string>
     <string name="could_not_correct_message">Αδυναμία επεξεργασίας μηνύματος</string>
-    <string name="search_all_conversations">Όλες οι συνομιλίες</string>
-    <string name="search_this_conversation">Αυτή η συνομιλία</string>
     <string name="your_avatar">Η φωτογραφία προφίλ σας</string>
     <string name="avatar_for_x">Φωτογραφία προφίλ του/της %s</string>
     <string name="encrypted_with_omemo">Κρυπτογραφημένη με OMEMO</string>

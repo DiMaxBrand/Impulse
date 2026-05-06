@@ -844,8 +844,6 @@
     <string name="remove_from_favorites">取消釘選</string>
     <string name="gpx_track">GPX 追綜</string>
     <string name="could_not_correct_message">無法更正訊息</string>
-    <string name="search_all_conversations">所有會話</string>
-    <string name="search_this_conversation">此會話</string>
     <string name="your_avatar">您的頭像</string>
     <string name="avatar_for_x">%s 的頭像</string>
     <string name="encrypted_with_omemo">以 OMEMO 加密</string>

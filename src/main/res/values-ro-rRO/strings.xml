@@ -925,8 +925,6 @@
     <string name="remove_from_favorites">Anulează fixarea</string>
     <string name="gpx_track">Traseu GPX</string>
     <string name="could_not_correct_message">Nu s-a putut edita mesajul</string>
-    <string name="search_all_conversations">Toate discuțiile</string>
-    <string name="search_this_conversation">Această discuție</string>
     <string name="your_avatar">Poza dumneavoastră de profil</string>
     <string name="avatar_for_x">Poză de profil pentru %s</string>
     <string name="encrypted_with_omemo">Criptat cu OMEMO</string>

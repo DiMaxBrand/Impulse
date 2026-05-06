@@ -920,8 +920,6 @@
     <string name="remove_from_favorites">Wymaż ze ôblubiōnych</string>
     <string name="gpx_track">Śledzynie GPX</string>
     <string name="could_not_correct_message">Niy szło skorygować wiadōmości</string>
-    <string name="search_all_conversations">Wszyske kōnwersacyje</string>
-    <string name="search_this_conversation">Ta kōnwersacyjo</string>
     <string name="your_avatar">Twōj awatar</string>
     <string name="avatar_for_x">Awatar ôd %s</string>
     <string name="encrypted_with_omemo">Zaszyfrowane bez OMEMO</string>

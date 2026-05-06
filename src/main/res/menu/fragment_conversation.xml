@@ -103,7 +103,6 @@
         android:id="@+id/action_search"
         android:orderInCategory="48"
         android:title="@string/search_messages"
-        android:visible="@bool/show_individual_search_options"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_clear_history"

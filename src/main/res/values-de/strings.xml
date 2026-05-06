@@ -910,8 +910,6 @@
     <string name="remove_from_favorites">Von oben ablösen</string>
     <string name="gpx_track">GPX-Strecke</string>
     <string name="could_not_correct_message">Nachricht konnte nicht geändert werden</string>
-    <string name="search_all_conversations">Alle Chats</string>
-    <string name="search_this_conversation">Dieser Chat</string>
     <string name="your_avatar">Dein Profilbild</string>
     <string name="avatar_for_x">Profilbild für %s</string>
     <string name="encrypted_with_omemo">Verschlüsselt mit OMEMO</string>

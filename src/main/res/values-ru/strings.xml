@@ -920,8 +920,6 @@
     <string name="remove_from_favorites">Открепить</string>
     <string name="gpx_track">GPX-трек</string>
     <string name="could_not_correct_message">Невозможно изменить сообщение</string>
-    <string name="search_all_conversations">Все беседы</string>
-    <string name="search_this_conversation">Эта беседа</string>
     <string name="your_avatar">Ваш аватар</string>
     <string name="avatar_for_x">Аватар для %s</string>
     <string name="encrypted_with_omemo">Зашифровано с помощью OMEMO</string>

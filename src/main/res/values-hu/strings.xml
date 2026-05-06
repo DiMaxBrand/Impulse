@@ -913,8 +913,6 @@
     <string name="remove_from_favorites">Levétel felülről</string>
     <string name="gpx_track">GPX nyomvonal</string>
     <string name="could_not_correct_message">Nem sikerült kijavítani az üzenetet</string>
-    <string name="search_all_conversations">Minden csevegés</string>
-    <string name="search_this_conversation">Ez a csevegés</string>
     <string name="your_avatar">Saját avatar</string>
     <string name="avatar_for_x">Avatár %s profiljához</string>
     <string name="encrypted_with_omemo">OMEMO-val titkosítva</string>

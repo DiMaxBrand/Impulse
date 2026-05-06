@@ -832,8 +832,6 @@
     <string name="remove_from_favorites">Irrota</string>
     <string name="gpx_track">GPX-reitti</string>
     <string name="could_not_correct_message">Viestin korjaaminen epäonnistui</string>
-    <string name="search_all_conversations">Kaikki pikakeskustelut</string>
-    <string name="search_this_conversation">Tämä pikakeskustelu</string>
     <string name="your_avatar">Profiilikuvasi</string>
     <string name="avatar_for_x">%s:n profiilikuva</string>
     <string name="encrypted_with_omemo">OMEMO-salattu</string>

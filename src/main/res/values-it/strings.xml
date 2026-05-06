@@ -922,8 +922,6 @@
     <string name="remove_from_favorites">Rimuovi dall\'alto</string>
     <string name="gpx_track">Traccia GPX</string>
     <string name="could_not_correct_message">Impossibile modificare il messaggio</string>
-    <string name="search_all_conversations">Tutte le chat</string>
-    <string name="search_this_conversation">Questa chat</string>
     <string name="your_avatar">Il tuo avatar</string>
     <string name="avatar_for_x">Avatar di %s</string>
     <string name="encrypted_with_omemo">Crittografato con OMEMO</string>

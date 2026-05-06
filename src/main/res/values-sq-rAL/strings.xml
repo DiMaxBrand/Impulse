@@ -701,8 +701,6 @@
     <string name="remove_from_favorites">Shfiksoje prej kreut</string>
     <string name="gpx_track">Gjurmë GPX</string>
     <string name="could_not_correct_message">S’u përpunua dot mesazhi</string>
-    <string name="search_all_conversations">Krejt fjalosjet</string>
-    <string name="search_this_conversation">Këtë fjalosje</string>
     <string name="your_avatar">Avatari juaj</string>
     <string name="avatar_for_x">Avatar për %s</string>
     <string name="encrypted_with_omemo">Fshehtëzuar me OMEMO</string>

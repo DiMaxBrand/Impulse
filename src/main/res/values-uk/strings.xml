@@ -923,7 +923,6 @@
         <item quantity="many">%d непрочитаних розмов</item>
         <item quantity="other">%d непрочитаних розмов</item>
     </plurals>
-    <string name="search_this_conversation">Ця розмова</string>
     <string name="add_contact_or_create_or_join_group_chat">Додати контакт, створити чи приєднатися до групи або знайти канали</string>
     <string name="pref_up_push_account_title">Обліковий запис XMPP</string>
     <string name="outgoing_call_timestamp">Вихідний виклик · %s</string>
@@ -979,7 +978,6 @@
     <string name="rtp_state_security_error">Проблема при перевірці</string>
     <string name="add_to_favorites">Закріпити</string>
     <string name="remove_from_favorites">Відкріпити</string>
-    <string name="search_all_conversations">Усі розмови</string>
     <string name="encrypted_with_omemo">Зашифровано за допомогою OMEMO</string>
     <string name="encrypted_with_openpgp">Зашифровано за допомогою OpenPGP</string>
     <string name="not_encrypted">Не зашифровано</string>

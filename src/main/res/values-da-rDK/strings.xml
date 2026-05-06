@@ -906,8 +906,6 @@
     <string name="remove_from_favorites">Frigør fra top</string>
     <string name="gpx_track">GPX spor</string>
     <string name="could_not_correct_message">Kunne ikke rediger besked</string>
-    <string name="search_all_conversations">Alle chats</string>
-    <string name="search_this_conversation">Denne chat</string>
     <string name="your_avatar">Dit avatar</string>
     <string name="avatar_for_x">Avatar for %s</string>
     <string name="encrypted_with_omemo">Krypteret med OMEMO</string>

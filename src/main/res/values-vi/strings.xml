@@ -878,8 +878,6 @@
     <string name="remove_from_favorites">Bỏ ghim khỏi đầu</string>
     <string name="gpx_track">Tuyến đường GPS</string>
     <string name="could_not_correct_message">Không thể sửa tin nhắn</string>
-    <string name="search_all_conversations">Tất cả cuộc hội thoại</string>
-    <string name="search_this_conversation">Cuộc hội thoại này</string>
     <string name="your_avatar">Ảnh đại diện của bạn</string>
     <string name="avatar_for_x">Ảnh đại diện cho %s</string>
     <string name="encrypted_with_omemo">Được mã hoá bằng OMEMO</string>

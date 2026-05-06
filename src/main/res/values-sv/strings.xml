@@ -855,8 +855,6 @@
     <string name="remove_from_favorites">Lossa flik från toppen</string>
     <string name="gpx_track">GPX-spår</string>
     <string name="could_not_correct_message">Det gick inte att redigera meddelandet</string>
-    <string name="search_all_conversations">Alla chatter</string>
-    <string name="search_this_conversation">Den här chatten</string>
     <string name="your_avatar">Din visningsbild</string>
     <string name="avatar_for_x">Visningsbild för %s</string>
     <string name="encrypted_with_omemo">Krypterad med OMEMO</string>
