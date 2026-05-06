@@ -1190,4 +1190,28 @@
     <string name="video_1080p">Molto alta (1080p)</string>
     <string name="pref_save_to_gallery">Salva nella galleria</string>
     <string name="pref_save_to_gallery_summary">Salva automaticamente i multimediali delle cartelle pubbliche affinché compaiano nella tua galleria e nel gestore di file.</string>
+    <plurals name="delete_files_dialog">
+        <item quantity="one">Elimina file</item>
+        <item quantity="many">Elimina %d file</item>
+        <item quantity="other">Elimina %d file</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="one">Vuoi davvero eliminare questo file?</item>
+        <item quantity="many">Vuoi davvero eliminare questi file?</item>
+        <item quantity="other">Vuoi davvero eliminare questi file?</item>
+    </plurals>
+    <plurals name="attachments_saved">
+        <item quantity="one">%d file multimediale salvato</item>
+        <item quantity="many">%d file multimediali salvati</item>
+        <item quantity="other">%d file multimediali salvati</item>
+    </plurals>
+    <string name="could_not_save_files">Impossibile salvare i file</string>
+    <string name="filter_type_images">Immagini</string>
+    <string name="filter_type_videos">Video</string>
+    <string name="filter_type_audio">Audio</string>
+    <string name="filter_type_documents">Documenti</string>
+    <string name="filter_type_other">Altro</string>
+    <string name="filter_media">Filtra i media</string>
+    <string name="apply_filter">Applica</string>
+    <string name="select_all">Seleziona tutto</string>
 </resources>
