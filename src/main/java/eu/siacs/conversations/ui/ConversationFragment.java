@@ -3265,6 +3265,7 @@ public class ConversationFragment extends XmppFragment
         }
         ToolbarUtils.setActionBarOnClickListener(
                 this.binding.toolbar, v -> openConversationDetails(c));
+        ToolbarUtils.adjustToolbarHeight(this.binding.toolbar, isTabletView);
         this.binding.toolbar.invalidateMenu();
     }
 

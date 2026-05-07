@@ -7,7 +7,6 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- Added Toolbar -->
         <com.google.android.material.appbar.AppBarLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
@@ -16,6 +15,8 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
+                android:gravity="center_vertical"
+                app:buttonGravity="center_vertical"
                 app:subtitleTextAppearance="?textAppearanceBodySmall"
                 app:subtitleTextColor="?colorOnSurfaceVariant" />
 
