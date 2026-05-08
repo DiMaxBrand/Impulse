@@ -401,7 +401,9 @@ public class MediaBrowserActivity extends XmppActivity implements OnMediaLoaded 
         }
         final var mimes =
                 ImmutableSet.copyOf(
-                        Lists.transform(attachments, a -> Objects.requireNonNull(a).getMime()));
+                        Lists.transform(
+                                attachments,
+                                a -> ViewUtil.nullToWildcard(Objects.requireNonNull(a).getMime())));
         final var uris =
                 ImmutableList.copyOf(
                         Lists.transform(
