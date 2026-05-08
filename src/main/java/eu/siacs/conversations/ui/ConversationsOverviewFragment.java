@@ -495,14 +495,17 @@ public class ConversationsOverviewFragment extends XmppFragment {
                 new SearchSuggestionProvider(
                         requireXmppActivity().xmppConnectionService.getAccounts());
         final var suggestions = provider.suggest(search);
-        builder.addAll(
-                new Ordering<SearchSuggestion.Sortable>() {
-                    @Override
-                    public int compare(
-                            SearchSuggestion.Sortable left, SearchSuggestion.Sortable right) {
-                        return left.address().compareTo(right.address());
-                    }
-                }.sortedCopy(suggestions));
+        // we do not want to spam the list with tens of results of searching for individual letters
+        if (suggestions.size() <= 8 || search.length() >= 3) {
+            builder.addAll(
+                    new Ordering<SearchSuggestion.Sortable>() {
+                        @Override
+                        public int compare(
+                                SearchSuggestion.Sortable left, SearchSuggestion.Sortable right) {
+                            return left.address().compareTo(right.address());
+                        }
+                    }.sortedCopy(suggestions));
+        }
         this.searchSuggestionAdapter.submitList(builder.build());
     }
 
