@@ -84,6 +84,12 @@ public class SearchSuggestionAdapter
             holder.binding.address.setText(bookmark.address().toString());
             holder.binding.address.setVisibility(View.VISIBLE);
             holder.binding.icon.setImageResource(R.drawable.ic_group_24dp);
+        } else if (searchSuggestion
+                instanceof SearchSuggestion.Uri(de.gultsch.common.MiniUri.Xmpp uri)) {
+            holder.binding.searchSuggestion.setMaxLines(2);
+            holder.binding.searchSuggestion.setText(uri.asJid());
+            holder.binding.address.setVisibility(ViewGroup.GONE);
+            holder.binding.icon.setImageResource(R.drawable.ic_link_24dp);
         }
     }
 

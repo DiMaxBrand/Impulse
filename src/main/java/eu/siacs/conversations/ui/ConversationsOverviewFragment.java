@@ -65,6 +65,7 @@ import com.google.common.collect.Ordering;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import de.gultsch.common.MiniUri;
+import de.gultsch.common.Patterns;
 import eu.siacs.conversations.BuildConfig;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
@@ -84,6 +85,7 @@ import eu.siacs.conversations.ui.util.ScrollState;
 import eu.siacs.conversations.ui.widget.AccountPickerDialog;
 import eu.siacs.conversations.utils.AccountUtils;
 import eu.siacs.conversations.utils.CharSequences;
+import eu.siacs.conversations.utils.XmppUriLauncher;
 import eu.siacs.conversations.xmpp.manager.BookmarkManager;
 import eu.siacs.conversations.xmpp.manager.EasyOnboardingManager;
 import eu.siacs.conversations.xmpp.manager.RosterManager;
@@ -481,34 +483,38 @@ public class ConversationsOverviewFragment extends XmppFragment {
             this.searchSuggestionAdapter.submitList(Collections.emptyList());
             return;
         }
+        final var builder = new ImmutableList.Builder<SearchSuggestion>();
+        builder.add(new SearchSuggestion.Text(search));
+        if (Patterns.URI_GENERIC.matcher(search).matches()) {
+            final var xmppUri = MiniUri.getXmppUriOrNull(search);
+            if (xmppUri != null && xmppUri.isAddress()) {
+                builder.add(new SearchSuggestion.Uri(xmppUri));
+            }
+        }
         final var provider =
                 new SearchSuggestionProvider(
                         requireXmppActivity().xmppConnectionService.getAccounts());
         final var suggestions = provider.suggest(search);
-        if (suggestions.isEmpty()) {
-            this.searchSuggestionAdapter.submitList(
-                    Collections.singletonList(new SearchSuggestion.Text(search)));
-        } else {
-            this.searchSuggestionAdapter.submitList(
-                    new ImmutableList.Builder<SearchSuggestion>()
-                            .add(new SearchSuggestion.Text(search))
-                            .addAll(
-                                    new Ordering<SearchSuggestion.Sortable>() {
-                                        @Override
-                                        public int compare(
-                                                SearchSuggestion.Sortable left,
-                                                SearchSuggestion.Sortable right) {
-                                            return left.address().compareTo(right.address());
-                                        }
-                                    }.sortedCopy(suggestions))
-                            .build());
-        }
+        builder.addAll(
+                new Ordering<SearchSuggestion.Sortable>() {
+                    @Override
+                    public int compare(
+                            SearchSuggestion.Sortable left, SearchSuggestion.Sortable right) {
+                        return left.address().compareTo(right.address());
+                    }
+                }.sortedCopy(suggestions));
+        this.searchSuggestionAdapter.submitList(builder.build());
     }
 
     private void executeSuggestion(final SearchSuggestion suggestion) {
-        if (suggestion instanceof SearchSuggestion.Text(String text1)) {
-            this.binding.searchView.hide();
-            startSearch(text1);
+        if (suggestion instanceof SearchSuggestion.Text(String text)) {
+            this.hideSearchView();
+            startSearch(text);
+        } else if (suggestion instanceof SearchSuggestion.Uri(MiniUri.Xmpp xmpp)) {
+            this.hideSearchView();
+            final var uriLauncher = new XmppUriLauncher(requireContext(), true);
+            uriLauncher.launch(xmpp);
+
         } else if (suggestion instanceof SearchSuggestion.Bookmark b) {
             final var account =
                     requireXmppActivity().xmppConnectionService.findAccountByUuid(b.uuid());
@@ -522,11 +528,7 @@ public class ConversationsOverviewFragment extends XmppFragment {
             if (bookmark == null) {
                 return;
             }
-            if (ConversationsActivity.isTabletView(requireActivity())) {
-                this.binding.searchView.hide();
-            } else {
-                this.binding.searchView.setVisible(false);
-            }
+            this.hideSearchView();
             requireXmppActivity().openConversationsForBookmark(bookmark);
         } else if (suggestion instanceof SearchSuggestion.Contact c) {
             final var account =
@@ -543,12 +545,16 @@ public class ConversationsOverviewFragment extends XmppFragment {
                             .xmppConnectionService
                             .findOrCreateConversation(
                                     contact.getAccount(), contact.getAddress(), false, true);
-            if (ConversationsActivity.isTabletView(requireActivity())) {
-                this.binding.searchView.hide();
-            } else {
-                this.binding.searchView.setVisible(false);
-            }
+            this.hideSearchView();
             requireXmppActivity().switchToConversation(conversation);
+        }
+    }
+
+    private void hideSearchView() {
+        if (ConversationsActivity.isTabletView(requireActivity())) {
+            this.binding.searchView.hide();
+        } else {
+            this.binding.searchView.setVisible(false);
         }
     }
 
