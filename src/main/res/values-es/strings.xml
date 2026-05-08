@@ -1212,4 +1212,5 @@
     <string name="filter_media">Filtro multimedia</string>
     <string name="apply_filter">Aplicar</string>
     <string name="select_all">Seleccionar todo</string>
+    <string name="search_in_chats">Buscar en los chats</string>
 </resources>
