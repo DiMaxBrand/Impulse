@@ -1189,4 +1189,5 @@
     <string name="apply_filter">Apply</string>
     <string name="select_all">Select all</string>
     <string name="search_in_chats">Search in chats</string>
+    <string name="search_for_x_in_chats">Search for \"%s\" in chats</string>
 </resources>

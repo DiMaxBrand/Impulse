@@ -87,6 +87,8 @@ import eu.siacs.conversations.xmpp.OnUpdateBlocklist;
 import eu.siacs.conversations.xmpp.manager.PresenceManager;
 import eu.siacs.conversations.xmpp.manager.ReactionManager;
 import eu.siacs.conversations.xmpp.manager.RegistrationManager;
+import im.conversations.android.model.Bookmark;
+import im.conversations.android.model.ImmutableBookmark;
 import im.conversations.android.xmpp.model.reactions.Restrictions;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -690,6 +692,24 @@ public abstract class XmppActivity extends ActionBarActivity {
         intent.setFlags(intent.getFlags() | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
         finish();
+    }
+
+    protected void openConversationsForBookmark(final Bookmark existing) {
+        final var account = existing.getAccount();
+        final Jid jid = existing.getFullAddress();
+        if (jid == null) {
+            Toast.makeText(this, R.string.invalid_jid, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final Conversation conversation =
+                xmppConnectionService.findOrCreateConversation(account, jid, true, true, true);
+        if (!existing.isAutoJoin()) {
+            final var bookmark =
+                    ImmutableBookmark.builder().from(existing).isAutoJoin(true).build();
+            xmppConnectionService.createBookmark(bookmark.getAccount(), bookmark);
+        }
+        SoftKeyboardUtils.hideSoftKeyboard(this);
+        switchToConversation(conversation);
     }
 
     public void switchToContactDetails(Contact contact) {

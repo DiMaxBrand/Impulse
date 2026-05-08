@@ -22,8 +22,6 @@ import eu.siacs.conversations.xmpp.manager.HttpUploadManager;
 import im.conversations.android.model.TransportSecurity;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.Future;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -34,9 +32,6 @@ import okhttp3.Response;
 
 public class HttpUploadConnection
         implements Transferable, AbstractConnectionManager.ProgressListener {
-
-    static final List<String> WHITE_LISTED_HEADERS =
-            Arrays.asList("Authorization", "Cookie", "Expires");
 
     private final HttpConnectionManager mHttpConnectionManager;
     private final XmppConnectionService mXmppConnectionService;

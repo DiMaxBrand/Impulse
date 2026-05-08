@@ -57,8 +57,11 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Ordering;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import de.gultsch.common.MiniUri;
@@ -72,6 +75,7 @@ import eu.siacs.conversations.entities.Conversational;
 import eu.siacs.conversations.services.QuickConversationsService;
 import eu.siacs.conversations.ui.activity.SettingsActivity;
 import eu.siacs.conversations.ui.adapter.ConversationAdapter;
+import eu.siacs.conversations.ui.adapter.SearchSuggestionAdapter;
 import eu.siacs.conversations.ui.interfaces.OnConversationArchived;
 import eu.siacs.conversations.ui.interfaces.OnConversationSelected;
 import eu.siacs.conversations.ui.util.PendingActionHelper;
@@ -80,8 +84,13 @@ import eu.siacs.conversations.ui.util.ScrollState;
 import eu.siacs.conversations.ui.widget.AccountPickerDialog;
 import eu.siacs.conversations.utils.AccountUtils;
 import eu.siacs.conversations.utils.CharSequences;
+import eu.siacs.conversations.xmpp.manager.BookmarkManager;
 import eu.siacs.conversations.xmpp.manager.EasyOnboardingManager;
+import eu.siacs.conversations.xmpp.manager.RosterManager;
+import im.conversations.android.model.SearchSuggestion;
+import im.conversations.android.provider.SearchSuggestionProvider;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ConversationsOverviewFragment extends XmppFragment {
@@ -94,6 +103,7 @@ public class ConversationsOverviewFragment extends XmppFragment {
     private final PendingItem<ScrollState> pendingScrollState = new PendingItem<>();
     private FragmentConversationsOverviewBinding binding;
     private ConversationAdapter conversationsAdapter;
+    private SearchSuggestionAdapter searchSuggestionAdapter;
     private final PendingActionHelper pendingActionHelper = new PendingActionHelper();
 
     private final ItemTouchHelper.SimpleCallback callback =
@@ -397,6 +407,7 @@ public class ConversationsOverviewFragment extends XmppFragment {
         super.onDestroyView();
         this.binding = null;
         this.conversationsAdapter = null;
+        this.searchSuggestionAdapter = null;
         this.touchHelper = null;
     }
 
@@ -423,14 +434,14 @@ public class ConversationsOverviewFragment extends XmppFragment {
                 .getEditText()
                 .setOnEditorActionListener(
                         (v, actionId, event) -> {
-                            final var intent = new Intent(requireContext(), SearchActivity.class);
-                            intent.putExtra(
-                                    SearchActivity.EXTRA_SEARCH_TERM,
-                                    CharSequences.nullToEmpty(v.getText()));
-                            startActivity(intent);
+                            startSearch(CharSequences.nullToEmpty(v.getText()));
                             this.binding.searchView.hide();
                             return true;
                         });
+        this.binding
+                .searchView
+                .getEditText()
+                .addTextChangedListener(new TextChangeListener(this::submitSearchSuggestion));
         this.binding.fab.setOnClickListener(
                 (view) -> StartConversationActivity.launch(getActivity()));
 
@@ -446,13 +457,99 @@ public class ConversationsOverviewFragment extends XmppFragment {
                                 "Activity does not implement OnConversationSelected");
                     }
                 });
+        this.searchSuggestionAdapter = new SearchSuggestionAdapter();
         this.binding.list.setAdapter(this.conversationsAdapter);
         this.binding.list.setLayoutManager(
                 new LinearLayoutManager(getActivity(), LinearLayoutManager.VERTICAL, false));
         this.binding.list.addOnScrollListener(ExtendedFabSizeChanger.of(binding.fab));
+        this.binding.searchSuggestionList.setAdapter(this.searchSuggestionAdapter);
+        this.searchSuggestionAdapter.setOnSearchSuggestionClicked(this::executeSuggestion);
         this.touchHelper = new ItemTouchHelper(this.callback);
         this.touchHelper.attachToRecyclerView(this.binding.list);
         return binding.getRoot();
+    }
+
+    private void startSearch(final String term) {
+        final var intent = new Intent(requireContext(), SearchActivity.class);
+        intent.putExtra(SearchActivity.EXTRA_SEARCH_TERM, term);
+        startActivity(intent);
+    }
+
+    private void submitSearchSuggestion(final String raw) {
+        final var search = raw.trim();
+        if (Strings.isNullOrEmpty(search)) {
+            this.searchSuggestionAdapter.submitList(Collections.emptyList());
+            return;
+        }
+        final var provider =
+                new SearchSuggestionProvider(
+                        requireXmppActivity().xmppConnectionService.getAccounts());
+        final var suggestions = provider.suggest(search);
+        if (suggestions.isEmpty()) {
+            this.searchSuggestionAdapter.submitList(
+                    Collections.singletonList(new SearchSuggestion.Text(search)));
+        } else {
+            this.searchSuggestionAdapter.submitList(
+                    new ImmutableList.Builder<SearchSuggestion>()
+                            .add(new SearchSuggestion.Text(search))
+                            .addAll(
+                                    new Ordering<SearchSuggestion.Sortable>() {
+                                        @Override
+                                        public int compare(
+                                                SearchSuggestion.Sortable left,
+                                                SearchSuggestion.Sortable right) {
+                                            return left.address().compareTo(right.address());
+                                        }
+                                    }.sortedCopy(suggestions))
+                            .build());
+        }
+    }
+
+    private void executeSuggestion(final SearchSuggestion suggestion) {
+        if (suggestion instanceof SearchSuggestion.Text(String text1)) {
+            this.binding.searchView.hide();
+            startSearch(text1);
+        } else if (suggestion instanceof SearchSuggestion.Bookmark b) {
+            final var account =
+                    requireXmppActivity().xmppConnectionService.findAccountByUuid(b.uuid());
+            if (account == null) {
+                return;
+            }
+            final var bookmark =
+                    account.getXmppConnection()
+                            .getManager(BookmarkManager.class)
+                            .getBookmark(b.address());
+            if (bookmark == null) {
+                return;
+            }
+            if (ConversationsActivity.isTabletView(requireActivity())) {
+                this.binding.searchView.hide();
+            } else {
+                this.binding.searchView.setVisible(false);
+            }
+            requireXmppActivity().openConversationsForBookmark(bookmark);
+        } else if (suggestion instanceof SearchSuggestion.Contact c) {
+            final var account =
+                    requireXmppActivity().xmppConnectionService.findAccountByUuid(c.uuid());
+            if (account == null) {
+                return;
+            }
+            final var contact =
+                    account.getXmppConnection()
+                            .getManager(RosterManager.class)
+                            .getContact(c.address());
+            final var conversation =
+                    requireXmppActivity()
+                            .xmppConnectionService
+                            .findOrCreateConversation(
+                                    contact.getAccount(), contact.getAddress(), false, true);
+            if (ConversationsActivity.isTabletView(requireActivity())) {
+                this.binding.searchView.hide();
+            } else {
+                this.binding.searchView.setVisible(false);
+            }
+            requireXmppActivity().switchToConversation(conversation);
+        }
     }
 
     @Override
