@@ -1215,4 +1215,5 @@
     <string name="filter_media">Filtreeri meediumi</string>
     <string name="apply_filter">Rakenda</string>
     <string name="select_all">Vali kõik</string>
+    <string name="search_in_chats">Otsi vestlustest</string>
 </resources>
