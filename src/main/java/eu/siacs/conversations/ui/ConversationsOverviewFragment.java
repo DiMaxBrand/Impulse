@@ -514,7 +514,6 @@ public class ConversationsOverviewFragment extends XmppFragment {
             this.hideSearchView();
             final var uriLauncher = new XmppUriLauncher(requireContext(), true);
             uriLauncher.launch(xmpp);
-
         } else if (suggestion instanceof SearchSuggestion.Bookmark b) {
             final var account =
                     requireXmppActivity().xmppConnectionService.findAccountByUuid(b.uuid());
@@ -554,7 +553,9 @@ public class ConversationsOverviewFragment extends XmppFragment {
         if (ConversationsActivity.isTabletView(requireActivity())) {
             this.binding.searchView.hide();
         } else {
+            this.binding.searchView.hide();
             this.binding.searchView.setVisible(false);
+            this.binding.searchView.clearFocus();
         }
     }
 
