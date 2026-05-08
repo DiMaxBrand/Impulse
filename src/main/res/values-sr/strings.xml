@@ -1234,4 +1234,5 @@
     <string name="filter_media">Филтрирај садржај</string>
     <string name="apply_filter">Примени</string>
     <string name="select_all">Означи све</string>
+    <string name="search_in_chats">Тражи у препискама</string>
 </resources>
