@@ -118,7 +118,7 @@
     <string name="pref_notification_grace_period">Periodo de gracia</string>
     <string name="pref_notification_grace_period_summary">El tiempo que se silencian las notificaciones tras detectar actividad en otro de tus dispositivos.</string>
     <string name="pref_advanced_options">Avanzado</string>
-    <string name="pref_never_send_crash_summary">Al enviar los trazas de pila, estás ayudando al equipo de desarrollo</string>
+    <string name="pref_never_send_crash_summary">Al enviar informes de fallos, contribuyes al desarrollo posterior</string>
     <string name="pref_confirm_messages">Marcas de lectura</string>
     <string name="pref_confirm_messages_summary">Al activarlo, tus contactos verán cuándo has leído sus mensajes.</string>
     <string name="pref_prevent_screenshots">Impedir capturas de pantalla</string>
@@ -1213,4 +1213,5 @@
     <string name="apply_filter">Aplicar</string>
     <string name="select_all">Seleccionar todo</string>
     <string name="search_in_chats">Buscar en los chats</string>
+    <string name="search_for_x_in_chats">Buscar « %s » en los chats</string>
 </resources>
