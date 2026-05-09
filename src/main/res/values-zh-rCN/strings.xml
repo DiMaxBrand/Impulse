@@ -255,7 +255,7 @@
     <string name="enable">启用</string>
     <string name="conference_requires_password">进入群聊需要密码</string>
     <string name="enter_password">输入密码</string>
-    <string name="request_presence_updates">请先向您的联系人请求在线状态更新。\n\n<small>这将用于确定您的联系人正在使用的聊天应用</small>。</string>
+    <string name="request_presence_updates">请先向您的联系人请求在线状态更新。\n\n<small>此操作将用于确定您的联系人正在使用的聊天应用</small>。</string>
     <string name="request_now">立即请求</string>
     <string name="ignore">忽略</string>
     <string name="without_mutual_presence_updates"><b>警告：</b>在双方未更新在线状态的情况下发送此消息将会出现未知问题。
@@ -649,7 +649,7 @@
     <string name="error_trustkey_device_list">无法获取设备列表</string>
     <string name="error_trustkey_bundle">无法获取密钥</string>
     <string name="error_trustkey_hint_mutual">提示：某些情况下，双方相互添加到联系人列表即可解决此问题。</string>
-    <string name="disable_encryption_message">您确定要为此对话禁用 OMEMO 加密吗？\n这将允许您的服务器管理员读取您的消息，但这可能是与使用过时客户端的用户进行通信的唯一方式。</string>
+    <string name="disable_encryption_message">您确定要为此对话禁用 OMEMO 加密吗？\n此操作将允许您的服务器管理员读取您的消息，但这可能是与使用过时客户端的用户进行通信的唯一方式。</string>
     <string name="disable_now">立即禁用</string>
     <string name="draft">草稿：</string>
     <string name="pref_omemo_setting">OMEMO 加密</string>
@@ -1048,7 +1048,7 @@
     <string name="pref_title_bubbles">消息气泡</string>
     <string name="pref_call_integration">通话集成</string>
     <string name="custom_notifications">自定义通知</string>
-    <string name="custom_notifications_enable">为此对话启用自定义通知（重要程度、声音、振动）设置吗？</string>
+    <string name="custom_notifications_enable">要为此对话启用自定义通知（重要程度、声音、振动）设置吗？</string>
     <string name="pref_call_integration_summary">此应用的通话会与常规通话交互，例如新通话开始时自动结束当前通话。</string>
     <string name="pref_align_start_summary">在左侧显示所有消息，包括发送的消息，以实现统一的聊天布局。</string>
     <string name="pref_align_start">左对齐消息</string>
@@ -1148,7 +1148,7 @@
     <string name="pref_presence_settings_summary">设备锁定时离开、同步系统勿扰模式</string>
     <string name="video_480p">中（480p）</string>
     <string name="video_1080p">超高（1080p）</string>
-    <string name="pref_save_to_gallery">保存到图库</string>
+    <string name="pref_save_to_gallery">保存到媒体库</string>
     <string name="pref_save_to_gallery_summary">自动将媒体文件存储在公共文件夹中，以便它们显示在您的图库和文件管理器中。</string>
     <string name="could_not_save_files">无法保存文件</string>
     <plurals name="delete_files_dialog">
@@ -1169,4 +1169,5 @@
     <string name="apply_filter">应用</string>
     <string name="select_all">全选</string>
     <string name="search_in_chats">在对话中搜索</string>
+    <string name="search_for_x_in_chats">在对话中搜索“%s”</string>
 </resources>
