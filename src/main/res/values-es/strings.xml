@@ -260,7 +260,7 @@
     <string name="disable_notifications">Desactivar notificaciones</string>
     <string name="enable">Activar</string>
     <string name="conference_requires_password">Esta conversación en grupo requiere contraseña</string>
-    <string name="enter_password">Introduzca la contraseña</string>
+    <string name="enter_password">Ingresar contraseña</string>
     <string name="request_presence_updates">Por favor, solicita la actualización de presencia a tu contacto primero.\n\n<small>Esto se usará para determinar qué aplicación de mensajería está usando tu contacto</small>.</string>
     <string name="request_now">Solicitar ahora</string>
     <string name="ignore">Ignorar</string>
