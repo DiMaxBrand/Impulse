@@ -1218,4 +1218,5 @@
     <string name="apply_filter">Aplică</string>
     <string name="select_all">Selectează tot</string>
     <string name="search_in_chats">Căutare în discuții</string>
+    <string name="search_for_x_in_chats">Caută \"%s\" în discuții</string>
 </resources>
