@@ -75,9 +75,7 @@
 \n
 \n<b>Увага:</b> Повідомлення, збережені на інших пристроях або серверах, і надалі залишаться там.</string>
     <string name="delete_file_dialog">Вилучити файл</string>
-    <string name="delete_file_dialog_msg">Ви впевнені, що хочете вилучити цей файл\?
-\n
-\n<b>Увага:</b> Це не вилучить копії цього файлу, які зберігаються на інших пристроях чи серверах. </string>
+    <string name="delete_file_dialog_msg">Ви впевнені, що хочете вилучити цей файл? \n \n<b>Увага:</b> Копії цього файлу, збережені на інших пристроях або серверах, і надалі залишаться там.</string>
     <string name="choose_presence">Вибрати пристрій</string>
     <string name="send_unencrypted_message">Незашифроване повідомлення</string>
     <string name="send_message">Надіслати повідомлення</string>
