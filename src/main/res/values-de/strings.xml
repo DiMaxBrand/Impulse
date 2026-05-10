@@ -1196,4 +1196,5 @@
     <string name="apply_filter">Anwenden</string>
     <string name="select_all">Alle auswählen</string>
     <string name="search_in_chats">Charts durchsuchen</string>
+    <string name="search_for_x_in_chats">In Chats nach \"%s\" suchen</string>
 </resources>
