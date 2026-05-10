@@ -1230,4 +1230,5 @@
     <string name="apply_filter">Zastosuj</string>
     <string name="select_all">Wybierz wszystkie</string>
     <string name="search_in_chats">Szukaj w rozmowach</string>
+    <string name="search_for_x_in_chats">Szukaj „%s” w rozmowach</string>
 </resources>
