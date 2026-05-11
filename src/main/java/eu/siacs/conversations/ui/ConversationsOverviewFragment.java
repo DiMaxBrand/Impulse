@@ -491,10 +491,14 @@ public class ConversationsOverviewFragment extends XmppFragment {
                 builder.add(new SearchSuggestion.Uri(xmppUri));
             }
         }
-        final var provider =
-                new SearchSuggestionProvider(
-                        requireXmppActivity().xmppConnectionService.getAccounts());
-        final var suggestions = provider.suggest(search);
+        final var service = requireXmppActivity().xmppConnectionService;
+        final List<SearchSuggestion.Sortable> suggestions;
+        if (service != null) {
+            final var provider = new SearchSuggestionProvider(service.getAccounts());
+            suggestions = provider.suggest(search);
+        } else {
+            suggestions = Collections.emptyList();
+        }
         // we do not want to spam the list with tens of results of searching for individual letters
         if (suggestions.size() <= 8 || search.length() >= 3) {
             builder.addAll(
