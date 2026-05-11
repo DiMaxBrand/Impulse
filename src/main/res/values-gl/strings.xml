@@ -1196,4 +1196,5 @@
     <string name="apply_filter">Aplicar</string>
     <string name="select_all">Seleccionar todo</string>
     <string name="search_in_chats">Buscar nas conversas</string>
+    <string name="search_for_x_in_chats">Buscar «%s» nas conversas</string>
 </resources>
