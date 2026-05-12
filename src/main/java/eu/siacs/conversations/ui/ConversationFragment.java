@@ -2558,7 +2558,7 @@ public class ConversationFragment extends XmppFragment
                     return;
                 }
             } else if (!Compatibility.hasStoragePermission(getActivity())) {
-                Toast.makeText(requireContext(), R.string.no_storage_permission, Toast.LENGTH_SHORT)
+                Toast.makeText(requireContext(), getString(R.string.no_storage_permission, getString(R.string.app_name)), Toast.LENGTH_SHORT)
                         .show();
                 return;
             } else {
