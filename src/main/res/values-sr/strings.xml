@@ -1235,4 +1235,5 @@
     <string name="apply_filter">Примени</string>
     <string name="select_all">Означи све</string>
     <string name="search_in_chats">Тражи у препискама</string>
+    <string name="search_for_x_in_chats">Тражи \"%s\" у препискама</string>
 </resources>
