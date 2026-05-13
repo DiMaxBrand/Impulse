@@ -1211,4 +1211,10 @@
     <string name="select_all">Vali kõik</string>
     <string name="search_in_chats">Otsi vestlustest</string>
     <string name="search_for_x_in_chats">Otsi vestlustest „%s“ märksõna</string>
+    <string name="attachment_choice_gallery">Galerii</string>
+    <string name="attachment_choice_file">Fail</string>
+    <string name="attachment_choice_location">Asukoht</string>
+    <string name="attachment_choice_camera">Kaamera</string>
+    <string name="attachment_choice_video">Video</string>
+    <string name="attachment_choice_recording">Häälsõnum</string>
 </resources>
