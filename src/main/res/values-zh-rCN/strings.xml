@@ -1164,4 +1164,10 @@
     <string name="select_all">全选</string>
     <string name="search_in_chats">在对话中搜索</string>
     <string name="search_for_x_in_chats">在对话中搜索“%s”</string>
+    <string name="attachment_choice_gallery">图库</string>
+    <string name="attachment_choice_file">文件</string>
+    <string name="attachment_choice_location">位置</string>
+    <string name="attachment_choice_camera">相机</string>
+    <string name="attachment_choice_video">视频</string>
+    <string name="attachment_choice_recording">录音</string>
 </resources>
