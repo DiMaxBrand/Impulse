@@ -53,9 +53,11 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -234,6 +236,7 @@ public class ConversationFragment extends XmppFragment
     public static final String STATE_MEDIA_PREVIEWS =
             ConversationFragment.class.getName() + ".take_photo_uri";
     private static final String STATE_LAST_MESSAGE_UUID = "state_last_message_uuid";
+    private static final String STATE_ATTACHMENT_CHOICE_SHOWING = "state_attachment_choice_showing";
 
     private final List<Message> messageList = new ArrayList<>();
     private final PendingItem<ActivityResult> postponedActivityResult = new PendingItem<>();
@@ -280,6 +283,13 @@ public class ConversationFragment extends XmppFragment
                         binding.toolbar.setNavigationIcon(null);
                         binding.toolbar.setNavigationOnClickListener(null);
                     }
+                }
+            };
+    private final OnBackPressedCallback attachmentChoicesBackPressed =
+            new OnBackPressedCallback(false) {
+                @Override
+                public void handleOnBackPressed() {
+                    setAttachmentChoicesVisibility(false);
                 }
             };
     private Toast messageLoaderToast;
@@ -361,6 +371,12 @@ public class ConversationFragment extends XmppFragment
                 @Override
                 public void informUser(final int resId) {
                     runOnUiThreadQuiet(() -> informUserImpl(resId));
+                }
+            };
+    private final View.OnFocusChangeListener textInputFocusListener =
+            (v, hasFocus) -> {
+                if (hasFocus) {
+                    setAttachmentChoicesVisibility(false);
                 }
             };
 
@@ -1299,11 +1315,18 @@ public class ConversationFragment extends XmppFragment
 
     @Override
     public void onViewCreated(@NonNull final View view, final Bundle savedInstanceState) {
-        if (savedInstanceState == null) {
-            return;
+        if (savedInstanceState != null) {
+            Log.d(Config.LOGTAG, "processing instant state");
+            this.processSavedInstanceState(savedInstanceState);
         }
+    }
 
-        this.processSavedInstanceState(savedInstanceState);
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        requireActivity()
+                .getOnBackPressedDispatcher()
+                .addCallback(this, this.attachmentChoicesBackPressed);
     }
 
     @Override
@@ -1347,12 +1370,6 @@ public class ConversationFragment extends XmppFragment
 
         binding.textInput.setOnEditorActionListener(mEditorActionListener);
         binding.textInput.setRichContentListener(new String[] {"image/*"}, mEditorContentListener);
-        binding.textInput.setOnFocusChangeListener(
-                (v, hasFocus) -> {
-                    if (hasFocus) {
-                        setAttachmentChoicesVisibility(false);
-                    }
-                });
         binding.textInput.setOnTouchListener(
                 (v, event) -> {
                     if (event.getAction() == MotionEvent.ACTION_UP) {
@@ -1384,6 +1401,8 @@ public class ConversationFragment extends XmppFragment
     }
 
     private void setAttachmentChoicesVisibility(final boolean visible) {
+        Log.d(Config.LOGTAG, "set attachment choice visibility");
+        this.attachmentChoicesBackPressed.setEnabled(visible);
         if (visible) {
             binding.attachmentChoices.setVisibility(View.VISIBLE);
             hideSoftKeyboard(this.binding.textInput);
@@ -2286,6 +2305,13 @@ public class ConversationFragment extends XmppFragment
     public void onResume() {
         super.onResume();
         binding.messagesView.post(this::fireReadEvent);
+        binding.textInput.setOnFocusChangeListener(this.textInputFocusListener);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        binding.textInput.setOnFocusChangeListener(null);
     }
 
     private void fireReadEvent() {
@@ -2653,6 +2679,9 @@ public class ConversationFragment extends XmppFragment
                 outState.putParcelableArrayList(STATE_MEDIA_PREVIEWS, attachments);
             }
         }
+        outState.putBoolean(
+                STATE_ATTACHMENT_CHOICE_SHOWING,
+                this.binding.attachmentChoices.getVisibility() == View.VISIBLE);
     }
 
     private void processSavedInstanceState(@NonNull final Bundle savedInstanceState) {
@@ -2668,11 +2697,14 @@ public class ConversationFragment extends XmppFragment
         if (attachments != null && !attachments.isEmpty()) {
             this.pendingMediaPreviews.push(attachments);
         }
-        String takePhotoUri = savedInstanceState.getString(STATE_PHOTO_URI);
+        final var takePhotoUri = savedInstanceState.getString(STATE_PHOTO_URI);
         if (takePhotoUri != null) {
             pendingTakePhotoUri.push(Uri.parse(takePhotoUri));
         }
         pendingScrollState.push(savedInstanceState.getParcelable(STATE_SCROLL_POSITION));
+        final var attachmentChoices =
+                savedInstanceState.getBoolean(STATE_ATTACHMENT_CHOICE_SHOWING, false);
+        setAttachmentChoicesVisibility(attachmentChoices);
     }
 
     @Override
