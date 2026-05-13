@@ -133,8 +133,6 @@
     <string name="send_presence_updates">Gửi cập nhật hiện diện</string>
     <string name="receive_presence_updates">Nhận cập nhật hiện diện</string>
     <string name="ask_for_presence_updates">Hỏi cập nhật hiện diện</string>
-    <string name="attach_choose_picture">Chọn hình</string>
-    <string name="attach_take_picture">Chụp hình</string>
     <string name="preemptively_grant">Ưu tiên trao quyền yêu cầu đăng ký</string>
     <string name="error_not_an_image_file">Tập tin bạn chọn không phải là hình ảnh</string>
     <string name="error_compressing_image">Không thể chuyển đổi tệp hình ảnh</string>
@@ -176,7 +174,6 @@
     <string name="openpgp_has_been_published">Đã xuất bản mã khoá OpenPGP công khai.</string>
     <string name="mgmt_account_enable">Bật tài khoản</string>
     <string name="mgmt_account_delete_confirm_text">Bạn có chắc chắn muốn xóa tài khoản chứ? Việc xoá tài khoản sẽ xoá toàn bộ lịch sử cuộc hội thoại của bạn</string>
-    <string name="attach_record_voice">Ghi âm</string>
     <string name="account_settings_jabber_id">Địa chỉ XMPP</string>
     <string name="block_jabber_id">Chặn địa chỉ XMPP</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -315,7 +312,6 @@
     <string name="restoring_backup">Đang khôi phục bản sao lưu</string>
     <string name="notification_restored_backup_title">Đã khôi phục bản sao lưu</string>
     <string name="notification_restored_backup_subtitle">Đừng quên bật tài khoản.</string>
-    <string name="choose_file">Chọn tập tin</string>
     <string name="receiving_x_file">Đang nhận %1$s (đã hoàn tất %2$d%%)</string>
     <string name="download_x_file">Tải về %s</string>
     <string name="delete_x_file">Xoá %s</string>
@@ -398,7 +394,6 @@
     <string name="contacts_have_stopped_typing">%s đã ngừng gõ</string>
     <string name="pref_chat_states">Thông báo đang gõ</string>
     <string name="pref_chat_states_summary">Để cho các liên hệ của bạn biết khi bạn đang viết tin nhắn cho họ</string>
-    <string name="send_location">Gửi vị trí</string>
     <string name="show_location">Hiện vị trí</string>
     <string name="no_application_found_to_display_location">Không tìm thấy ứng dụng nào để hiển thị vị trí</string>
     <string name="location">Vị trí</string>
@@ -629,7 +624,6 @@
     <string name="pref_validate_hostname_summary">Các chứng chỉ máy chủ chứa tên miền được xác thực được coi là đã xác minh</string>
     <string name="certificate_does_not_contain_jid">Chứng chỉ không chứa địa chỉ XMPP hợp lệ</string>
     <string name="server_info_partial">một phần</string>
-    <string name="attach_record_video">Ghi video</string>
     <string name="copy_to_clipboard">Sao chép vào bộ nhớ tạm</string>
     <string name="message_copied_to_clipboard">Đã chép tin nhắn vào clipboard</string>
     <string name="message">Tin nhắn</string>

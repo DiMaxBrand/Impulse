@@ -132,8 +132,6 @@
     <string name="send_presence_updates">Αποστολή ενημερώσεων παρουσίας</string>
     <string name="receive_presence_updates">Λήψη ενημερώσεων παρουσίας</string>
     <string name="ask_for_presence_updates">Παράκληση για ενημερώσεις παρουσίας</string>
-    <string name="attach_choose_picture">Επιλογή εικόνας</string>
-    <string name="attach_take_picture">Λήψη εικόνας</string>
     <string name="preemptively_grant">Ερήμην χορήγηση αίτησης συνδρομής</string>
     <string name="error_not_an_image_file">Το αρχείο που επιλέξατε δεν είναι εικόνα</string>
     <string name="error_compressing_image">Σφάλμα κατά τη μετατροπή του αρχείου εικόνας</string>
@@ -173,7 +171,6 @@
     <string name="openpgp_has_been_published">Το δημόσιο κλειδί OpenPGP έχει δημοσιευτεί.</string>
     <string name="mgmt_account_enable">Ενεργοποίηση λογαριασμού</string>
     <string name="mgmt_account_delete_confirm_text">Είστε σίγουροι ότι θέλετε να διαγράψετε τον λογαριασμό σας; Η διαγραφή του λογαριασμού σας θα διαγράψει όλο το ιστορικό συνομιλιών σας</string>
-    <string name="attach_record_voice">Εγγραφή φωνής</string>
     <string name="account_settings_jabber_id">Διεύθυνση XMPP</string>
     <string name="block_jabber_id">Αποκλεισμός διεύθυνσης XMPP</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -312,7 +309,6 @@
     <string name="restoring_backup">Γίνεται επαναφορά αντιγράφου ασφαλείας</string>
     <string name="notification_restored_backup_title">Έχει γίνει επαναφορά του αντιγράφου ασφαλείας σας</string>
     <string name="notification_restored_backup_subtitle">Μην παραλείψετε να ενεργοποιήσετε τον λογαριασμό.</string>
-    <string name="choose_file">Επιλογή αρχείου</string>
     <string name="receiving_x_file">Λήψη %1$s (ολοκληρώθηκε %2$d%%)</string>
     <string name="download_x_file">Μεταφόρτωση του %s</string>
     <string name="delete_x_file">Διαγραφή του %s</string>
@@ -395,7 +391,6 @@
     <string name="contacts_have_stopped_typing">Οι %s σταμάτησαν να πληκτρολογούν</string>
     <string name="pref_chat_states">Ειδοποιήσεις πληκτρολόγησης</string>
     <string name="pref_chat_states_summary">Επιτρέψτε στις επαφές σας να γνωρίζουν πότε γράφετε μηνύματα προς αυτές</string>
-    <string name="send_location">Αποστολή τοποθεσίας</string>
     <string name="show_location">Εμφάνιση τοποθεσίας</string>
     <string name="no_application_found_to_display_location">Δεν βρέθηκε εφαρμογή για την απεικόνιση τοποθεσίας</string>
     <string name="location">Τοποθεσία</string>
@@ -633,7 +628,6 @@
     <string name="pref_validate_hostname_summary">Τα πιστοποιητικά διακομιστή που περιέχουν το επικυρωμένο όνομα μηχανήματος θεωρούνται επαληθευμένα</string>
     <string name="certificate_does_not_contain_jid">Το πιστοποιητικό δεν περιέχει ταυτότητα XMPP</string>
     <string name="server_info_partial">μερικώς</string>
-    <string name="attach_record_video">Εγγραφή βίντεο</string>
     <string name="copy_to_clipboard">Αντιγραφή</string>
     <string name="message_copied_to_clipboard">Το μήνυμα αντιγράφηκε στο πρόχειρο</string>
     <string name="message">Μήνυμα</string>

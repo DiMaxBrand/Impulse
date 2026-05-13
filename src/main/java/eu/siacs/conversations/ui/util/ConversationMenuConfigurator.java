@@ -42,29 +42,11 @@ import eu.siacs.conversations.entities.Message;
 
 public class ConversationMenuConfigurator {
 
-    private static boolean microphoneAvailable = false;
+    public static boolean microphoneAvailable = false;
 
     public static void reloadFeatures(Context context) {
         microphoneAvailable =
                 context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_MICROPHONE);
-    }
-
-    public static void configureAttachmentMenu(@NonNull Conversation conversation, Menu menu) {
-        final MenuItem menuAttach = menu.findItem(R.id.action_attach_file);
-
-        final boolean visible;
-        if (conversation.getMode() == Conversation.MODE_MULTI) {
-            visible =
-                    conversation.getAccount().httpUploadAvailable()
-                            && conversation.getMucOptions().participating();
-        } else {
-            visible = true;
-        }
-        menuAttach.setVisible(visible);
-        if (!visible) {
-            return;
-        }
-        menu.findItem(R.id.attach_record_voice).setVisible(microphoneAvailable);
     }
 
     public static void configureEncryptionMenu(@NonNull Conversation conversation, Menu menu) {

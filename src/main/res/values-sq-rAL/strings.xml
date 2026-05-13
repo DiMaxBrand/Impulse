@@ -103,8 +103,6 @@
     <string name="send_presence_updates">Dërgo përditësime pranie</string>
     <string name="receive_presence_updates">Merr përditësime pranie</string>
     <string name="ask_for_presence_updates">Pyet për përditësime pranie</string>
-    <string name="attach_choose_picture">Zgjidhni foto</string>
-    <string name="attach_take_picture">Bëni një foto</string>
     <string name="error_not_an_image_file">Kartela që përzgjodhët s’është figurë</string>
     <string name="error_file_not_found">S’u gjet kartelë</string>
     <string name="account_status_unknown">E panjohur</string>
@@ -138,7 +136,6 @@
     <string name="unpublish_pgp">Hiq kyç publik OpenPGP</string>
     <string name="openpgp_has_been_published">Kyçi publik OpenPGP u bë publik.</string>
     <string name="mgmt_account_enable">Aktivizoje llogarinë</string>
-    <string name="attach_record_voice">Incizoni zë</string>
     <string name="account_settings_jabber_id">Adresë XMPP</string>
     <string name="block_jabber_id">Bllokoj adresë XMPP</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -251,7 +248,6 @@
     <string name="restoring_backup">Po rikthehet kopjeruajtje</string>
     <string name="notification_restored_backup_title">Kopjeruajtja juaj u rikthye</string>
     <string name="notification_restored_backup_subtitle">Mos harroni të aktivizoni llogarinë.</string>
-    <string name="choose_file">Zgjidhni kartelë</string>
     <string name="receiving_x_file">Po merret %1$s (plotësuar %2$d%%)</string>
     <string name="download_x_file">Shkarkoni %s</string>
     <string name="delete_x_file">Fshije %s</string>
@@ -320,7 +316,6 @@
     <string name="contacts_are_typing">%s po shkruajnë…</string>
     <string name="contacts_have_stopped_typing">%s ka reshtur së shkruari</string>
     <string name="pref_chat_states">Njoftime shtypjesh</string>
-    <string name="send_location">Dërgo vendndodhjen</string>
     <string name="show_location">Shfaq vendndodhje</string>
     <string name="no_application_found_to_display_location">S’u gjet aplikacion për shfaqje të vendndodhjes</string>
     <string name="location">Vendndodhje</string>
@@ -486,7 +481,6 @@
     <string name="yesterday">Dje</string>
     <string name="pref_validate_hostname">Vlerësoj strehemër me DNSSEC</string>
     <string name="server_info_partial">të pjesshme</string>
-    <string name="attach_record_video">Regjistroni video</string>
     <string name="copy_to_clipboard">Kopjoje</string>
     <string name="message_copied_to_clipboard">Mesazhi u kopjua në të papastër</string>
     <string name="message">Mesazh</string>

@@ -110,7 +110,6 @@
     <string name="mgmt_account_publish_pgp">انتشار کلید عمومی OpenPGP</string>
     <string name="unpublish_pgp">حذف کلید عمومی OpenPGP</string>
     <string name="mgmt_account_enable">فعال‌سازی حساب کاربری</string>
-    <string name="attach_record_voice">ضبط صدا</string>
     <string name="account_settings_example_jabber_id">‪username@example.com‬</string>
     <string name="password">رمز</string>
     <string name="add_phone_book_text">آیا می خواهید %s را به مخاطبان خود بیفزایید؟</string>
@@ -163,7 +162,6 @@
     <string name="sending_x_file">%s فرستاده می‌شود</string>
     <string name="message_options">گزینه‌های پیام</string>
     <string name="account_status_temporary_auth_failure">شکست موقتی برای تأیید هویت</string>
-    <string name="attach_take_picture">گرفتن عکس</string>
     <string name="fetching_history_from_server">تاریخچه از سرور دریافت می‌شود</string>
     <string name="remove_contact_text">آیا می‌خواهید %s را از فهرست مخاطبان خود پاک کنید؟ گفتگوها با این مخاطب پاک نخواهند شد.</string>
     <string name="set">تنظیم</string>
@@ -249,7 +247,6 @@
         <item quantity="one">%1$d عضو را ببینید</item>
         <item quantity="other">%1$d عضو را ببینید</item>
     </plurals>
-    <string name="choose_file">برگزیدن پرونده</string>
     <string name="avatar_has_been_published">تصویر نمایه منتشر شد!</string>
     <string name="could_not_destroy_room">حذف گفتگوی گروهی ممکن نبود</string>
     <plurals name="toast_delete_certificates">
@@ -257,7 +254,6 @@
         <item quantity="other">%d گواهینامهٔ امنیتی حذف شد</item>
     </plurals>
     <string name="delete_x_file">حذف %s</string>
-    <string name="send_location">فرستادن موقعیت مکانی</string>
     <string name="receive_presence_updates">دریافت به‌روزرسانی وصل‌بودن</string>
     <string name="contacts_have_read_up_to_this_point">%s تا این‌جا خوانده‌اند</string>
     <string name="pref_allow_message_correction_summary">بگذارید مخاطبانتان پیام‌ها را پس از ارسال ویرایش کنند</string>
@@ -305,7 +301,6 @@
     <string name="receiving_x_file">%1$s دریافت می‌شود (%2$d%% انجام شده)</string>
     <string name="action_edit_subject">ویرایش موضوع گفتگوی گروهی</string>
     <string name="help">راهنما</string>
-    <string name="attach_choose_picture">انتخاب عکس</string>
     <string name="server_info_pep">XEP-0163: PEP (Avatars / OMEMO)</string>
     <string name="account_status_incompatible_client">برنامهٔ ناسازگار</string>
     <string name="no_account_deactivated">هیچ (غیرفعال)</string>
@@ -784,7 +779,6 @@
     <string name="pref_omemo_setting_summary_default_on">برای گفتگوهای تازه OMEMO به کار برود.</string>
     <string name="encrypting_message">رمزگذاری پیام‌ها</string>
     <string name="contact_name">نام مخاطب</string>
-    <string name="attach_record_video">ضبط ویدیو</string>
     <string name="unable_to_restore_backup">بازیابی پشتیبان ممکن نبود.</string>
     <string name="this_looks_like_a_domain">این شبیه یک نشانی دامنه است</string>
     <string name="fetching_mam_prefs">دریافت ترجیحات آرشیوگیری. لطفاً صبر کنید…</string>

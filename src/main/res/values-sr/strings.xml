@@ -135,8 +135,6 @@
     <string name="send_presence_updates">Шаљи пријаве присутности</string>
     <string name="receive_presence_updates">Примај пријаве присутности</string>
     <string name="ask_for_presence_updates">Питај за пријаве присутности</string>
-    <string name="attach_choose_picture">Изабери слику</string>
-    <string name="attach_take_picture">Фотографиши</string>
     <string name="preemptively_grant">Унапред прихвати захтев за пријавом</string>
     <string name="error_not_an_image_file">Изабрани фајл није слика</string>
     <string name="error_compressing_image">Није могуће конвертовати слику</string>
@@ -179,7 +177,6 @@
     <string name="openpgp_has_been_published">OpenPGP јавни кључ је објављен.</string>
     <string name="mgmt_account_enable">Укључи налог</string>
     <string name="mgmt_account_delete_confirm_text">Да ли си сигуран/на да желиш да обришеш свој налог? Брисањем налога бришеш и целу историју својих преписки</string>
-    <string name="attach_record_voice">Сними глас</string>
     <string name="account_settings_jabber_id">XMPP адреса</string>
     <string name="block_jabber_id">Блокирај XMPP адресу</string>
     <string name="account_settings_example_jabber_id">korisnickoime@primer.com</string>
@@ -326,7 +323,6 @@
     <string name="restoring_backup">Враћам резервну копију</string>
     <string name="notification_restored_backup_title">Твоја резервна копија је враћена</string>
     <string name="notification_restored_backup_subtitle">Не заборави да омогућиш налог.</string>
-    <string name="choose_file">Изабери фајл</string>
     <string name="receiving_x_file">Примам %1$s (%2$d%% завршено)</string>
     <string name="download_x_file">Преузми %s</string>
     <string name="delete_x_file">Обриши %s</string>
@@ -406,7 +402,6 @@
     <string name="contacts_have_stopped_typing">%s су престали да куцају</string>
     <string name="pref_chat_states">Индикатори куцања</string>
     <string name="pref_chat_states_summary">Дозволи својим контактима да знају када им куцаш поруке</string>
-    <string name="send_location">Пошаљи локацију</string>
     <string name="show_location">Прикажи локацију</string>
     <string name="no_application_found_to_display_location">Није пронађена апликација за приказ локације</string>
     <string name="location">Локација</string>
@@ -621,7 +616,6 @@
     <string name="today">Данас</string>
     <string name="yesterday">Јуче</string>
     <string name="server_info_partial">делимично</string>
-    <string name="attach_record_video">Сними видео</string>
     <string name="copy_to_clipboard">Копирај</string>
     <string name="message_copied_to_clipboard">Порука копирана у клипборд</string>
     <string name="message">Порука</string>

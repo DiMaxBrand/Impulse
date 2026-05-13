@@ -131,8 +131,6 @@
     <string name="send_presence_updates">Enviar atualizações de presença</string>
     <string name="receive_presence_updates">Receber atualizações de presença</string>
     <string name="ask_for_presence_updates">Solicitar atualizações de presença</string>
-    <string name="attach_choose_picture">Selecionar imagem</string>
-    <string name="attach_take_picture">Tirar uma foto</string>
     <string name="preemptively_grant">Autorizar antecipadamente as solicitações de inscrição</string>
     <string name="error_not_an_image_file">O arquivo selecionado não é uma imagem</string>
     <string name="error_compressing_image">Não foi possível converter o arquivo de imagem</string>
@@ -173,7 +171,6 @@
     <string name="openpgp_has_been_published">A chave pública do OpenPGP foi publicada.</string>
     <string name="mgmt_account_enable">Ativar conta</string>
     <string name="mgmt_account_delete_confirm_text">Tem certeza de que deseja apagar sua conta? Ao apagar sua conta, o seu histórico de conversa inteiro será apagado também</string>
-    <string name="attach_record_voice">Gravar voz</string>
     <string name="account_settings_jabber_id">Endereço XMPP</string>
     <string name="block_jabber_id">Bloquear endereço XMPP</string>
     <string name="account_settings_example_jabber_id">nomedeusuario@exemplo.com</string>
@@ -315,7 +312,6 @@
     <string name="restoring_backup">Restaurando o backup</string>
     <string name="notification_restored_backup_title">Seu backup foi restaurado</string>
     <string name="notification_restored_backup_subtitle">Não se esqueça de ativar a conta.</string>
-    <string name="choose_file">Selecionar arquivo</string>
     <string name="receiving_x_file">Recebendo %1$s (%2$d%% concluído)</string>
     <string name="download_x_file">Descarregar %s</string>
     <string name="delete_x_file">Apagar %s</string>
@@ -399,7 +395,6 @@
     <string name="contacts_have_stopped_typing">%s pararam de digitar</string>
     <string name="pref_chat_states">Indicadores de digitação</string>
     <string name="pref_chat_states_summary">Deixe que os seus contatos saibam quando você está escrevendo mensagens para eles</string>
-    <string name="send_location">Enviar localização</string>
     <string name="show_location">Mostrar localização</string>
     <string name="no_application_found_to_display_location">Nenhum app encontrado para mostrar localização</string>
     <string name="location">Localização</string>
@@ -643,7 +638,6 @@
     <string name="pref_validate_hostname_summary">Certificados do servidor que contenham o nome de servidor validado são considerados verificados</string>
     <string name="certificate_does_not_contain_jid">O certificado não contém um endereço XMPP</string>
     <string name="server_info_partial">parcial</string>
-    <string name="attach_record_video">Gravar vídeo</string>
     <string name="copy_to_clipboard">Copiar</string>
     <string name="message_copied_to_clipboard">Mensagem copiada pra área de transferência</string>
     <string name="message">Mensagem</string>

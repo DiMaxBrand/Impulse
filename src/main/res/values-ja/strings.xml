@@ -133,8 +133,6 @@
     <string name="send_presence_updates">出席情報アップデートを送信</string>
     <string name="receive_presence_updates">出席情報アップデートを受信</string>
     <string name="ask_for_presence_updates">出席情報アップデートを求める</string>
-    <string name="attach_choose_picture">画像を選択</string>
-    <string name="attach_take_picture">写真を撮影</string>
     <string name="preemptively_grant">サブスクリプション要求を事前に付与する</string>
     <string name="error_not_an_image_file">選択したファイルは画像ではありません</string>
     <string name="error_compressing_image">画像ファイルを変換できません</string>
@@ -175,7 +173,6 @@
     <string name="openpgp_has_been_published">OpenPGP 公開鍵を公開しました。</string>
     <string name="mgmt_account_enable">アカウントを有効化</string>
     <string name="mgmt_account_delete_confirm_text">アカウントを削除してよろしいですか ? アカウントを削除すると会話履歴がすべて消去されます</string>
-    <string name="attach_record_voice">音声を録音</string>
     <string name="account_settings_jabber_id">XMPP アドレス</string>
     <string name="block_jabber_id">XMPP アドレスをブロック</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -316,7 +313,6 @@
     <string name="restoring_backup">バックアップを復元</string>
     <string name="notification_restored_backup_title">バックアップを復元しました</string>
     <string name="notification_restored_backup_subtitle">アカウントを有効化してください。</string>
-    <string name="choose_file">ファイルを選択</string>
     <string name="receiving_x_file">%1$s 受信中 (%2$d%% 完了)</string>
     <string name="download_x_file">%s をダウンロード</string>
     <string name="delete_x_file">%s を削除</string>
@@ -400,7 +396,6 @@
     <string name="contacts_have_stopped_typing">%s さんが入力を止めました</string>
     <string name="pref_chat_states">入力中通知</string>
     <string name="pref_chat_states_summary">あなたがメッセージを書いているときに、連絡先に知らせます</string>
-    <string name="send_location">位置を送信</string>
     <string name="show_location">位置を表示</string>
     <string name="no_application_found_to_display_location">位置を表示するアプリケーションが見つかりません</string>
     <string name="location">位置</string>
@@ -632,7 +627,6 @@
     <string name="pref_validate_hostname_summary">検証されたホスト名を含むサーバー証明書は検証済みと見なされます</string>
     <string name="certificate_does_not_contain_jid">証明書は XMPP アドレスを含みません</string>
     <string name="server_info_partial">一時的</string>
-    <string name="attach_record_video">ビデオを録画</string>
     <string name="copy_to_clipboard">クリップボードにコピー</string>
     <string name="message_copied_to_clipboard">メッセージをクリップボードにコピーしました</string>
     <string name="message">メッセージ</string>

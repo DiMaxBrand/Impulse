@@ -132,8 +132,6 @@
     <string name="send_presence_updates">Jelenlétfrissítések küldése</string>
     <string name="receive_presence_updates">Jelenlétfrissítések fogadása</string>
     <string name="ask_for_presence_updates">Jelenlétfrissítések kérése</string>
-    <string name="attach_choose_picture">Fénykép kiválasztása</string>
-    <string name="attach_take_picture">Fénykép készítése</string>
     <string name="preemptively_grant">Feliratkozási kérelem előzetes engedélyezése</string>
     <string name="error_not_an_image_file">A kiválasztott fájl nem kép</string>
     <string name="error_compressing_image">Nem sikerült átalakítani a képet</string>
@@ -173,7 +171,6 @@
     <string name="openpgp_has_been_published">Az OpenPGP nyilvános kulcs közzé lett téve.</string>
     <string name="mgmt_account_enable">Fiók engedélyezése</string>
     <string name="mgmt_account_delete_confirm_text">A fiók törlésével az összes csevegési előzménye is eltávolításra kerül</string>
-    <string name="attach_record_voice">Hang rögzítése</string>
     <string name="account_settings_jabber_id">XMPP-cím</string>
     <string name="block_jabber_id">XMPP-cím tiltása</string>
     <string name="account_settings_example_jabber_id">felhasznalonev@pelda.hu</string>
@@ -307,7 +304,6 @@
     <string name="restoring_backup">Biztonsági mentés visszaállítása</string>
     <string name="notification_restored_backup_title">A biztonsági mentés vissza lett állítva</string>
     <string name="notification_restored_backup_subtitle">Ne felejtse el engedélyezni a fiókot.</string>
-    <string name="choose_file">Fájl kiválasztása</string>
     <string name="receiving_x_file">%1$s fogadása (%2$d%% kész)</string>
     <string name="download_x_file">%s letöltése</string>
     <string name="delete_x_file">%s törlése</string>
@@ -386,7 +382,6 @@
     <string name="contacts_have_stopped_typing">%s abbahagyta az írást</string>
     <string name="pref_chat_states">Gépelési értesítések</string>
     <string name="pref_chat_states_summary">Tudassa a partnereivel, hogy mikor ír nekik üzeneteket</string>
-    <string name="send_location">Hely küldése</string>
     <string name="show_location">Hely megjelenítése</string>
     <string name="no_application_found_to_display_location">Nem található alkalmazás a hely megjelenítéséhez</string>
     <string name="location">Hely</string>
@@ -603,7 +598,6 @@
     <string name="pref_validate_hostname_summary">Az ellenőrzött gépnevet tartalmazó kiszolgálótanúsítványok ellenőrzöttként lesznek figyelembe véve</string>
     <string name="certificate_does_not_contain_jid">A tanúsítvány nem tartalmaz XMPP-címet</string>
     <string name="server_info_partial">részleges</string>
-    <string name="attach_record_video">Videó rögzítése</string>
     <string name="copy_to_clipboard">Másolás a vágólapra</string>
     <string name="message_copied_to_clipboard">Üzenet a vágólapra másolva</string>
     <string name="message">Üzenet</string>

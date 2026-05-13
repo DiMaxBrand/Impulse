@@ -147,8 +147,6 @@
     <string name="send_presence_updates">Send presence updates</string>
     <string name="receive_presence_updates">Receive presence updates</string>
     <string name="ask_for_presence_updates">Ask for presence updates</string>
-    <string name="attach_choose_picture">Choose picture</string>
-    <string name="attach_take_picture">Take picture</string>
     <string name="preemptively_grant">Preemptively grant subscription request</string>
     <string name="error_not_an_image_file">The file you selected is not an image</string>
     <string name="error_compressing_image">Could not convert image file</string>
@@ -196,7 +194,6 @@
     <string name="openpgp_has_been_published">OpenPGP public key published.</string>
     <string name="mgmt_account_enable">Enable account</string>
     <string name="mgmt_account_delete_confirm_text">Are you sure you want to delete your account? Deleting your account erases your entire chat history</string>
-    <string name="attach_record_voice">Record voice</string>
     <string name="account_settings_jabber_id">XMPP address</string>
     <string name="block_jabber_id">Block XMPP address</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -346,7 +343,6 @@
     <string name="restoring_backup">Restoring backup</string>
     <string name="notification_restored_backup_title">Your backup has been restored</string>
     <string name="notification_restored_backup_subtitle">Do not forget to enable the account.</string>
-    <string name="choose_file">Choose file</string>
     <string name="receiving_x_file">Receiving %1$s (%2$d%% completed)</string>
     <string name="download_x_file">Download %s</string>
     <string name="delete_x_file">Delete %s</string>
@@ -434,7 +430,6 @@
     <string name="contacts_have_stopped_typing">%s have stopped typing</string>
     <string name="pref_chat_states">Typing notifications</string>
     <string name="pref_chat_states_summary">Let your contacts know when you are writing messages to them</string>
-    <string name="send_location">Send location</string>
     <string name="show_location">Show location</string>
     <string name="no_application_found_to_display_location">No app found to display location</string>
     <string name="location">Location</string>
@@ -689,7 +684,6 @@
     <string name="pref_validate_hostname_summary">Server certificates that contain the validated hostname are considered verified</string>
     <string name="certificate_does_not_contain_jid">Certificate does not contain a XMPP address</string>
     <string name="server_info_partial">partial</string>
-    <string name="attach_record_video">Record video</string>
     <string name="copy_to_clipboard">Copy</string>
     <string name="message_copied_to_clipboard">Message copied to clipboard</string>
     <string name="message">Message</string>
@@ -1190,4 +1184,10 @@
     <string name="select_all">Select all</string>
     <string name="search_in_chats">Search in chats</string>
     <string name="search_for_x_in_chats">Search for \"%s\" in chats</string>
+    <string name="attachment_choice_gallery">Gallery</string>
+    <string name="attachment_choice_file">File</string>
+    <string name="attachment_choice_location">Location</string>
+    <string name="attachment_choice_camera">Camera</string>
+    <string name="attachment_choice_video">Video</string>
+    <string name="attachment_choice_recording">Voice recording</string>
 </resources>

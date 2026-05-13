@@ -72,6 +72,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -87,6 +88,7 @@ import eu.siacs.conversations.crypto.axolotl.AxolotlService;
 import eu.siacs.conversations.crypto.axolotl.FingerprintStatus;
 import eu.siacs.conversations.databinding.DialogModerationBinding;
 import eu.siacs.conversations.databinding.FragmentConversationBinding;
+import eu.siacs.conversations.databinding.ItemMediaChoiceBinding;
 import eu.siacs.conversations.entities.Account;
 import eu.siacs.conversations.entities.Blockable;
 import eu.siacs.conversations.entities.Contact;
@@ -148,6 +150,7 @@ import eu.siacs.conversations.xmpp.manager.MessageArchiveManager;
 import eu.siacs.conversations.xmpp.manager.ModerationManager;
 import eu.siacs.conversations.xmpp.manager.MultiUserChatManager;
 import eu.siacs.conversations.xmpp.manager.PresenceManager;
+import im.conversations.android.model.AttachmentChoice;
 import im.conversations.android.xmpp.model.muc.Role;
 import im.conversations.android.xmpp.model.stanza.Presence;
 import im.conversations.android.xmpp.model.state.Composing;
@@ -173,6 +176,33 @@ public class ConversationFragment extends XmppFragment
         implements EditMessage.KeyboardListener,
                 MessageAdapter.OnContactPictureLongClicked,
                 MessageAdapter.OnContactPictureClicked {
+
+    private static final List<AttachmentChoice> ATTACHMENT_CHOICES =
+            Arrays.asList(
+                    new AttachmentChoice(
+                            R.drawable.ic_image_24dp,
+                            R.string.attachment_choice_gallery,
+                            AttachmentChoice.Type.PICTURE),
+                    new AttachmentChoice(
+                            R.drawable.ic_description_24dp,
+                            R.string.attachment_choice_file,
+                            AttachmentChoice.Type.FILE),
+                    new AttachmentChoice(
+                            R.drawable.ic_location_pin_24dp,
+                            R.string.attachment_choice_location,
+                            AttachmentChoice.Type.LOCATION),
+                    new AttachmentChoice(
+                            R.drawable.ic_camera_alt_24dp,
+                            R.string.attachment_choice_camera,
+                            AttachmentChoice.Type.CAMERA),
+                    new AttachmentChoice(
+                            R.drawable.ic_videocam_24dp,
+                            R.string.attachment_choice_video,
+                            AttachmentChoice.Type.VIDEO),
+                    new AttachmentChoice(
+                            R.drawable.ic_mic_24dp,
+                            R.string.attachment_choice_recording,
+                            AttachmentChoice.Type.RECORDING));
 
     private static Instant ackModeration = Instant.MIN;
 
@@ -578,14 +608,14 @@ public class ConversationFragment extends XmppFragment
                             case CANCEL:
                                 if (conversation != null) {
                                     if (conversation.setCorrectingMessage(null)) {
-                                        binding.textinput.setText("");
-                                        binding.textinput.append(conversation.getDraftMessage());
+                                        binding.textInput.setText("");
+                                        binding.textInput.append(conversation.getDraftMessage());
                                         conversation.setDraftMessage(null);
                                     } else if (conversation.getMode() == Conversation.MODE_MULTI) {
                                         conversation.setNextCounterpart(null);
-                                        binding.textinput.setText("");
+                                        binding.textInput.setText("");
                                     } else {
-                                        binding.textinput.setText("");
+                                        binding.textInput.setText("");
                                     }
                                     updateChatMsgHint();
                                     updateSendButton();
@@ -662,7 +692,6 @@ public class ConversationFragment extends XmppFragment
                     } else {
                         menuUnmute.setVisible(false);
                     }
-                    ConversationMenuConfigurator.configureAttachmentMenu(c, menu);
                     ConversationMenuConfigurator.configureEncryptionMenu(c, menu);
                     if (c.getBooleanAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, false)) {
                         menuTogglePinned.setTitle(R.string.remove_from_favorites);
@@ -683,14 +712,6 @@ public class ConversationFragment extends XmppFragment
                         case R.id.encryption_choice_pgp:
                         case R.id.encryption_choice_none:
                             handleEncryptionSelection(menuItem);
-                            break;
-                        case R.id.attach_choose_picture:
-                        case R.id.attach_take_picture:
-                        case R.id.attach_record_video:
-                        case R.id.attach_choose_file:
-                        case R.id.attach_record_voice:
-                        case R.id.attach_location:
-                            handleAttachmentSelection(menuItem);
                             break;
                         case R.id.action_search:
                             startSearch();
@@ -1006,7 +1027,7 @@ public class ConversationFragment extends XmppFragment
             commitAttachments();
             return;
         }
-        final Editable text = this.binding.textinput.getText();
+        final Editable text = this.binding.textInput.getText();
         final String body = text == null ? "" : text.toString();
         final Conversation conversation = this.conversation;
         if (body.isEmpty() || conversation == null) {
@@ -1078,9 +1099,9 @@ public class ConversationFragment extends XmppFragment
         final boolean multi = conversation.getMode() == Conversation.MODE_MULTI;
         if (conversation.getCorrectingMessage() != null) {
             this.binding.textInputHint.setVisibility(View.GONE);
-            this.binding.textinput.setHint(R.string.send_corrected_message);
+            this.binding.textInput.setHint(R.string.send_corrected_message);
         } else if (multi && conversation.getNextCounterpart() != null) {
-            this.binding.textinput.setHint(R.string.send_unencrypted_message);
+            this.binding.textInput.setHint(R.string.send_unencrypted_message);
             this.binding.textInputHint.setVisibility(View.VISIBLE);
             this.binding.textInputHint.setText(
                     getString(
@@ -1088,10 +1109,10 @@ public class ConversationFragment extends XmppFragment
                             conversation.getNextCounterpart().getResource()));
         } else if (multi && !conversation.getMucOptions().participating()) {
             this.binding.textInputHint.setVisibility(View.GONE);
-            this.binding.textinput.setHint(R.string.you_are_not_participating);
+            this.binding.textInput.setHint(R.string.you_are_not_participating);
         } else {
             this.binding.textInputHint.setVisibility(View.GONE);
-            this.binding.textinput.setHint(UIHelper.getMessageHint(requireContext(), conversation));
+            this.binding.textInput.setHint(UIHelper.getMessageHint(requireContext(), conversation));
             requireActivity().invalidateOptionsMenu();
         }
     }
@@ -1242,10 +1263,11 @@ public class ConversationFragment extends XmppFragment
     }
 
     public void toggleInputMethod() {
-        boolean hasAttachments = mediaPreviewAdapter.hasAttachments();
-        binding.textinput.setVisibility(hasAttachments ? View.GONE : View.VISIBLE);
+        final var hasAttachments = mediaPreviewAdapter.hasAttachments();
+        binding.textInput.setVisibility(hasAttachments ? View.GONE : View.VISIBLE);
         binding.mediaPreview.setVisibility(hasAttachments ? View.VISIBLE : View.GONE);
         updateSendButton();
+        updateAttachmentButton();
     }
 
     private void handleNegativeActivityResult(int requestCode) {
@@ -1280,6 +1302,7 @@ public class ConversationFragment extends XmppFragment
         if (savedInstanceState == null) {
             return;
         }
+
         this.processSavedInstanceState(savedInstanceState);
     }
 
@@ -1290,17 +1313,53 @@ public class ConversationFragment extends XmppFragment
             final Bundle savedInstanceState) {
         this.binding =
                 DataBindingUtil.inflate(inflater, R.layout.fragment_conversation, container, false);
+        final var viewIdBuilder = new ImmutableList.Builder<Integer>();
+        for (final var attachmentChoice : ATTACHMENT_CHOICES) {
+            if (!ConversationMenuConfigurator.microphoneAvailable
+                    && attachmentChoice.type() == AttachmentChoice.Type.RECORDING) {
+                continue;
+            }
+            final int id = View.generateViewId();
+            final ItemMediaChoiceBinding binding =
+                    DataBindingUtil.inflate(
+                            getLayoutInflater(),
+                            R.layout.item_media_choice,
+                            this.binding.attachmentChoices,
+                            false);
+            binding.getRoot().setId(id);
+            binding.icon.setIconResource(attachmentChoice.icon());
+            binding.label.setText(attachmentChoice.name());
+            binding.icon.setOnClickListener(v -> handleAttachmentChoice(attachmentChoice.type()));
+            this.binding.attachmentChoices.addView(binding.getRoot());
+            viewIdBuilder.add(id);
+        }
+        binding.attachButton.setToggleCheckedStateOnClick(false);
+        binding.attachButton.setOnClickListener((v) -> toggleAttachmentChoicesVisibility());
+        binding.attachmentChoicesFlow.setReferencedIds(Ints.toArray(viewIdBuilder.build()));
         binding.getRoot().setOnClickListener(null); // TODO why the fuck did we do this?
         binding.toolbar.addMenuProvider(
                 menuProvider, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
         getParentFragmentManager().addOnBackStackChangedListener(backStackListener);
         backStackListener.onBackStackChanged();
 
-        binding.textinput.addTextChangedListener(
-                new StylingHelper.MessageEditorStyler(binding.textinput));
+        binding.textInput.addTextChangedListener(
+                new StylingHelper.MessageEditorStyler(binding.textInput));
 
-        binding.textinput.setOnEditorActionListener(mEditorActionListener);
-        binding.textinput.setRichContentListener(new String[] {"image/*"}, mEditorContentListener);
+        binding.textInput.setOnEditorActionListener(mEditorActionListener);
+        binding.textInput.setRichContentListener(new String[] {"image/*"}, mEditorContentListener);
+        binding.textInput.setOnFocusChangeListener(
+                (v, hasFocus) -> {
+                    if (hasFocus) {
+                        setAttachmentChoicesVisibility(false);
+                    }
+                });
+        binding.textInput.setOnTouchListener(
+                (v, event) -> {
+                    if (event.getAction() == MotionEvent.ACTION_UP) {
+                        setAttachmentChoicesVisibility(false);
+                    }
+                    return false;
+                });
 
         binding.textSendButton.setOnClickListener(this.mSendButtonListener);
 
@@ -1315,10 +1374,22 @@ public class ConversationFragment extends XmppFragment
 
         registerForContextMenu(binding.messagesView);
 
-        this.binding.textinput.setCustomInsertionActionModeCallback(
-                new EditMessageActionModeCallback(this.binding.textinput));
-
+        this.binding.textInput.setCustomInsertionActionModeCallback(
+                new EditMessageActionModeCallback(this.binding.textInput));
         return binding.getRoot();
+    }
+
+    private void toggleAttachmentChoicesVisibility() {
+        setAttachmentChoicesVisibility(this.binding.attachmentChoices.getVisibility() == View.GONE);
+    }
+
+    private void setAttachmentChoicesVisibility(final boolean visible) {
+        if (visible) {
+            binding.attachmentChoices.setVisibility(View.VISIBLE);
+            hideSoftKeyboard(this.binding.textInput);
+        } else {
+            binding.attachmentChoices.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -1331,15 +1402,15 @@ public class ConversationFragment extends XmppFragment
     }
 
     private void quoteText(String text) {
-        if (binding.textinput.isEnabled()) {
-            binding.textinput.insertAsQuote(text);
-            binding.textinput.requestFocus();
+        if (binding.textInput.isEnabled()) {
+            binding.textInput.insertAsQuote(text);
+            binding.textInput.requestFocus();
             InputMethodManager inputMethodManager =
                     (InputMethodManager)
                             requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             if (inputMethodManager != null) {
                 inputMethodManager.showSoftInput(
-                        binding.textinput, InputMethodManager.SHOW_IMPLICIT);
+                        binding.textInput, InputMethodManager.SHOW_IMPLICIT);
             }
         }
     }
@@ -1794,27 +1865,17 @@ public class ConversationFragment extends XmppFragment
                 RtpSessionActivity.actionToMedia(action));
     }
 
-    private void handleAttachmentSelection(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.attach_choose_picture:
-                attachFile(ATTACHMENT_CHOICE_CHOOSE_IMAGE);
-                break;
-            case R.id.attach_take_picture:
-                attachFile(ATTACHMENT_CHOICE_TAKE_PHOTO);
-                break;
-            case R.id.attach_record_video:
-                attachFile(ATTACHMENT_CHOICE_RECORD_VIDEO);
-                break;
-            case R.id.attach_choose_file:
-                attachFile(ATTACHMENT_CHOICE_CHOOSE_FILE);
-                break;
-            case R.id.attach_record_voice:
-                attachFile(ATTACHMENT_CHOICE_RECORD_VOICE);
-                break;
-            case R.id.attach_location:
-                attachFile(ATTACHMENT_CHOICE_LOCATION);
-                break;
-        }
+    private void handleAttachmentChoice(final AttachmentChoice.Type choice) {
+        attachFile(
+                switch (choice) {
+                    case CAMERA -> ATTACHMENT_CHOICE_TAKE_PHOTO;
+                    case PICTURE -> ATTACHMENT_CHOICE_CHOOSE_IMAGE;
+                    case FILE -> ATTACHMENT_CHOICE_CHOOSE_FILE;
+                    case LOCATION -> ATTACHMENT_CHOICE_LOCATION;
+                    case RECORDING -> ATTACHMENT_CHOICE_RECORD_VOICE;
+                    case VIDEO -> ATTACHMENT_CHOICE_RECORD_VIDEO;
+                });
+        setAttachmentChoicesVisibility(false);
     }
 
     private void handleEncryptionSelection(MenuItem item) {
@@ -2513,29 +2574,30 @@ public class ConversationFragment extends XmppFragment
 
     public void privateMessageWith(final Jid counterpart) {
         ChatStateManager.send(conversation, Config.DEFAULT_CHAT_STATE);
-        this.binding.textinput.setText("");
+        this.binding.textInput.setText("");
         this.conversation.setNextCounterpart(counterpart);
         updateChatMsgHint();
         updateSendButton();
+        updateAttachmentButton();
         updateEditablity();
     }
 
     private void correctMessage(final Message message) {
         this.conversation.setCorrectingMessage(message);
-        final Editable editable = binding.textinput.getText();
+        final Editable editable = binding.textInput.getText();
         this.conversation.setDraftMessage(CharSequences.nullToEmpty(editable));
-        this.binding.textinput.setText("");
-        this.binding.textinput.append(message.getBody());
+        this.binding.textInput.setText("");
+        this.binding.textInput.append(message.getBody());
         updateChatMsgHint();
     }
 
     private void highlightInConference(final String nick) {
-        final var editable = this.binding.textinput.getText();
+        final var editable = this.binding.textInput.getText();
         if (editable == null) {
             return;
         }
         final var oldString = CharSequences.nullToEmpty(editable).trim();
-        final int pos = this.binding.textinput.getSelectionStart();
+        final int pos = this.binding.textInput.getSelectionStart();
         if (oldString.isEmpty() || pos == 0) {
             editable.insert(0, nick + ": ");
         } else {
@@ -2559,8 +2621,8 @@ public class ConversationFragment extends XmppFragment
                                 + nick
                                 + (Character.isWhitespace(after) ? "" : " "));
                 if (Character.isWhitespace(after)) {
-                    this.binding.textinput.setSelection(
-                            this.binding.textinput.getSelectionStart() + 1);
+                    this.binding.textInput.setSelection(
+                            this.binding.textInput.getSelectionStart() + 1);
                 }
             }
         }
@@ -2645,7 +2707,7 @@ public class ConversationFragment extends XmppFragment
             messageListAdapter.stopAudioPlayer();
         }
         if (this.conversation != null) {
-            final String msg = CharSequences.nullToEmpty(this.binding.textinput.getText());
+            final String msg = CharSequences.nullToEmpty(this.binding.textInput.getText());
             storeNextMessage(msg);
             updateChatState(this.conversation, msg);
             requireXmppActivity()
@@ -2667,7 +2729,7 @@ public class ConversationFragment extends XmppFragment
             return;
         }
         Log.d(Config.LOGTAG, "ConversationFragment.saveMessageDraftStopAudioPlayer()");
-        final String msg = CharSequences.nullToEmpty(this.binding.textinput.getText());
+        final String msg = CharSequences.nullToEmpty(this.binding.textInput.getText());
         storeNextMessage(msg);
         updateChatState(this.conversation, msg);
         messageListAdapter.stopAudioPlayer();
@@ -2729,17 +2791,17 @@ public class ConversationFragment extends XmppFragment
 
         this.binding.textSendButton.setContentDescription(
                 requireContext().getString(R.string.send_message_to_x, conversation.getName()));
-        this.binding.textinput.setKeyboardListener(null);
+        this.binding.textInput.setKeyboardListener(null);
         final boolean participating =
                 conversation.getMode() == Conversational.MODE_SINGLE
                         || conversation.getMucOptions().participating();
         if (participating) {
-            this.binding.textinput.setText(this.conversation.getNextMessage());
-            this.binding.textinput.setSelection(this.binding.textinput.length());
+            this.binding.textInput.setText(this.conversation.getNextMessage());
+            this.binding.textInput.setSelection(this.binding.textInput.length());
         } else {
-            this.binding.textinput.setText(CharSequences.EMPTY_STRING);
+            this.binding.textInput.setText(CharSequences.EMPTY_STRING);
         }
-        this.binding.textinput.setKeyboardListener(this);
+        this.binding.textInput.setKeyboardListener(this);
         this.messageListAdapter.updatePreferences();
         final var appSettings = new AppSettings(requireContext());
         this.inputSettings =
@@ -2749,7 +2811,7 @@ public class ConversationFragment extends XmppFragment
                         appSettings.isEnterSend(),
                         appSettings.isScrollToBottom());
         this.mShowLastUserInteraction = appSettings.isBroadcastLastActivity();
-        this.binding.textinput.refreshIme(this.inputSettings);
+        this.binding.textInput.refreshIme(this.inputSettings);
         setTextInputColors();
         refresh(false);
         requireXmppActivity().invalidateOptionsMenu();
@@ -2792,20 +2854,25 @@ public class ConversationFragment extends XmppFragment
                 colorfulChatBubbles
                         ? MessageAdapter.BubbleColor.TERTIARY
                         : MessageAdapter.BubbleColor.SURFACE_HIGH;
-        this.binding.textinput.setTextColor(
-                MessageAdapter.bubbleToOnSurfaceColor(this.binding.textinput, bubbleColor));
+        this.binding.textInput.setTextColor(
+                MessageAdapter.bubbleToOnSurfaceColor(this.binding.textInput, bubbleColor));
         this.binding.textInputHint.setTextColor(
                 MessageAdapter.bubbleToOnSurfaceColor(this.binding.textInputHint, bubbleColor));
+        this.binding.attachButton.setIconTint(
+                MessageAdapter.bubbleToOnSurfaceColorStateList(
+                        this.binding.attachButton, bubbleColor));
         MessageAdapter.setBackgroundTint(this.binding.inputLayout, bubbleColor);
         if (bubbleColor == MessageAdapter.BubbleColor.TERTIARY) {
-            this.binding.textinput.setHintTextColor(
+            final var color =
                     ContextCompat.getColorStateList(
-                            requireContext(), R.color.hint_on_tertiary_container));
-            setTextCursorDrawable(this.binding.textinput, R.drawable.cursor_on_tertiary_container);
+                            requireContext(), R.color.hint_on_tertiary_container);
+            this.binding.textInput.setHintTextColor(color);
+            setTextCursorDrawable(this.binding.textInput, R.drawable.cursor_on_tertiary_container);
         } else {
-            this.binding.textinput.setHintTextColor(
-                    ContextCompat.getColorStateList(requireContext(), R.color.hint_on_surface));
-            setTextCursorDrawable(this.binding.textinput, R.drawable.cursor_on_surface);
+            final var color =
+                    ContextCompat.getColorStateList(requireContext(), R.color.hint_on_surface);
+            this.binding.textInput.setHintTextColor(color);
+            setTextCursorDrawable(this.binding.textInput, R.drawable.cursor_on_surface);
         }
     }
 
@@ -3137,6 +3204,7 @@ public class ConversationFragment extends XmppFragment
                     binding.messagesView.post(this::fireReadEvent);
                 }
                 updateSendButton();
+                updateAttachmentButton();
                 updateEditablity();
                 updateToolbar();
             }
@@ -3145,9 +3213,9 @@ public class ConversationFragment extends XmppFragment
 
     protected void messageSent() {
         mSendingPgpMessage.set(false);
-        this.binding.textinput.setText("");
+        this.binding.textInput.setText("");
         if (conversation.setCorrectingMessage(null)) {
-            this.binding.textinput.append(conversation.getDraftMessage());
+            this.binding.textInput.append(conversation.getDraftMessage());
             conversation.setDraftMessage(null);
         }
         storeNextMessage();
@@ -3163,7 +3231,7 @@ public class ConversationFragment extends XmppFragment
     }
 
     private boolean storeNextMessage() {
-        return storeNextMessage(CharSequences.nullToEmpty(this.binding.textinput.getText()));
+        return storeNextMessage(CharSequences.nullToEmpty(this.binding.textInput.getText()));
     }
 
     private boolean storeNextMessage(final String msg) {
@@ -3198,11 +3266,44 @@ public class ConversationFragment extends XmppFragment
                 this.conversation.getMode() == Conversation.MODE_SINGLE
                         || this.conversation.getMucOptions().participating()
                         || this.conversation.getNextCounterpart() != null;
-        this.binding.textinput.setFocusable(canWrite);
-        this.binding.textinput.setFocusableInTouchMode(canWrite);
+        this.binding.textInput.setFocusable(canWrite);
+        this.binding.textInput.setFocusableInTouchMode(canWrite);
         this.binding.textSendButton.setEnabled(canWrite);
-        this.binding.textinput.setCursorVisible(canWrite);
-        this.binding.textinput.setEnabled(canWrite);
+        this.binding.textInput.setCursorVisible(canWrite);
+        this.binding.textInput.setEnabled(canWrite);
+    }
+
+    private void postEditUiModification() {
+        runOnUiThread(
+                () -> {
+                    updateSendButton();
+                    updateAttachmentButton();
+                });
+    }
+
+    private void updateAttachmentButton() {
+        if (mediaPreviewAdapter.hasAttachments()) {
+            this.binding.attachButton.setVisibility(View.VISIBLE);
+        } else {
+            if (CharSequences.nullToEmpty(this.binding.textInput.getText()).isEmpty()) {
+                final var c = this.conversation;
+
+                final boolean visible;
+                if (c != null && c.getMode() == Conversation.MODE_MULTI) {
+                    visible =
+                            c.getAccount().httpUploadAvailable()
+                                    && conversation.getMucOptions().participating();
+                } else {
+                    visible = true;
+                }
+                this.binding.attachButton.setVisibility(visible ? View.VISIBLE : View.GONE);
+            } else {
+                this.binding.attachButton.setVisibility(View.GONE);
+                // this is a last resort. in most cases this should have already been removed by
+                // focus or onSoftKeyboard listeners
+                setAttachmentChoicesVisibility(false);
+            }
+        }
     }
 
     public void updateSendButton() {
@@ -3210,7 +3311,7 @@ public class ConversationFragment extends XmppFragment
         final Conversation c = this.conversation;
         final var connection = c.getAccount().getXmppConnection();
         final Presence.Availability status;
-        final String text = CharSequences.nullToEmpty(this.binding.textinput.getText());
+        final String text = CharSequences.nullToEmpty(this.binding.textInput.getText());
         final SendButtonAction action;
         if (hasAttachments) {
             action = SendButtonAction.TEXT;
@@ -3657,7 +3758,7 @@ public class ConversationFragment extends XmppFragment
         if (text == null) {
             return;
         }
-        final Editable editable = this.binding.textinput.getText();
+        final Editable editable = this.binding.textInput.getText();
         String previous = editable == null ? "" : editable.toString();
         if (doNotAppend && !TextUtils.isEmpty(previous)) {
             Toast.makeText(getActivity(), R.string.already_drafting_message, Toast.LENGTH_LONG)
@@ -3670,7 +3771,7 @@ public class ConversationFragment extends XmppFragment
                 && !Character.isWhitespace(previous.charAt(previous.length() - 1))) {
             text = " " + text;
         }
-        this.binding.textinput.append(text);
+        this.binding.textInput.append(text);
     }
 
     @Override
@@ -3702,7 +3803,7 @@ public class ConversationFragment extends XmppFragment
             return;
         }
         ChatStateManager.send(conversation, Composing.class);
-        runOnUiThread(this::updateSendButton);
+        postEditUiModification();
     }
 
     @Override
@@ -3731,13 +3832,13 @@ public class ConversationFragment extends XmppFragment
                         }
                     });
         }
-        runOnUiThread(this::updateSendButton);
+        postEditUiModification();
     }
 
     @Override
     public void onTextChanged() {
         if (conversation != null && conversation.getCorrectingMessage() != null) {
-            runOnUiThread(this::updateSendButton);
+            postEditUiModification();
         }
     }
 
@@ -3751,8 +3852,8 @@ public class ConversationFragment extends XmppFragment
         } else {
             lastCompletionLength = 0;
             completionIndex = 0;
-            final String content = this.binding.textinput.getText().toString();
-            lastCompletionCursor = this.binding.textinput.getSelectionEnd();
+            final String content = this.binding.textInput.getText().toString();
+            lastCompletionCursor = this.binding.textInput.getSelectionEnd();
             int start =
                     lastCompletionCursor > 0
                             ? content.lastIndexOf(" ", lastCompletionCursor - 1) + 1
@@ -3771,15 +3872,15 @@ public class ConversationFragment extends XmppFragment
         if (completions.size() > completionIndex) {
             String completion = completions.get(completionIndex).substring(incomplete.length());
             this.binding
-                    .textinput
+                    .textInput
                     .getEditableText()
                     .delete(lastCompletionCursor, lastCompletionCursor + lastCompletionLength);
-            this.binding.textinput.getEditableText().insert(lastCompletionCursor, completion);
+            this.binding.textInput.getEditableText().insert(lastCompletionCursor, completion);
             lastCompletionLength = completion.length();
         } else {
             completionIndex = -1;
             this.binding
-                    .textinput
+                    .textInput
                     .getEditableText()
                     .delete(lastCompletionCursor, lastCompletionCursor + lastCompletionLength);
             lastCompletionLength = 0;

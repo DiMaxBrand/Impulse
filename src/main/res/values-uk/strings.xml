@@ -126,8 +126,6 @@
     <string name="send_presence_updates">Повідомляти про присутність</string>
     <string name="receive_presence_updates">Отримувати оновлення присутності</string>
     <string name="ask_for_presence_updates">Надіслати запит на оновлення присутності</string>
-    <string name="attach_choose_picture">Вибрати зображення</string>
-    <string name="attach_take_picture">Зняти світлину</string>
     <string name="preemptively_grant">Попередньо давати запит на підписку</string>
     <string name="error_not_an_image_file">Вибраний файл не є зображенням</string>
     <string name="error_compressing_image">Не вдалося конвертувати зображення</string>
@@ -168,7 +166,6 @@
     <string name="openpgp_has_been_published">Публічний ключ OpenPGP опубліковано.</string>
     <string name="mgmt_account_enable">Увімкнути обліковий запис</string>
     <string name="mgmt_account_delete_confirm_text">Ви впевнені, що хочете видалити свій обліковий запис? Видалення облікового запису знищить усю Вашу історію спілкування</string>
-    <string name="attach_record_voice">Записати голос</string>
     <string name="account_settings_jabber_id">Адреса XMPP</string>
     <string name="block_jabber_id">Заблокувати адресу XMPP</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -313,7 +310,6 @@
     <string name="restoring_backup">Відновлення з резервної копії</string>
     <string name="notification_restored_backup_title">Відновлено з резервної копії</string>
     <string name="notification_restored_backup_subtitle">Не забудьте ввімкнути обліковий запис.</string>
-    <string name="choose_file">Файл</string>
     <string name="receiving_x_file">Отримання %1$s (%2$d%% завершено)</string>
     <string name="download_x_file">Завантажити %s</string>
     <string name="delete_x_file">Вилучити %s</string>
@@ -397,7 +393,6 @@
     <string name="contacts_have_stopped_typing">%s припинили писати</string>
     <string name="pref_chat_states">Сповіщення про набір</string>
     <string name="pref_chat_states_summary">Повідомляти співрозмовників, що Ви пишете їм повідомлення</string>
-    <string name="send_location">Надіслати місцезнаходження</string>
     <string name="show_location">Показати місцезнаходження</string>
     <string name="no_application_found_to_display_location">Не знайдено застосунку, щоб показати місцезнаходження</string>
     <string name="location">Місцезнаходження</string>
@@ -638,7 +633,6 @@
     <string name="pref_validate_hostname_summary">Сертифікати, які містять підтверджену адресу вузла, вважаються перевіреними</string>
     <string name="certificate_does_not_contain_jid">Сертифікат не містить адреси XMPP</string>
     <string name="server_info_partial">частково</string>
-    <string name="attach_record_video">Записати відео</string>
     <string name="copy_to_clipboard">Копіювати</string>
     <string name="message_copied_to_clipboard">Повідомлення скопійовано</string>
     <string name="message">Повідомлення</string>

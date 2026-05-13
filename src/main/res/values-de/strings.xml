@@ -134,8 +134,6 @@
     <string name="send_presence_updates">Online-Status senden</string>
     <string name="receive_presence_updates">Online-Status empfangen</string>
     <string name="ask_for_presence_updates">Online-Status anfragen</string>
-    <string name="attach_choose_picture">Bild auswählen</string>
-    <string name="attach_take_picture">Bild aufnehmen</string>
     <string name="preemptively_grant">Statusanfragen vorab erlauben</string>
     <string name="error_not_an_image_file">Die ausgewählte Datei ist kein Bild</string>
     <string name="error_compressing_image">Bilddatei konnte nicht konvertiert werden</string>
@@ -176,7 +174,6 @@
     <string name="openpgp_has_been_published">Öffentlicher OpenPGP-Schlüssel veröffentlicht.</string>
     <string name="mgmt_account_enable">Konto aktivieren </string>
     <string name="mgmt_account_delete_confirm_text">Bist du sicher, dass du dein Konto löschen möchtest? Dies wird deinen gesamten Chatverlauf entfernen</string>
-    <string name="attach_record_voice">Sprache aufzeichnen</string>
     <string name="account_settings_jabber_id">XMPP-Adresse</string>
     <string name="block_jabber_id">XMPP-Adresse sperren</string>
     <string name="account_settings_example_jabber_id">benutzer@domain.de</string>
@@ -320,7 +317,6 @@
     <string name="restoring_backup">Stelle Sicherung wieder her</string>
     <string name="notification_restored_backup_title">Deine Sicherung wurde wiederhergestellt</string>
     <string name="notification_restored_backup_subtitle">Vergiss nicht, das Konto zu aktivieren.</string>
-    <string name="choose_file">Datei auswählen</string>
     <string name="receiving_x_file">Empfange %1$s (%2$d%% abgeschlossen)</string>
     <string name="download_x_file">%s herunterladen</string>
     <string name="delete_x_file">%s löschen</string>
@@ -404,7 +400,6 @@
     <string name="contacts_have_stopped_typing">%s schreiben nicht mehr</string>
     <string name="pref_chat_states">Tipp-Benachrichtigung</string>
     <string name="pref_chat_states_summary">Informiere deine Kontakte, wenn du eine Nachricht schreibst</string>
-    <string name="send_location">Standort senden</string>
     <string name="show_location">Standort anzeigen</string>
     <string name="no_application_found_to_display_location">Keine App für die Standortanzeige gefunden</string>
     <string name="location">Standort</string>
@@ -643,7 +638,6 @@
     <string name="pref_validate_hostname_summary">Serverzertifikate, die den überprüften Hostnamen enthalten, werden als verifiziert betrachtet</string>
     <string name="certificate_does_not_contain_jid">Zertifikat enthält keine XMPP-Adresse</string>
     <string name="server_info_partial">teilweise</string>
-    <string name="attach_record_video">Video aufnehmen</string>
     <string name="copy_to_clipboard">Kopieren</string>
     <string name="message_copied_to_clipboard">Nachricht in die Zwischenablage kopiert</string>
     <string name="message">Nachricht</string>

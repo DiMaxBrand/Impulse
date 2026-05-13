@@ -136,8 +136,6 @@
     <string name="send_presence_updates">Wysyłaj powiadomienia obecności</string>
     <string name="receive_presence_updates">Otrzymuj powiadomienia obecności</string>
     <string name="ask_for_presence_updates">Poproś o powiadomienia obecności</string>
-    <string name="attach_choose_picture">Wybierz obraz</string>
-    <string name="attach_take_picture">Zrób zdjęcie</string>
     <string name="preemptively_grant">Automatyczne powiadomienia obecności</string>
     <string name="error_not_an_image_file">Wybrany plik nie jest obrazem</string>
     <string name="error_compressing_image">Błąd konwersji obrazu</string>
@@ -180,7 +178,6 @@
     <string name="openpgp_has_been_published">Klucz publiczny OpenPGP został opublikowany.</string>
     <string name="mgmt_account_enable">Włącz konto</string>
     <string name="mgmt_account_delete_confirm_text">Czy na pewno chcesz usunąć swoje konto? Usunięcie konta czyści całą twoją historię rozmów</string>
-    <string name="attach_record_voice">Nagraj głos</string>
     <string name="account_settings_jabber_id">Adres XMPP</string>
     <string name="block_jabber_id">Zablokuj adres XMPP</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -322,7 +319,6 @@
     <string name="restoring_backup">Przywracanie kopii zapasowej</string>
     <string name="notification_restored_backup_title">Kopia zapasowa została przywrócona</string>
     <string name="notification_restored_backup_subtitle">Nie zapomnij o włączeniu tego konta.</string>
-    <string name="choose_file">Wybierz plik</string>
     <string name="receiving_x_file">Odbieranie %1$s (ukończono %2$d%%)</string>
     <string name="download_x_file">Pobierz %s</string>
     <string name="delete_x_file">Usuń %s</string>
@@ -406,7 +402,6 @@
     <string name="contacts_have_stopped_typing">%s przestali pisać</string>
     <string name="pref_chat_states">Powiadomienia pisania</string>
     <string name="pref_chat_states_summary">Powiadamiaj rozmówcę, kiedy rozpoczynasz nową wiadomość</string>
-    <string name="send_location">Wyślij lokalizację</string>
     <string name="show_location">Pokaż lokalizację</string>
     <string name="no_application_found_to_display_location">Nie odnaleziono aplikacji do wyświetlenia lokalizacji</string>
     <string name="location">Lokalizacja</string>
@@ -658,7 +653,6 @@
     <string name="pref_validate_hostname_summary">Certyfikaty serwera posiadające prawidłową nazwę hosta są uznawane za zweryfikowane</string>
     <string name="certificate_does_not_contain_jid">Certyfikat nie zawiera żadnych adresów XMPP</string>
     <string name="server_info_partial">częściowo</string>
-    <string name="attach_record_video">Nagraj film</string>
     <string name="copy_to_clipboard">Skopiuj</string>
     <string name="message_copied_to_clipboard">Wiadomość skopiowana do schowka</string>
     <string name="message">Wiadomość</string>

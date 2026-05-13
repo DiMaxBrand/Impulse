@@ -133,8 +133,6 @@
     <string name="send_presence_updates">Lähetä tilapäivityksiä</string>
     <string name="receive_presence_updates"> Vastaanota tilapäivityksiä</string>
     <string name="ask_for_presence_updates">Pyydä tilapäivityksiä</string>
-    <string name="attach_choose_picture">Valitse kuva</string>
-    <string name="attach_take_picture">Ota kuva</string>
     <string name="preemptively_grant">Alustavasti hyväksy liittymispyynnöt</string>
     <string name="error_not_an_image_file">Valitsemasi tiedosto ei ole kuva</string>
     <string name="error_compressing_image">Kuvatiedoston pakkaaminen epäonnistui</string>
@@ -171,7 +169,6 @@
     <string name="openpgp_has_been_published">OpenPGP julkinen avain julkaistu.</string>
     <string name="mgmt_account_enable">Ota tunnus käyttöön</string>
     <string name="mgmt_account_delete_confirm_text">Oletko varma, että haluat poistaa tilisi? Tilin poistaminen poistaa koko pikakeskusteluhistoriasi</string>
-    <string name="attach_record_voice">Nauhoita ääntä</string>
     <string name="account_settings_jabber_id">XMPP-osoite</string>
     <string name="block_jabber_id">Estä XMPP-osoite</string>
     <string name="account_settings_example_jabber_id">käyttäjä@esimerkki.fi</string>
@@ -310,7 +307,6 @@
     <string name="restoring_backup">Palautetaan varmuuskopiota</string>
     <string name="notification_restored_backup_title">Varmuuskopiosi on palautettu</string>
     <string name="notification_restored_backup_subtitle">Älä unohda ottaa tiliä käyttöön.</string>
-    <string name="choose_file">Valitse tiedosto</string>
     <string name="receiving_x_file">Vastaanotetaan %1$s (%2$d%% valmiina)</string>
     <string name="download_x_file">Lataa %s</string>
     <string name="delete_x_file">Poista %s</string>
@@ -389,7 +385,6 @@
     <string name="contacts_have_stopped_typing">%s lopettivat kirjoittamisen</string>
     <string name="pref_chat_states">Kirjoitusilmoitukset</string>
     <string name="pref_chat_states_summary">Näyttää ytheystiedoillesi kun kirjoitat heille viestiä</string>
-    <string name="send_location">Lähetä sijainti</string>
     <string name="show_location">Näytä sijainti</string>
     <string name="no_application_found_to_display_location">Sijainnin näyttämiseen sopivaa sovellusta ei löytynyt</string>
     <string name="location">Sijainti</string>
@@ -605,7 +600,6 @@
     <string name="pref_validate_hostname_summary">Palvelinvarmenteet jotka sisältävät varmennetun verkkotunnukset hyväksytään</string>
     <string name="certificate_does_not_contain_jid">Varmenne ei sisällä XMPP-osoitetta</string>
     <string name="server_info_partial">osittain</string>
-    <string name="attach_record_video">Nauhoita video</string>
     <string name="copy_to_clipboard">Kopioi leikepöydälle</string>
     <string name="message_copied_to_clipboard">Viesti kopioitu leikepöydälle</string>
     <string name="message">Viesti</string>

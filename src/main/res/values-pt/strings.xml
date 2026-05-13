@@ -92,8 +92,6 @@
     <string name="send_presence_updates">Enviar presença</string>
     <string name="receive_presence_updates">Receber presença</string>
     <string name="ask_for_presence_updates">Pedir atualizações de presença</string>
-    <string name="attach_choose_picture">Escolher imagem</string>
-    <string name="attach_take_picture">Tirar foto</string>
     <string name="preemptively_grant">Conceder pedido de subscrição antecipadamente</string>
     <string name="error_not_an_image_file">O arquivo selecionado não é uma imagem</string>
     <string name="error_file_not_found">Ficheiro não encontrado</string>
@@ -120,7 +118,6 @@
     <string name="mgmt_account_publish_pgp">Publicar chave pública OpenPGP</string>
     <string name="unpublish_pgp">Remover chave pública OpenPGP</string>
     <string name="mgmt_account_enable">Ativar conta</string>
-    <string name="attach_record_voice">Gravar voz</string>
     <string name="account_settings_example_jabber_id">nomedeutilizador@exemplo.com</string>
     <string name="password">Palavra-passe</string>
     <string name="add_phone_book_text">Deseja adicionar %s aos seus contactos?</string>
@@ -215,7 +212,6 @@
     <string name="confirm">Confirmar</string>
     <string name="try_again">Tentar novamente</string>
     <string name="pref_keep_foreground_service_summary">Previne o sistema operativo de terminar a sua conexão</string>
-    <string name="choose_file">Escolher ficheiro</string>
     <string name="receiving_x_file">A receber %1$s (%2$d%% concluído)</string>
     <string name="download_x_file">Transferir %s</string>
     <string name="delete_x_file">Remover %s</string>
@@ -276,7 +272,6 @@
     <string name="contacts_have_stopped_typing">%s pararam de escrever</string>
     <string name="pref_chat_states">Notificações de escrita</string>
     <string name="pref_chat_states_summary">Permitir que um contacto saiba quando está a escrever uma nova mensagem</string>
-    <string name="send_location">Enviar localização</string>
     <string name="show_location">Exibir localização</string>
     <string name="location">Localização</string>
     <string name="pref_dont_trust_system_cas_title">Não confiar nas CAs do sistema</string>
@@ -674,7 +669,6 @@
     <string name="mtm_accept_cert">Aceitar Certificado Desconhecido?</string>
     <string name="account_status_regis_web">O servidor exige registo no website</string>
     <string name="pref_validate_hostname_summary">Certificados do servidor que contém um hostname válido são considerados verificados</string>
-    <string name="attach_record_video">Gravar vídeo</string>
     <string name="message">Mensagem</string>
     <string name="sasl_downgrade">Mecanismo SASL downgraded</string>
     <string name="application_found_to_open_website">Nenhuma aplicação para abrir website</string>

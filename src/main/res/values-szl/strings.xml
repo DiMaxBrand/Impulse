@@ -139,8 +139,6 @@
     <string name="send_presence_updates">Wysyłej powiadōmiynia ôbecności</string>
     <string name="receive_presence_updates">Dostowej powiadōmiynia ôbecności</string>
     <string name="ask_for_presence_updates">Poproś ô powiadōmiynia ôbecności</string>
-    <string name="attach_choose_picture">Ôbier ôbroz</string>
-    <string name="attach_take_picture">Zrōb fotografijo</string>
     <string name="preemptively_grant">Autōmatyczno zwolo na subskrypcyjo</string>
     <string name="error_not_an_image_file">Ôbrany zbiōr to niy ôbroz</string>
     <string name="error_compressing_image">Błōnd kōnwersyje ôbrazu</string>
@@ -183,7 +181,6 @@
     <string name="openpgp_has_been_published">Klucz publiczny OpenPGP ôstoł ôpublikowany.</string>
     <string name="mgmt_account_enable">Włōncz kōnto</string>
     <string name="mgmt_account_delete_confirm_text">Wymazanie kōnta wymazuje cołko historyjo godek</string>
-    <string name="attach_record_voice">Nagrej głos</string>
     <string name="account_settings_jabber_id">Adresa XMPP</string>
     <string name="block_jabber_id">Zablokuj adresa XMPP</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -330,7 +327,6 @@
     <string name="restoring_backup">Prziwrocanie ze kopije ibrycznyj</string>
     <string name="notification_restored_backup_title">Prziwrocanie ze kopije ibrycznyj gotowe</string>
     <string name="notification_restored_backup_subtitle">Niy zapōmnij ô aktywacyji tego kōnta.</string>
-    <string name="choose_file">Ôbier zbiōr</string>
     <string name="receiving_x_file">Ôdbiyranie %1$s (skōńczōne %2$d%%)</string>
     <string name="download_x_file">Pobier %s</string>
     <string name="delete_x_file">Wymaż %s</string>
@@ -415,7 +411,6 @@
     <string name="contacts_have_stopped_typing">%s niy piszōm</string>
     <string name="pref_chat_states">Powiadōmiynia pisanio</string>
     <string name="pref_chat_states_summary">Dowej znać kōntaktōm, jak dō nich piszesz</string>
-    <string name="send_location">Wyślij lokalizacyjo</string>
     <string name="show_location">Pokoż lokalizacyjo</string>
     <string name="no_application_found_to_display_location">Niy szło znojś aplikacyje do pokazowanio lokalizacyje</string>
     <string name="location">Lokalizacyjo</string>
@@ -668,7 +663,6 @@
     <string name="pref_validate_hostname_summary">Certyfikaty serwera, co posiadajōm noleżne miano ôd hosta, sōm uznowane za zweryfikowane</string>
     <string name="certificate_does_not_contain_jid">Certyfikat niy zawiyro adresy XMPP</string>
     <string name="server_info_partial">czyńściowo</string>
-    <string name="attach_record_video">Nagrej film</string>
     <string name="copy_to_clipboard">Skopiyruj do skrytki</string>
     <string name="message_copied_to_clipboard">Wiadōmość skopiyrowano do skrytki</string>
     <string name="message">Wiadōmość</string>

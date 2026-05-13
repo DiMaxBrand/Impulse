@@ -3,4 +3,5 @@
     <dimen name="avatar_on_details_screen_size">96dp</dimen>
     <dimen name="media_size">80dp</dimen> <!-- ideally not larger than avatar_on_details_screen -->
     <dimen name="browser_media_size">128dp</dimen>
+    <integer name="attachment_choices_max_element_wrap">6</integer>
 </resources>

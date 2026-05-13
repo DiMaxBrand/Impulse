@@ -122,8 +122,6 @@
     <string name="send_presence_updates">Verstuur aanwezigheidsupdates</string>
     <string name="receive_presence_updates">Ontvang aanwezigheidsupdates</string>
     <string name="ask_for_presence_updates">Vraag naar aanwezigheidsupdates</string>
-    <string name="attach_choose_picture">Afbeelding kiezen</string>
-    <string name="attach_take_picture">Foto nemen</string>
     <string name="preemptively_grant">Op voorhand toestemming verlenen voor abonneren</string>
     <string name="error_not_an_image_file">Het bestand dat je gekozen hebt is geen afbeelding</string>
     <string name="error_compressing_image">Kan afbeeldingsbestand niet converteren</string>
@@ -160,7 +158,6 @@
 \nJouw contacten zullen je geen versleutelde OpenPGP-berichten meer kunnen sturen.</string>
     <string name="openpgp_has_been_published">OpenPGP-publieke sleutel gepubliceerd.</string>
     <string name="mgmt_account_enable">Account inschakelen</string>
-    <string name="attach_record_voice">Stem opnemen</string>
     <string name="account_settings_jabber_id">XMPP-adres</string>
     <string name="block_jabber_id">XMPP-adres blokkeren</string>
     <string name="account_settings_example_jabber_id">gebruikersnaam@voorbeeld.nl</string>
@@ -294,7 +291,6 @@
     <string name="restoring_backup">Back-up terugzetten</string>
     <string name="notification_restored_backup_title">Je back-up is hersteld</string>
     <string name="notification_restored_backup_subtitle">Vergeet niet om de account in te schakelen.</string>
-    <string name="choose_file">Bestand kiezen</string>
     <string name="receiving_x_file">Ontvangen van %1$s (%2$d%% voltooid)</string>
     <string name="download_x_file">%s downloaden</string>
     <string name="delete_x_file">%s verwijderen</string>
@@ -366,7 +362,6 @@
     <string name="contacts_have_stopped_typing">%s zijn gestopt met typen</string>
     <string name="pref_chat_states">Aan-het-typen-meldingen</string>
     <string name="pref_chat_states_summary">Laat je contacten weten wanneer je ze een nieuw bericht schrijft</string>
-    <string name="send_location">Locatie versturen</string>
     <string name="show_location">Locatie weergeven</string>
     <string name="no_application_found_to_display_location">Geen app om locatie weer te geven</string>
     <string name="location">Locatie</string>
@@ -553,7 +548,6 @@
     <string name="pref_validate_hostname_summary">Servercertificaten die de gevalideerde hostnaam bevatten worden beschouwd als geverifieerd</string>
     <string name="certificate_does_not_contain_jid">Certificaat bevat geen XMPP-adres</string>
     <string name="server_info_partial">gedeeltelijk</string>
-    <string name="attach_record_video">Video opnemen</string>
     <string name="copy_to_clipboard">Kopiëren naar klembord</string>
     <string name="message_copied_to_clipboard">Bericht gekopieerd naar klembord</string>
     <string name="message">Bericht</string>

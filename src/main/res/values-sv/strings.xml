@@ -138,8 +138,6 @@
     <string name="send_presence_updates">Skicka närvarouppdateringar</string>
     <string name="receive_presence_updates">Ta emot närvarouppdateringar</string>
     <string name="ask_for_presence_updates">Be om närvarouppdateringar</string>
-    <string name="attach_choose_picture">Välj bild</string>
-    <string name="attach_take_picture">Ta ny bild</string>
     <string name="preemptively_grant">Bevilja prenumerationsförfrågan i förebyggande syfte</string>
     <string name="error_not_an_image_file">Filen som du har valt, är inte en bild</string>
     <string name="error_compressing_image">Det gick inte att konvertera bildfilen</string>
@@ -182,7 +180,6 @@
     <string name="openpgp_has_been_published">OpenPGP-nyckel har publicerats.</string>
     <string name="mgmt_account_enable">Aktivera konto</string>
     <string name="mgmt_account_delete_confirm_text">Är du säker på att du vill ta bort ditt konto? Hela din chatt-historik kommer att tas bort om ditt konto tas bort</string>
-    <string name="attach_record_voice">Spela in röst</string>
     <string name="account_settings_jabber_id">XMPP-adress</string>
     <string name="block_jabber_id">Blockera XMPP-adress</string>
     <string name="account_settings_example_jabber_id">användarnamn@exempel.se</string>
@@ -327,7 +324,6 @@
     <string name="restoring_backup">Återställer säkerhetskopia</string>
     <string name="notification_restored_backup_title">Din säkerhetskopia har återställts</string>
     <string name="notification_restored_backup_subtitle">Glöm inte att aktivera kontot.</string>
-    <string name="choose_file">Välj fil</string>
     <string name="receiving_x_file">Tar emot %1$s (%2$d%% slutfört)</string>
     <string name="download_x_file">Ladda ner %s</string>
     <string name="delete_x_file">Ta bort %s</string>
@@ -411,7 +407,6 @@
     <string name="contacts_have_stopped_typing">%s har slutat att skriva</string>
     <string name="pref_chat_states">Skrivaviseringar</string>
     <string name="pref_chat_states_summary">Låt dina kontakter veta när du skriver meddelande till dem</string>
-    <string name="send_location">Skicka position</string>
     <string name="show_location">Visa position</string>
     <string name="no_application_found_to_display_location">Ingen app hittades för att kunna visa platsen</string>
     <string name="location">Position</string>
@@ -653,7 +648,6 @@
     <string name="pref_validate_hostname_summary">Servercertifikat som innehåller det validerade värdnamnet anses vara verifierade</string>
     <string name="certificate_does_not_contain_jid">Certifikatet innehåller ingen XMPP-adress</string>
     <string name="server_info_partial">delvis</string>
-    <string name="attach_record_video">Spela in video</string>
     <string name="copy_to_clipboard">Kopiera</string>
     <string name="message_copied_to_clipboard">Meddelandet har kopierats till urklipp</string>
     <string name="message">Meddelande</string>

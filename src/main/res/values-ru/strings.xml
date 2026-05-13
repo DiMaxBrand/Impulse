@@ -140,8 +140,6 @@
     <string name="send_presence_updates">Отправлять присутствие</string>
     <string name="receive_presence_updates">Получать присутствие</string>
     <string name="ask_for_presence_updates">Запрашивать присутствие</string>
-    <string name="attach_choose_picture">Выбрать изображение</string>
-    <string name="attach_take_picture">Сделать снимок</string>
     <string name="preemptively_grant">Удовлетворять запросы на подписки</string>
     <string name="error_not_an_image_file">Выбранный файл не является изображением</string>
     <string name="error_compressing_image">Невозможно преобразовать изображение</string>
@@ -184,7 +182,6 @@
     <string name="openpgp_has_been_published">Публичный ключ OpenPGP опубликован.</string>
     <string name="mgmt_account_enable">Включить аккаунт</string>
     <string name="mgmt_account_delete_confirm_text">Удалить свой аккаунт? Удаление аккаунта также сотрёт всю историю бесед.</string>
-    <string name="attach_record_voice">Записать голос</string>
     <string name="account_settings_jabber_id">XMPP-адрес</string>
     <string name="block_jabber_id">Заблокировать XMPP-адрес</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -331,7 +328,6 @@
     <string name="restoring_backup">Восстановление из резервной копии</string>
     <string name="notification_restored_backup_title">Восстановление из резервной копии выполнено</string>
     <string name="notification_restored_backup_subtitle">Не забудьте включить аккаунт.</string>
-    <string name="choose_file">Выбрать файл</string>
     <string name="receiving_x_file">%1$s загружается (%2$d%% выполнено)</string>
     <string name="download_x_file">Загрузить %s</string>
     <string name="delete_x_file">Удалить %s</string>
@@ -415,7 +411,6 @@
     <string name="contacts_have_stopped_typing">%s перестали печатать</string>
     <string name="pref_chat_states">Оповещения о наборе</string>
     <string name="pref_chat_states_summary">Позволяет вашим контактам видеть, когда вы пишете им новое сообщение</string>
-    <string name="send_location">Отправить местоположение</string>
     <string name="show_location">Показать местоположение</string>
     <string name="no_application_found_to_display_location">Не найдено приложения для отображения местоположения</string>
     <string name="location">Местоположение</string>
@@ -672,7 +667,6 @@
     <string name="pref_validate_hostname_summary">Серверные сертификаты, содержащие проверенное имя хоста, считаются проверенными</string>
     <string name="certificate_does_not_contain_jid">Сертификат не содержит XMPP-адрес</string>
     <string name="server_info_partial">частичный</string>
-    <string name="attach_record_video">Записать видео</string>
     <string name="copy_to_clipboard">Копировать</string>
     <string name="message_copied_to_clipboard">Сообщение скопировано в буфер обмена</string>
     <string name="message">Сообщение</string>

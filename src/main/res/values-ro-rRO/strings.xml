@@ -135,8 +135,6 @@
     <string name="send_presence_updates">Trimite actualizări de prezență</string>
     <string name="receive_presence_updates">Primește actualizări de prezență</string>
     <string name="ask_for_presence_updates">Cere actualizări de prezență</string>
-    <string name="attach_choose_picture">Alege imagine</string>
-    <string name="attach_take_picture">Fă o poză</string>
     <string name="preemptively_grant">Acordă anticipat cererea de abonare</string>
     <string name="error_not_an_image_file">Fișierul selectat nu este o imagine</string>
     <string name="error_compressing_image">Nu s-a putut face convertirea imaginii</string>
@@ -179,7 +177,6 @@
     <string name="openpgp_has_been_published">Cheia publică OpenPGP a fost publicată.</string>
     <string name="mgmt_account_enable">Activează cont</string>
     <string name="mgmt_account_delete_confirm_text">Sigur doriți să vă ștergeți contul? Dacă vă ștergeți contul, întregul istoric de discuții va fi pierdut</string>
-    <string name="attach_record_voice">Înregistrare voce</string>
     <string name="account_settings_jabber_id">Adresă XMPP</string>
     <string name="block_jabber_id">Blochează adresă XMPP</string>
     <string name="account_settings_example_jabber_id">numeutilizator@exemplu.ro</string>
@@ -321,7 +318,6 @@
     <string name="restoring_backup">Se restaurează din copia de siguranță</string>
     <string name="notification_restored_backup_title">Copia de siguranță a fost restaurată</string>
     <string name="notification_restored_backup_subtitle">Nu uitați să activați contul.</string>
-    <string name="choose_file">Alege un fișier</string>
     <string name="receiving_x_file">Primesc %1$s (%2$d%% complet)</string>
     <string name="download_x_file">Descarcă %s</string>
     <string name="delete_x_file">Șterge %s</string>
@@ -405,7 +401,6 @@
     <string name="contacts_have_stopped_typing">%s s-au oprit din scris</string>
     <string name="pref_chat_states">Notificare tastare</string>
     <string name="pref_chat_states_summary">Contactele sunt anunțate atunci când le scrieți un nou mesaj</string>
-    <string name="send_location">Trimite locația</string>
     <string name="show_location">Arată locația</string>
     <string name="no_application_found_to_display_location">Nu s-a găsit nici o aplicație care să afișeze locația</string>
     <string name="location">Locatie</string>
@@ -655,7 +650,6 @@
     <string name="pref_validate_hostname_summary">Certificatele serverelor care conțin nume de domenii validate sunt considerate verificate</string>
     <string name="certificate_does_not_contain_jid">Certificatul nu conține o adresă XMPP</string>
     <string name="server_info_partial">parțial</string>
-    <string name="attach_record_video">Înregistrare video</string>
     <string name="copy_to_clipboard">Copiază</string>
     <string name="message_copied_to_clipboard">Mesaj copiat în clipboard</string>
     <string name="message">Mesaj</string>

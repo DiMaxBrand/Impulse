@@ -67,15 +67,15 @@
                 tools:ignore="RtlCompat" />
 
             <RelativeLayout
-                android:id="@+id/textsend"
+                android:id="@+id/message_input_box"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:layout_alignParentBottom="true"
+                android:layout_alignWithParentIfMissing="true"
+                android:layout_above="@+id/attachment_choices"
                 android:paddingHorizontal="8dp"
                 android:paddingVertical="6dp">
 
-                <LinearLayout
+                <RelativeLayout
                     android:id="@+id/input_layout"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -85,51 +85,76 @@
                     android:background="@drawable/background_message_bubble"
                     android:backgroundTint="?colorTertiaryContainer"
                     android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="8dp">
+                    android:paddingHorizontal="16dp">
 
-                    <TextView
-                        android:id="@+id/text_input_hint"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="8sp"
-                        android:maxLines="1"
-                        android:textAppearance="?textAppearanceBodySmall"
-                        android:textColor="?colorOnTertiaryContainer"
-                        android:visibility="visible"
-                        tools:text="@string/private_message_to" />
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/media_preview"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:requiresFadingEdge="horizontal"
-                        android:visibility="gone"
-                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                        tools:listitem="@layout/item_media_preview">
-
-                    </androidx.recyclerview.widget.RecyclerView>
-
-                    <eu.siacs.conversations.ui.widget.EditMessage
-                        android:id="@+id/textinput"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@android:color/transparent"
-                        android:ems="10"
-                        android:imeOptions="flagNoExtractUi|actionSend"
-                        android:inputType="textShortMessage|textMultiLine|textCapSentences"
-                        android:maxLines="8"
-                        android:minHeight="32dp"
-                        android:minLines="1"
-                        android:textColor="?colorOnTertiaryContainer"
-                        android:textColorHint="@color/hint_on_tertiary_container"
-                        android:textCursorDrawable="@drawable/cursor_on_tertiary_container">
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:layout_marginVertical="8sp"
+                        android:layout_toStartOf="@+id/attach_button"
+                        android:orientation="vertical">
 
-                        <requestFocus />
-                    </eu.siacs.conversations.ui.widget.EditMessage>
+                        <TextView
+                            android:id="@+id/text_input_hint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8sp"
+                            android:maxLines="1"
+                            android:textAppearance="?textAppearanceBodySmall"
+                            android:textColor="?colorOnTertiaryContainer"
+                            android:visibility="visible"
+                            tools:text="@string/private_message_to" />
 
-                </LinearLayout>
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/media_preview"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:requiresFadingEdge="horizontal"
+                            android:visibility="gone"
+                            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                            tools:listitem="@layout/item_media_preview">
+
+                        </androidx.recyclerview.widget.RecyclerView>
+
+                        <eu.siacs.conversations.ui.widget.EditMessage
+
+                            android:id="@+id/text_input"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@android:color/transparent"
+                            android:ems="10"
+                            android:imeOptions="flagNoExtractUi|actionSend"
+                            android:inputType="textShortMessage|textMultiLine|textCapSentences"
+                            android:maxLines="8"
+                            android:minHeight="32dp"
+                            android:minLines="1"
+                            android:textColor="?colorOnTertiaryContainer"
+                            android:textColorHint="@color/hint_on_tertiary_container"
+                            android:textCursorDrawable="@drawable/cursor_on_tertiary_container">
+
+                            <requestFocus />
+                        </eu.siacs.conversations.ui.widget.EditMessage>
+
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/attach_button"
+                        style="?attr/materialIconButtonStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:checkable="true"
+                        android:checked="false"
+                        app:icon="@drawable/ic_attach_file_24dp"
+                        app:iconSize="24dp"
+                        app:iconTint="?colorOnTertiaryContainer" />
+
+
+                </RelativeLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/textSendButton"
@@ -149,7 +174,7 @@
                 android:id="@+id/snackbar"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:layout_above="@+id/textsend"
+                android:layout_above="@+id/message_input_box"
                 android:layout_marginLeft="8dp"
                 android:layout_marginRight="8dp"
                 android:layout_marginBottom="4dp"
@@ -183,6 +208,28 @@
                     android:textStyle="bold"
                     tools:text="@string/leave" />
             </RelativeLayout>
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/attachment_choices"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <androidx.constraintlayout.helper.widget.Flow
+                    android:id="@+id/attachment_choices_flow"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    app:flow_horizontalStyle="spread"
+                    app:flow_maxElementsWrap="@integer/attachment_choices_max_element_wrap"
+                    app:flow_verticalGap="16dp"
+                    app:flow_wrapMode="aligned"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
         </RelativeLayout>
     </LinearLayout>

@@ -121,8 +121,6 @@
     <string name="send_presence_updates">傳送線上狀態更新</string>
     <string name="receive_presence_updates">接收線上狀態更新</string>
     <string name="ask_for_presence_updates">要求線上狀態更新</string>
-    <string name="attach_choose_picture">選擇圖片</string>
-    <string name="attach_take_picture">拍攝圖片</string>
     <string name="preemptively_grant">預先授予訂閱要求</string>
     <string name="error_not_an_image_file">您選擇的檔案不是圖片</string>
     <string name="error_compressing_image">無法轉換圖片檔案</string>
@@ -161,7 +159,6 @@
     <string name="openpgp_has_been_published">OpenPGP 公開金鑰已發佈。</string>
     <string name="mgmt_account_enable">啟用帳戶</string>
     <string name="mgmt_account_delete_confirm_text">刪除帳戶將抹除您全部的會話記錄</string>
-    <string name="attach_record_voice">錄音</string>
     <string name="account_settings_jabber_id">XMPP 位址</string>
     <string name="block_jabber_id">封鎖 XMPP 位址</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
@@ -298,7 +295,6 @@
     <string name="restoring_backup">正在還原備份</string>
     <string name="notification_restored_backup_title">你的備份已還原</string>
     <string name="notification_restored_backup_subtitle">不要忘記啟用帳戶。</string>
-    <string name="choose_file">選擇檔案</string>
     <string name="receiving_x_file">正在接收 %1$s (已完成 %2$d%%)</string>
     <string name="download_x_file">下載 %s</string>
     <string name="delete_x_file">刪除 %s</string>
@@ -378,7 +374,6 @@
     <string name="contacts_have_stopped_typing">%s 已停止輸入</string>
     <string name="pref_chat_states">輸入通知</string>
     <string name="pref_chat_states_summary">讓聯絡人知道您正在給他們寫訊息</string>
-    <string name="send_location">傳送位置</string>
     <string name="show_location">顯示位置</string>
     <string name="no_application_found_to_display_location">找不到可以顯示位置的應用程式</string>
     <string name="location">位置</string>
@@ -589,7 +584,6 @@
     <string name="pref_validate_hostname">以 DNSSEC 驗證主機名稱</string>
     <string name="certificate_does_not_contain_jid">憑證不包含 XMPP 位址</string>
     <string name="server_info_partial">部份</string>
-    <string name="attach_record_video">錄製影片</string>
     <string name="copy_to_clipboard">複製到剪貼簿</string>
     <string name="message_copied_to_clipboard">訊息已複製到剪貼簿</string>
     <string name="message">訊息</string>

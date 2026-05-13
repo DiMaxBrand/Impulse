@@ -120,12 +120,9 @@
     <string name="recording_error">Greška</string>
     <string name="error">Došlo je do greške</string>
     <string name="your_account">Tvoj račun</string>
-    <string name="attach_choose_picture">Odaberi sliku</string>
-    <string name="attach_take_picture">Slikaj</string>
     <string name="error_not_an_image_file">Datoteka koji si odabrao/odabrala nije slika</string>
     <string name="error_file_not_found">Datoteka nije pronađena</string>
     <string name="account_status_regis_success">Registracija dovršena</string>
-    <string name="attach_record_voice">Snimi glas</string>
     <string name="add_phone_book_text">Želiš li dodati %s u imenik?</string>
     <string name="create">Stvori</string>
     <string name="unblock_contact">Odblokiraj kontakt</string>
@@ -184,7 +181,6 @@
     <string name="account_details">Detalji računa</string>
     <string name="confirm">Potvrdi</string>
     <string name="try_again">Pokušaj ponovno</string>
-    <string name="choose_file">Odaberi datoteku</string>
     <string name="cancel_transmission">Obustavi prijenos</string>
     <string name="file_deleted">Datoteka obrisana</string>
     <string name="account_image_description">Profilna slika računa</string>
