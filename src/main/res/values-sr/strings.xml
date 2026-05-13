@@ -1230,4 +1230,10 @@
     <string name="select_all">Означи све</string>
     <string name="search_in_chats">Тражи у препискама</string>
     <string name="search_for_x_in_chats">Тражи \"%s\" у препискама</string>
+    <string name="attachment_choice_gallery">Галерија</string>
+    <string name="attachment_choice_file">Фајл</string>
+    <string name="attachment_choice_location">Локација</string>
+    <string name="attachment_choice_camera">Камера</string>
+    <string name="attachment_choice_video">Видео</string>
+    <string name="attachment_choice_recording">Гласовни снимак</string>
 </resources>
