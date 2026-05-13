@@ -1198,4 +1198,10 @@
     <string name="select_all">Përzgjidhe krejt</string>
     <string name="search_in_chats">Kërko në fjalosje</string>
     <string name="search_for_x_in_chats">Kërko për “%s” te fjalosjet</string>
+    <string name="attachment_choice_file">Kartelë</string>
+    <string name="attachment_choice_location">Vendndodhje</string>
+    <string name="attachment_choice_camera">Kamerë</string>
+    <string name="attachment_choice_video">Video</string>
+    <string name="attachment_choice_recording">Incizim zanor</string>
+    <string name="attachment_choice_gallery">Galeri</string>
 </resources>
