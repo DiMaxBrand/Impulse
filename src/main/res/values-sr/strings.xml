@@ -1235,5 +1235,6 @@
     <string name="attachment_choice_location">Локација</string>
     <string name="attachment_choice_camera">Камера</string>
     <string name="attachment_choice_video">Видео</string>
-    <string name="attachment_choice_recording">Гласовни снимак</string>
+    <string name="attachment_choice_recording">Снимак</string>
+    <string name="start_group_chat">Покрени групну преписку</string>
 </resources>
