@@ -1213,4 +1213,10 @@
     <string name="select_all">Selectează tot</string>
     <string name="search_in_chats">Căutare în discuții</string>
     <string name="search_for_x_in_chats">Caută \"%s\" în discuții</string>
+    <string name="attachment_choice_gallery">Galerie</string>
+    <string name="attachment_choice_file">Fișier</string>
+    <string name="attachment_choice_location">Locație</string>
+    <string name="attachment_choice_camera">Camera</string>
+    <string name="attachment_choice_video">Video</string>
+    <string name="attachment_choice_recording">Voce</string>
 </resources>
