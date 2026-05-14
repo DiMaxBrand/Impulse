@@ -238,7 +238,13 @@ public class ManageAccountActivity extends XmppActivity
                         break;
                 }
             } else {
-                Toast.makeText(this, getString(R.string.no_storage_permission, getString(R.string.app_name)), Toast.LENGTH_SHORT).show();
+                Toast.makeText(
+                                this,
+                                getString(
+                                        R.string.no_storage_permission,
+                                        getString(R.string.app_name)),
+                                Toast.LENGTH_SHORT)
+                        .show();
             }
         }
         if (writeGranted(grantResults, permissions)) {

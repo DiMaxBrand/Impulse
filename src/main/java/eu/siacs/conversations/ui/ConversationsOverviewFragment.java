@@ -45,6 +45,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -56,6 +57,7 @@ import androidx.lifecycle.Lifecycle;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.search.SearchView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
@@ -92,6 +94,7 @@ import eu.siacs.conversations.xmpp.manager.RosterManager;
 import im.conversations.android.model.SearchSuggestion;
 import im.conversations.android.provider.SearchSuggestionProvider;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -244,6 +247,13 @@ public class ConversationsOverviewFragment extends XmppFragment {
                     } else {
                         return false;
                     }
+                }
+            };
+    private final OnBackPressedCallback searchViewOnBackPressedCallback =
+            new OnBackPressedCallback(false) {
+                @Override
+                public void handleOnBackPressed() {
+                    binding.searchView.hide();
                 }
             };
 
@@ -420,6 +430,14 @@ public class ConversationsOverviewFragment extends XmppFragment {
     }
 
     @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        requireActivity()
+                .getOnBackPressedDispatcher()
+                .addCallback(this, this.searchViewOnBackPressedCallback);
+    }
+
+    @Override
     public View onCreateView(
             @NonNull final LayoutInflater inflater,
             ViewGroup container,
@@ -444,6 +462,15 @@ public class ConversationsOverviewFragment extends XmppFragment {
                 .searchView
                 .getEditText()
                 .addTextChangedListener(new TextChangeListener(this::submitSearchSuggestion));
+        this.binding.searchView.addTransitionListener(
+                (searchView, oldState, newState) -> {
+                    final boolean isShowing =
+                            Arrays.asList(
+                                            SearchView.TransitionState.SHOWING,
+                                            SearchView.TransitionState.SHOWN)
+                                    .contains(newState);
+                    searchViewOnBackPressedCallback.setEnabled(isShowing);
+                });
         this.binding.fab.setOnClickListener(
                 (view) -> StartConversationActivity.launch(getActivity()));
 
