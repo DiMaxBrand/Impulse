@@ -1,5 +1,10 @@
 # Changelog
 
+### Version 2.20.0
+
+* Provide search bar for easier access to search on home screen
+* move attachment button closer to input field
+
 ### Version 2.19.16
 
 * Improved media browser with ability to share and delete media files
