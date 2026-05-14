@@ -1115,7 +1115,6 @@ public class ConversationFragment extends XmppFragment
         } else {
             this.binding.textInputHint.setVisibility(View.GONE);
             this.binding.textInput.setHint(UIHelper.getMessageHint(requireContext(), conversation));
-            requireActivity().invalidateOptionsMenu();
         }
     }
 
@@ -1761,7 +1760,7 @@ public class ConversationFragment extends XmppFragment
                 conversation.getBooleanAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, false);
         conversation.setAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, !pinned);
         requireXmppActivity().xmppConnectionService.updateConversation(conversation);
-        requireActivity().invalidateOptionsMenu();
+        this.binding.toolbar.invalidateMenu();
     }
 
     private boolean isAccountInsufficientState() {
@@ -1929,7 +1928,7 @@ public class ConversationFragment extends XmppFragment
             requireXmppActivity().xmppConnectionService.updateConversation(conversation);
         }
         updateChatMsgHint();
-        requireXmppActivity().invalidateOptionsMenu();
+        this.binding.toolbar.invalidateMenu();
         requireXmppActivity().refreshUi();
     }
 
@@ -2190,7 +2189,7 @@ public class ConversationFragment extends XmppFragment
                     requireXmppActivity().xmppConnectionService.updateConversation(conversation);
                     requireConversationsActivity().onConversationsListItemUpdated();
                     refresh();
-                    requireActivity().invalidateOptionsMenu();
+                    this.binding.toolbar.invalidateMenu();
                 });
         builder.create().show();
     }
@@ -2230,7 +2229,7 @@ public class ConversationFragment extends XmppFragment
         requireXmppActivity().xmppConnectionService.updateConversation(conversation);
         requireConversationsActivity().onConversationsListItemUpdated();
         refresh();
-        requireActivity().invalidateOptionsMenu();
+        this.binding.toolbar.invalidateMenu();
     }
 
     protected void invokeAttachFileIntent(final int attachmentChoice) {
@@ -2837,7 +2836,7 @@ public class ConversationFragment extends XmppFragment
         this.binding.textInput.refreshIme(this.inputSettings);
         setTextInputColors();
         refresh(false);
-        requireXmppActivity().invalidateOptionsMenu();
+        this.binding.toolbar.invalidateMenu();
         this.conversation.messagesLoaded.set(true);
         Log.d(Config.LOGTAG, "scrolledToBottomAndNoPending=" + scrolledToBottomAndNoPending);
 
