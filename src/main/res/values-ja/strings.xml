@@ -90,7 +90,7 @@
     <string name="send_unencrypted">暗号化せずに送信</string>
     <string name="decryption_failed">復号に失敗しました。適切な秘密鍵を持っていないのかもしれません。</string>
     <string name="openkeychain_required">OpenKeychain</string>
-    <string name="openkeychain_required_long"><![CDATA[ %1$s は <b>OpenKeychain</b> を利用して、メッセージの暗号化および復号、そしてあなたの公開鍵を管理します。<br><br>それは GPLv3+ ライセンスの下で、F-Droid および Google Play から利用可能です。<br><br><small>(後で %1$s を再起動してください。)</small>]]></string>
+    <string name="openkeychain_required_long"><![CDATA[%1$s は <b>OpenKeychain</b> を利用して、メッセージの暗号化および復号、そしてあなたの公開鍵を管理します。<br><br>それは GPLv3+ ライセンスの下で、F-Droid および Google Play から利用可能です。<br><br><small>(後で %1$s を再起動してください。)</small>]]></string>
     <string name="restart">再起動</string>
     <string name="install">インストール</string>
     <string name="openkeychain_not_installed">OpenKeychain をインストールしてください</string>
@@ -627,7 +627,7 @@
     <string name="pref_validate_hostname_summary">検証されたホスト名を含むサーバー証明書は検証済みと見なされます</string>
     <string name="certificate_does_not_contain_jid">証明書は XMPP アドレスを含みません</string>
     <string name="server_info_partial">一時的</string>
-    <string name="copy_to_clipboard">クリップボードにコピー</string>
+    <string name="copy_to_clipboard">コピー</string>
     <string name="message_copied_to_clipboard">メッセージをクリップボードにコピーしました</string>
     <string name="message">メッセージ</string>
     <string name="private_messages_are_disabled">非公開メッセージを無効化しました</string>
@@ -717,7 +717,7 @@
     <string name="security_violation_not_attaching_file">セキュリティ違反のため、ファイルが省略されています。</string>
     <string name="pref_video_compression">ビデオの質</string>
     <string name="pref_video_compression_summary">質が低い程、ファイルは小さくなります</string>
-    <string name="video_360p">中 (360p)</string>
+    <string name="video_360p">低 (360p)</string>
     <string name="video_720p">高 (720p)</string>
     <string name="cancelled">中止しました</string>
     <string name="already_drafting_message">あなたはすでにメッセージを作成中です。</string>
@@ -886,7 +886,7 @@
     <string name="add_to_favorites">最上に留める</string>
     <string name="remove_from_favorites">最上部へのピン止めを外す</string>
     <string name="gpx_track">GPX 追跡</string>
-    <string name="could_not_correct_message">メッセージを修正できません</string>
+    <string name="could_not_correct_message">メッセージを編集できませんでした</string>
     <string name="your_avatar">あなたのアバター</string>
     <string name="avatar_for_x">%s のアバター</string>
     <string name="encrypted_with_omemo">OMEMO で暗号化</string>
@@ -968,7 +968,7 @@
     <string name="pref_summary_security">端末間暗号化、検証前の無条件の信頼、MITM検出</string>
     <string name="action_archive_chat">会話をアーカイブ</string>
     <string name="title_activity_new_chat">新しい会話</string>
-    <string name="archive_this_chat">その後の会話を削除</string>
+    <string name="archive_this_chat">削除後にチャットを非表示にする</string>
     <string name="pref_dynamic_colors_summary">システムの配色 (Material You)</string>
     <string name="send_encrypted_message">暗号化メッセージを送信</string>
     <string name="title_undo_swipe_out_chat">会話はアーカイブされました</string>
@@ -1004,7 +1004,7 @@
     <string name="pref_dynamic_colors">ダイナミックカラー</string>
     <string name="detect_mim">談話室束縛が必要です</string>
     <string name="detect_mim_summary">談話室束縛はいくつかの中間機攻撃を検知できます</string>
-    <string name="barcode_does_not_contain_fingerprints_for_this_chat">バーコードにはこの会話の指紋が含まれていません。</string>
+    <string name="barcode_does_not_contain_fingerprints_for_this_chat">QRコードにこのチャットの指紋が含まれていません。</string>
     <string name="pref_fullscreen_notification">全画面通知</string>
     <string name="pref_fullscreen_notification_summary">端末がロックされているとき、このアプリが全画面を占める着信通知を表示することを許可する。</string>
     <string name="unified_push_summary">UnifiedPush互換サードパーティアプリの通知中継</string>
@@ -1095,4 +1095,15 @@
     <string name="backup_and_restore">バックアップと復元</string>
     <string name="server_info_stanzas_rx_tx">スタンザ数（受信/送信)</string>
     <string name="server_info_stanzas_rx_tx_push">スタンザ数（受信/送信/プッシュ)</string>
+    <plurals name="delete_files_dialog">
+        <item quantity="other">ファイル%d件を削除</item>
+    </plurals>
+    <plurals name="delete_files_dialog_msg">
+        <item quantity="other">本当に削除しますか？</item>
+    </plurals>
+    <string name="pref_presence_settings_summary">マナーモードの公表設定</string>
+    <string name="video_480p">中 (480p)</string>
+    <string name="video_1080p">最高 (1080p)</string>
+    <string name="send">送信</string>
+    <string name="pref_call_integration">通話連携</string>
 </resources>
