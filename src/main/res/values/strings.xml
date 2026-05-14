@@ -1189,5 +1189,5 @@
     <string name="attachment_choice_location">Location</string>
     <string name="attachment_choice_camera">Camera</string>
     <string name="attachment_choice_video">Video</string>
-    <string name="attachment_choice_recording">Voice recording</string>
+    <string name="attachment_choice_recording">Recording</string>
 </resources>
