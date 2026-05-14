@@ -687,7 +687,7 @@
     <string name="providing_a_name_is_optional">提供名称是可选的</string>
     <string name="create_dialog_group_chat_name">群聊名称</string>
     <string name="conference_destroyed">此群聊已解散</string>
-    <string name="unable_to_save_recording">无法保存录制</string>
+    <string name="unable_to_save_recording">无法保存录制内容</string>
     <string name="foreground_service_channel_name">前台服务</string>
     <string name="foreground_service_channel_description">此通知类别用于显示永久通知，表明 %1$s 正在运行。</string>
     <string name="notification_group_status_information">状态信息</string>
@@ -1137,8 +1137,8 @@
     <string name="presence_offline">离线</string>
     <string name="rtp_state_no_internet">未连接到互联网</string>
     <string name="send">发送</string>
-    <string name="pref_auto_send_recording">自动发送录制内容</string>
-    <string name="pref_auto_send_recording_summary">录制完成后自动发送语音消息。</string>
+    <string name="pref_auto_send_recording">自动发送录音</string>
+    <string name="pref_auto_send_recording_summary">录音完成后自动发送语音消息。</string>
     <string name="pref_presence_settings_summary">设备锁定时离开、同步系统勿扰模式</string>
     <string name="video_480p">中（480p）</string>
     <string name="video_1080p">超高（1080p）</string>
@@ -1170,4 +1170,5 @@
     <string name="attachment_choice_camera">相机</string>
     <string name="attachment_choice_video">视频</string>
     <string name="attachment_choice_recording">录音</string>
+    <string name="start_group_chat">开始群聊</string>
 </resources>
