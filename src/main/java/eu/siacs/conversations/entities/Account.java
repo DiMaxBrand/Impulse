@@ -632,10 +632,6 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
         return new MiniUri.Xmpp(this.getJid().asBareJid(), getFingerprints());
     }
 
-    public MiniUri.Http getShareableLink() {
-        return getShareableUri().asInvitationUri();
-    }
-
     public ImmutableMap<String, Collection<String>> getFingerprints() {
         final ImmutableMultimap.Builder<String, String> builder = new ImmutableMultimap.Builder<>();
         final var axolotlService = getAxolotlService();

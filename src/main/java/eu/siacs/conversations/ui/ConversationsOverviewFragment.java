@@ -48,7 +48,6 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.core.view.MenuProvider;
 import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.Fragment;
@@ -64,15 +63,12 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Ordering;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
 import de.gultsch.common.MiniUri;
 import de.gultsch.common.Patterns;
 import eu.siacs.conversations.BuildConfig;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.databinding.FragmentConversationsOverviewBinding;
-import eu.siacs.conversations.entities.Account;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Conversational;
 import eu.siacs.conversations.services.QuickConversationsService;
@@ -89,7 +85,6 @@ import eu.siacs.conversations.utils.AccountUtils;
 import eu.siacs.conversations.utils.CharSequences;
 import eu.siacs.conversations.utils.XmppUriLauncher;
 import eu.siacs.conversations.xmpp.manager.BookmarkManager;
-import eu.siacs.conversations.xmpp.manager.EasyOnboardingManager;
 import eu.siacs.conversations.xmpp.manager.RosterManager;
 import im.conversations.android.model.SearchSuggestion;
 import im.conversations.android.provider.SearchSuggestionProvider;
@@ -233,7 +228,7 @@ public class ConversationsOverviewFragment extends XmppFragment {
                         return true;
                     } else if (id == R.id.action_show_qr_code) {
                         new AccountPickerDialog.Enabled(requireXmppActivity())
-                                .pick(a -> showQrCode(a));
+                                .pick(a -> requireXmppActivity().showQrCode(a));
                         return true;
                     } else if (id == R.id.action_scan_qr_code) {
                         if (requireActivity()
@@ -272,34 +267,6 @@ public class ConversationsOverviewFragment extends XmppFragment {
                             Toast.LENGTH_SHORT)
                     .show();
         }
-    }
-
-    private void showQrCode(final Account account) {
-        final var connection = account.getXmppConnection();
-        final var manager = connection.getManager(EasyOnboardingManager.class);
-        final var future = manager.inviteOrFallback();
-        final Toast toast;
-        if (future.isDone()) {
-            toast = null;
-        } else {
-            toast = Toast.makeText(requireContext(), R.string.please_wait, Toast.LENGTH_LONG);
-            toast.show();
-        }
-        Futures.addCallback(
-                future,
-                new FutureCallback<>() {
-                    @Override
-                    public void onSuccess(final MiniUri.Xmpp result) {
-                        Toasts.hide(toast);
-                        requireXmppActivity().showQrCode(result);
-                    }
-
-                    @Override
-                    public void onFailure(@NonNull Throwable t) {
-                        Log.e(Config.LOGTAG, "could not fetch invite uri", t);
-                    }
-                },
-                ContextCompat.getMainExecutor(requireContext()));
     }
 
     private void onConversationSwiped(final Conversation c, final int position) {

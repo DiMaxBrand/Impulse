@@ -17,6 +17,7 @@ import eu.siacs.conversations.xml.Namespace;
 import eu.siacs.conversations.xmpp.Jid;
 import eu.siacs.conversations.xmpp.XmppConnection;
 import im.conversations.android.xmpp.model.commands.Command;
+import im.conversations.android.xmpp.model.data.Data;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,6 +36,39 @@ public class EasyOnboardingManager extends AbstractManager {
 
     public EasyOnboardingManager(final Context context, final XmppConnection connection) {
         super(context, connection);
+    }
+
+    public ListenableFuture<MiniUri.Http> invitationUrl() {
+        final var optional = getAddressForInviteCommand();
+        if (optional.isPresent()) {
+            final var future =
+                    this.getManager(AdHocCommandsManager.class)
+                            .commandComplete(optional.get(), Namespace.EASY_ONBOARDING_INVITE);
+            final ListenableFuture<MiniUri.Http> asHttpUri =
+                    Futures.transform(
+                            future,
+                            data -> {
+                                Preconditions.checkNotNull(data);
+                                if (MiniUri.getOrNull(data.getValue("landing-url"))
+                                        instanceof MiniUri.Http http) {
+                                    return http;
+                                } else {
+                                    Log.w(Config.LOGTAG, "server provided landing url not found");
+                                    return validatedXmppUri(data, false).asInvitationUri();
+                                }
+                            },
+                            MoreExecutors.directExecutor());
+            return Futures.catching(
+                    Futures.withTimeout(asHttpUri, INVITE_TIMEOUT, FUTURE_TIMEOUT_EXECUTOR),
+                    Throwable.class,
+                    t -> {
+                        Log.d(Config.LOGTAG, "could not retrieve easy invite uri", t);
+                        return getAccount().getShareableUri().asInvitationUri();
+                    },
+                    MoreExecutors.directExecutor());
+        } else {
+            return Futures.immediateFuture(getAccount().getShareableUri().asInvitationUri());
+        }
     }
 
     public ListenableFuture<MiniUri.Xmpp> inviteOrFallback() {
@@ -73,33 +107,36 @@ public class EasyOnboardingManager extends AbstractManager {
                 future,
                 data -> {
                     Preconditions.checkNotNull(data);
-                    final MiniUri.Xmpp uri;
-                    if (MiniUri.getOrNull(data.getValue("uri")) instanceof MiniUri.Xmpp xmpp) {
-                        uri = xmpp;
-                    } else {
-                        throw new IllegalStateException("Did not find valid XMPP uri");
-                    }
-                    final var account = getAccount().getJid().asBareJid();
-                    if (uri.isAddress() && uri.asJid().equals(account)) {
-                        final ImmutableMultimap.Builder<String, String> builder =
-                                new ImmutableMultimap.Builder<>();
-                        for (final var entry :
-                                Maps.filterKeys(
-                                                uri.getParameterFlat(),
-                                                INVITE_URI_ALLOWED_PARAMETERS::contains)
-                                        .entrySet()) {
-                            builder.put(entry);
-                        }
-                        for (final var entry : getAccount().getFingerprints().entrySet()) {
-                            builder.putAll(entry.getKey(), entry.getValue());
-                        }
-                        return new MiniUri.Xmpp(account, builder.build().asMap());
-                    } else {
-                        throw new IllegalStateException(
-                                "URI in invite response did not match our account");
-                    }
+                    return validatedXmppUri(data, true);
                 },
                 MoreExecutors.directExecutor());
+    }
+
+    private MiniUri.Xmpp validatedXmppUri(final Data data, final boolean includeFingerprints) {
+        final MiniUri.Xmpp uri;
+        if (MiniUri.getOrNull(data.getValue("uri")) instanceof MiniUri.Xmpp xmpp) {
+            uri = xmpp;
+        } else {
+            throw new IllegalStateException("Did not find valid XMPP uri");
+        }
+        final var account = getAccount().getJid().asBareJid();
+        if (uri.isAddress() && uri.asJid().equals(account)) {
+            final ImmutableMultimap.Builder<String, String> builder =
+                    new ImmutableMultimap.Builder<>();
+            for (final var entry :
+                    Maps.filterKeys(uri.getParameterFlat(), INVITE_URI_ALLOWED_PARAMETERS::contains)
+                            .entrySet()) {
+                builder.put(entry);
+            }
+            if (includeFingerprints) {
+                for (final var entry : getAccount().getFingerprints().entrySet()) {
+                    builder.putAll(entry.getKey(), entry.getValue());
+                }
+            }
+            return new MiniUri.Xmpp(account, builder.build().asMap());
+        } else {
+            throw new IllegalStateException("URI in invite response did not match our account");
+        }
     }
 
     public ListenableFuture<EasyOnboardingInvite> createAccount() {

@@ -4060,8 +4060,7 @@ public class ConversationFragment extends XmppFragment
                     item -> {
                         switch (item.getItemId()) {
                             case R.id.action_show_qr_code:
-                                requireXmppActivity()
-                                        .showQrCode(conversation.getAccount().getShareableUri());
+                                requireXmppActivity().showQrCode(conversation.getAccount());
                                 break;
                             case R.id.action_account_details:
                                 requireXmppActivity()

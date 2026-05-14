@@ -84,6 +84,7 @@ import eu.siacs.conversations.utils.SignupUtils;
 import eu.siacs.conversations.xmpp.Jid;
 import eu.siacs.conversations.xmpp.OnKeyStatusUpdated;
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist;
+import eu.siacs.conversations.xmpp.manager.EasyOnboardingManager;
 import eu.siacs.conversations.xmpp.manager.PresenceManager;
 import eu.siacs.conversations.xmpp.manager.ReactionManager;
 import eu.siacs.conversations.xmpp.manager.RegistrationManager;
@@ -1050,6 +1051,34 @@ public abstract class XmppActivity extends ActionBarActivity {
             MenuDoubleTabUtil.recordMenuOpen();
         }
         return super.onMenuOpened(id, menu);
+    }
+
+    public void showQrCode(final Account account) {
+        final var connection = account.getXmppConnection();
+        final var manager = connection.getManager(EasyOnboardingManager.class);
+        final var future = manager.inviteOrFallback();
+        final Toast toast;
+        if (future.isDone()) {
+            toast = null;
+        } else {
+            toast = Toast.makeText(this, R.string.please_wait, Toast.LENGTH_LONG);
+            toast.show();
+        }
+        Futures.addCallback(
+                future,
+                new FutureCallback<>() {
+                    @Override
+                    public void onSuccess(final MiniUri.Xmpp result) {
+                        Toasts.hide(toast);
+                        showQrCode(result);
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Throwable t) {
+                        Log.e(Config.LOGTAG, "could not fetch invite uri", t);
+                    }
+                },
+                ContextCompat.getMainExecutor(this));
     }
 
     protected void showQrCode() {
