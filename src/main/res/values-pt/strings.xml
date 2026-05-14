@@ -314,7 +314,7 @@
     <string name="verified_omemo_key_with_certificate">A chave OMEMO foi verificada com o certificado!</string>
     <string name="device_does_not_support_certificates">O seu dispositivo não suporta a seleção de certificados de cliente!</string>
     <string name="pref_connection_options">Conexão</string>
-    <string name="pref_use_tor">Conectar via TOR</string>
+    <string name="pref_use_tor">Conectar via Tor</string>
     <string name="pref_use_tor_summary">Usar a rede Tor para todas as conexões. Requer a aplicação Orbot</string>
     <string name="account_settings_hostname">Hostname</string>
     <string name="account_settings_port">Porto</string>
@@ -750,7 +750,7 @@
     <string name="pref_video_compression">Qualidade de Vídeo</string>
     <string name="already_drafting_message">Já está a rascunhar uma mensagem.</string>
     <string name="feature_not_implemented">Funcionalidade não implementada</string>
-    <string name="we_will_be_verifying"><![CDATA[Iremos verificar o número de telefone<br/><br/><b>%s</b><br/><br/>Quer continuar, ou gostaria de editar o número?]]></string>
+    <string name="we_will_be_verifying"><![CDATA[Iremos verificar o número de telefone<br><br><b>%s</b><br><br>Quer continuar, ou gostaria de editar o número?]]></string>
     <string name="please_enter_your_phone_number">Por favor digite o seu número de telefone.</string>
     <string name="search_countries">Pesquisar países</string>
     <string name="wait_x">Por favor espere (%s)</string>
@@ -883,7 +883,7 @@
     <string name="conversations_backup">Backup de Conversations</string>
     <string name="register_new_account">Registar nova conta</string>
     <string name="unable_to_perform_this_action">Não foi possível executar esta ação</string>
-    <string name="group_chats_and_channels"><![CDATA[Conversas de Grupo & Canais]]></string>
+    <string name="group_chats_and_channels"><![CDATA[Conversas de Grupo &amp; Canais]]></string>
     <string name="jabber_network">jabber.network</string>
     <string name="local_server">Servidor local</string>
     <string name="event">Evento</string>
@@ -1200,4 +1200,10 @@
     <string name="select_all">Selecionar tudo</string>
     <string name="search_in_chats">Pesquisar nas conversas</string>
     <string name="search_for_x_in_chats">Pesquisar por \"%s\" nas conversas</string>
+    <string name="attachment_choice_gallery">Galeria</string>
+    <string name="attachment_choice_file">Ficheiro</string>
+    <string name="attachment_choice_location">Localização</string>
+    <string name="attachment_choice_camera">Câmara</string>
+    <string name="attachment_choice_video">Vídeo</string>
+    <string name="attachment_choice_recording">Gravação de voz</string>
 </resources>
