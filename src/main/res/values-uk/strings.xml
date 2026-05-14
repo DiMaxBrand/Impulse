@@ -829,7 +829,7 @@
     <string name="event">Подія</string>
     <string name="open_backup">Відкрити резервну копію</string>
     <string name="not_a_backup_file">Вибраний файл не є резервною копією</string>
-    <string name="account_already_setup">Цей обліковий запис уже створено</string>
+    <string name="account_already_setup">Цей обліковий запис уже налаштовано</string>
     <string name="please_enter_password">Будь ласка, введіть пароль для цього облікового запису</string>
     <string name="unable_to_perform_this_action">Неможливо виконати цю дію</string>
     <string name="open_join_dialog">Приєднатися до відкритого каналу…</string>
@@ -1245,4 +1245,10 @@
     <string name="select_all">Вибрати все</string>
     <string name="search_in_chats">Пошук у розмовах</string>
     <string name="search_for_x_in_chats">Пошук «%s» у розмовах</string>
+    <string name="attachment_choice_gallery">Галерея</string>
+    <string name="attachment_choice_file">Файл</string>
+    <string name="attachment_choice_location">Місцезнаходження</string>
+    <string name="attachment_choice_camera">Камера</string>
+    <string name="attachment_choice_video">Відео</string>
+    <string name="attachment_choice_recording">Голосове повідомлення</string>
 </resources>
