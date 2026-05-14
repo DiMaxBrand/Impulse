@@ -1225,4 +1225,10 @@
     <string name="select_all">Wybierz wszystkie</string>
     <string name="search_in_chats">Szukaj w rozmowach</string>
     <string name="search_for_x_in_chats">Szukaj „%s” w rozmowach</string>
+    <string name="attachment_choice_gallery">Galeria</string>
+    <string name="attachment_choice_file">Plik</string>
+    <string name="attachment_choice_location">Lokalizacja</string>
+    <string name="attachment_choice_camera">Aparat</string>
+    <string name="attachment_choice_video">Wideo</string>
+    <string name="attachment_choice_recording">Wiadomość głosowa</string>
 </resources>
