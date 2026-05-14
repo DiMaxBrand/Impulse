@@ -55,6 +55,7 @@
     <string name="change_password_on_server">Change password on server</string>
     <string name="share_with">Share with…</string>
     <string name="invite_contact">Invite contact</string>
+    <string name="start_group_chat">Start group chat</string>
     <string name="invite">Invite</string>
     <string name="contacts">Contacts</string>
     <string name="contact">Contact</string>

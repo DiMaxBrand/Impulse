@@ -651,8 +651,6 @@ public class ConversationFragment extends XmppFragment
                 @Override
                 public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
                     menuInflater.inflate(R.menu.fragment_conversation, menu);
-                    final MenuItem menuMucDetails = menu.findItem(R.id.action_muc_details);
-                    final MenuItem menuContactDetails = menu.findItem(R.id.action_contact_details);
                     final MenuItem menuInviteContact = menu.findItem(R.id.action_invite);
                     final MenuItem menuMute = menu.findItem(R.id.action_mute);
                     final MenuItem menuUnmute = menu.findItem(R.id.action_unmute);
@@ -665,12 +663,7 @@ public class ConversationFragment extends XmppFragment
                         return;
                     }
                     if (c.getMode() == Conversation.MODE_MULTI) {
-                        menuContactDetails.setVisible(false);
                         menuInviteContact.setVisible(c.getMucOptions().canInvite());
-                        menuMucDetails.setTitle(
-                                c.getMucOptions().isPrivateAndNonAnonymous()
-                                        ? R.string.action_muc_details
-                                        : R.string.channel_details);
                         menuCall.setVisible(false);
                         menuOngoingCall.setVisible(false);
                     } else {
@@ -694,14 +687,13 @@ public class ConversationFragment extends XmppFragment
                             menuCall.setVisible(true);
                             menuVideoCall.setVisible(cameraAvailable);
                         }
-                        menuContactDetails.setVisible(!c.withSelf());
-                        menuMucDetails.setVisible(false);
                         final var connection = c.getAccount().getXmppConnection();
                         menuInviteContact.setVisible(
                                 !connection
                                         .getManager(MultiUserChatManager.class)
                                         .getServices()
                                         .isEmpty());
+                        menuInviteContact.setTitle(R.string.start_group_chat);
                     }
                     if (c.isMuted()) {
                         menuMute.setVisible(false);
@@ -736,12 +728,6 @@ public class ConversationFragment extends XmppFragment
                             requireXmppActivity()
                                     .xmppConnectionService
                                     .archiveConversation(conversation);
-                            break;
-                        case R.id.action_contact_details:
-                            requireXmppActivity().switchToContactDetails(conversation.getContact());
-                            break;
-                        case R.id.action_muc_details:
-                            ConferenceDetailsActivity.open(getActivity(), conversation);
                             break;
                         case R.id.action_invite:
                             startActivityForResult(
