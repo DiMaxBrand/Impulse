@@ -27,6 +27,7 @@
             android:layout_marginHorizontal="2sp"
             android:layout_marginTop="4dp"
             android:textAppearance="?textAppearanceCaption"
-            tools:text="File" />
+            android:ellipsize="middle"
+            tools:text="Voice recording" />
     </LinearLayout>
 </layout>
