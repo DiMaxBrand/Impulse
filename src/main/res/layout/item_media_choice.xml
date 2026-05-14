@@ -5,7 +5,7 @@
 
     <LinearLayout
         android:id="@+id/item_file"
-        android:layout_width="wrap_content"
+        android:layout_width="108dp"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="vertical">
@@ -20,9 +20,11 @@
             tools:icon="@drawable/ic_description_24dp" />
 
         <TextView
+            android:maxLines="1"
             android:id="@+id/label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2sp"
             android:layout_marginTop="4dp"
             android:textAppearance="?textAppearanceCaption"
             tools:text="File" />
