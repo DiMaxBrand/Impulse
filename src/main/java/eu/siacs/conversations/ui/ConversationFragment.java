@@ -1170,11 +1170,12 @@ public class ConversationFragment extends XmppFragment
                                 requireContext(), data, Attachment.Type.RECORDING);
                 final boolean autoSendRecording =
                         data.getBooleanExtra(RecordingActivity.EXTRA_AUTO_SEND_RECORDING, false);
-                mediaPreviewAdapter.addMediaPreviews(recordings);
-                toggleInputMethod();
                 if (autoSendRecording) {
-                    commitAttachments();
+                    commitAttachments(recordings);
+                } else {
+                    mediaPreviewAdapter.addMediaPreviews(recordings);
                 }
+                toggleInputMethod();
                 break;
             case ATTACHMENT_CHOICE_LOCATION:
                 final double latitude = data.getDoubleExtra("latitude", 0);
@@ -1207,19 +1208,26 @@ public class ConversationFragment extends XmppFragment
     }
 
     private void commitAttachments() {
-        final List<Attachment> attachments = mediaPreviewAdapter.getAttachments();
+        final var attachments = mediaPreviewAdapter.getAttachments();
+        commitAttachments(attachments);
+    }
+
+    private void commitAttachments(final List<Attachment> attachments) {
+        setAttachmentChoicesVisibility(false);
         if (anyNeedsExternalStoragePermission(attachments)
                 && !hasPermissions(
                         REQUEST_COMMIT_ATTACHMENTS, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            backfillAttachment(attachments);
             return;
         }
         if (trustKeysIfNeeded(conversation, REQUEST_TRUST_KEYS_ATTACHMENTS)) {
+            backfillAttachment(attachments);
             return;
         }
         final PresenceSelector.OnPresenceSelected callback =
                 () -> {
-                    for (Iterator<Attachment> i = attachments.iterator(); i.hasNext(); i.remove()) {
-                        final Attachment attachment = i.next();
+                    for (final var i = attachments.iterator(); i.hasNext(); i.remove()) {
+                        final var attachment = i.next();
                         if (attachment.getType() == Attachment.Type.LOCATION) {
                             attachLocationToConversation(conversation, attachment.getUri());
                         } else if (attachment.getType() == Attachment.Type.IMAGE) {
@@ -1253,6 +1261,13 @@ public class ConversationFragment extends XmppFragment
         }
     }
 
+    private void backfillAttachment(final List<Attachment> attachments) {
+        if (attachments.size() == 1
+                && !this.mediaPreviewAdapter.getAttachments().containsAll(attachments)) {
+            this.mediaPreviewAdapter.addMediaPreviews(attachments);
+        }
+    }
+
     private static boolean anyNeedsExternalStoragePermission(
             final Collection<Attachment> attachments) {
         for (final Attachment attachment : attachments) {
@@ -1271,7 +1286,7 @@ public class ConversationFragment extends XmppFragment
         updateAttachmentButton();
     }
 
-    private void handleNegativeActivityResult(int requestCode) {
+    private void handleNegativeActivityResult(final int requestCode) {
         switch (requestCode) {
             case ATTACHMENT_CHOICE_TAKE_PHOTO:
                 if (pendingTakePhotoUri.clear()) {
