@@ -1250,5 +1250,6 @@
     <string name="attachment_choice_location">Місцезнаходження</string>
     <string name="attachment_choice_camera">Камера</string>
     <string name="attachment_choice_video">Відео</string>
-    <string name="attachment_choice_recording">Голосове повідомлення</string>
+    <string name="attachment_choice_recording">Аудіозапис</string>
+    <string name="start_group_chat">Почати груповий чат</string>
 </resources>
