@@ -1196,5 +1196,6 @@
     <string name="attachment_choice_location">Localización</string>
     <string name="attachment_choice_camera">Cámara</string>
     <string name="attachment_choice_video">Vídeo</string>
-    <string name="attachment_choice_recording">Gravación de voz</string>
+    <string name="attachment_choice_recording">Gravando</string>
+    <string name="start_group_chat">Crear conversa en grupo</string>
 </resources>
