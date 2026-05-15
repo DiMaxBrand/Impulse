@@ -1197,5 +1197,5 @@
     <string name="attachment_choice_camera">Kamera</string>
     <string name="attachment_choice_video">Video</string>
     <string name="attachment_choice_recording">Sprachnachricht</string>
-    <string name="start_group_chat">Gruppenchat beginnen</string>
+    <string name="start_group_chat">Gruppenchat starten</string>
 </resources>
