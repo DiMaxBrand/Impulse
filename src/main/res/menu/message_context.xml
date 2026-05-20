@@ -7,6 +7,16 @@
         android:visible="false" />
 
     <item
+        android:id="@+id/pin_message"
+        android:title="@string/pin_message"
+        android:visible="false" />
+
+    <item
+        android:id="@+id/unpin_message"
+        android:title="@string/unpin_message"
+        android:visible="false" />
+
+    <item
         android:id="@+id/moderation"
         android:title="@string/moderate_delete"
         android:visible="false" />

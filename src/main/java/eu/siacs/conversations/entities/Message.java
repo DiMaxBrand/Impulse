@@ -90,6 +90,7 @@ public class Message extends AbstractEntity
     public static final String DELETED = "deleted";
     public static final String OCCUPANT_ID = "occupantId";
     public static final String REACTIONS = "reactions";
+    public static final String PINNED = "pinned";
     public static final String ME_COMMAND = "/me ";
 
     public static final String ERROR_MESSAGE_CANCELLED = "eu.siacs.conversations.cancelled";
@@ -122,6 +123,7 @@ public class Message extends AbstractEntity
     private Set<ReadByMarker> readByMarkers = new CopyOnWriteArraySet<>();
     private String occupantId;
     private Collection<Reaction> reactions = Collections.emptyList();
+    private boolean pinned = false;
 
     private Boolean isGeoUri = null;
     private Boolean isEmojisOnly = null;
@@ -254,7 +256,7 @@ public class Message extends AbstractEntity
 
     public static Message fromCursor(
             final Context context, final Cursor cursor, final Conversation conversation) {
-        return new Message(
+        final Message message = new Message(
                 conversation,
                 cursor.getString(cursor.getColumnIndexOrThrow(UUID)),
                 cursor.getString(cursor.getColumnIndexOrThrow(CONVERSATION)),
@@ -281,6 +283,11 @@ public class Message extends AbstractEntity
                 cursor.getString(cursor.getColumnIndexOrThrow(BODY_LANGUAGE)),
                 cursor.getString(cursor.getColumnIndexOrThrow(OCCUPANT_ID)),
                 Reaction.fromString(cursor.getString(cursor.getColumnIndexOrThrow(REACTIONS))));
+        final int pinnedIndex = cursor.getColumnIndex(PINNED);
+        if (pinnedIndex >= 0) {
+            message.pinned = cursor.getInt(pinnedIndex) > 0;
+        }
+        return message;
     }
 
     protected static StorageLocation storageLocationFromCursor(
@@ -371,6 +378,7 @@ public class Message extends AbstractEntity
         values.put(BODY_LANGUAGE, bodyLanguage);
         values.put(OCCUPANT_ID, occupantId);
         values.put(REACTIONS, Reaction.toString(this.reactions));
+        values.put(PINNED, pinned ? 1 : 0);
         return values;
     }
 
@@ -756,6 +764,14 @@ public class Message extends AbstractEntity
 
     public void setReactions(final Collection<Reaction> reactions) {
         this.reactions = reactions;
+    }
+
+    public boolean isPinned() {
+        return pinned;
+    }
+
+    public void setPinned(final boolean pinned) {
+        this.pinned = pinned;
     }
 
     public boolean hasMeCommand() {

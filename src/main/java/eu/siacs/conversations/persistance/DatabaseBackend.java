@@ -74,7 +74,7 @@ import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 public class DatabaseBackend extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "history";
-    private static final int DATABASE_VERSION = 55;
+    private static final int DATABASE_VERSION = 57;
 
     private static boolean requiresMessageIndexRebuild = false;
     private static DatabaseBackend instance = null;
@@ -492,6 +492,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + " TEXT,"
                         + Message.REACTIONS
                         + " TEXT,"
+                        + Message.PINNED
+                        + " INTEGER DEFAULT 0,"
                         + Message.REMOTE_MSG_ID
                         + " TEXT, FOREIGN KEY("
                         + Message.CONVERSATION
@@ -1103,6 +1105,27 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                             + " ADD COLUMN "
                             + Message.SHARED_STORAGE
                             + " BOOLEAN NOT NULL DEFAULT 1");
+        }
+        if (oldVersion < 56 && newVersion >= 56) {
+            db.execSQL(
+                    "ALTER TABLE "
+                            + Message.TABLENAME
+                            + " ADD COLUMN "
+                            + Message.PINNED
+                            + " INTEGER DEFAULT 0");
+        }
+        if (oldVersion < 57 && newVersion >= 57) {
+            // covers devices that created the db at version 56 before pinned was added to onCreate
+            try {
+                db.execSQL(
+                        "ALTER TABLE "
+                                + Message.TABLENAME
+                                + " ADD COLUMN "
+                                + Message.PINNED
+                                + " INTEGER DEFAULT 0");
+            } catch (final Exception e) {
+                // column already exists (added in 55→56 migration)
+            }
         }
     }
 
@@ -1856,6 +1879,31 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         final String[] args = {uuid};
         final int rows = db.delete(Message.TABLENAME, Account.UUID + "=?", args);
         return rows == 1;
+    }
+
+    public List<Message> getPinnedMessages(final Conversation conversation) {
+        final var db = this.getReadableDatabase();
+        final List<Message> list = new ArrayList<>();
+        final String sql =
+                "SELECT * FROM "
+                        + Message.TABLENAME
+                        + " WHERE "
+                        + Message.CONVERSATION
+                        + "=? AND "
+                        + Message.PINNED
+                        + "=1 ORDER BY "
+                        + Message.TIME_SENT
+                        + " DESC";
+        try (final Cursor cursor = db.rawQuery(sql, new String[]{conversation.getUuid()})) {
+            while (cursor.moveToNext()) {
+                try {
+                    list.add(Message.fromCursor(context, cursor, conversation));
+                } catch (final Exception e) {
+                    Log.e(Config.LOGTAG, "unable to restore pinned message", e);
+                }
+            }
+        }
+        return list;
     }
 
     public Map<Jid, Contact> readRoster(final Account account) {
