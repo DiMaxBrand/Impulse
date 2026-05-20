@@ -971,6 +971,9 @@
     <string name="could_not_switch_camera">Could not switch camera</string>
     <string name="add_to_favorites">Pin to top</string>
     <string name="remove_from_favorites">Unpin from top</string>
+    <string name="pin_message">Pin message</string>
+    <string name="unpin_message">Unpin message</string>
+    <string name="pinned_message">Pinned message</string>
     <string name="gpx_track">GPX track</string>
     <string name="could_not_correct_message">Could not edit message</string>
     <string name="your_avatar">Your avatar</string>

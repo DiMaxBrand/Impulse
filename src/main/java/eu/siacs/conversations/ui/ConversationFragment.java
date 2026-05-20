@@ -496,6 +496,9 @@ public class ConversationFragment extends XmppFragment
                 return true;
             };
     private Message selectedMessage;
+    private final List<Message> pinnedMessages = new ArrayList<>();
+    private int currentPinnedIndex = 0;
+    private boolean pinnedBannerDismissed = false;
     private final OnClickListener mEnableAccountListener =
             new OnClickListener() {
                 @Override
@@ -1381,6 +1384,11 @@ public class ConversationFragment extends XmppFragment
         binding.textSendButton.setOnClickListener(this.mSendButtonListener);
 
         binding.scrollToBottomButton.setOnClickListener(this.mScrollButtonListener);
+        binding.pinnedMessageBanner.setOnClickListener(v -> scrollToPinnedMessage());
+        binding.pinnedMessageClose.setOnClickListener(v -> {
+            pinnedBannerDismissed = true;
+            binding.pinnedMessageBanner.setVisibility(View.GONE);
+        });
         binding.messagesView.setOnScrollListener(mOnScrollListener);
         binding.messagesView.setTranscriptMode(ListView.TRANSCRIPT_MODE_NORMAL);
         binding.mediaPreview.setAdapter(mediaPreviewAdapter);
@@ -1499,6 +1507,8 @@ public class ConversationFragment extends XmppFragment
             final MenuItem moderateMessage = menu.findItem(R.id.moderation);
             final MenuItem showErrorMessage = menu.findItem(R.id.show_error_message);
             final MenuItem saveFile = menu.findItem(R.id.save_file);
+            final MenuItem pinMessage = menu.findItem(R.id.pin_message);
+            final MenuItem unpinMessage = menu.findItem(R.id.unpin_message);
             final boolean unInitiatedButKnownSize = MessageUtils.unInitiatedButKnownSize(m);
             final boolean showError =
                     m.getStatus() == Message.STATUS_SEND_FAILED
@@ -1646,6 +1656,13 @@ public class ConversationFragment extends XmppFragment
             if (showError) {
                 showErrorMessage.setVisible(true);
             }
+            if (m.getType() != Message.TYPE_STATUS && m.getType() != Message.TYPE_RTP_SESSION && !m.isDeleted()) {
+                if (m.isPinned()) {
+                    unpinMessage.setVisible(true);
+                } else {
+                    pinMessage.setVisible(true);
+                }
+            }
             final String mime = m.isFileOrImage() ? m.getMimeType() : null;
             if ((m.isGeoUri() && GeoHelper.openInOsmAnd(getActivity(), m))
                     || (mime != null && mime.startsWith("audio/"))) {
@@ -1729,6 +1746,14 @@ public class ConversationFragment extends XmppFragment
                 addReaction(selectedMessage);
                 yield true;
             }
+            case R.id.pin_message -> {
+                pinMessage(selectedMessage);
+                yield true;
+            }
+            case R.id.unpin_message -> {
+                unpinMessage(selectedMessage);
+                yield true;
+            }
             default -> super.onContextItemSelected(item);
         };
     }
@@ -1768,6 +1793,73 @@ public class ConversationFragment extends XmppFragment
                 startActivity(intent);
             }
         }
+    }
+
+    private void pinMessage(final Message message) {
+        message.setPinned(true);
+        requireXmppActivity().xmppConnectionService.updateMessage(message, false);
+        loadPinnedMessages();
+        updatePinnedBanner();
+    }
+
+    private void unpinMessage(final Message message) {
+        message.setPinned(false);
+        requireXmppActivity().xmppConnectionService.updateMessage(message, false);
+        loadPinnedMessages();
+        updatePinnedBanner();
+    }
+
+    private void loadPinnedMessages() {
+        if (conversation == null || requireXmppActivity().xmppConnectionService == null) {
+            return;
+        }
+        final List<Message> loaded =
+                requireXmppActivity().xmppConnectionService.databaseBackend.getPinnedMessages(conversation);
+        pinnedMessages.clear();
+        pinnedMessages.addAll(loaded);
+        currentPinnedIndex = 0;
+    }
+
+    private void updatePinnedBanner() {
+        if (binding == null) {
+            return;
+        }
+        if (pinnedMessages.isEmpty() || pinnedBannerDismissed) {
+            binding.pinnedMessageBanner.setVisibility(View.GONE);
+            return;
+        }
+        if (currentPinnedIndex >= pinnedMessages.size()) {
+            currentPinnedIndex = 0;
+        }
+        final Message pinned = pinnedMessages.get(currentPinnedIndex);
+        final int total = pinnedMessages.size();
+        if (total > 1) {
+            binding.pinnedMessageLabel.setText(
+                    getString(R.string.pinned_message) + " " + (currentPinnedIndex + 1) + "/" + total);
+        } else {
+            binding.pinnedMessageLabel.setText(R.string.pinned_message);
+        }
+        final String preview = pinned.isFileOrImage()
+                ? UIHelper.getFileDescriptionString(requireContext(), pinned)
+                : pinned.getBody();
+        binding.pinnedMessagePreview.setText(preview);
+        binding.pinnedMessageBanner.setVisibility(View.VISIBLE);
+    }
+
+    private void scrollToPinnedMessage() {
+        if (pinnedMessages.isEmpty()) {
+            return;
+        }
+        if (currentPinnedIndex >= pinnedMessages.size()) {
+            currentPinnedIndex = 0;
+        }
+        final Message pinned = pinnedMessages.get(currentPinnedIndex);
+        final int index = getIndexOf(pinned.getUuid(), messageList);
+        if (index >= 0) {
+            binding.messagesView.setSelectionFromTop(index, 0);
+        }
+        currentPinnedIndex = (currentPinnedIndex + 1) % pinnedMessages.size();
+        updatePinnedBanner();
     }
 
     private void togglePinned() {
@@ -2807,6 +2899,8 @@ public class ConversationFragment extends XmppFragment
         if (this.binding == null) {
             return false;
         }
+        pinnedBannerDismissed = false;
+        loadPinnedMessages();
 
         if (!requireXmppActivity()
                 .xmppConnectionService
@@ -3230,6 +3324,7 @@ public class ConversationFragment extends XmppFragment
                 conversation.populateWithMessages(this.messageList);
                 updateSnackBar(conversation);
                 updateStatusMessages();
+                updatePinnedBanner();
                 if (conversation.getReceivedMessagesCountSinceUuid(lastMessageUuid) != 0) {
                     binding.unreadCountCustomView.setVisibility(View.VISIBLE);
                     binding.unreadCountCustomView.setUnreadCount(
