@@ -109,9 +109,9 @@ android {
         minSdkVersion 23
         versionCode 42176
         versionName "2.19.16"
-        applicationId "eu.siacs.conversations"
+        applicationId "com.dimax.impulse"
         resValue "string", "applicationId", applicationId
-        def appName = "Conversations"
+        def appName = "Импульс"
         resValue "string", "app_name", appName
         buildConfigField "String", "APP_NAME", "\"$appName\""
         base {
