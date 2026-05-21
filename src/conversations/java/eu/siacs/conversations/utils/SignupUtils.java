@@ -10,9 +10,7 @@ import eu.siacs.conversations.entities.Account;
 import eu.siacs.conversations.persistance.DatabaseBackend;
 import eu.siacs.conversations.ui.ConversationsActivity;
 import eu.siacs.conversations.ui.EditAccountActivity;
-import eu.siacs.conversations.ui.MagicCreateActivity;
 import eu.siacs.conversations.ui.ManageAccountActivity;
-import eu.siacs.conversations.ui.PickServerActivity;
 import eu.siacs.conversations.ui.WelcomeActivity;
 import eu.siacs.conversations.xmpp.Jid;
 import java.util.Collection;
@@ -25,14 +23,12 @@ public class SignupUtils {
 
     public static Intent getTokenRegistrationIntent(
             final Context context, Jid jid, String preAuth) {
-        final Intent intent = new Intent(context, MagicCreateActivity.class);
-        if (jid.isDomainJid()) {
-            intent.putExtra(MagicCreateActivity.EXTRA_DOMAIN, jid.getDomain().toString());
-        } else {
-            intent.putExtra(MagicCreateActivity.EXTRA_DOMAIN, jid.getDomain().toString());
-            intent.putExtra(MagicCreateActivity.EXTRA_USERNAME, jid.getLocal());
+        final Intent intent = new Intent(context, EditAccountActivity.class);
+        if (!jid.isDomainJid()) {
+            intent.putExtra("jid", jid.asBareJid().toString());
         }
-        intent.putExtra(MagicCreateActivity.EXTRA_PRE_AUTH, preAuth);
+        intent.putExtra("init", true);
+        intent.putExtra(EditAccountActivity.EXTRA_FORCE_REGISTER, true);
         return intent;
     }
 
@@ -41,13 +37,7 @@ public class SignupUtils {
     }
 
     public static Intent getSignUpIntent(final Context context, final boolean toServerChooser) {
-        final Intent intent;
-        if (toServerChooser) {
-            intent = new Intent(context, PickServerActivity.class);
-        } else {
-            intent = new Intent(context, WelcomeActivity.class);
-        }
-        return intent;
+        return new Intent(context, WelcomeActivity.class);
     }
 
     public static Intent getRedirectionIntent(final Context context) {
@@ -60,18 +50,14 @@ public class SignupUtils {
             final var account = pending.account();
             intent = new Intent(context, EditAccountActivity.class);
             intent.putExtra("jid", account.jid().asBareJid().toString());
-            if (!account.isOptionSet(Account.OPTION_MAGIC_CREATE)) {
-                intent.putExtra(
-                        EditAccountActivity.EXTRA_FORCE_REGISTER,
-                        account.isOptionSet(Account.OPTION_REGISTER));
-            }
+            intent.putExtra(
+                    EditAccountActivity.EXTRA_FORCE_REGISTER,
+                    account.isOptionSet(Account.OPTION_REGISTER));
         } else if (state instanceof None) {
             if (Config.X509_VERIFICATION) {
                 intent = new Intent(context, ManageAccountActivity.class);
-            } else if (Config.MAGIC_CREATE_DOMAIN != null) {
-                intent = new Intent(context, WelcomeActivity.class);
             } else {
-                intent = new Intent(context, EditAccountActivity.class);
+                intent = new Intent(context, WelcomeActivity.class);
             }
         } else {
             throw new AssertionError("Invalid setup state");
