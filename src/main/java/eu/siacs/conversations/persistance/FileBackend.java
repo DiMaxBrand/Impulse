@@ -691,6 +691,9 @@ public class FileBackend {
 
     private String getExtensionFromUri(final Uri uri) {
         final String filename = getFilenameFromUri(uri);
+        if (filename == null) {
+            return null;
+        }
         return Iterables.getLast(Splitter.on('.').split(filename), null);
     }
 
