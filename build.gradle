@@ -21,15 +21,8 @@ repositories {
 }
 
 configurations {
-    playstoreImplementation
     freeImplementation
     conversationsFreeImplementation
-    conversationsPlaystorImplementation
-    conversationsPlaystoreImplementation
-    quicksyPlaystoreImplementation
-    quicksyPlaystoreImplementation
-    quicksyFreeImplementation
-    quicksyImplementation
 }
 
 spotless {
@@ -85,10 +78,6 @@ dependencies {
     implementation 'org.minidns:minidns-dnssec:1.1.1'
     implementation 'org.osmdroid:osmdroid-android:6.1.20'
     implementation 'org.whispersystems:signal-protocol-java:2.6.2'
-    conversationsPlaystoreImplementation 'com.android.installreferrer:installreferrer:2.2'
-    quicksyImplementation 'io.michaelrocks:libphonenumber-android:9.0.30'
-
-    quicksyPlaystoreImplementation 'com.google.android.gms:play-services-auth-api-phone:18.3.0'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.16.1'
@@ -148,39 +137,11 @@ android {
 
     productFlavors {
 
-        quicksy {
-            dimension "mode"
-            applicationId = "im.quicksy.client"
-            resValue "string", "applicationId", applicationId
-
-            def appName = "Quicksy"
-            resValue "string", "app_name", appName
-            buildConfigField "String", "APP_NAME", "\"$appName\""
-            buildConfigField "String", "PRIVACY_POLICY", "\"https://quicksy.im/privacy.htm\""
-            def propsFile = rootProject.file('quicksy-auth-secret.properties')
-            if (propsFile.exists()) {
-                def props = new Properties()
-                props.load(new FileInputStream(propsFile))
-                def key = props.getProperty('QUICKSY_AUTHENTICATION_SECRET')
-                if (key != null) {
-                    buildConfigField "String", "QUICKSY_AUTHENTICATION_SECRET",  "\"${key}\""
-                } else {
-                    buildConfigField "String", "QUICKSY_AUTHENTICATION_SECRET", "null"
-                }
-            } else {
-                buildConfigField "String", "QUICKSY_AUTHENTICATION_SECRET", "null"
-            }
-        }
-
         conversations {
             dimension "mode"
             buildConfigField "String", "PRIVACY_POLICY", "\"https://conversations.im/privacy.html\""
         }
 
-        playstore {
-            dimension "distribution"
-            versionNameSuffix "+playstore"
-        }
         free {
             dimension "distribution"
             versionNameSuffix "+free"
@@ -188,30 +149,9 @@ android {
     }
 
     sourceSets {
-        quicksyFree {
-            java {
-                srcDir 'src/quicksyFree/java'
-            }
-        }
-        quicksyPlaystore {
-            java {
-                srcDir 'src/quicksyPlaystore/java'
-            }
-            res {
-                srcDir 'src/quicksyPlaystore/res'
-            }
-        }
         conversationsFree {
             java {
                 srcDir 'src/conversationsFree/java'
-            }
-        }
-        conversationsPlaystore {
-            java {
-                srcDir 'src/conversationsPlaystore/java'
-            }
-            res {
-                srcDir 'src/conversationsPlaystore/res'
             }
         }
     }

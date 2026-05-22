@@ -1,6 +1,6 @@
 package eu.siacs.conversations.utils;
 
-import eu.siacs.conversations.ui.MagicCreateActivity;
+import android.app.Activity;
 import eu.siacs.conversations.ui.WelcomeActivity;
 
 public class InstallReferrerUtils {
@@ -9,7 +9,7 @@ public class InstallReferrerUtils {
 
     }
 
-    public static void markInstallReferrerExecuted(MagicCreateActivity magicCreateActivity) {
+    public static void markInstallReferrerExecuted(final Activity context) {
         //stub
     }
 }

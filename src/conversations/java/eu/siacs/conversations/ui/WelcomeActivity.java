@@ -118,7 +118,9 @@ public class WelcomeActivity extends QrCodeProcessingActivity
         setTitle(null);
         binding.registerNewAccount.setOnClickListener(
                 v -> {
-                    final Intent intent = new Intent(this, PickServerActivity.class);
+                    final Intent intent = new Intent(this, EditAccountActivity.class);
+                    intent.putExtra("init", true);
+                    intent.putExtra(EditAccountActivity.EXTRA_FORCE_REGISTER, true);
                     addInviteUri(intent);
                     startActivity(intent);
                 });

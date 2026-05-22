@@ -334,11 +334,6 @@ public class EditAccountActivity extends OmemoActivity
                         return;
                     }
                     if (mAccount != null) {
-                        if (mAccount.isOptionSet(Account.OPTION_MAGIC_CREATE)) {
-                            mAccount.setOption(
-                                    Account.OPTION_MAGIC_CREATE,
-                                    mAccount.getPassword().contains(password));
-                        }
                         mAccount.setJid(jid);
                         mAccount.setPort(numericPort);
                         mAccount.setHostname(hostname);
@@ -495,39 +490,6 @@ public class EditAccountActivity extends OmemoActivity
                 && mAccount != null
                 && !mAccount.isOptionSet(Account.OPTION_LOGGED_IN_SUCCESSFULLY)) {
             xmppConnectionService.deleteAccount(mAccount);
-        }
-
-        final boolean magicCreate =
-                mAccount != null
-                        && mAccount.isOptionSet(Account.OPTION_MAGIC_CREATE)
-                        && !mAccount.isOptionSet(Account.OPTION_LOGGED_IN_SUCCESSFULLY);
-        final Jid jid = mAccount == null ? null : mAccount.getJid();
-
-        if (SignupUtils.isSupportTokenRegistry()
-                && jid != null
-                && magicCreate
-                && !jid.getDomain().equals(Jid.ofDomain(Config.MAGIC_CREATE_DOMAIN))) {
-            final Jid preset;
-            if (mAccount.isOptionSet(Account.OPTION_FIXED_USERNAME)) {
-                preset = jid.asBareJid();
-            } else {
-                preset = jid.getDomain();
-            }
-            final Intent intent =
-                    SignupUtils.getTokenRegistrationIntent(
-                            this, preset, mAccount.getKey(Account.KEY_PRE_AUTH_REGISTRATION_TOKEN));
-            StartConversationActivity.addInviteUri(intent, this);
-            startActivity(intent);
-            return;
-        }
-
-        final List<Account> accounts =
-                xmppConnectionService == null ? null : xmppConnectionService.getAccounts();
-        if (accounts != null && accounts.isEmpty() && Config.MAGIC_CREATE_DOMAIN != null) {
-            Intent intent =
-                    SignupUtils.getSignUpIntent(this, mForceRegister != null && mForceRegister);
-            StartConversationActivity.addInviteUri(intent, this);
-            startActivity(intent);
         }
     }
 
@@ -861,6 +823,10 @@ public class EditAccountActivity extends OmemoActivity
                             : null;
             Log.d(Config.LOGTAG, "force register=" + mForceRegister);
             this.mInitMode = init || this.jidToEdit == null;
+            // Enable username mode when in init (onboarding) mode with hardcoded on-chat.ru
+            if (this.mInitMode && this.jidToEdit == null) {
+                this.mUsernameMode = true;
+            }
             this.messageFingerprint = intent.getStringExtra("fingerprint");
             if (!mInitMode) {
                 this.binding.accountRegisterNew.setVisibility(View.GONE);
@@ -964,9 +930,6 @@ public class EditAccountActivity extends OmemoActivity
 
         if (mAccount != null) {
             this.mInitMode |= this.mAccount.isOptionSet(Account.OPTION_REGISTER);
-            this.mUsernameMode |=
-                    mAccount.isOptionSet(Account.OPTION_MAGIC_CREATE)
-                            && mAccount.isOptionSet(Account.OPTION_REGISTER);
             if (mPendingFingerprintVerificationUri != null) {
                 processFingerprintVerification(mPendingFingerprintVerificationUri, false);
                 mPendingFingerprintVerificationUri = null;
@@ -999,11 +962,8 @@ public class EditAccountActivity extends OmemoActivity
     }
 
     private String getUserModeDomain() {
-        if (mAccount != null && mAccount.getJid().getDomain() != null) {
-            return mAccount.getServer();
-        } else {
-            return null;
-        }
+        // Always use on-chat.ru for onboarding flow
+        return "on-chat.ru";
     }
 
     @Override
@@ -1262,8 +1222,7 @@ public class EditAccountActivity extends OmemoActivity
         updateDisplayName(displayName);
 
         final boolean togglePassword =
-                mAccount.isOptionSet(Account.OPTION_MAGIC_CREATE)
-                        || !mAccount.isOptionSet(Account.OPTION_LOGGED_IN_SUCCESSFULLY);
+                !mAccount.isOptionSet(Account.OPTION_LOGGED_IN_SUCCESSFULLY);
         final boolean neverLoggedIn =
                 !mAccount.isOptionSet(Account.OPTION_LOGGED_IN_SUCCESSFULLY)
                         && QuickConversationsService.isConversations();
@@ -1285,15 +1244,7 @@ public class EditAccountActivity extends OmemoActivity
         }
         this.binding.accountRegisterNew.setChecked(
                 this.mAccount.isOptionSet(Account.OPTION_REGISTER));
-        if (this.mAccount.isOptionSet(Account.OPTION_MAGIC_CREATE)) {
-            if (this.mAccount.isOptionSet(Account.OPTION_REGISTER)) {
-                ActionBar actionBar = getSupportActionBar();
-                if (actionBar != null) {
-                    actionBar.setTitle(R.string.create_account);
-                }
-            }
-            this.binding.accountRegisterNew.setVisibility(View.GONE);
-        } else if (this.mAccount.isOptionSet(Account.OPTION_REGISTER) && mForceRegister == null) {
+        if (this.mAccount.isOptionSet(Account.OPTION_REGISTER) && mForceRegister == null) {
             this.binding.accountRegisterNew.setVisibility(View.VISIBLE);
         } else {
             this.binding.accountRegisterNew.setVisibility(View.GONE);
