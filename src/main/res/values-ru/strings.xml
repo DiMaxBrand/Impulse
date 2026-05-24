@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Импульс</string>
     <string name="action_settings">Настройки</string>
     <string name="action_accounts">Управление аккаунтами</string>
     <string name="action_account">Управление аккаунтом</string>
