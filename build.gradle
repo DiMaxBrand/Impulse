@@ -96,12 +96,11 @@ android {
 
     defaultConfig {
         minSdkVersion 23
-        versionCode 42176
+        versionCode 42179
         versionName "2.19.16"
         applicationId "com.dimax.impulse"
         resValue "string", "applicationId", applicationId
-        def appName = "Импульс"
-        resValue "string", "app_name", appName
+        def appName = "Impulse"
         buildConfigField "String", "APP_NAME", "\"$appName\""
         base {
             archivesName = "${android.defaultConfig.applicationId}-${android.defaultConfig.versionName}"

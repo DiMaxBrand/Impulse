@@ -824,10 +824,10 @@
     <string name="add_anway">Προσθήκη έτσι κι αλλιώς</string>
     <string name="this_looks_like_channel">Αυτό μοιάζει με διεύθυνση καναλιού</string>
     <string name="share_backup_files">Διαμοιρασμός αντιγράφων ασφαλείας</string>
-    <string name="conversations_backup">Αντίγραφο ασφαλείας Conversations</string>
+    <string name="conversations_backup">Αντίγραφο ασφαλείας Impulse</string>
     <string name="event">Γεγονός</string>
     <string name="open_backup">Άνοιγμα αντιγράφου ασφαλείας</string>
-    <string name="not_a_backup_file">Το αρχείο που επιλέξατε δεν είναι αντίγραφο ασφαλείας του Conversations</string>
+    <string name="not_a_backup_file">Το αρχείο που επιλέξατε δεν είναι αντίγραφο ασφαλείας του Impulse</string>
     <string name="account_already_setup">Αυτός ο λογαριασμός έχει προστεθεί ήδη</string>
     <string name="please_enter_password">Παρακαλώ εισάγετε τον κωδικό για αυτό το λογαριασμό</string>
     <string name="unable_to_perform_this_action">Αδυναμία εκτέλεσης αυτής της λειτουργίας</string>

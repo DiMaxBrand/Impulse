@@ -118,7 +118,7 @@
     <string name="pref_notification_sound_summary">Zvuk upozornění na nové zprávy</string>
     <string name="pref_call_ringtone_summary">Vyzváněcí tón pro příchozí hovory</string>
     <string name="pref_notification_grace_period">Časová lhůta</string>
-    <string name="pref_notification_grace_period_summary">Časová lhůta po kterou bude Conversations v tichém režimu při zaznamenání aktivity na jiném přístroji.</string>
+    <string name="pref_notification_grace_period_summary">Časová lhůta po kterou bude Impulse v tichém režimu při zaznamenání aktivity na jiném přístroji.</string>
     <string name="pref_advanced_options">Rozšířené</string>
     <string name="pref_never_send_crash_summary">Zasíláním detailů o důvodu selhání pomůžete dalšímu vývoji</string>
     <string name="pref_confirm_messages">Potvrzovat zprávy</string>
@@ -830,10 +830,10 @@
     <string name="add_anway">Přesto přidat</string>
     <string name="this_looks_like_channel">Toto vypadá jako adresa kanálu</string>
     <string name="share_backup_files">Sdílet soubory zálohy</string>
-    <string name="conversations_backup">Záloha Conversations</string>
+    <string name="conversations_backup">Záloha Impulse</string>
     <string name="event">Událost</string>
     <string name="open_backup">Otevřít zálohu</string>
-    <string name="not_a_backup_file">Soubor, který jste zvolili, není soubor zálohy Conversations</string>
+    <string name="not_a_backup_file">Soubor, který jste zvolili, není soubor zálohy Impulse</string>
     <string name="account_already_setup">Tento účet byl již nastaven</string>
     <string name="please_enter_password">Prosím, zadejte heslo k tomuto účtu</string>
     <string name="unable_to_perform_this_action">Nebylo možné vykonat tuto akci</string>
@@ -1126,7 +1126,7 @@
     <string name="copy_geo_uri">Kopírovat polohu</string>
     <string name="copy_email_address">Kopírovat e-mailovou adresu</string>
     <string name="copied_email_address">E-mailová adresa zkopírována do schránky</string>
-    <string name="welcome_header">Začněte používat Conversations</string>
+    <string name="welcome_header">Začněte používat Impulse</string>
     <string name="server_invite">Pozvat na server</string>
     <string name="contact_has_paused_their_notifications">%s má pozastavené notifikace</string>
 </resources>

@@ -23,11 +23,12 @@ public class MainSettingsFragment extends PreferenceFragmentCompat {
             throw new IllegalStateException(
                     "The preference resource file is missing some preferences");
         }
-        about.setTitle(getString(R.string.title_activity_about_x, BuildConfig.APP_NAME));
+        final String appName = getString(R.string.app_name);
+        about.setTitle(getString(R.string.title_activity_about_x, appName));
         about.setSummary(
                 String.format(
                         "%s %s %s @ %s · %s · %s",
-                        BuildConfig.APP_NAME,
+                        appName,
                         BuildConfig.VERSION_NAME,
                         im.conversations.webrtc.BuildConfig.WEBRTC_VERSION,
                         Strings.nullToEmpty(Build.MANUFACTURER),

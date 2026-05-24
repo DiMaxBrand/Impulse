@@ -642,7 +642,7 @@
     <string name="conversations_backup">Kopjeruajtje bisede</string>
     <string name="event">Akt</string>
     <string name="open_backup">Hap kopjeruajtje</string>
-    <string name="not_a_backup_file">Kartela që përzgjodhët s’është kartelë kopjeruajtjeje Conversations</string>
+    <string name="not_a_backup_file">Kartela që përzgjodhët s’është kartelë kopjeruajtjeje Impulse</string>
     <string name="account_already_setup">Kjo llogari është ujdisur tashmë</string>
     <string name="please_enter_password">Ju lutemi, jepni fjalëkalimin për këtë llogari</string>
     <string name="unable_to_perform_this_action">S’u krye dot ky veprim</string>

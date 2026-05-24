@@ -818,10 +818,10 @@
     <string name="add_anway">仍要添加</string>
     <string name="this_looks_like_channel">这似乎是频道地址</string>
     <string name="share_backup_files">分享备份文件</string>
-    <string name="conversations_backup">Conversations 备份</string>
+    <string name="conversations_backup">Impulse 备份</string>
     <string name="event">事件</string>
     <string name="open_backup">打开备份</string>
-    <string name="not_a_backup_file">您选择的文件不是 Conversations 备份文件</string>
+    <string name="not_a_backup_file">您选择的文件不是 Impulse 备份文件</string>
     <string name="account_already_setup">此账号已完成设置</string>
     <string name="please_enter_password">请输入此账号的密码</string>
     <string name="unable_to_perform_this_action">无法执行此操作</string>

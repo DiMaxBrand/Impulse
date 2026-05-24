@@ -831,10 +831,10 @@
     <string name="add_anway">Tilføj alligvel</string>
     <string name="this_looks_like_channel">Dette ligner en kanal adresse</string>
     <string name="share_backup_files">Del backup filer</string>
-    <string name="conversations_backup">Conversations backup</string>
+    <string name="conversations_backup">Impulse backup</string>
     <string name="event">Begivenhed</string>
     <string name="open_backup">Åben backup</string>
-    <string name="not_a_backup_file">Den fil du valgte er ikke en Conversations backup fil</string>
+    <string name="not_a_backup_file">Den fil du valgte er ikke en Impulse backup fil</string>
     <string name="account_already_setup">Denne konto er allerede oprettet</string>
     <string name="please_enter_password">Indtast adgangskoden til denne konto</string>
     <string name="unable_to_perform_this_action">Kunne ikke udføre denne handling</string>

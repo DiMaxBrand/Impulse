@@ -823,10 +823,10 @@
     <string name="add_anway">とにかく追加</string>
     <string name="this_looks_like_channel">これは談話室アドレスのようです</string>
     <string name="share_backup_files">バックアップファイルを共有</string>
-    <string name="conversations_backup">Conversations のバックアップ</string>
+    <string name="conversations_backup">Impulse のバックアップ</string>
     <string name="event">予定</string>
     <string name="open_backup">バックアップを開く</string>
-    <string name="not_a_backup_file">選択したファイルは、 Conversations のバックアップファイルではありません</string>
+    <string name="not_a_backup_file">選択したファイルは、 Impulse のバックアップファイルではありません</string>
     <string name="account_already_setup">このアカウントは既に設定されています</string>
     <string name="please_enter_password">このアカウントのパスワートを入力してください</string>
     <string name="unable_to_perform_this_action">この操作を実行できません</string>

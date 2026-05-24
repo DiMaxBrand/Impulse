@@ -835,10 +835,10 @@
     <string name="add_anway">Engadir igualmente</string>
     <string name="this_looks_like_channel">Esto semella o enderezo dunha canle</string>
     <string name="share_backup_files">Compartir ficheiros de apoio</string>
-    <string name="conversations_backup">Copia de apoio Conversations</string>
+    <string name="conversations_backup">Copia de apoio Impulse</string>
     <string name="event">Evento</string>
     <string name="open_backup">Abrir copia de apoio</string>
-    <string name="not_a_backup_file">O ficheiro seleccionado non é un ficheiro de apoio Conversations</string>
+    <string name="not_a_backup_file">O ficheiro seleccionado non é un ficheiro de apoio Impulse</string>
     <string name="account_already_setup">Esta conta xa foi configurada</string>
     <string name="please_enter_password">Introduza o contrasinal de esta conta</string>
     <string name="unable_to_perform_this_action">Non se puido completar a acción</string>

@@ -1001,10 +1001,10 @@
     <string name="this_looks_like_a_domain">Ово изгледа као адреса домена</string>
     <string name="add_anway">Додај свеједно</string>
     <string name="this_looks_like_channel">Ово изгледа као адреса канала</string>
-    <string name="conversations_backup">Conversations резервне копије</string>
+    <string name="conversations_backup">Impulse резервне копије</string>
     <string name="event">Догађај</string>
     <string name="open_backup">Отвори резервну копију</string>
-    <string name="not_a_backup_file">Фајл који си одабрао/ла није Conversations резервна копија</string>
+    <string name="not_a_backup_file">Фајл који си одабрао/ла није Impulse резервна копија</string>
     <string name="outdated_backup_file_format">Покушаваш да увезеш резервну копију застарелог формата</string>
     <string name="account_already_setup">Овај налог је већ подешен</string>
     <string name="please_enter_password">Унеси лозинку за овај налог</string>

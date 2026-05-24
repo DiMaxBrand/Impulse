@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Импульс</string>
     <string name="action_settings">Настройки</string>
     <string name="action_accounts">Управление аккаунтами</string>
     <string name="action_account">Управление аккаунтом</string>
@@ -102,11 +103,11 @@
     <string name="offering">предложение…</string>
     <string name="waiting">ожидание…</string>
     <string name="no_pgp_key">Нет ключа OpenPGP</string>
-    <string name="contact_has_no_pgp_key">Conversations не может зашифровать сообщение, потому что ваш собеседник не анонсирует свой открытый ключ.
+    <string name="contact_has_no_pgp_key">Impulse не может зашифровать сообщение, потому что ваш собеседник не анонсирует свой открытый ключ.
 \n
 \n<small>Попросите вашего собеседника настроить OpenPGP.</small></string>
     <string name="no_pgp_keys">Нет ключей OpenPGP</string>
-    <string name="contacts_have_no_pgp_keys">Conversations не может зашифровать сообщение, потому что ваши собеседники не анонсируют свои открытые ключи.
+    <string name="contacts_have_no_pgp_keys">Impulse не может зашифровать сообщение, потому что ваши собеседники не анонсируют свои открытые ключи.
 \n
 \n<small>Попросите ваших собеседников настроить OpenPGP.</small></string>
     <string name="pref_general">Общие</string>
@@ -863,10 +864,10 @@
     <string name="add_anway">Добавить всё равно</string>
     <string name="this_looks_like_channel">Это похоже на адрес канала</string>
     <string name="share_backup_files">Отправить резервные копии</string>
-    <string name="conversations_backup">Резервная копия Conversations</string>
+    <string name="conversations_backup">Резервная копия Impulse</string>
     <string name="event">Событие</string>
     <string name="open_backup">Открыть резервную копию</string>
-    <string name="not_a_backup_file">Выбранный вами файл не является файлом резервной копии Conversations</string>
+    <string name="not_a_backup_file">Выбранный вами файл не является файлом резервной копии Impulse</string>
     <string name="account_already_setup">Этот аккаунт уже настроен</string>
     <string name="please_enter_password">Введите пароль аккаунта</string>
     <string name="unable_to_perform_this_action">Невозможно совершить это действие</string>
@@ -1072,7 +1073,7 @@
     <string name="pref_fullscreen_notification">Полноэкранные уведомления</string>
     <string name="pref_backup_recurring">Регулярные резервные копии</string>
     <string name="pref_fullscreen_notification_summary">Разрешить приложению показывать экраны входящих звонков при заблокированном экране</string>
-    <string name="pref_up_long_summary">Conversations, будучи распределителем UnifiedPush, будет использовать стойкое, надёжное и малопотребляющее подключение XMPP для пробуждения других совместимых с UnifiedPush приложений, таких как Tusky, Ltt.rs, FluffyChat и др.</string>
+    <string name="pref_up_long_summary">Impulse, будучи распределителем UnifiedPush, будет использовать стойкое, надёжное и малопотребляющее подключение XMPP для пробуждения других совместимых с UnifiedPush приложений, таких как Tusky, Ltt.rs, FluffyChat и др.</string>
     <string name="detect_mim">Требовать привязку канала</string>
     <string name="detect_mim_summary">Привязка канала может обнаружить некоторые атаки посредником</string>
     <string name="pref_category_server_connection">Соединение с сервером</string>

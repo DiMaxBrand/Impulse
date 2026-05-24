@@ -73,7 +73,10 @@ public class HttpConnectionManager extends AbstractConnectionManager {
     }
 
     public static String getUserAgent() {
-        return String.format("%s/%s", BuildConfig.APP_NAME, BuildConfig.VERSION_NAME);
+        final String asciiName =
+                BuildConfig.APP_NAME.replaceAll("[^\\x20-\\x7E]", "").trim();
+        final String name = asciiName.isEmpty() ? "Impulse" : asciiName;
+        return String.format("%s/%s", name, BuildConfig.VERSION_NAME);
     }
 
     public HttpConnectionManager(XmppConnectionService service) {

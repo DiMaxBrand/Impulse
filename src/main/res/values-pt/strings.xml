@@ -873,14 +873,14 @@
     <string name="i_already_have_an_account">Já tenho uma conta</string>
     <string name="add_existing_account">Adicionar conta existente</string>
     <string name="this_looks_like_a_domain">Isto parece um endereço de domínio</string>
-    <string name="not_a_backup_file">O ficheiro que selecionou não é um backup de Conversations</string>
+    <string name="not_a_backup_file">O ficheiro que selecionou não é um backup de Impulse</string>
     <string name="outdated_backup_file_format">Está a tentar importar um ficheiro de backup com um formato desatualizado</string>
     <string name="non_quicksy_backup">Quicksy só pode restaurar backups para contas quicksy.im</string>
     <string name="pref_channel_discovery_summary">A maioria dos utilizadores deve escolher ‘jabber.network’ para melhores sugestões do ecossistema XMPP público inteiro.</string>
     <string name="add_anway">Adicionar mesmo assim</string>
     <string name="this_looks_like_channel">Isto parece um endereço de canal</string>
     <string name="share_backup_files">Partilhar ficheiros de backup</string>
-    <string name="conversations_backup">Backup de Conversations</string>
+    <string name="conversations_backup">Backup de Impulse</string>
     <string name="register_new_account">Registar nova conta</string>
     <string name="unable_to_perform_this_action">Não foi possível executar esta ação</string>
     <string name="group_chats_and_channels"><![CDATA[Conversas de Grupo &amp; Canais]]></string>

@@ -3,13 +3,13 @@
     <string name="use_conversations.im">Uzi conversations.im</string>
     <string name="magic_create_text_on_x">Vi estis invitita al %1$s. Ni gvidos vin tra la procezo de kreado de konto.
 \nElektante %1$s kiel provizanton vi povos komuniki kun uzantoj de aliaj provizantoj donante al ili vian plenan XMPP-adreson.</string>
-    <string name="do_you_have_an_account">Ĉu vi jam havas XMPP-konton\? Ĉi tio povus esti la kazo se vi jam uzas alian XMPP-klienton aŭ antaŭe uzis Conversations. Se ne, vi povas krei novan XMPP-konton nun.
+    <string name="do_you_have_an_account">Ĉu vi jam havas XMPP-konton\? Ĉi tio povus esti la kazo se vi jam uzas alian XMPP-klienton aŭ antaŭe uzis Impulse. Se ne, vi povas krei novan XMPP-konton nun.
 \nKonsileto: Iuj retpoŝtaj provizantoj ankaŭ provizas XMPP-kontojn.</string>
     <string name="if_contact_is_nearby_use_qr">Se via kontakto estas proksime, ili ankaŭ povas skani la suban kodon por akcepti vian inviton.</string>
     <string name="pick_a_server">Elekti vian XMPP-provizanton</string>
     <string name="share_invite_with">Kunhavigi inviton kun…</string>
     <string name="server_select_text">XMPP tujmesaĝa reto malcentra de serviloj. Oni povas uzi ĉi tiun programon per ajna XMPP-servilo, kiun oni elektas.
-\nTamen por via placô ni faciligis krei konton ĉe conversations.im; servilo krome taŭga por la uzo kun Conversations.</string>
+\nTamen por via placô ni faciligis krei konton ĉe conversations.im; servilo krome taŭga por la uzo kun Impulse.</string>
     <string name="magic_create_text_fixed">Vi estis invitita al %1$s. Uzantnomo jam estas elektita por vi. Ni gvidos vin tra la procezo de kreado de konto.
 \nVi povos komuniki kun uzantoj de aliaj provizantoj donante al ili vian plenan XMPP-adreson.</string>
     <string name="improperly_formatted_provisioning">Nedece formatita provizokodo</string>
