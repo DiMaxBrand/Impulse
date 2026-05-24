@@ -85,7 +85,7 @@ public class BackupFile implements Comparable<BackupFile> {
         final var accounts = database.getAccountAddresses();
         final var backupFiles = new ImmutableList.Builder<BackupFile>();
         final var apps =
-                ImmutableSet.of("Conversations", "Quicksy", context.getString(R.string.app_name));
+                ImmutableSet.of("Conversations", "Impulse", "Quicksy", context.getString(R.string.app_name));
 
         final var uriPermissions = context.getContentResolver().getPersistedUriPermissions();
 

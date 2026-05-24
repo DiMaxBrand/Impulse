@@ -523,7 +523,7 @@
     <string name="gp_medium">Vừa</string>
     <string name="gp_long">Dài</string>
     <string name="pref_broadcast_last_activity">Sử dụng truyền phát</string>
-    <string name="pref_broadcast_last_activity_summary">Cho các liên hệ của bạn biết bạn dùng Conversations</string>
+    <string name="pref_broadcast_last_activity_summary">Cho các liên hệ của bạn biết bạn dùng Impulse</string>
     <string name="pref_privacy">Riêng tư</string>
     <string name="pref_theme_options">Chủ đề</string>
     <string name="pref_theme_options_summary">Chọn bộ màu sáng</string>
@@ -772,7 +772,7 @@
     <string name="ebook">sách điện tử</string>
     <string name="video_original">Gốc (không nén)</string>
     <string name="open_with">Mở bằng…</string>
-    <string name="set_profile_picture">Ảnh hồ sơ Conversations</string>
+    <string name="set_profile_picture">Ảnh hồ sơ Impulse</string>
     <string name="choose_account">Chọn tài khoản</string>
     <string name="restore_backup">Khôi phục bản sao lưu</string>
     <string name="restore">Khôi phục</string>
@@ -820,10 +820,10 @@
     <string name="add_anway">Vẫn thêm</string>
     <string name="this_looks_like_channel">Cái này trông giống một địa chỉ kênh</string>
     <string name="share_backup_files">Chia sẻ tệp sao lưu</string>
-    <string name="conversations_backup">Bản sao lưu Conversations</string>
+    <string name="conversations_backup">Bản sao lưu Impulse</string>
     <string name="event">Sự kiện</string>
     <string name="open_backup">Mở bản sao lưu</string>
-    <string name="not_a_backup_file">Tệp bạn đã chọn không phải là tệp sao lưu của Conversations</string>
+    <string name="not_a_backup_file">Tệp bạn đã chọn không phải là tệp sao lưu của Impulse</string>
     <string name="account_already_setup">Tài khoản này đã được thiết lập rồi</string>
     <string name="please_enter_password">Vui lòng nhập mật khẩu cho tài khoản này</string>
     <string name="unable_to_perform_this_action">Không thể thực hiện hành động này</string>

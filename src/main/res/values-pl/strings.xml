@@ -723,7 +723,7 @@
     <string name="foreground_service_channel_description">Ta kategoria powiadomień jest używana aby wyświetlać stałe powiadomienie oznaczające, że %1$s działa.</string>
     <string name="notification_group_status_information">Wiadomość Statusu</string>
     <string name="error_channel_name">Problemy z połączeniem</string>
-    <string name="error_channel_description">Ta kategoria powiadomień jest używana aby wyświetlać powiadomienia oznaczające, że Conversations ma problemy z połączeniem.</string>
+    <string name="error_channel_description">Ta kategoria powiadomień jest używana aby wyświetlać powiadomienia oznaczające, że Impulse ma problemy z połączeniem.</string>
     <string name="notification_group_messages">Wiadomości</string>
     <string name="notification_group_calls">Połączenia</string>
     <string name="messages_channel_name">Wiadomości</string>
@@ -849,10 +849,10 @@
     <string name="add_anway">Dodaj i tak</string>
     <string name="this_looks_like_channel">To wygląda jak adres kanału</string>
     <string name="share_backup_files">Udostępnij pliki kopii zapasowych</string>
-    <string name="conversations_backup">Kopia zapasowa Conversations</string>
+    <string name="conversations_backup">Kopia zapasowa Impulse</string>
     <string name="event">Zdarzenie</string>
     <string name="open_backup">Otwórz kopię zapasową</string>
-    <string name="not_a_backup_file">Plik, który otworzyłeś, nie jest plikiem kopii zapasowej Conversations</string>
+    <string name="not_a_backup_file">Plik, który otworzyłeś, nie jest plikiem kopii zapasowej Impulse</string>
     <string name="account_already_setup">To konto zostało już ustawione</string>
     <string name="please_enter_password">Proszę podać hasło dla tego konta</string>
     <string name="unable_to_perform_this_action">Nie można wykonać tej akcji</string>

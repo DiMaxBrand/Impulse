@@ -499,7 +499,7 @@
     <string name="gp_medium">Közepes</string>
     <string name="gp_long">Hosszú</string>
     <string name="pref_broadcast_last_activity">Utoljára elérhető</string>
-    <string name="pref_broadcast_last_activity_summary">Tudassa partnereivel, hogy mikor használja a Conversations-t</string>
+    <string name="pref_broadcast_last_activity_summary">Tudassa partnereivel, hogy mikor használja a Impulse-t</string>
     <string name="pref_privacy">Adatvédelem</string>
     <string name="pref_theme_options">Téma</string>
     <string name="pref_theme_options_summary">Színpaletta kiválasztása</string>
@@ -741,7 +741,7 @@
     <string name="ebook">e-könyv</string>
     <string name="video_original">Eredeti (tömörítetlen)</string>
     <string name="open_with">Megnyitás ezzel…</string>
-    <string name="set_profile_picture">Conversations profilkép</string>
+    <string name="set_profile_picture">Impulse profilkép</string>
     <string name="choose_account">Fiók kiválasztása</string>
     <string name="restore_backup">Biztonsági mentés visszaállítása</string>
     <string name="restore">Visszaállítás</string>
@@ -789,10 +789,10 @@
     <string name="add_anway">Hozzáadás mindenképp</string>
     <string name="this_looks_like_channel">Ez egy csatornacímnek tűnik</string>
     <string name="share_backup_files">Biztonsági mentés fájlok megosztása</string>
-    <string name="conversations_backup">Conversations biztonsági mentés</string>
+    <string name="conversations_backup">Impulse biztonsági mentés</string>
     <string name="event">Esemény</string>
     <string name="open_backup">Biztonsági mentés megnyitása</string>
-    <string name="not_a_backup_file">A kiválasztott fájl nem Conversations biztonsági mentés fájl</string>
+    <string name="not_a_backup_file">A kiválasztott fájl nem Impulse biztonsági mentés fájl</string>
     <string name="account_already_setup">Ez a fiók már be lett állítva</string>
     <string name="please_enter_password">Adja meg a fiók jelszavát</string>
     <string name="unable_to_perform_this_action">Nem sikerült végrehajtani ezt a műveletet</string>

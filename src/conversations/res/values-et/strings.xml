@@ -2,10 +2,10 @@
 <resources>
     <string name="pick_a_server">Vali oma XMPP-teenusepakkuja</string>
     <string name="create_new_account">Loo uus kasutajakonto</string>
-    <string name="do_you_have_an_account">Kas sul juba on XMPP-konto olemas? Kui sa oled varem kasutanud Conversationsit või mõnda muud XMPP-klienti, siis see tõesti võib nii olla. Kui aga mitte, siis võid XMPP-konto kohe luua.
+    <string name="do_you_have_an_account">Kas sul juba on XMPP-konto olemas? Kui sa oled varem kasutanud Impulseit või mõnda muud XMPP-klienti, siis see tõesti võib nii olla. Kui aga mitte, siis võid XMPP-konto kohe luua.
 \nVihje: Ka mitmed e-postiteenuse pakkujad pakuvad ka XMPP-teenuseid.</string>
     <string name="server_select_text">XMPP on teenusepakkujast sõltumatu sõnumivõrk. Sa võid kasutada seda rakendust ükspuha missuguse XMPP-serveriga.
-\nAga mugavuse nimel oleme teinud lihtsaks kasutajakonto loomise conversations.im serverisse, mis on Conversationsiga hästi sobituv teenusepakkuja.</string>
+\nAga mugavuse nimel oleme teinud lihtsaks kasutajakonto loomise conversations.im serverisse, mis on Impulseiga hästi sobituv teenusepakkuja.</string>
     <string name="magic_create_text_on_x">Sa oled saanud kutse kasutama serverit %1$s. Järgnevaga aitame sind kasutajakonto loomise kõikides sammudes.
 \nKui valid serveriks %1$s, siis jagades oma XMPP-aadressi saad suhelda kõikide teiste XMPP kasutajatega.</string>
     <string name="magic_create_text_fixed">Sa oled saanud kutse kasutama serverit %1$s. Kasutajanimi on juba sulle valitud. Järgnevaga aitame sind kasutajakonto loomise kõikides sammudes.
