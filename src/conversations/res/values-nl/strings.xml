@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="pick_a_server">Kies je XMPP-dienst</string>
-    <string name="use_conversations.im">Impulse.im gebruiken</string>
+    <string name="use_conversations.im">conversations.im gebruiken</string>
     <string name="create_new_account">Nieuwe account registreren</string>
     <string name="do_you_have_an_account">Heb je al een XMPP-account? Als je al een andere XMPP-cliënt gebruikt, of Impulse vroeger al eens hebt gebruikt, is dit waarschijnlijk het geval. Zo niet, kan je nu een nieuwe XMPP-account aanmaken.\nTip: sommige e-mailproviders bieden ook XMPP-accounts aan.</string>
     <string name="server_select_text">XMPP is een provider-onafhankelijk berichtennetwerk. Je kan deze applicatie gebruiken met eender welke XMPP-server.
