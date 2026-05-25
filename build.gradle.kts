@@ -27,7 +27,8 @@ spotless {
     }
 }
 
-extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
+@Suppress("DEPRECATION")
+android {
     namespace = "eu.siacs.conversations"
     compileSdk = 36
 
@@ -122,12 +123,9 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
 }
 
 afterEvaluate {
-    extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
-        sourceSets {
-            getByName("conversationsFree") {
-                java.setSrcDirs(listOf("src/conversationsFree/java"))
-            }
-        }
+    @Suppress("DEPRECATION")
+    android.sourceSets.getByName("conversationsFree") {
+        java.setSrcDirs(listOf("src/conversationsFree/java"))
     }
 }
 
