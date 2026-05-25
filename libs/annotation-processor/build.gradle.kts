@@ -1,0 +1,20 @@
+plugins {
+    `java-library`
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+dependencies {
+    implementation(project(":libs:annotation"))
+    annotationProcessor("com.google.auto.service:auto-service:1.1.1")
+    api("com.google.auto.service:auto-service-annotations:1.1.1")
+    implementation("com.google.guava:guava:33.5.0-jre")
+}

@@ -1,4 +1,6 @@
-apply plugin: "java-library"
+plugins {
+    `java-library`
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
