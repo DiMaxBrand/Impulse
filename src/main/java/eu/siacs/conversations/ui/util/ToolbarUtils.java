@@ -108,12 +108,7 @@ public class ToolbarUtils {
                                     88,
                                     context.getResources().getDisplayMetrics());
         } else {
-            final TypedValue tv = new TypedValue();
-            if (context.getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
-                params.height =
-                        TypedValue.complexToDimensionPixelSize(
-                                tv.data, context.getResources().getDisplayMetrics());
-            }
+            params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
         }
 
         toolbar.setLayoutParams(params);
