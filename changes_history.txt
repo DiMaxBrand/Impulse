@@ -1,13 +1,16 @@
   Изменения в репозитории
 
   1. Закрепление сообщений (Pin message) — новая фича
-   Коммит: b9e7ee571 (dev, AlexB, 20 мая 2026)
+    Коммит: b9e7ee571 (dev, AlexB, 20 мая 2026)
 
   2. Упрощение онбординга — хардкод on-chat.ru
-   Коммиты: f4858d028, 0e9725518 (DiMaxBrand, 21 мая 2026)
+    Коммиты: f4858d028, 0e9725518 (DiMaxBrand, 21 мая 2026)
 
   3. Фикс прикрепляемых файлов
     5c8c877a3 │ NullPointerException при прикреплении файлов без записей в MediaStore
 
   4. Переименовано приложение
     Коммит: 325006075 — изменено имя приложения
+
+  5. Обновлены иконки c Material Symbols на круглые Material Icons
+    Коммит: 4559dd34 — Replace 144 icons with Material Icons Rounded variants

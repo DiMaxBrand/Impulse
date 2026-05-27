@@ -35,7 +35,7 @@ android {
     defaultConfig {
         minSdk = 23
         versionCode = baseVersionCode
-        versionName = "2.19.16"
+        versionName = "1.0.0+2.20.0"
         applicationId = "com.dimax.impulse"
         resValue("string", "applicationId", applicationId!!)
         val appName = "Impulse"
