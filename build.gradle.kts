@@ -12,7 +12,6 @@ repositories {
     maven { url = uri("https://jitpack.io") }
 }
 
-val baseVersionCode = 42181
 val abiCodes = mapOf("armeabi-v7a" to 1, "x86" to 2, "x86_64" to 3, "arm64-v8a" to 4)
 
 val signingProps = Properties()
@@ -26,6 +25,9 @@ spotless {
         googleJavaFormat().aosp().reflowLongStrings()
     }
 }
+
+// ---- Release version — edit here ----
+val baseVersionCode = 42181
 
 @Suppress("DEPRECATION")
 android {
