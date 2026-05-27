@@ -12,6 +12,7 @@ repositories {
     maven { url = uri("https://jitpack.io") }
 }
 
+val baseVersionCode = 42181
 val abiCodes = mapOf("armeabi-v7a" to 1, "x86" to 2, "x86_64" to 3, "arm64-v8a" to 4)
 
 val signingProps = Properties()
@@ -33,7 +34,7 @@ android {
 
     defaultConfig {
         minSdk = 23
-        versionCode = 42181
+        versionCode = baseVersionCode
         versionName = "1.0.0+2.20.0"
         applicationId = "com.dimax.impulse"
         resValue("string", "applicationId", applicationId!!)
@@ -135,7 +136,7 @@ androidComponents {
                 .find { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }
                 ?.identifier
                 ?.let { abiCodes[it] }
-            output.versionCode.set(100 * 42181 + (abiCode ?: 0))
+            output.versionCode.set(100 * baseVersionCode + (abiCode ?: 0))
         }
     }
 }
