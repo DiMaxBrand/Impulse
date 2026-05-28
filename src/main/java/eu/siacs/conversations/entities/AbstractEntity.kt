@@ -8,6 +8,7 @@ abstract class AbstractEntity {
         const val UUID = "uuid"
     }
 
+    @JvmField
     protected var uuid: String? = null
 
     open fun getUuid(): String? = uuid
