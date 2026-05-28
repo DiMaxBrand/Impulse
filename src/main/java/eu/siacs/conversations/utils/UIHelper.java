@@ -151,48 +151,48 @@ public class UIHelper {
             @Nullable final Character separator) {
         final Transferable d = message.getTransferable();
         if (d != null) {
-            switch (d.getStatus()) {
-                case Transferable.STATUS_CHECKING:
+            final int status = d.getStatus();
+            if (status == Transferable.STATUS_CHECKING) {
+                return new Pair<>(
+                        context.getString(
+                                R.string.checking_x,
+                                getFileDescriptionString(context, message)),
+                        true);
+            } else if (status == Transferable.STATUS_DOWNLOADING) {
+                return new Pair<>(
+                        context.getString(
+                                R.string.receiving_x_file,
+                                getFileDescriptionString(context, message),
+                                d.getProgress()),
+                        true);
+            } else if (status == Transferable.STATUS_OFFER
+                    || status == Transferable.STATUS_OFFER_CHECK_FILESIZE) {
+                return new Pair<>(
+                        context.getString(
+                                R.string.x_file_offered_for_download,
+                                getFileDescriptionString(context, message)),
+                        true);
+            } else if (status == Transferable.STATUS_FAILED) {
+                return new Pair<>(context.getString(R.string.file_transmission_failed), true);
+            } else if (status == Transferable.STATUS_CANCELLED) {
+                return new Pair<>(
+                        context.getString(R.string.file_transmission_cancelled), true);
+            } else if (status == Transferable.STATUS_UPLOADING) {
+                if (message.getStatus() == Message.STATUS_OFFERED) {
                     return new Pair<>(
                             context.getString(
-                                    R.string.checking_x,
+                                    R.string.offering_x_file,
                                     getFileDescriptionString(context, message)),
                             true);
-                case Transferable.STATUS_DOWNLOADING:
+                } else {
                     return new Pair<>(
                             context.getString(
-                                    R.string.receiving_x_file,
-                                    getFileDescriptionString(context, message),
-                                    d.getProgress()),
-                            true);
-                case Transferable.STATUS_OFFER:
-                case Transferable.STATUS_OFFER_CHECK_FILESIZE:
-                    return new Pair<>(
-                            context.getString(
-                                    R.string.x_file_offered_for_download,
+                                    R.string.sending_x_file,
                                     getFileDescriptionString(context, message)),
                             true);
-                case Transferable.STATUS_FAILED:
-                    return new Pair<>(context.getString(R.string.file_transmission_failed), true);
-                case Transferable.STATUS_CANCELLED:
-                    return new Pair<>(
-                            context.getString(R.string.file_transmission_cancelled), true);
-                case Transferable.STATUS_UPLOADING:
-                    if (message.getStatus() == Message.STATUS_OFFERED) {
-                        return new Pair<>(
-                                context.getString(
-                                        R.string.offering_x_file,
-                                        getFileDescriptionString(context, message)),
-                                true);
-                    } else {
-                        return new Pair<>(
-                                context.getString(
-                                        R.string.sending_x_file,
-                                        getFileDescriptionString(context, message)),
-                                true);
-                    }
-                default:
-                    return new Pair<>("", false);
+                }
+            } else {
+                return new Pair<>("", false);
             }
         } else if (message.isFileOrImage() && message.isDeleted()) {
             return new Pair<>(context.getString(R.string.file_deleted), true);

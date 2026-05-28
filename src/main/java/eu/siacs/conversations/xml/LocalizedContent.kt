@@ -4,9 +4,9 @@ import com.google.common.collect.Iterables
 import java.util.Locale
 
 class LocalizedContent private constructor(
-    val content: String,
-    val language: String,
-    val count: Int,
+    @JvmField val content: String,
+    @JvmField val language: String,
+    @JvmField val count: Int,
 ) {
     companion object {
         const val STREAM_LANGUAGE = "en"

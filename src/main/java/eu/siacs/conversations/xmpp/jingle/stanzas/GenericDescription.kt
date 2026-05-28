@@ -9,7 +9,6 @@ open class GenericDescription internal constructor(name: String, namespace: Stri
     }
 
     companion object {
-        @JvmStatic
         fun upgrade(element: Element): GenericDescription {
             Preconditions.checkArgument("description" == element.name)
             return GenericDescription("description", element.namespace).apply {

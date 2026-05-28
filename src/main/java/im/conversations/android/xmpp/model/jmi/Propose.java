@@ -32,7 +32,7 @@ public final class Propose extends JingleMessage {
                 } else if (Namespace.JINGLE_APPS_RTP.equals(namespace)) {
                     builder.add(RtpDescription.upgrade(child));
                 } else {
-                    builder.add(GenericDescription.upgrade(child));
+                    builder.add(GenericDescription.Companion.upgrade(child));
                 }
             }
         }

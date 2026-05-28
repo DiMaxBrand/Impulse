@@ -5,7 +5,7 @@ import eu.siacs.conversations.xmpp.jingle.stanzas.GenericDescription
 import eu.siacs.conversations.xmpp.jingle.stanzas.GenericTransportInfo
 
 class DescriptionTransport<D : GenericDescription, T : GenericTransportInfo>(
-    val senders: Content.Senders,
-    val description: D,
-    val transport: T,
+    @JvmField val senders: Content.Senders,
+    @JvmField val description: D,
+    @JvmField val transport: T,
 )

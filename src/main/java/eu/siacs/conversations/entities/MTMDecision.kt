@@ -8,5 +8,6 @@ class MTMDecision {
         const val DECISION_ALWAYS = 3
     }
 
+    @JvmField
     var state = DECISION_INVALID
 }

@@ -73,7 +73,7 @@ public class Content extends Element {
         } else if (Namespace.JINGLE_APPS_RTP.equals(namespace)) {
             return RtpDescription.upgrade(description);
         } else {
-            return GenericDescription.upgrade(description);
+            return GenericDescription.Companion.upgrade(description);
         }
     }
 
@@ -99,7 +99,7 @@ public class Content extends Element {
         } else if (Namespace.JINGLE_TRANSPORT_WEBRTC_DATA_CHANNEL.equals(namespace)) {
             return WebRTCDataChannelTransportInfo.upgrade(transport);
         } else if (transport != null) {
-            return GenericTransportInfo.upgrade(transport);
+            return GenericTransportInfo.Companion.upgrade(transport);
         } else {
             return null;
         }
