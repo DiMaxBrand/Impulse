@@ -12,7 +12,7 @@ abstract class AbstractPhoneContact protected constructor(cursor: Cursor) {
 
     init {
         @Suppress("DEPRECATION")
-        val phoneId = cursor.getInt(cursor.getColumnIndex(ContactsContract.Data._ID))
+        val phoneId = cursor.getLong(cursor.getColumnIndex(ContactsContract.Data._ID))
         @Suppress("DEPRECATION")
         val lookupKey = cursor.getString(cursor.getColumnIndex(ContactsContract.Data.LOOKUP_KEY))
         lookupUri = ContactsContract.Contacts.getLookupUri(phoneId, lookupKey)

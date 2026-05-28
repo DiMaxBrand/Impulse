@@ -22,12 +22,12 @@ class StanzaIdManager(context: Context, connection: XmppConnection) :
             val state = getManager(MultiUserChatManager::class.java).getState(by)
             safeToExtract = state != null && state.hasFeature(Namespace.STANZA_IDS)
         } else {
-            by = account.jid.asBareJid()
+            by = account.jid!!.asBareJid()
             safeToExtract = hasFeature()
         }
         return if (safeToExtract) StanzaId.get(packet, by) else null
     }
 
     fun get(packet: Message): String? =
-        if (hasFeature()) StanzaId.get(packet, account.jid.asBareJid()) else null
+        if (hasFeature()) StanzaId.get(packet, account.jid!!.asBareJid()) else null
 }

@@ -7,7 +7,7 @@ import java.util.concurrent.Executor
 class MainThreadExecutor private constructor() : Executor {
     private val handler = Handler(Looper.myLooper()!!)
 
-    override fun execute(command: Runnable) = handler.post(command)
+    override fun execute(command: Runnable) { handler.post(command) }
 
     companion object {
         private val INSTANCE = MainThreadExecutor()

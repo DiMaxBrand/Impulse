@@ -7,7 +7,7 @@ object NickValidityChecker {
     private fun check(conversation: Conversation, nick: String): Boolean {
         val room = conversation.address
         return try {
-            val full = Jid.of(room.local, room.domain, nick)
+            val full = Jid.of(room.local!!, room.domain!!, nick)
             conversation.hasMessageWithCounterpart(full) || conversation.mucOptions.getUser(full) != null
         } catch (e: IllegalArgumentException) {
             false
