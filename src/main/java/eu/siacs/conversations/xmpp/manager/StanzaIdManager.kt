@@ -18,7 +18,7 @@ class StanzaIdManager(context: Context, connection: XmppConnection) :
         val by: Jid
         val safeToExtract: Boolean
         if (isTypeGroupChat) {
-            by = conversation.address!!.asBareJid()
+            by = conversation.getAddress().asBareJid()
             val state = getManager(MultiUserChatManager::class.java).getState(by)
             safeToExtract = state != null && state.hasFeature(Namespace.STANZA_IDS)
         } else {
