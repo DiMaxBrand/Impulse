@@ -117,9 +117,9 @@
          Creates an S-curve visual flow down the chat list. -->
     <style name="ShapeAppearance.Impulse.ListItem" parent="">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSizeTopLeft">4dp</item>
-        <item name="cornerSizeTopRight">12dp</item>
-        <item name="cornerSizeBottomLeft">12dp</item>
-        <item name="cornerSizeBottomRight">4dp</item>
+        <item name="cornerSizeTopLeft">5dp</item>
+        <item name="cornerSizeTopRight">16dp</item>
+        <item name="cornerSizeBottomLeft">16dp</item>
+        <item name="cornerSizeBottomRight">5dp</item>
     </style>
 </resources>

@@ -19,7 +19,6 @@ import eu.siacs.conversations.databinding.ItemConversationBinding;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Conversational;
 import eu.siacs.conversations.entities.Message;
-import eu.siacs.conversations.ui.ConversationFragment;
 import eu.siacs.conversations.ui.XmppActivity;
 import eu.siacs.conversations.ui.util.Attachment;
 import eu.siacs.conversations.ui.util.AvatarWorkerTask;
@@ -67,17 +66,10 @@ public class ConversationAdapter
             viewHolder.binding.conversationName.setText(name);
         }
 
-        final MaterialCardView frame = viewHolder.binding.frame;
-        if (conversation == ConversationFragment.getConversation(activity)) {
-            frame.setCardBackgroundColor(
-                    MaterialColors.getColor(
-                            frame, com.google.android.material.R.attr.colorSecondaryContainer));
-        } else {
-            frame.setCardBackgroundColor(
-                    MaterialColors.getColor(
-                            frame,
-                            com.google.android.material.R.attr.colorSurfaceContainerLow));
-        }
+        viewHolder.binding.frame.setCardBackgroundColor(
+                MaterialColors.getColor(
+                        viewHolder.binding.frame,
+                        com.google.android.material.R.attr.colorSurfaceContainerLow));
 
         final Message message = conversation.getLatestMessage();
         final int status = message.getStatus();
