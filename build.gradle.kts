@@ -4,7 +4,7 @@ import java.util.Properties
 plugins {
     id("com.android.application") version "9.2.1"
     id("com.diffplug.spotless") version "8.4.0"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.3.0"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.3.21"
 }
 
 repositories {
