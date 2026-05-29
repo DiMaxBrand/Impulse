@@ -118,11 +118,9 @@
     <!-- Left side (near screen edge): 5dp top + bottom — almost flat.
          Right side (open, interior space): 16dp top + bottom — more rounded.
          Consecutive items match at every junction. -->
+    <!-- Default shape for list items; corners are overridden per-position in adapter code. -->
     <style name="ShapeAppearance.Impulse.ListItem" parent="">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSizeTopLeft">5dp</item>
-        <item name="cornerSizeTopRight">16dp</item>
-        <item name="cornerSizeBottomLeft">5dp</item>
-        <item name="cornerSizeBottomRight">16dp</item>
+        <item name="cornerSize">5dp</item>
     </style>
 </resources>

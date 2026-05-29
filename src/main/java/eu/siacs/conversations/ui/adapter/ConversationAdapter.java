@@ -2,6 +2,7 @@ package eu.siacs.conversations.ui.adapter;
 
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +14,7 @@ import androidx.databinding.DataBindingUtil;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import com.google.common.base.Optional;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.databinding.ItemConversationBinding;
@@ -70,6 +72,25 @@ public class ConversationAdapter
                 MaterialColors.getColor(
                         viewHolder.binding.frame,
                         com.google.android.material.R.attr.colorSurfaceContainerLow));
+
+        final float density = activity.getResources().getDisplayMetrics().density;
+        final float small = 5f * density;
+        final float large = 16f * density;
+        final float topR = position > 0 ? small : large;
+        final float botR = position < getItemCount() - 1 ? small : large;
+        viewHolder.binding.frame.setShapeAppearanceModel(
+                new ShapeAppearanceModel.Builder()
+                        .setTopLeftCornerSize(topR)
+                        .setTopRightCornerSize(topR)
+                        .setBottomLeftCornerSize(botR)
+                        .setBottomRightCornerSize(botR)
+                        .build());
+        final GradientDrawable shell = new GradientDrawable();
+        shell.setColor(MaterialColors.getColor(
+                viewHolder.itemView,
+                com.google.android.material.R.attr.colorSecondaryFixedDim));
+        shell.setCornerRadii(new float[]{topR, topR, topR, topR, botR, botR, botR, botR});
+        viewHolder.itemView.setBackground(shell);
 
         final Message message = conversation.getLatestMessage();
         final int status = message.getStatus();
