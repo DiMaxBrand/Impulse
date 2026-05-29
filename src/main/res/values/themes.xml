@@ -112,4 +112,14 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
     </style>
+
+    <!-- M3 Expressive diagonal shape: small at top-left/bottom-right, large at top-right/bottom-left.
+         Creates an S-curve visual flow down the chat list. -->
+    <style name="ShapeAppearance.Impulse.ListItem" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">4dp</item>
+        <item name="cornerSizeTopRight">20dp</item>
+        <item name="cornerSizeBottomLeft">20dp</item>
+        <item name="cornerSizeBottomRight">4dp</item>
+    </style>
 </resources>

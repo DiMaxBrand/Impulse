@@ -24,8 +24,8 @@
             android:clickable="false"
             android:focusable="false"
             app:cardBackgroundColor="?colorSurfaceContainerLow"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp">
+            app:cardElevation="0dp"
+            app:shapeAppearance="@style/ShapeAppearance.Impulse.ListItem">
 
             <RelativeLayout
                 android:layout_width="match_parent"
