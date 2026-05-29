@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.core.widget.ImageViewCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.google.common.base.Optional;
 import eu.siacs.conversations.R;
@@ -66,15 +67,16 @@ public class ConversationAdapter
             viewHolder.binding.conversationName.setText(name);
         }
 
+        final MaterialCardView frame = viewHolder.binding.frame;
         if (conversation == ConversationFragment.getConversation(activity)) {
-            viewHolder.binding.frame.setBackgroundResource(
-                    R.drawable.background_selected_item_conversation);
-            // viewHolder.binding.frame.setBackgroundColor(MaterialColors.getColor(viewHolder.binding.frame, com.google.android.material.R.attr.colorSurfaceDim));
-        } else {
-            viewHolder.binding.frame.setBackgroundColor(
+            frame.setCardBackgroundColor(
                     MaterialColors.getColor(
-                            viewHolder.binding.frame,
-                            com.google.android.material.R.attr.colorSurface));
+                            frame, com.google.android.material.R.attr.colorSecondaryContainer));
+        } else {
+            frame.setCardBackgroundColor(
+                    MaterialColors.getColor(
+                            frame,
+                            com.google.android.material.R.attr.colorSurfaceContainerLow));
         }
 
         final Message message = conversation.getLatestMessage();
@@ -250,7 +252,7 @@ public class ConversationAdapter
                 conversation,
                 viewHolder.binding.conversationImage,
                 R.dimen.avatar_on_conversation_overview);
-        viewHolder.itemView.setOnClickListener(v -> listener.onConversationClick(v, conversation));
+        viewHolder.binding.frame.setOnClickListener(v -> listener.onConversationClick(v, conversation));
     }
 
     @Override

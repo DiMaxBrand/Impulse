@@ -3,73 +3,97 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <RelativeLayout
+    <!--
+        Transparent shell: ListView ignores layout_margin, so we use padding here to
+        create the visual gap between cards. The foreground ripple clips to the card's
+        outline via clipToOutline on the card below.
+    -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/background_selectable_list_item"
-        android:padding="@dimen/list_padding">
+        android:paddingHorizontal="8dp"
+        android:paddingTop="2dp">
 
-        <com.google.android.material.imageview.ShapeableImageView
-            android:id="@+id/contact_photo"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_alignParentStart="true"
-            android:scaleType="fitXY"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.RoundedCornersLight" />
-
-        <LinearLayout
-            android:layout_width="wrap_content"
+        <!--
+            Non-clickable card container: ListView handles touch/click at the list level,
+            so this card is purely visual. The ripple is provided by the ListView selector.
+        -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_marginStart="@dimen/avatar_item_distance"
-            android:layout_toEndOf="@+id/contact_photo"
-            android:orientation="vertical">
+            android:clickable="false"
+            android:focusable="false"
+            app:cardBackgroundColor="?colorSurfaceContainerLow"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp">
 
-            <TextView
-                android:id="@+id/contact_display_name"
-                android:layout_width="wrap_content"
+            <RelativeLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:textAppearance="?textAppearanceBodyLarge"
-                tools:text="Juliet Capulet" />
+                android:padding="@dimen/list_padding">
 
-            <TextView
-                android:id="@+id/contact_jid"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:textAppearance="?textAppearanceBodyMedium"
-                tools:text="juliet@capulet.example" />
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/contact_photo"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_alignParentStart="true"
+                    android:scaleType="fitXY"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.RoundedCornersLight" />
 
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/tags"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4sp">
-
-                <androidx.constraintlayout.helper.widget.Flow
-                    android:id="@+id/flow_widget"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:flow_horizontalBias="0"
-                    app:flow_horizontalGap="8sp"
-                    app:flow_horizontalStyle="packed"
-                    app:flow_verticalGap="4sp"
-                    app:flow_wrapMode="chain"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="@dimen/avatar_item_distance"
+                    android:layout_toEndOf="@+id/contact_photo"
+                    android:orientation="vertical">
 
+                    <TextView
+                        android:id="@+id/contact_display_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:textAppearance="?textAppearanceBodyLarge"
+                        tools:text="Juliet Capulet" />
 
-            <TextView
-                android:id="@+id/key"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:textAppearance="?textAppearanceBodyMedium"
-                android:visibility="gone" />
-        </LinearLayout>
+                    <TextView
+                        android:id="@+id/contact_jid"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:textAppearance="?textAppearanceBodyMedium"
+                        tools:text="juliet@capulet.example" />
 
-    </RelativeLayout>
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/tags"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4sp">
+
+                        <androidx.constraintlayout.helper.widget.Flow
+                            android:id="@+id/flow_widget"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            app:flow_horizontalBias="0"
+                            app:flow_horizontalGap="8sp"
+                            app:flow_horizontalStyle="packed"
+                            app:flow_verticalGap="4sp"
+                            app:flow_wrapMode="chain"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                    <TextView
+                        android:id="@+id/key"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:textAppearance="?textAppearanceBodyMedium"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </FrameLayout>
 </layout>
