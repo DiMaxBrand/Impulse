@@ -1,5 +1,6 @@
 package eu.siacs.conversations.worker
 
+import eu.siacs.conversations.services.AbstractQuickConversationsService
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -31,7 +32,6 @@ import eu.siacs.conversations.entities.Account
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.persistance.DatabaseBackend
-import eu.siacs.conversations.services.QuickConversationsService
 import eu.siacs.conversations.services.XmppConnectionService
 import eu.siacs.conversations.utils.AccountUtils
 import eu.siacs.conversations.utils.BackupFileHeader
@@ -148,7 +148,7 @@ class ImportBackupWorker(context: Context, workerParams: WorkerParameters) :
 
         val accounts = database.accountAddresses
 
-        if (QuickConversationsService.isQuicksy() && accounts.isNotEmpty()) {
+        if (AbstractQuickConversationsService.isQuicksy() && accounts.isNotEmpty()) {
             return failure(Reason.ACCOUNT_ALREADY_EXISTS)
         }
 
@@ -246,7 +246,7 @@ class ImportBackupWorker(context: Context, workerParams: WorkerParameters) :
                 null
             )
             val password = contentValues.getAsString(Account.PASSWORD)
-            if (QuickConversationsService.isQuicksy()) {
+            if (AbstractQuickConversationsService.isQuicksy()) {
                 if (jid.domain != Config.QUICKSY_DOMAIN) {
                     throw IOException("Trying to restore non Quicksy account on Quicksy")
                 }
@@ -320,7 +320,7 @@ class ImportBackupWorker(context: Context, workerParams: WorkerParameters) :
             .setContentText(context.getString(R.string.notification_restored_backup_subtitle))
             .setAutoCancel(true)
             .setSmallIcon(R.drawable.ic_unarchive_24dp)
-        if (QuickConversationsService.isConversations()
+        if (AbstractQuickConversationsService.isConversations()
             && AccountUtils.MANAGE_ACCOUNT_ACTIVITY != null
         ) {
             builder.setContentText(

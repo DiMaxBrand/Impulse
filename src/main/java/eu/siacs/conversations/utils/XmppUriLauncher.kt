@@ -30,7 +30,7 @@ class XmppUriLauncher {
     }
 
     fun launch(xmppUri: MiniUri.Xmpp) {
-        val accounts = Conversations.getInstance(context).accounts
+        val accounts = Conversations.getInstance(context).getAccounts()
         launch(accounts, xmppUri)
     }
 

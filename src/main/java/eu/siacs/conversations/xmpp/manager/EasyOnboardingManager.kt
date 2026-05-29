@@ -161,14 +161,14 @@ class EasyOnboardingManager(context: Context, connection: XmppConnection) :
                 when (stage) {
                     is AdHocCommandsManager.Executing -> {
                         // ejabberd uses a two-step process where we supply the username first
-                        val data = stage.data()
+                        val data = stage.data
                             ?: throw IllegalStateException("Missing data in executing stage")
                         val sessionId = stage.sessionId()
                         if (Strings.isNullOrEmpty(sessionId)) {
                             throw IllegalStateException("Missing sessionId in executing stage")
                         }
                         val username = data.getFieldByName("username")
-                        if (username != null && username.isRequired) {
+                        if (username != null && username.isRequired()) {
                             throw IllegalStateException("Username is required")
                         }
                         val rosterSubscription =

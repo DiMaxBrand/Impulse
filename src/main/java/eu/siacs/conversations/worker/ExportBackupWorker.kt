@@ -1,5 +1,6 @@
 package eu.siacs.conversations.worker
 
+import eu.siacs.conversations.services.AbstractQuickConversationsService
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -31,7 +32,6 @@ import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.persistance.DatabaseBackend
 import eu.siacs.conversations.persistance.FileBackend
-import eu.siacs.conversations.services.QuickConversationsService
 import eu.siacs.conversations.utils.BackupFileHeader
 import eu.siacs.conversations.utils.Compatibility
 import eu.siacs.conversations.utils.Compatibility.s
@@ -495,7 +495,7 @@ class ExportBackupWorker(context: Context, workerParams: WorkerParameters) :
                             && value.matches(Regex("\\d+"))
                         ) {
                             var intValue = value.toInt()
-                            if (QuickConversationsService.isConversations()) {
+                            if (AbstractQuickConversationsService.isConversations()) {
                                 intValue = intValue or (1 shl Account.OPTION_DISABLED)
                             }
                             writer.value(intValue)

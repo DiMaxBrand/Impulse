@@ -1,5 +1,6 @@
 package eu.siacs.conversations.utils
 
+import eu.siacs.conversations.services.AbstractQuickConversationsService
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -8,7 +9,6 @@ import android.net.Uri
 import android.provider.ContactsContract.Profile
 import android.provider.Settings
 import com.google.common.base.Strings
-import eu.siacs.conversations.services.QuickConversationsService
 
 object PhoneHelper {
 
@@ -20,7 +20,7 @@ object PhoneHelper {
 
     @JvmStatic
     fun getProfilePictureUri(context: Context): Uri? {
-        if (!QuickConversationsService.isContactListIntegration(context)
+        if (!AbstractQuickConversationsService.isContactListIntegration(context)
             || context.checkSelfPermission(Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED
         ) {

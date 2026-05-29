@@ -1,5 +1,6 @@
 package eu.siacs.conversations.utils
 
+import eu.siacs.conversations.services.AbstractQuickConversationsService
 import android.content.Context
 import android.content.UriPermission
 import android.net.Uri
@@ -18,7 +19,6 @@ import eu.siacs.conversations.Config
 import eu.siacs.conversations.R
 import eu.siacs.conversations.persistance.DatabaseBackend
 import eu.siacs.conversations.persistance.FileBackend
-import eu.siacs.conversations.services.QuickConversationsService
 import eu.siacs.conversations.worker.ExportBackupWorker
 import java.io.DataInputStream
 import java.io.File
@@ -162,7 +162,7 @@ class BackupFile private constructor(
                 }
             }
             val list = backupFiles.build()
-            if (QuickConversationsService.isQuicksy()) {
+            if (AbstractQuickConversationsService.isQuicksy()) {
                 return Ordering.natural<BackupFile>().immutableSortedCopy(
                     Collections2.filter(list) { b ->
                         b!!.header.jid.domain == Config.QUICKSY_DOMAIN

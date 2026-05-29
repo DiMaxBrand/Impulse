@@ -608,7 +608,7 @@ public class ConversationsOverviewFragment extends XmppFragment {
     }
 
     @Override
-    void refresh() {
+    public void refresh() {
         if (this.binding == null) {
             Log.d(
                     Config.LOGTAG,

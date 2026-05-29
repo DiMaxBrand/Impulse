@@ -1,5 +1,6 @@
 package eu.siacs.conversations.android
 
+import eu.siacs.conversations.services.AbstractQuickConversationsService
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -8,7 +9,6 @@ import android.os.Build
 import android.provider.ContactsContract
 import android.util.Log
 import eu.siacs.conversations.Config
-import eu.siacs.conversations.services.QuickConversationsService
 import eu.siacs.conversations.xmpp.Jid
 
 class JabberIdContact private constructor(cursor: Cursor) : AbstractPhoneContact(cursor) {
@@ -57,7 +57,7 @@ class JabberIdContact private constructor(cursor: Cursor) : AbstractPhoneContact
 
         @JvmStatic
         fun load(context: Context): Map<Jid, JabberIdContact> {
-            if (!QuickConversationsService.isContactListIntegration(context) ||
+            if (!AbstractQuickConversationsService.isContactListIntegration(context) ||
                 (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                     context.checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED)
             ) {

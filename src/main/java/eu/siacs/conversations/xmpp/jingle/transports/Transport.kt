@@ -53,7 +53,7 @@ interface Transport {
     class InitialTransportInfo(
         @JvmField val contentName: String,
         transportInfo: GenericTransportInfo,
-        group: Group,
+        group: Group?,
     ) : TransportInfo(transportInfo, group)
 
     open class TransportInfo {

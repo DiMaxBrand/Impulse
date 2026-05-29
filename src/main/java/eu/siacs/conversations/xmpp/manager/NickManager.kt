@@ -1,9 +1,9 @@
 package eu.siacs.conversations.xmpp.manager
 
+import eu.siacs.conversations.services.AbstractQuickConversationsService
 import com.google.common.base.Strings
 import com.google.common.util.concurrent.ListenableFuture
 import eu.siacs.conversations.entities.Contact
-import eu.siacs.conversations.services.QuickConversationsService
 import eu.siacs.conversations.services.XmppConnectionService
 import eu.siacs.conversations.xml.Namespace
 import eu.siacs.conversations.xmpp.Jid
@@ -28,7 +28,7 @@ class NickManager(private val service: XmppConnectionService, connection: XmppCo
         val account = getAccount()
         if (user.asBareJid() == account.getJid().asBareJid()) {
             account.setDisplayName(nick)
-            if (QuickConversationsService.isQuicksy()) {
+            if (AbstractQuickConversationsService.isQuicksy()) {
                 service.getAvatarService().clear(account)
             }
             service.checkMucRequiresRename()

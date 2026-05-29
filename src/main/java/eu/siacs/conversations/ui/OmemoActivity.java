@@ -73,7 +73,7 @@ public abstract class OmemoActivity extends QrCodeScanningActivity {
         }
     }
 
-    protected void onQrCodeScanned(final String code) {
+    public void onQrCodeScanned(final String code) {
         final MiniUri miniUri;
         try {
             miniUri = MiniUri.tryParse(code.trim());
