@@ -28,7 +28,7 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42181
+val baseVersionCode = 42182
 
 @Suppress("DEPRECATION")
 android {
@@ -38,7 +38,7 @@ android {
     defaultConfig {
         minSdk = 23
         versionCode = baseVersionCode
-        versionName = "1.0.0+2.20.0"
+        versionName = "1.1.1+2.20.0"
         applicationId = "com.dimax.impulse"
         resValue("string", "applicationId", applicationId!!)
         val appName = "Impulse"
