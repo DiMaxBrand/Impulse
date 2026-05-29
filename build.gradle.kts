@@ -4,6 +4,7 @@ import java.util.Properties
 plugins {
     id("com.android.application") version "9.2.1"
     id("com.diffplug.spotless") version "8.4.0"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.3.0"
 }
 
 repositories {
@@ -121,6 +122,16 @@ android {
         buildConfig = true
         resValues = true
         dataBinding = true
+        compose = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi"
+        )
     }
 }
 
@@ -145,6 +156,16 @@ androidComponents {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+
+    val composeBom = platform("androidx.compose:compose-bom:2026.04.01")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    implementation("androidx.activity:activity-compose:1.10.1")
 
     annotationProcessor("org.immutables:value:2.12.1")
     implementation("org.immutables:value-annotations:2.12.1")
