@@ -28,15 +28,16 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42182
+val baseVersionCode = 42183
 
 @Suppress("DEPRECATION")
 android {
     namespace = "eu.siacs.conversations"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
-        minSdk = 23
+        minSdk = 33
+        targetSdk = 36
         versionCode = baseVersionCode
         versionName = "1.1.1+2.20.0"
         applicationId = "com.dimax.impulse"
