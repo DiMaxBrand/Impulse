@@ -47,7 +47,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -61,8 +60,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
@@ -107,17 +108,22 @@ fun interface ConversationSwipeListener {
     fun onSwiped(conversation: Conversation, position: Int)
 }
 
-private fun presenceShape(availability: Presence.Availability?, hasOngoingCall: Boolean, isTyping: Boolean): RoundedPolygon =
-    when {
-        isTyping -> MaterialShapeHelpers.arrow()
-        hasOngoingCall -> MaterialShapeHelpers.softBurst()
-        availability == Presence.Availability.CHAT || availability == Presence.Availability.ONLINE -> MaterialShapeHelpers.pill()
-        availability == Presence.Availability.AWAY -> MaterialShapeHelpers.semiCircle()
-        availability == Presence.Availability.XA -> MaterialShapeHelpers.diamond()
-        availability == Presence.Availability.DND -> MaterialShapeHelpers.gem()
-        availability == Presence.Availability.OFFLINE -> MaterialShapeHelpers.ghostish()
-        else -> MaterialShapeHelpers.circle()
-    }
+private val roundedSquare: RoundedPolygon by lazy {
+    RoundedPolygon(numVertices = 4, rounding = CornerRounding(radius = 0.3f)).normalized()
+}
+
+private fun presenceShape(
+    isGroup: Boolean,
+    availability: Presence.Availability?,
+    hasOngoingCall: Boolean,
+    isTyping: Boolean,
+): RoundedPolygon = when {
+    isTyping -> MaterialShapeHelpers.arrow()
+    hasOngoingCall -> MaterialShapeHelpers.softBurst()
+    isGroup -> MaterialShapeHelpers.circle()
+    availability != null -> MaterialShapeHelpers.diamond()
+    else -> roundedSquare
+}
 
 private fun presenceLabel(availability: Presence.Availability?): String? = when (availability) {
     Presence.Availability.CHAT, Presence.Availability.ONLINE -> "● Online"
@@ -508,8 +514,9 @@ private fun ConversationAvatar(
         }
     }
 
-    val targetShape = remember(availability, hasOngoingCall, isTyping) {
-        presenceShape(availability, hasOngoingCall, isTyping)
+    val isGroup = conversation.getMode() == Conversational.MODE_MULTI
+    val targetShape = remember(isGroup, availability, hasOngoingCall, isTyping) {
+        presenceShape(isGroup, availability, hasOngoingCall, isTyping)
     }
     val morphProgress = remember { Animatable(1f) }
     val fromShape = remember { mutableStateOf(targetShape) }
@@ -533,7 +540,6 @@ private fun ConversationAvatar(
 
     val reusedPath = remember { androidx.compose.ui.graphics.Path() }
     val reusedMatrix = remember { android.graphics.Matrix() }
-    val reusedBounds = remember { android.graphics.RectF() }
     val fallbackColor = MaterialTheme.colorScheme.primaryContainer
 
     androidx.compose.foundation.Canvas(modifier = modifier.size(56.dp)) {
@@ -549,23 +555,35 @@ private fun ConversationAvatar(
             return@Canvas
         }
 
+        // Zoom in ~10% from center, crop from bottom to keep face at top
+        val zoomFactor = 0.9f
+        val srcW = (bm.width * zoomFactor).toInt().coerceAtLeast(1)
+        val srcH = (bm.height * zoomFactor).toInt().coerceAtLeast(1)
+        val srcX = (bm.width - srcW) / 2
+        val srcY = 0
         val dstSize = IntSize(size.width.toInt(), size.height.toInt())
 
         // Pass 1: avatar clipped to morphed shape
         clipPath(reusedPath) {
-            drawImage(bm, dstSize = dstSize)
+            drawImage(
+                image = bm,
+                srcOffset = IntOffset(srcX, srcY),
+                srcSize = IntSize(srcW, srcH),
+                dstOffset = IntOffset.Zero,
+                dstSize = dstSize,
+            )
         }
 
-        // Pass 2: segmented head overflows above the shape boundary
+        // Pass 2: segmented person drawn without clip so head overflows the shape boundary
         val segBm = segmentedBitmap
         if (segBm != null) {
-            reusedPath.asAndroidPath().computeBounds(reusedBounds, true)
-            val shapeTop = reusedBounds.top
-            if (shapeTop > 1f) {
-                clipRect(0f, 0f, size.width, shapeTop) {
-                    drawImage(segBm, dstSize = dstSize)
-                }
-            }
+            drawImage(
+                image = segBm,
+                srcOffset = IntOffset(srcX, srcY),
+                srcSize = IntSize(srcW, srcH),
+                dstOffset = IntOffset.Zero,
+                dstSize = dstSize,
+            )
         }
     }
 }
