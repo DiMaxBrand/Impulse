@@ -61,7 +61,7 @@ class ContentAddition private constructor(
             ImmutableSet.copyOf(
                 Collections2.transform(rtpContentMap.contents.entries) { e ->
                     val dt: DescriptionTransport<RtpDescription, IceUdpTransportInfo> = e!!.value
-                    Summary(e.key, dt.description.getMedia(), dt.senders)
+                    Summary(e.key, dt.description?.getMedia() ?: Media.UNKNOWN, dt.senders)
                 }
             )
     }
