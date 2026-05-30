@@ -115,7 +115,12 @@ private fun presenceShape(
 ): RoundedPolygon = when {
     isTyping -> MaterialShapeHelpers.arrow()
     hasOngoingCall -> MaterialShapeHelpers.softBurst()
-    isGroup -> MaterialShapeHelpers.circle()
+    isGroup -> MaterialShapeHelpers.slanted()
+    availability == Presence.Availability.CHAT || availability == Presence.Availability.ONLINE -> MaterialShapeHelpers.pill()
+    availability == Presence.Availability.AWAY -> MaterialShapeHelpers.semiCircle()
+    availability == Presence.Availability.XA -> MaterialShapeHelpers.diamond()
+    availability == Presence.Availability.DND -> MaterialShapeHelpers.gem()
+    availability == Presence.Availability.OFFLINE -> MaterialShapeHelpers.ghostish()
     else -> MaterialShapeHelpers.slanted()
 }
 
