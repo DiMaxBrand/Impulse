@@ -4,29 +4,25 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        Transparent shell: ListView ignores layout_margin, so we use padding here to
-        create the visual gap between cards. The foreground ripple clips to the card's
-        outline via clipToOutline on the card below.
+        ListItemLayout: official M3 Expressive container. ListView ignores layout_margin,
+        so we use padding here for the visual gap. updateAppearance(position, count) is
+        called from ListItemAdapter to set position-aware corner radii on the card.
     -->
-    <FrameLayout
+    <com.google.android.material.listitem.ListItemLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingHorizontal="8dp"
         android:paddingTop="2dp">
 
-        <!--
-            Non-clickable card container: ListView handles touch/click at the list level,
-            so this card is purely visual. The ripple is provided by the ListView selector.
-        -->
-        <com.google.android.material.card.MaterialCardView
+        <com.google.android.material.listitem.ListItemCardView
             android:id="@+id/item_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:clickable="false"
+            android:duplicateParentState="true"
             android:focusable="false"
             app:cardBackgroundColor="?colorSurfaceContainerLow"
-            app:cardElevation="0dp"
-            app:shapeAppearance="@style/ShapeAppearance.Impulse.ListItem">
+            app:cardElevation="0dp">
 
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -95,6 +91,6 @@
                 </LinearLayout>
 
             </RelativeLayout>
-        </com.google.android.material.card.MaterialCardView>
-    </FrameLayout>
+        </com.google.android.material.listitem.ListItemCardView>
+    </com.google.android.material.listitem.ListItemLayout>
 </layout>

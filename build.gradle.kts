@@ -187,7 +187,7 @@ dependencies {
     implementation("androidx.viewpager:viewpager:1.1.0")
     implementation("androidx.work:work-runtime:2.11.2")
     implementation("com.github.open-keychain.open-keychain:openpgp-api:v5.7.1")
-    implementation("com.google.android.material:material:1.13.0")
+    implementation("com.google.android.material:material:1.14.0")
     implementation("com.google.guava:guava:33.6.0-android")
     implementation("com.google.zxing:core:3.5.4")
     implementation("com.leinardi.android:speed-dial:3.3.0")

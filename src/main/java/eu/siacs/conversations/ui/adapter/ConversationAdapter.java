@@ -12,9 +12,8 @@ import androidx.annotation.NonNull;
 import androidx.core.widget.ImageViewCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.recyclerview.widget.RecyclerView;
-import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
-import com.google.android.material.shape.ShapeAppearanceModel;
+import com.google.android.material.listitem.ListItemLayout;
 import com.google.common.base.Optional;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.databinding.ItemConversationBinding;
@@ -73,18 +72,15 @@ public class ConversationAdapter
                         viewHolder.binding.frame,
                         com.google.android.material.R.attr.colorSurfaceContainerLow));
 
+        // Official M3 Expressive API: sets state_first/middle/last/single on the
+        // ListItemLayout, which ListItemCardView uses to pick position-aware corner radii.
+        ((ListItemLayout) viewHolder.itemView).updateAppearance(position, getItemCount());
+        // Swipe-reveal shell: GradientDrawable keeps the reveal colour + matching corners.
         final float density = activity.getResources().getDisplayMetrics().density;
         final float small = 5f * density;
         final float large = 16f * density;
         final float topR = position > 0 ? small : large;
         final float botR = position < getItemCount() - 1 ? small : large;
-        viewHolder.binding.frame.setShapeAppearanceModel(
-                new ShapeAppearanceModel.Builder()
-                        .setTopLeftCornerSize(topR)
-                        .setTopRightCornerSize(topR)
-                        .setBottomLeftCornerSize(botR)
-                        .setBottomRightCornerSize(botR)
-                        .build());
         final GradientDrawable shell = new GradientDrawable();
         shell.setColor(MaterialColors.getColor(
                 viewHolder.itemView,

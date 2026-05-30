@@ -4,34 +4,30 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        Outer shell: stays fixed during swipe-to-archive. Its background (colorSecondaryFixedDim)
-        shows through when the inner card slides aside. clipToOutline keeps the sliding card
-        within the same 16dp rounded boundary.
+        ListItemLayout: official M3 Expressive container. updateAppearance(position, count)
+        sets state_first / state_middle / state_last / state_single on the layout, which
+        ListItemCardView uses to apply position-aware corner radii automatically.
+        The GradientDrawable background (set in the adapter) provides the swipe-reveal colour;
+        clipToOutline clips the sliding card within that rounded shell.
     -->
-    <FrameLayout
+    <com.google.android.material.listitem.ListItemLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="8dp"
         android:layout_marginVertical="2dp"
-        android:background="@drawable/background_conversation_item_swipe"
         android:clipToOutline="true">
 
-        <!--
-            Inner card: the view ItemTouchHelper actually slides. MaterialCardView gives us
-            the semi-detached container shape, the surface fill, and a corner-clipped ripple
-            without any extra drawable plumbing.
-        -->
-        <com.google.android.material.card.MaterialCardView
+        <com.google.android.material.listitem.ListItemCardView
             android:id="@+id/frame"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:clickable="true"
             android:descendantFocusability="blocksDescendants"
+            android:duplicateParentState="true"
             android:focusable="true"
             app:cardBackgroundColor="?colorSurfaceContainerLow"
             app:cardElevation="0dp"
-            app:rippleColor="?colorControlHighlight"
-            app:shapeAppearance="@style/ShapeAppearance.Impulse.ListItem">
+            app:rippleColor="?colorControlHighlight">
 
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -176,6 +172,6 @@
                         tools:text="23:42" />
                 </RelativeLayout>
             </RelativeLayout>
-        </com.google.android.material.card.MaterialCardView>
-    </FrameLayout>
+        </com.google.android.material.listitem.ListItemCardView>
+    </com.google.android.material.listitem.ListItemLayout>
 </layout>

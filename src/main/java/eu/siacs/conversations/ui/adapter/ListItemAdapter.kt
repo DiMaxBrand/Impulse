@@ -12,8 +12,7 @@ import android.widget.TextView
 import androidx.constraintlayout.helper.widget.Flow
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.databinding.DataBindingUtil
-import com.google.android.material.card.MaterialCardView
-import com.google.android.material.shape.ShapeAppearanceModel
+import com.google.android.material.listitem.ListItemLayout
 import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.Config
 import eu.siacs.conversations.R
@@ -87,17 +86,7 @@ open class ListItemAdapter : ArrayAdapter<ListItem> {
         if (item != null) {
             AvatarWorkerTask.loadAvatar(item, viewHolder.avatar, R.dimen.avatar)
         }
-        val density = activity.resources.displayMetrics.density
-        val small = 5f * density
-        val large = 16f * density
-        val topR = if (position > 0) small else large
-        val botR = if (position < count - 1) small else large
-        viewHolder.card.shapeAppearanceModel = ShapeAppearanceModel.builder()
-            .setTopLeftCornerSize(topR)
-            .setTopRightCornerSize(topR)
-            .setBottomLeftCornerSize(botR)
-            .setBottomRightCornerSize(botR)
-            .build()
+        (resultView as ListItemLayout).updateAppearance(position, count)
         return resultView
     }
 
@@ -107,7 +96,6 @@ open class ListItemAdapter : ArrayAdapter<ListItem> {
         lateinit var avatar: ImageView
         lateinit var tags: ConstraintLayout
         lateinit var flowWidget: Flow
-        lateinit var card: MaterialCardView
 
         companion object {
             fun get(binding: ItemContactBinding): ViewHolder {
@@ -117,7 +105,6 @@ open class ListItemAdapter : ArrayAdapter<ListItem> {
                 viewHolder.avatar = binding.contactPhoto
                 viewHolder.tags = binding.tags
                 viewHolder.flowWidget = binding.flowWidget
-                viewHolder.card = binding.itemCard
                 binding.root.tag = viewHolder
                 return viewHolder
             }
