@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,8 +20,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -163,19 +160,11 @@ fun ConversationList(
         state = pullState,
         modifier = modifier,
         indicator = {
-            PullToRefreshDefaults.IndicatorBox(
+            PullToRefreshDefaults.LoadingIndicator(
                 state = pullState,
                 isRefreshing = isRefreshing,
                 modifier = Modifier.align(Alignment.TopCenter),
-            ) {
-                if (isRefreshing) {
-                    CircularWavyProgressIndicator()
-                } else {
-                    CircularProgressIndicator(
-                        progress = { pullState.distanceFraction.coerceIn(0f, 1f) },
-                    )
-                }
-            }
+            )
         },
     ) {
         if (conversations.isEmpty()) {
