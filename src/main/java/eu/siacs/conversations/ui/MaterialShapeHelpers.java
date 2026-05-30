@@ -14,4 +14,5 @@ final class MaterialShapeHelpers {
     static RoundedPolygon gem()        { return MaterialShapes.Companion.getGem(); }
     static RoundedPolygon ghostish()   { return MaterialShapes.Companion.getGhostish(); }
     static RoundedPolygon softBurst()  { return MaterialShapes.Companion.getSoftBurst(); }
+    static RoundedPolygon arrow()      { return MaterialShapes.Companion.getArrow(); }
 }

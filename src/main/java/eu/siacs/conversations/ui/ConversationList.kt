@@ -76,8 +76,10 @@ import eu.siacs.conversations.ui.util.Attachment
 import eu.siacs.conversations.utils.IrregularUnicodeDetector
 import eu.siacs.conversations.utils.UIHelper
 import eu.siacs.conversations.xmpp.Jid
+import eu.siacs.conversations.xmpp.manager.ChatStateManager
 import eu.siacs.conversations.xmpp.manager.JingleManager
 import im.conversations.android.xmpp.model.stanza.Presence
+import im.conversations.android.xmpp.model.state.Composing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -105,8 +107,9 @@ fun interface ConversationSwipeListener {
     fun onSwiped(conversation: Conversation, position: Int)
 }
 
-private fun presenceShape(availability: Presence.Availability?, hasOngoingCall: Boolean): RoundedPolygon =
+private fun presenceShape(availability: Presence.Availability?, hasOngoingCall: Boolean, isTyping: Boolean): RoundedPolygon =
     when {
+        isTyping -> MaterialShapeHelpers.arrow()
         hasOngoingCall -> MaterialShapeHelpers.softBurst()
         availability == Presence.Availability.CHAT || availability == Presence.Availability.ONLINE -> MaterialShapeHelpers.pill()
         availability == Presence.Availability.AWAY -> MaterialShapeHelpers.semiCircle()
@@ -289,6 +292,15 @@ private fun ConversationItem(
         try { conversation.getContact().getShownStatus() } catch (_: Exception) { null }
     } else null
 
+    val isTyping: Boolean = if (conversation.getMode() == Conversational.MODE_SINGLE) {
+        try {
+            val state = conversation.getAccount().getXmppConnection()
+                ?.getManager(ChatStateManager::class.java)
+                ?.getIncoming(conversation.getAddress())
+            state == Composing::class.java
+        } catch (_: Exception) { false }
+    } else false
+
 
     Card(
         onClick = onClick,
@@ -305,6 +317,7 @@ private fun ConversationItem(
                 conversation = conversation,
                 availability = availability,
                 hasOngoingCall = ongoingCall.isPresent,
+                isTyping = isTyping,
             )
             Spacer(modifier = Modifier.width(dimensionResource(R.dimen.avatar_item_distance)))
             Column(modifier = Modifier.weight(1f)) {
@@ -322,12 +335,12 @@ private fun ConversationItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).padding(end = 4.dp),
                     )
-                    val presenceText = presenceLabel(availability)
+                    val presenceText = if (isTyping) "typing..." else presenceLabel(availability)
                     if (presenceText != null) {
                         Text(
                             text = presenceText,
                             style = MaterialTheme.typography.labelSmall,
-                            color = presenceColor(availability),
+                            color = if (isTyping) MaterialTheme.colorScheme.primary else presenceColor(availability),
                             maxLines = 1,
                             modifier = Modifier.padding(end = 6.dp),
                         )
@@ -470,6 +483,7 @@ private fun ConversationAvatar(
     conversation: Conversation,
     availability: Presence.Availability?,
     hasOngoingCall: Boolean,
+    isTyping: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -494,8 +508,8 @@ private fun ConversationAvatar(
         }
     }
 
-    val targetShape = remember(availability, hasOngoingCall) {
-        presenceShape(availability, hasOngoingCall)
+    val targetShape = remember(availability, hasOngoingCall, isTyping) {
+        presenceShape(availability, hasOngoingCall, isTyping)
     }
     val morphProgress = remember { Animatable(1f) }
     val fromShape = remember { mutableStateOf(targetShape) }
