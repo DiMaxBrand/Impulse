@@ -537,9 +537,8 @@ private fun ConversationAvatar(
     val fallbackColor = MaterialTheme.colorScheme.primaryContainer
 
     androidx.compose.foundation.Canvas(modifier = modifier.size(56.dp)) {
-        val half = size.width / 2f
-        reusedMatrix.setScale(half, half)
-        reusedMatrix.postTranslate(half, half)
+        val s = size.width
+        reusedMatrix.setScale(s, s)
 
         morph.toPath(progress, reusedPath)
         reusedPath.asAndroidPath().transform(reusedMatrix)
