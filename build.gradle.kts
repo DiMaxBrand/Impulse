@@ -190,6 +190,7 @@ dependencies {
     implementation("com.github.open-keychain.open-keychain:openpgp-api:v5.7.1")
     implementation("com.google.android.material:material:1.14.0")
     implementation("com.google.guava:guava:33.6.0-android")
+    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta5")
     implementation("com.google.zxing:core:3.5.4")
     implementation("com.leinardi.android:speed-dial:3.3.0")
     implementation("com.squareup.okhttp3:okhttp:5.3.2")

@@ -1,6 +1,8 @@
 package eu.siacs.conversations.ui
 
-import android.widget.ImageView
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -29,17 +31,27 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -49,11 +61,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.graphics.shapes.Morph
+import androidx.graphics.shapes.RoundedPolygon
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-import com.google.android.material.imageview.ShapeableImageView
-import com.google.android.material.shape.ShapeAppearanceModel
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
@@ -61,11 +73,13 @@ import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.ui.adapter.MediaAdapter
 import eu.siacs.conversations.ui.adapter.MessageAdapter
 import eu.siacs.conversations.ui.util.Attachment
-import eu.siacs.conversations.ui.util.AvatarWorkerTask
 import eu.siacs.conversations.utils.IrregularUnicodeDetector
 import eu.siacs.conversations.utils.UIHelper
 import eu.siacs.conversations.xmpp.Jid
 import eu.siacs.conversations.xmpp.manager.JingleManager
+import im.conversations.android.xmpp.model.stanza.Presence
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Observable list of conversations that Compose tracks for recomposition. */
 class ConversationListState {
@@ -90,6 +104,32 @@ fun interface ConversationClickListener {
 fun interface ConversationSwipeListener {
     fun onSwiped(conversation: Conversation, position: Int)
 }
+
+private fun presenceShape(availability: Presence.Availability?, hasOngoingCall: Boolean): RoundedPolygon =
+    when {
+        hasOngoingCall -> MaterialShapeHelpers.softBurst()
+        availability == Presence.Availability.CHAT || availability == Presence.Availability.ONLINE -> MaterialShapeHelpers.pill()
+        availability == Presence.Availability.AWAY -> MaterialShapeHelpers.semiCircle()
+        availability == Presence.Availability.XA -> MaterialShapeHelpers.diamond()
+        availability == Presence.Availability.DND -> MaterialShapeHelpers.gem()
+        availability == Presence.Availability.OFFLINE -> MaterialShapeHelpers.ghostish()
+        else -> MaterialShapeHelpers.circle()
+    }
+
+private fun presenceLabel(availability: Presence.Availability?): String? = when (availability) {
+    Presence.Availability.CHAT, Presence.Availability.ONLINE -> "● Online"
+    Presence.Availability.AWAY, Presence.Availability.XA -> "● Away"
+    Presence.Availability.DND -> "● Busy"
+    else -> null
+}
+
+private fun presenceColor(availability: Presence.Availability?): Color = when (availability) {
+    Presence.Availability.CHAT, Presence.Availability.ONLINE -> Color(0xFF4CAF50)
+    Presence.Availability.AWAY, Presence.Availability.XA -> Color(0xFFFFA000)
+    Presence.Availability.DND -> Color(0xFFE53935)
+    else -> Color.Gray
+}
+
 
 object ConversationListHelper {
     @JvmStatic
@@ -245,6 +285,11 @@ private fun ConversationItem(
         }
     }
 
+    val availability: Presence.Availability? = if (conversation.getMode() == Conversational.MODE_SINGLE) {
+        try { conversation.getContact().getShownStatus() } catch (_: Exception) { null }
+    } else null
+
+
     Card(
         onClick = onClick,
         shape = shape,
@@ -256,10 +301,14 @@ private fun ConversationItem(
             modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ConversationAvatar(conversation = conversation)
+            ConversationAvatar(
+                conversation = conversation,
+                availability = availability,
+                hasOngoingCall = ongoingCall.isPresent,
+            )
             Spacer(modifier = Modifier.width(dimensionResource(R.dimen.avatar_item_distance)))
             Column(modifier = Modifier.weight(1f)) {
-                // Name + timestamp
+                // Name + presence status + timestamp
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val name = conversation.name
                     Text(
@@ -273,6 +322,16 @@ private fun ConversationItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).padding(end = 4.dp),
                     )
+                    val presenceText = presenceLabel(availability)
+                    if (presenceText != null) {
+                        Text(
+                            text = presenceText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = presenceColor(availability),
+                            maxLines = 1,
+                            modifier = Modifier.padding(end = 6.dp),
+                        )
+                    }
                     val timestamp = draft?.timestamp ?: message.timeSent
                     Text(
                         text = UIHelper.readableTimeDifference(context, timestamp),
@@ -407,27 +466,95 @@ private fun ConversationItem(
 }
 
 @Composable
-private fun ConversationAvatar(conversation: Conversation, modifier: Modifier = Modifier) {
-    AndroidView(
-        factory = { context ->
-            ShapeableImageView(context).apply {
-                val cornerPx = 8f * context.resources.displayMetrics.density
-                shapeAppearanceModel = ShapeAppearanceModel.builder()
-                    .setAllCornerSizes(cornerPx)
-                    .build()
-                scaleType = ImageView.ScaleType.CENTER_CROP
+private fun ConversationAvatar(
+    conversation: Conversation,
+    availability: Presence.Availability?,
+    hasOngoingCall: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val sizePx = with(density) { 56.dp.toPx() }
+
+    val avatarState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+    val segmentedState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+    val avatarBitmap by avatarState
+    val segmentedBitmap by segmentedState
+
+    LaunchedEffect(conversation) {
+        val activity = context as? XmppActivity ?: return@LaunchedEffect
+        val sizePxInt = sizePx.toInt()
+        val bm = withContext(Dispatchers.IO) {
+            activity.avatarService().get(conversation, sizePxInt, false)
+        } ?: return@LaunchedEffect
+        avatarState.value = bm.asImageBitmap()
+        val key = conversation.getUuid() ?: return@LaunchedEffect
+        AvatarSegmenter.segment(bm, key) { segBm ->
+            segmentedState.value = segBm?.asImageBitmap()
+        }
+    }
+
+    val targetShape = remember(availability, hasOngoingCall) {
+        presenceShape(availability, hasOngoingCall)
+    }
+    val morphProgress = remember { Animatable(1f) }
+    val fromShape = remember { mutableStateOf(targetShape) }
+    val toShape = remember { mutableStateOf(targetShape) }
+
+    LaunchedEffect(targetShape) {
+        if (toShape.value === targetShape) return@LaunchedEffect
+        fromShape.value = toShape.value
+        toShape.value = targetShape
+        morphProgress.snapTo(0f)
+        morphProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        )
+    }
+
+    val morph = remember(fromShape.value, toShape.value) {
+        Morph(fromShape.value, toShape.value)
+    }
+    val progress = morphProgress.value
+
+    val reusedPath = remember { androidx.compose.ui.graphics.Path() }
+    val reusedMatrix = remember { android.graphics.Matrix() }
+    val reusedBounds = remember { android.graphics.RectF() }
+    val fallbackColor = MaterialTheme.colorScheme.primaryContainer
+
+    androidx.compose.foundation.Canvas(modifier = modifier.size(56.dp)) {
+        val half = size.width / 2f
+        reusedMatrix.setScale(half, half)
+        reusedMatrix.postTranslate(half, half)
+
+        morph.toPath(progress, reusedPath)
+        reusedPath.asAndroidPath().transform(reusedMatrix)
+
+        val bm = avatarBitmap
+        if (bm == null) {
+            clipPath(reusedPath) { drawRect(fallbackColor) }
+            return@Canvas
+        }
+
+        val dstSize = IntSize(size.width.toInt(), size.height.toInt())
+
+        // Pass 1: avatar clipped to morphed shape
+        clipPath(reusedPath) {
+            drawImage(bm, dstSize = dstSize)
+        }
+
+        // Pass 2: segmented head overflows above the shape boundary
+        val segBm = segmentedBitmap
+        if (segBm != null) {
+            reusedPath.asAndroidPath().computeBounds(reusedBounds, true)
+            val shapeTop = reusedBounds.top
+            if (shapeTop > 1f) {
+                clipRect(0f, 0f, size.width, shapeTop) {
+                    drawImage(segBm, dstSize = dstSize)
+                }
             }
-        },
-        update = { imageView ->
-            AvatarWorkerTask.loadAvatar(
-                conversation,
-                imageView,
-                R.dimen.avatar_on_conversation_overview,
-            )
-        },
-        onReset = { imageView -> imageView.setImageDrawable(null) },
-        modifier = modifier.size(56.dp),
-    )
+        }
+    }
 }
 
 @Composable

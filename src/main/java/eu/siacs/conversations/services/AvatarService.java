@@ -153,7 +153,7 @@ public class AvatarService {
         if (cached != null || cachedOnly) {
             return cached;
         }
-        if (contact.getAvatar() != null && QuickConversationsService.isQuicksy()) {
+        if (contact.getAvatar() != null) {
             final var byHash =
                     mXmppConnectionService.getFileBackend().getAvatar(contact.getAvatar(), size);
             if (byHash != null) {
