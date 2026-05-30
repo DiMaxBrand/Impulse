@@ -40,5 +40,7 @@ abstract class QrCodeScanningActivity : XmppActivity() {
         }
     }
 
+    internal fun requestQrCodeScan() = requestPermissionAndScanQrCode()
+
     abstract fun onQrCodeScanned(code: String)
 }
