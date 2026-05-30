@@ -63,7 +63,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
@@ -108,10 +107,6 @@ fun interface ConversationSwipeListener {
     fun onSwiped(conversation: Conversation, position: Int)
 }
 
-private val roundedSquare: RoundedPolygon by lazy {
-    RoundedPolygon(numVertices = 4, rounding = CornerRounding(radius = 0.3f)).normalized()
-}
-
 private fun presenceShape(
     isGroup: Boolean,
     availability: Presence.Availability?,
@@ -121,8 +116,7 @@ private fun presenceShape(
     isTyping -> MaterialShapeHelpers.arrow()
     hasOngoingCall -> MaterialShapeHelpers.softBurst()
     isGroup -> MaterialShapeHelpers.circle()
-    availability != null -> MaterialShapeHelpers.diamond()
-    else -> roundedSquare
+    else -> MaterialShapeHelpers.slanted()
 }
 
 private fun presenceLabel(availability: Presence.Availability?): String? = when (availability) {
