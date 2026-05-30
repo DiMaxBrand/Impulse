@@ -265,7 +265,6 @@ class ConversationsOverviewFragment : XmppFragment() {
                     ?: Log.w(TAG, "Activity does not implement OnConversationSelected")
             },
             ::onConversationSwiped,
-            Runnable { refresh() },
             binding.fab,
         )
 

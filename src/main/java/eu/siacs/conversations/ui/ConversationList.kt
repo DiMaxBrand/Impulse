@@ -28,17 +28,11 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,7 +70,6 @@ import eu.siacs.conversations.xmpp.manager.JingleManager
 /** Observable list of conversations that Compose tracks for recomposition. */
 class ConversationListState {
     internal val list: SnapshotStateList<Conversation> = mutableStateListOf()
-    var isRefreshing: Boolean by mutableStateOf(false)
 
     fun update(source: List<Conversation>) {
         list.clear()
@@ -105,7 +98,6 @@ object ConversationListHelper {
         state: ConversationListState,
         onConversationClick: ConversationClickListener,
         onConversationSwiped: ConversationSwipeListener,
-        onRefresh: Runnable,
         fab: ExtendedFloatingActionButton,
     ) {
         composeView.setViewCompositionStrategy(
@@ -115,14 +107,6 @@ object ConversationListHelper {
             ImpulseTheme {
                 ConversationList(
                     conversations = state.list,
-                    isRefreshing = state.isRefreshing,
-                    onRefresh = {
-                        state.isRefreshing = true
-                        composeView.post {
-                            onRefresh.run()
-                            state.isRefreshing = false
-                        }
-                    },
                     onConversationClick = { onConversationClick.onClick(it) },
                     onConversationSwiped = { c, pos -> onConversationSwiped.onSwiped(c, pos) },
                     onFirstVisibleIndexChanged = { index ->
@@ -149,67 +133,52 @@ fun ConversationList(
     onConversationClick: (Conversation) -> Unit,
     onConversationSwiped: (Conversation, Int) -> Unit,
     onFirstVisibleIndexChanged: (Int) -> Unit,
-    isRefreshing: Boolean = false,
-    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val pullState = rememberPullToRefreshState()
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = onRefresh,
-        state = pullState,
-        modifier = modifier,
-        indicator = {
-            PullToRefreshDefaults.LoadingIndicator(
-                state = pullState,
-                isRefreshing = isRefreshing,
-                modifier = Modifier.align(Alignment.TopCenter),
-            )
-        },
-    ) {
-        if (conversations.isEmpty()) {
-            LaunchedEffect(Unit) { onFirstVisibleIndexChanged(0) }
-            EmptyConversationsHint(modifier = Modifier.fillMaxSize())
-        } else {
-            val listState = rememberLazyListState()
-            LaunchedEffect(listState.firstVisibleItemIndex) {
-                onFirstVisibleIndexChanged(listState.firstVisibleItemIndex)
-            }
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                itemsIndexed(
-                    conversations,
-                    key = { _, c -> c.getUuid() ?: c.hashCode().toString() },
-                ) { index, conversation ->
-                    val shape = conversationItemShape(index, conversations.size)
-                    val swipeState = rememberSwipeToDismissBoxState(
-                        confirmValueChange = { value ->
-                            if (value != SwipeToDismissBoxValue.Settled) {
-                                onConversationSwiped(conversation, index)
-                                true
-                            } else {
-                                false
-                            }
-                        },
-                    )
-                    SwipeToDismissBox(
-                        state = swipeState,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        backgroundContent = {
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .clip(shape)
-                                    .background(MaterialTheme.colorScheme.secondaryFixedDim),
-                            )
-                        },
-                    ) {
-                        ConversationItem(
-                            conversation = conversation,
-                            onClick = { onConversationClick(conversation) },
-                            shape = shape,
-                        )
+    if (conversations.isEmpty()) {
+        LaunchedEffect(Unit) { onFirstVisibleIndexChanged(0) }
+        EmptyConversationsHint(modifier = modifier.fillMaxSize())
+        return
+    }
+
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState.firstVisibleItemIndex) {
+        onFirstVisibleIndexChanged(listState.firstVisibleItemIndex)
+    }
+
+    LazyColumn(state = listState, modifier = modifier) {
+        itemsIndexed(
+            conversations,
+            key = { _, c -> c.getUuid() ?: c.hashCode().toString() },
+        ) { index, conversation ->
+            val shape = conversationItemShape(index, conversations.size)
+            val swipeState = rememberSwipeToDismissBoxState(
+                confirmValueChange = { value ->
+                    if (value != SwipeToDismissBoxValue.Settled) {
+                        onConversationSwiped(conversation, index)
+                        true
+                    } else {
+                        false
                     }
-                }
+                },
+            )
+            SwipeToDismissBox(
+                state = swipeState,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                backgroundContent = {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .clip(shape)
+                            .background(MaterialTheme.colorScheme.secondaryFixedDim),
+                    )
+                },
+            ) {
+                ConversationItem(
+                    conversation = conversation,
+                    onClick = { onConversationClick(conversation) },
+                    shape = shape,
+                )
             }
         }
     }
