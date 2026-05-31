@@ -35,6 +35,7 @@ import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,10 +87,12 @@ import kotlinx.coroutines.withContext
 /** Observable list of conversations that Compose tracks for recomposition. */
 class ConversationListState {
     internal val list: SnapshotStateList<Conversation> = mutableStateListOf()
+    internal val revision = mutableIntStateOf(0)
 
     fun update(source: List<Conversation>) {
         list.clear()
         list.addAll(source)
+        revision.intValue++
     }
 
     fun remove(conversation: Conversation) { list.remove(conversation) }
@@ -155,6 +158,7 @@ object ConversationListHelper {
             ImpulseTheme {
                 ConversationList(
                     conversations = state.list,
+                    revision = state.revision.intValue,
                     onConversationClick = { onConversationClick.onClick(it) },
                     onConversationSwiped = { c, pos -> onConversationSwiped.onSwiped(c, pos) },
                     onFirstVisibleIndexChanged = { index ->
@@ -178,6 +182,7 @@ private fun ImpulseTheme(content: @Composable () -> Unit) {
 @Composable
 fun ConversationList(
     conversations: List<Conversation>,
+    revision: Int,
     onConversationClick: (Conversation) -> Unit,
     onConversationSwiped: (Conversation, Int) -> Unit,
     onFirstVisibleIndexChanged: (Int) -> Unit,
@@ -224,6 +229,7 @@ fun ConversationList(
             ) {
                 ConversationItem(
                     conversation = conversation,
+                    revision = revision,
                     onClick = { onConversationClick(conversation) },
                     shape = shape,
                 )
@@ -268,6 +274,7 @@ private fun EmptyConversationsHint(modifier: Modifier = Modifier) {
 @Composable
 private fun ConversationItem(
     conversation: Conversation,
+    revision: Int,
     onClick: () -> Unit,
     shape: RoundedCornerShape,
     modifier: Modifier = Modifier,
@@ -280,7 +287,7 @@ private fun ConversationItem(
     val isPinned = conversation.getBooleanAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, false)
     val draft: Conversation.Draft? = if (isRead) conversation.getDraft() else null
 
-    val ongoingCall = remember(conversation) {
+    val ongoingCall = remember(conversation, revision) {
         if (conversation.getMode() == Conversational.MODE_MULTI) {
             com.google.common.base.Optional.absent<Any>()
         } else {
@@ -293,18 +300,22 @@ private fun ConversationItem(
         }
     }
 
-    val availability: Presence.Availability? = if (conversation.getMode() == Conversational.MODE_SINGLE) {
-        try { conversation.getContact().getShownStatus() } catch (_: Exception) { null }
-    } else null
+    val availability: Presence.Availability? = remember(conversation, revision) {
+        if (conversation.getMode() == Conversational.MODE_SINGLE)
+            try { conversation.getContact().getShownStatus() } catch (_: Exception) { null }
+        else null
+    }
 
-    val isTyping: Boolean = if (conversation.getMode() == Conversational.MODE_SINGLE) {
-        try {
-            val state = conversation.getAccount().getXmppConnection()
-                ?.getManager(ChatStateManager::class.java)
-                ?.getIncoming(conversation.getAddress())
-            state == Composing::class.java
-        } catch (_: Exception) { false }
-    } else false
+    val isTyping: Boolean = remember(conversation, revision) {
+        if (conversation.getMode() == Conversational.MODE_SINGLE)
+            try {
+                val state = conversation.getAccount().getXmppConnection()
+                    ?.getManager(ChatStateManager::class.java)
+                    ?.getIncoming(conversation.getAddress())
+                state == Composing::class.java
+            } catch (_: Exception) { false }
+        else false
+    }
 
 
     Card(
@@ -612,6 +623,7 @@ private fun ConversationListEmptyPreview() {
     ImpulseTheme {
         ConversationList(
             conversations = emptyList(),
+            revision = 0,
             onConversationClick = {},
             onConversationSwiped = { _, _ -> },
             onFirstVisibleIndexChanged = {},
