@@ -318,24 +318,27 @@ private fun ConversationItem(
     }
 
 
-    Card(
-        onClick = onClick,
-        shape = shape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    val avatarItemDistance = dimensionResource(R.dimen.avatar_item_distance)
+
+    // Avatar is outside the Card so it can draw above the card's top edge without being
+    // clipped by Material3's Surface, which always clips children to the card shape.
+    Box(modifier = modifier.fillMaxWidth()) {
+        Card(
+            onClick = onClick,
+            shape = shape,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            ConversationAvatar(
-                conversation = conversation,
-                availability = availability,
-                hasOngoingCall = ongoingCall.isPresent,
-                isTyping = isTyping,
-            )
-            Spacer(modifier = Modifier.width(dimensionResource(R.dimen.avatar_item_distance)))
+            Row(
+                modifier = Modifier.padding(
+                    start = 8.dp + 56.dp + avatarItemDistance,
+                    end = 8.dp,
+                    top = 8.dp,
+                    bottom = 8.dp,
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
             Column(modifier = Modifier.weight(1f)) {
                 // Name + presence status + timestamp
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -490,7 +493,17 @@ private fun ConversationItem(
                     }
                 }
             }
+            }
         }
+        ConversationAvatar(
+            conversation = conversation,
+            availability = availability,
+            hasOngoingCall = ongoingCall.isPresent,
+            isTyping = isTyping,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 8.dp),
+        )
     }
 }
 
