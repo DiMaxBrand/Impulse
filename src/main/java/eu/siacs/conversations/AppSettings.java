@@ -441,4 +441,23 @@ public class AppSettings {
                 .putLong(INSTALLATION_ID, installationId)
                 .apply();
     }
+
+    /**
+     * One-time preference migrations keyed by an integer version stored in SharedPreferences.
+     * Call once from Application.onCreate() so it runs on every app start but each migration
+     * block executes only once.
+     */
+    public static void migratePreferences(final Context context) {
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        final int version = prefs.getInt("pref_migration_version", 0);
+        if (version < 1) {
+            // Migration 1: enable availability settings that were previously off by default.
+            prefs.edit()
+                    .putBoolean(AWAY_WHEN_SCREEN_IS_OFF, true)
+                    .putBoolean(DND_SYNC_SYSTEM, true)
+                    .putBoolean(DND_INCLUDE_SILENT_MODES, true)
+                    .putInt("pref_migration_version", 1)
+                    .apply();
+        }
+    }
 }

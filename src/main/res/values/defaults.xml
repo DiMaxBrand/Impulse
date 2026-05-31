@@ -4,8 +4,8 @@
     <bool name="enter_is_send">false</bool>
     <bool name="notifications_from_strangers">true</bool>
     <bool name="headsup_notifications">false</bool>
-    <bool name="dnd_sync_system">false</bool>
-    <bool name="dnd_include_silent_modes">false</bool>
+    <bool name="dnd_sync_system">true</bool>
+    <bool name="dnd_include_silent_modes">true</bool>
     <bool name="confirm_messages">true</bool>
     <bool name="chat_states">true</bool>
     <bool name="entity_time">true</bool>
@@ -32,7 +32,7 @@
     <bool name="use_relays">false</bool>
     <bool name="display_enter_key">false</bool>
     <bool name="manually_change_presence">false</bool>
-    <bool name="away_when_screen_off">false</bool>
+    <bool name="away_when_screen_off">true</bool>
     <bool name="enable_foreground_service">true</bool>
     <bool name="send_crash_reports">true</bool>
     <bool name="validate_hostname">false</bool>

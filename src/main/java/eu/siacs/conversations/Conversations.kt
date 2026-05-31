@@ -32,6 +32,7 @@ class Conversations : Application() {
         super.onCreate()
         installSecurityProvider()
         CONTEXT = this.applicationContext
+        AppSettings.migratePreferences(applicationContext)
         EmojiInitializationService.execute(applicationContext)
         ExceptionHelper.init(applicationContext)
         SettingsUtils.applyThemeSettings(this)
