@@ -23,7 +23,7 @@ class ReactionManager(private val service: XmppConnectionService, connection: Xm
     fun processReactions(
         packet: im.conversations.android.xmpp.model.stanza.Message,
         counterpart: Jid,
-        query: MessageArchiveManager.Query
+        query: MessageArchiveManager.Query?
     ) {
         val isTypeGroupChat =
             packet.getType() ==
