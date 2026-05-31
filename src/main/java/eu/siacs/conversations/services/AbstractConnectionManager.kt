@@ -50,7 +50,7 @@ open class AbstractConnectionManager(service: XmppConnectionService) {
                 // TODO accept List<String> pathSegments
                 val pos = path.lastIndexOf('/')
                 val filename = path.substring(pos + 1).lowercase()
-                val parts = filename.split("\\.").toTypedArray()
+                val parts = filename.split(".").toTypedArray()
                 val main = if (parts.size >= 2) parts[parts.size - 1] else null
                 val secondary = if (parts.size >= 3) parts[parts.size - 2] else null
                 return Extension(main, secondary)
