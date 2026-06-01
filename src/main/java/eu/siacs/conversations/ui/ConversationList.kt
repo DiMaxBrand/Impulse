@@ -46,8 +46,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -517,27 +519,77 @@ private fun ConversationAvatar(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val sizePx = with(density) { 56.dp.toPx() }
+    val canvasSizePx = with(density) { 56.dp.toPx() }
+    // Fixed overflow: ~4dp card-center margin + 3dp above card top = 7dp, rounded to 8dp
+    val maxOverflowPx = with(density) { 8.dp.toPx() }
+
+    val isGroup = conversation.getMode() == Conversational.MODE_MULTI
 
     val avatarState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
     val segmentedState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+    val personBoundsState = remember(conversation.getUuid()) { mutableStateOf<Pair<Float, Float>?>(null) }
     val avatarBitmap by avatarState
     val segmentedBitmap by segmentedState
+    val personBounds by personBoundsState
 
     LaunchedEffect(conversation) {
         val activity = context as? XmppActivity ?: return@LaunchedEffect
-        val sizePxInt = sizePx.toInt()
         val bm = withContext(Dispatchers.IO) {
-            activity.avatarService().get(conversation, sizePxInt, false)
+            activity.avatarService().get(conversation, canvasSizePx.toInt(), false)
         } ?: return@LaunchedEffect
         avatarState.value = bm.asImageBitmap()
         val key = conversation.getUuid() ?: return@LaunchedEffect
-        AvatarSegmenter.segment(bm, key) { segBm ->
-            segmentedState.value = segBm?.asImageBitmap()
+        if (!isGroup) {
+            AvatarSegmenter.segment(bm, key) { segBm ->
+                segmentedState.value = segBm?.asImageBitmap()
+            }
         }
     }
 
-    val isGroup = conversation.getMode() == Conversational.MODE_MULTI
+    // Scan segmented bitmap to find person top and bottom (off main thread)
+    LaunchedEffect(segmentedBitmap) {
+        val segBm = segmentedBitmap
+        if (segBm == null) { personBoundsState.value = null; return@LaunchedEffect }
+        val bounds = withContext(Dispatchers.Default) {
+            val bmp = segBm.asAndroidBitmap().let {
+                if (it.config == android.graphics.Bitmap.Config.HARDWARE)
+                    it.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
+                else it
+            }
+            var top = -1; var bottom = -1
+            outer@ for (row in 0 until bmp.height) {
+                for (col in 0 until bmp.width) {
+                    if (android.graphics.Color.alpha(bmp.getPixel(col, row)) > 32) { top = row; break@outer }
+                }
+            }
+            outer@ for (row in bmp.height - 1 downTo 0) {
+                for (col in 0 until bmp.width) {
+                    if (android.graphics.Color.alpha(bmp.getPixel(col, row)) > 32) { bottom = row; break@outer }
+                }
+            }
+            if (top >= 0 && bottom > top) top.toFloat() / bmp.height to bottom.toFloat() / bmp.height
+            else null
+        }
+        personBoundsState.value = bounds
+    }
+
+    // Spring-animate overflow in once person bounds are known, reset when they're gone
+    val overflowAnim = remember { Animatable(0f) }
+    LaunchedEffect(personBounds) {
+        if (personBounds != null) {
+            overflowAnim.snapTo(0f)
+            overflowAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow,
+                ),
+            )
+        } else {
+            overflowAnim.snapTo(0f)
+        }
+    }
+
     val targetShape = remember(isGroup, availability, hasOngoingCall, isTyping) {
         presenceShape(isGroup, availability, hasOngoingCall, isTyping)
     }
@@ -566,9 +618,10 @@ private fun ConversationAvatar(
     val fallbackColor = MaterialTheme.colorScheme.primaryContainer
 
     androidx.compose.foundation.Canvas(modifier = modifier.size(56.dp)) {
-        val s = size.width
-        reusedMatrix.setScale(s, s)
+        val canvasW = size.width.toInt()
+        val canvasH = size.height.toInt()
 
+        reusedMatrix.setScale(size.width, size.width)
         morph.toPath(progress, reusedPath)
         reusedPath.asAndroidPath().transform(reusedMatrix)
 
@@ -578,35 +631,52 @@ private fun ConversationAvatar(
             return@Canvas
         }
 
-        // Zoom in ~10% from center, crop from bottom to keep face at top
-        val zoomFactor = 0.9f
-        val srcW = (bm.width * zoomFactor).toInt().coerceAtLeast(1)
-        val srcH = (bm.height * zoomFactor).toInt().coerceAtLeast(1)
-        val srcX = (bm.width - srcW) / 2
-        val srcY = 0
-        val dstSize = IntSize(size.width.toInt(), size.height.toInt())
+        val headOverflowPx = maxOverflowPx * overflowAnim.value
+        val pb = personBounds
 
-        // Pass 1: avatar clipped to morphed shape
-        clipPath(reusedPath) {
-            drawImage(
-                image = bm,
-                srcOffset = IntOffset(srcX, srcY),
-                srcSize = IntSize(srcW, srcH),
-                dstOffset = IntOffset.Zero,
-                dstSize = dstSize,
-            )
+        val srcOffset: IntOffset
+        val srcSize: IntSize
+
+        if (!isGroup && pb != null) {
+            val personTopPx = (pb.first * bm.height).toInt().coerceAtLeast(0)
+            val personBottomPx = (pb.second * bm.height).toInt().coerceAtMost(bm.height)
+            val personH = (personBottomPx - personTopPx).coerceAtLeast(1)
+            // Person bottom in top 75% of bitmap → only upper body visible → show head to belly
+            val personIsFullBody = pb.second > 0.75f
+            val cropH = if (personIsFullBody) personH else (personH * 0.65f).toInt().coerceAtLeast(1)
+            val cropW = cropH.coerceAtMost(bm.width)
+            srcOffset = IntOffset((bm.width - cropW) / 2, personTopPx)
+            srcSize = IntSize(cropW, cropH)
+        } else {
+            // No person detected: slight zoom from top
+            val srcW = (bm.width * 0.9f).toInt().coerceAtLeast(1)
+            val srcH = (bm.height * 0.9f).toInt().coerceAtLeast(1)
+            srcOffset = IntOffset((bm.width - srcW) / 2, 0)
+            srcSize = IntSize(srcW, srcH)
         }
 
-        // Pass 2: segmented person drawn without clip so head overflows the shape boundary
+        // All passes share the same src→dst transform so there is no ghost / double image.
+        // dstOffset shifts the image up so the person's head protrudes above the card.
+        val dstOffset = IntOffset(0, -headOverflowPx.toInt())
+        val dstSize = IntSize(canvasW, canvasH + headOverflowPx.toInt())
+
+        // Pass 1: full photo inside morph shape
+        clipPath(reusedPath) {
+            drawImage(bm, srcOffset, srcSize, dstOffset, dstSize)
+        }
+
         val segBm = segmentedBitmap
-        if (segBm != null) {
-            drawImage(
-                image = segBm,
-                srcOffset = IntOffset(srcX, srcY),
-                srcSize = IntSize(srcW, srcH),
-                dstOffset = IntOffset.Zero,
-                dstSize = dstSize,
-            )
+        if (!isGroup && segBm != null) {
+            // Pass 2: segmented person on top of photo inside shape (bg transparent → photo shows through)
+            clipPath(reusedPath) {
+                drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
+            }
+            // Pass 3: head overflow above card top — only the zone from -overflow to y=0
+            if (headOverflowPx > 0f) {
+                clipRect(top = -headOverflowPx, bottom = 0f) {
+                    drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
+                }
+            }
         }
     }
 }
