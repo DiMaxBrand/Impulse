@@ -6,9 +6,9 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 
 - Version name and code live in `build.gradle.kts`:
   ```kotlin
-  val baseVersionCode = 42182   // increment by 1 on every release
-  versionName = "1.0.0"        // your SemVer; +upstream is build metadata for your reference only
-  archivesName.set("com.dimax.impulse-1.0.0")
+  val baseVersionCode = 42191   // increment by 1 on every release
+  versionName = "1.5.9+2.20.0" // SemVer; the +build part is used by automated systems — do NOT treat it as upstream tracking metadata or change it when bumping the version
+  archivesName.set("com.dimax.impulse-1.5.9+2.20.0")
   ```
 - Release versionCode = `100 * baseVersionCode + abiCode` (arm64-v8a = 4, universal = 0).
 - Git tags follow `MAJOR.MINOR.PATCH` (e.g. `2.21.0`).
@@ -19,19 +19,22 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 | Branch | Purpose |
 |---|---|
 | `dev` | Integration branch — all features merge here |
+| `material-3-expressive` | Active development: Compose UI, avatar 3D effect, morphing shapes |
 | `java-to-kotlin` | Incremental Java → Kotlin migration |
 | `material-icons` | Material Icons Rounded icon set |
 | `allow-sending-videos` | Future: custom Compose media picker |
 
 ## Signing
 
-Signing credentials are in `signing.properties` (not committed).
+Signing credentials are in `signing.properties` (not committed). The build reads this file automatically — no manual keystore entry needed in Android Studio.
 
 ```
-keystore=<path to .jks>
+keystore=<absolute path to .jks>
 keystore.password=<password>
 keystore.alias=key0
 ```
+
+`build.gradle.kts` loads `signing.properties` and wires it into the `signingConfigs` block, so `assembleRelease` (or Shift+F10 in Android Studio) signs automatically.
 
 ## Java → Kotlin migration
 
@@ -50,5 +53,7 @@ Pattern: write `.kt`, delete `.java`, keep the same package.
 ./gradlew assembleConversationsFreeRelease   # signed release APK
 ./gradlew assembleConversationsFreeDebug     # debug APK
 ```
+
+Output APKs land in `build/outputs/apk/conversationsFree/release/`.
 
 AGP 9.2.1 has built-in Kotlin support — no separate Kotlin plugin needed.
