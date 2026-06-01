@@ -527,8 +527,8 @@ private fun ConversationAvatar(
     val canvasSizePx = with(density) { 56.dp.toPx() }
     // Center offset: how far the canvas top sits below the card top.
     // Once the card has been measured (cardHeightPx > 0) this is exact; before that it's 0.
-    val centerOffsetPx = ((cardHeightPx - canvasSizePx) / 2f).coerceAtLeast(0f)
-    val maxOverflowPx = centerOffsetPx + with(density) { 3.dp.toPx() }
+    val topMarginPx = ((cardHeightPx - canvasSizePx) / 2f).coerceAtLeast(0f)
+    val maxOverflowPx = topMarginPx + with(density) { 3.dp.toPx() }
 
     val isGroup = conversation.getMode() == Conversational.MODE_MULTI
 
