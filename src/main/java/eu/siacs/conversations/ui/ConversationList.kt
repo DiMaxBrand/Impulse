@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidPath
@@ -321,6 +323,7 @@ private fun ConversationItem(
 
 
     val avatarItemDistance = dimensionResource(R.dimen.avatar_item_distance)
+    var cardHeightPx by remember { mutableIntStateOf(0) }
 
     // Avatar is outside the Card so it can draw above the card's top edge without being
     // clipped by Material3's Surface, which always clips children to the card shape.
@@ -330,7 +333,7 @@ private fun ConversationItem(
             shape = shape,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().onSizeChanged { cardHeightPx = it.height },
         ) {
             Row(
                 modifier = Modifier.padding(
@@ -502,6 +505,7 @@ private fun ConversationItem(
             availability = availability,
             hasOngoingCall = ongoingCall.isPresent,
             isTyping = isTyping,
+            cardHeightPx = cardHeightPx,
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .padding(start = 8.dp),
@@ -515,13 +519,16 @@ private fun ConversationAvatar(
     availability: Presence.Availability?,
     hasOngoingCall: Boolean,
     isTyping: Boolean,
+    cardHeightPx: Int,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val canvasSizePx = with(density) { 56.dp.toPx() }
-    // Fixed overflow: ~4dp card-center margin + 3dp above card top = 7dp, rounded to 8dp
-    val maxOverflowPx = with(density) { 8.dp.toPx() }
+    // Center offset: how far the canvas top sits below the card top.
+    // Once the card has been measured (cardHeightPx > 0) this is exact; before that it's 0.
+    val centerOffsetPx = ((cardHeightPx - canvasSizePx) / 2f).coerceAtLeast(0f)
+    val maxOverflowPx = centerOffsetPx + with(density) { 3.dp.toPx() }
 
     val isGroup = conversation.getMode() == Conversational.MODE_MULTI
 
