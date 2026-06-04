@@ -132,10 +132,10 @@ private fun presenceShape(
     else -> MaterialShapeHelpers.slanted()
 }
 
-private fun presenceLabel(availability: Presence.Availability?): String? = when (availability) {
-    Presence.Availability.CHAT, Presence.Availability.ONLINE -> "● Online"
-    Presence.Availability.AWAY, Presence.Availability.XA -> "● Away"
-    Presence.Availability.DND -> "● Busy"
+private fun presenceStringRes(availability: Presence.Availability?): Int? = when (availability) {
+    Presence.Availability.CHAT, Presence.Availability.ONLINE -> R.string.presence_online
+    Presence.Availability.AWAY, Presence.Availability.XA -> R.string.presence_away
+    Presence.Availability.DND -> R.string.presence_dnd
     else -> null
 }
 
@@ -360,7 +360,10 @@ private fun ConversationItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).padding(end = 4.dp),
                     )
-                    val presenceText = if (isTyping) "typing..." else presenceLabel(availability)
+                    val presenceText = when {
+                        isTyping -> stringResource(R.string.typing_indicator)
+                        else -> presenceStringRes(availability)?.let { "● ${stringResource(it)}" }
+                    }
                     if (presenceText != null) {
                         Text(
                             text = presenceText,
