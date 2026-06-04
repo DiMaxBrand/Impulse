@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -672,12 +673,33 @@ private fun ConversationAvatar(
             drawImage(bm, srcOffset, srcSize, dstOffset, dstSize)
         }
 
-        // Pass 2: segmented person drawn freely on top — transparent background means
-        // only the person shows; head naturally overflows above the shape and card top
-        // because graphicsLayer(clip = false) on the Canvas allows drawing above y=0
+        // Pass 2: segmented person — shape clips left, right, and bottom dynamically.
+        // Top is open: head overflows above the shape, creating the 3D pop-out effect.
         val segBm = segmentedBitmap
         if (!isGroup && segBm != null) {
-            drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
+            // Inside the shape: shape path provides left/right/bottom clipping
+            clipPath(reusedPath) {
+                drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
+            }
+            // Head overflow zone: draw above canvas top via native canvas.
+            // ClipOp.Intersect can't include negative y, so Region.Op.REPLACE sets the clip directly.
+            // bottom = size.height * 0.15f covers the small gap between y=0 and where the shape starts.
+            if (headOverflowPx > 0f) {
+                val nc = drawContext.canvas.nativeCanvas
+                nc.save()
+                @Suppress("DEPRECATION")
+                nc.clipRect(
+                    android.graphics.RectF(0f, -headOverflowPx, size.width, size.height * 0.15f),
+                    android.graphics.Region.Op.REPLACE,
+                )
+                nc.drawBitmap(
+                    segBm.asAndroidBitmap(),
+                    android.graphics.Rect(srcOffset.x, srcOffset.y, srcOffset.x + srcSize.width, srcOffset.y + srcSize.height),
+                    android.graphics.RectF(dstOffset.x.toFloat(), dstOffset.y.toFloat(), (dstOffset.x + dstSize.width).toFloat(), (dstOffset.y + dstSize.height).toFloat()),
+                    null,
+                )
+                nc.restore()
+            }
         }
     }
 }
