@@ -44,6 +44,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -51,8 +52,7 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -625,11 +625,30 @@ private fun ConversationAvatar(
     val reusedMatrix = remember { android.graphics.Matrix() }
     val fallbackColor = MaterialTheme.colorScheme.primaryContainer
 
-    androidx.compose.foundation.Canvas(modifier = modifier.size(56.dp).graphicsLayer(clip = false)) {
+    // Computed here so both the layout modifier and DrawScope share the same value.
+    val headOverflowPx = maxOverflowPx * overflowAnim.value
+
+    // Canvas is expanded upward by headOverflowPx so the overflow zone sits at positive y.
+    // The morph shape is translated down by headOverflowPx to stay at the original card position.
+    // Reporting canvasSizePx as the layout height keeps sibling elements (card padding) stable.
+    androidx.compose.foundation.Canvas(
+        modifier = modifier
+            .width(56.dp)
+            .layout { measurable, constraints ->
+                val totalH = (canvasSizePx + headOverflowPx).toInt().coerceAtLeast(canvasSizePx.toInt())
+                val placeable = measurable.measure(constraints.copy(minHeight = totalH, maxHeight = totalH))
+                layout(placeable.width, canvasSizePx.toInt()) {
+                    placeable.place(0, -headOverflowPx.toInt())
+                }
+            }
+    ) {
         val canvasW = size.width.toInt()
         val canvasH = size.height.toInt()
 
-        reusedMatrix.setScale(size.width, size.width)
+        // Shape starts at y = headOverflowPx so the area above it is the overflow zone.
+        reusedMatrix.reset()
+        reusedMatrix.postScale(size.width, size.width)
+        reusedMatrix.postTranslate(0f, headOverflowPx)
         morph.toPath(progress, reusedPath)
         reusedPath.asAndroidPath().transform(reusedMatrix)
 
@@ -639,9 +658,7 @@ private fun ConversationAvatar(
             return@Canvas
         }
 
-        val headOverflowPx = maxOverflowPx * overflowAnim.value
         val pb = personBounds
-
         val srcOffset: IntOffset
         val srcSize: IntSize
 
@@ -649,56 +666,39 @@ private fun ConversationAvatar(
             val personTopPx = (pb.first * bm.height).toInt().coerceAtLeast(0)
             val personBottomPx = (pb.second * bm.height).toInt().coerceAtMost(bm.height)
             val personH = (personBottomPx - personTopPx).coerceAtLeast(1)
-            // Person bottom in top 75% of bitmap → only upper body visible → show head to belly
             val personIsFullBody = pb.second > 0.75f
             val cropH = if (personIsFullBody) personH else (personH * 0.65f).toInt().coerceAtLeast(1)
             val cropW = cropH.coerceAtMost(bm.width)
             srcOffset = IntOffset((bm.width - cropW) / 2, personTopPx)
             srcSize = IntSize(cropW, cropH)
         } else {
-            // No person detected: slight zoom from top
             val srcW = (bm.width * 0.9f).toInt().coerceAtLeast(1)
             val srcH = (bm.height * 0.9f).toInt().coerceAtLeast(1)
             srcOffset = IntOffset((bm.width - srcW) / 2, 0)
             srcSize = IntSize(srcW, srcH)
         }
 
-        // All passes share the same src→dst transform so there is no ghost / double image.
-        // dstOffset shifts the image up so the person's head protrudes above the card.
-        val dstOffset = IntOffset(0, -headOverflowPx.toInt())
-        val dstSize = IntSize(canvasW, canvasH + headOverflowPx.toInt())
+        // All passes share the same src→dst transform — no ghost / double image.
+        val dstOffset = IntOffset(0, 0)
+        val dstSize = IntSize(canvasW, canvasH)
 
-        // Pass 1: full photo clipped to morph shape
+        // Pass 1: photo clipped to morph shape
         clipPath(reusedPath) {
             drawImage(bm, srcOffset, srcSize, dstOffset, dstSize)
         }
 
-        // Pass 2: segmented person — shape clips left, right, and bottom dynamically.
-        // Top is open: head overflows above the shape, creating the 3D pop-out effect.
         val segBm = segmentedBitmap
         if (!isGroup && segBm != null) {
-            // Inside the shape: shape path provides left/right/bottom clipping
+            // Pass 2: segmented person inside the shape (left/right/bottom clipped by morph)
             clipPath(reusedPath) {
                 drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
             }
-            // Head overflow zone: draw above canvas top via native canvas.
-            // ClipOp.Intersect can't include negative y, so Region.Op.REPLACE sets the clip directly.
-            // bottom = size.height * 0.15f covers the small gap between y=0 and where the shape starts.
+            // Pass 3: segmented person in the overflow zone above the shape.
+            // clipRect with INTERSECT is hardware-safe on all API levels.
             if (headOverflowPx > 0f) {
-                val nc = drawContext.canvas.nativeCanvas
-                nc.save()
-                @Suppress("DEPRECATION")
-                nc.clipRect(
-                    android.graphics.RectF(0f, -headOverflowPx, size.width, size.height * 0.15f),
-                    android.graphics.Region.Op.REPLACE,
-                )
-                nc.drawBitmap(
-                    segBm.asAndroidBitmap(),
-                    android.graphics.Rect(srcOffset.x, srcOffset.y, srcOffset.x + srcSize.width, srcOffset.y + srcSize.height),
-                    android.graphics.RectF(dstOffset.x.toFloat(), dstOffset.y.toFloat(), (dstOffset.x + dstSize.width).toFloat(), (dstOffset.y + dstSize.height).toFloat()),
-                    null,
-                )
-                nc.restore()
+                clipRect(0f, 0f, size.width, headOverflowPx) {
+                    drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
+                }
             }
         }
     }
