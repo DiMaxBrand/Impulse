@@ -693,10 +693,12 @@ private fun ConversationAvatar(
             clipPath(reusedPath) {
                 drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
             }
-            // Pass 3: segmented person in the overflow zone above the shape.
-            // clipRect with INTERSECT is hardware-safe on all API levels.
+            // Pass 3: segmented person from overflow zone down into the shape top.
+            // Extends 25% of the shape width past headOverflowPx to fill the rounded-corner gap
+            // where the morph shape hasn't reached full width yet. The overlap with Pass 2 is
+            // visually harmless — same bitmap, same transform, same pixels.
             if (headOverflowPx > 0f) {
-                clipRect(0f, 0f, size.width, headOverflowPx) {
+                clipRect(0f, 0f, size.width, headOverflowPx + size.width * 0.25f) {
                     drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
                 }
             }
