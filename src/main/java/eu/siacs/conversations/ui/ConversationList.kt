@@ -688,19 +688,12 @@ private fun ConversationAvatar(
         }
 
         val segBm = segmentedBitmap
-        if (!isGroup && segBm != null) {
-            // Pass 2: segmented person inside the shape (left/right/bottom clipped by morph)
-            clipPath(reusedPath) {
+        if (!isGroup && segBm != null && headOverflowPx > 0f) {
+            // Pass 2: segmented person in the overflow zone, extending 25% of shape width into
+            // the shape top to bridge the morph's rounded-corner gap. No shape clip on the sides —
+            // the transparent background handles that. Bottom is clamped so legs can't escape.
+            clipRect(0f, 0f, size.width, headOverflowPx + size.width * 0.25f) {
                 drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
-            }
-            // Pass 3: segmented person from overflow zone down into the shape top.
-            // Extends 25% of the shape width past headOverflowPx to fill the rounded-corner gap
-            // where the morph shape hasn't reached full width yet. The overlap with Pass 2 is
-            // visually harmless — same bitmap, same transform, same pixels.
-            if (headOverflowPx > 0f) {
-                clipRect(0f, 0f, size.width, headOverflowPx + size.width * 0.25f) {
-                    drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
-                }
             }
         }
     }
