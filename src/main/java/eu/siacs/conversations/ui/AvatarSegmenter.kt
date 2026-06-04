@@ -55,4 +55,9 @@ object AvatarSegmenter {
         cache.remove(key)
         inProgress -= key
     }
+
+    fun clearAll() {
+        cache.evictAll()
+        inProgress.clear()
+    }
 }
