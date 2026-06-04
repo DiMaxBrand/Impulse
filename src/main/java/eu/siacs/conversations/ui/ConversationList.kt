@@ -51,7 +51,7 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -624,7 +624,7 @@ private fun ConversationAvatar(
     val reusedMatrix = remember { android.graphics.Matrix() }
     val fallbackColor = MaterialTheme.colorScheme.primaryContainer
 
-    androidx.compose.foundation.Canvas(modifier = modifier.size(56.dp)) {
+    androidx.compose.foundation.Canvas(modifier = modifier.size(56.dp).graphicsLayer(clip = false)) {
         val canvasW = size.width.toInt()
         val canvasH = size.height.toInt()
 
@@ -667,23 +667,17 @@ private fun ConversationAvatar(
         val dstOffset = IntOffset(0, -headOverflowPx.toInt())
         val dstSize = IntSize(canvasW, canvasH + headOverflowPx.toInt())
 
-        // Pass 1: full photo inside morph shape
+        // Pass 1: full photo clipped to morph shape
         clipPath(reusedPath) {
             drawImage(bm, srcOffset, srcSize, dstOffset, dstSize)
         }
 
+        // Pass 2: segmented person drawn freely on top — transparent background means
+        // only the person shows; head naturally overflows above the shape and card top
+        // because graphicsLayer(clip = false) on the Canvas allows drawing above y=0
         val segBm = segmentedBitmap
         if (!isGroup && segBm != null) {
-            // Pass 2: segmented person on top of photo inside shape (bg transparent → photo shows through)
-            clipPath(reusedPath) {
-                drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
-            }
-            // Pass 3: head overflow above card top — only the zone from -overflow to y=0
-            if (headOverflowPx > 0f) {
-                clipRect(top = -headOverflowPx, bottom = 0f) {
-                    drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
-                }
-            }
+            drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
         }
     }
 }
