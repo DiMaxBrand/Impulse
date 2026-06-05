@@ -10,8 +10,9 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
   versionName = "1.7.0+2.20.0" // SemVer; the +build part is used by automated systems — do NOT treat it as upstream tracking metadata or change it when bumping the version
   archivesName.set("com.dimax.impulse-1.7.0+2.20.0")
   ```
+- For small fixes increment PATCH (3rd component): `1.7.1+2.20.0`, `1.7.2+2.20.0`, etc.
 - Release versionCode = `100 * baseVersionCode + abiCode` (arm64-v8a = 4, universal = 0).
-- Git tags follow `MAJOR.MINOR.PATCH` (e.g. `2.21.0`).
+- Git tags follow `MAJOR.MINOR.PATCH` (e.g. `1.7.1`).
 - Bump `baseVersionCode` by at least 1 for every release, more for significant jumps.
 
 ## Branches
