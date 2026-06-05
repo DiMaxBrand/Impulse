@@ -79,6 +79,11 @@ public class AppSettings {
     public static final String USE_SHARED_STORAGE = "use_shared_storage";
     public static final String QUICK_ACTION = "quick_action";
 
+    private static final String LEGACY_AUTO_ACCEPT_FILE_SIZE = "524288";
+    private static final String DEFAULT_AUTO_ACCEPT_FILE_SIZE = "5242880";
+    private static final String LEGACY_VIDEO_COMPRESSION = "480";
+    private static final String DEFAULT_VIDEO_COMPRESSION = "1080";
+
     private static final String ACCEPT_INVITES_FROM_STRANGERS = "accept_invites_from_strangers";
     private static final String NOTIFICATIONS_FROM_STRANGERS = "notifications_from_strangers";
     private static final String INSTALLATION_ID = "im.conversations.android.install_id";
@@ -462,16 +467,16 @@ public class AppSettings {
 
         if (!prefs.getBoolean("pref_migrated_auto_accept_filesize", false)) {
             final SharedPreferences.Editor editor = prefs.edit();
-            if ("524288".equals(prefs.getString(AUTO_ACCEPT_FILE_SIZE, null))) {
-                editor.putString(AUTO_ACCEPT_FILE_SIZE, "5242880");
+            if (LEGACY_AUTO_ACCEPT_FILE_SIZE.equals(prefs.getString(AUTO_ACCEPT_FILE_SIZE, null))) {
+                editor.putString(AUTO_ACCEPT_FILE_SIZE, DEFAULT_AUTO_ACCEPT_FILE_SIZE);
             }
             editor.putBoolean("pref_migrated_auto_accept_filesize", true).apply();
         }
 
         if (!prefs.getBoolean("pref_migrated_video_compression", false)) {
             final SharedPreferences.Editor editor = prefs.edit();
-            if ("480".equals(prefs.getString(VIDEO_COMPRESSION, null))) {
-                editor.putString(VIDEO_COMPRESSION, "1080");
+            if (LEGACY_VIDEO_COMPRESSION.equals(prefs.getString(VIDEO_COMPRESSION, null))) {
+                editor.putString(VIDEO_COMPRESSION, DEFAULT_VIDEO_COMPRESSION);
             }
             editor.putBoolean("pref_migrated_video_compression", true).apply();
         }
