@@ -459,5 +459,21 @@ public class AppSettings {
                     .putInt("pref_migration_version", 1)
                     .apply();
         }
+
+        if (!prefs.getBoolean("pref_migrated_auto_accept_filesize", false)) {
+            final SharedPreferences.Editor editor = prefs.edit();
+            if ("524288".equals(prefs.getString(AUTO_ACCEPT_FILE_SIZE, null))) {
+                editor.putString(AUTO_ACCEPT_FILE_SIZE, "5242880");
+            }
+            editor.putBoolean("pref_migrated_auto_accept_filesize", true).apply();
+        }
+
+        if (!prefs.getBoolean("pref_migrated_video_compression", false)) {
+            final SharedPreferences.Editor editor = prefs.edit();
+            if ("480".equals(prefs.getString(VIDEO_COMPRESSION, null))) {
+                editor.putString(VIDEO_COMPRESSION, "1080");
+            }
+            editor.putBoolean("pref_migrated_video_compression", true).apply();
+        }
     }
 }
