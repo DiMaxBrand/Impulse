@@ -746,10 +746,7 @@ public class FileBackend {
             scaledBitmap = rotate(scaledBitmap, rotation);
             boolean targetSizeReached = false;
             int quality = Config.IMAGE_QUALITY;
-            final int imageMaxSize =
-                    mXmppConnectionService
-                            .getResources()
-                            .getInteger(R.integer.auto_accept_filesize);
+            final int imageMaxSize = Config.IMAGE_MAX_SIZE;
             while (!targetSizeReached) {
                 os = new FileOutputStream(file);
                 Log.d(Config.LOGTAG, "compressing image with quality " + quality);

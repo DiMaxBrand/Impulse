@@ -49,6 +49,7 @@ object Config {
     const val IMAGE_SIZE = 1920
     @JvmField val IMAGE_FORMAT: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG
     const val IMAGE_QUALITY = 75
+    const val IMAGE_MAX_SIZE = 524288
 
     const val USE_OPUS_VOICE_MESSAGES = false
     const val MESSAGE_MERGE_WINDOW = 90_000
