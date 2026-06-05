@@ -692,10 +692,10 @@ private fun ConversationAvatar(
 
         val segBm = segmentedBitmap
         if (!isGroup && segBm != null && headOverflowPx > 0f) {
-            // Pass 2: segmented person in the overflow zone, extending 25% of shape width into
-            // the shape top to bridge the morph's rounded-corner gap. No shape clip on the sides —
-            // the transparent background handles that. Bottom is clamped so legs can't escape.
-            clipRect(0f, 0f, size.width, headOverflowPx + size.width * 0.25f) {
+            // Pass 2: segmented person from overflow zone into the shape top.
+            // 50% covers the worst-case shapes: pill (ONLINE, needs ~42%), diamond (XA, needs ~26%),
+            // arrow (typing, needs ~41%). Transparent background handles side boundaries naturally.
+            clipRect(0f, 0f, size.width, headOverflowPx + size.width * 0.50f) {
                 drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
             }
         }
