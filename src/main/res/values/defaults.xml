@@ -15,7 +15,7 @@
     <string name="incoming_call_ringtone">content://settings/system/ringtone</string>
     <integer name="grace_period">0</integer>
     <integer name="auto_accept_filesize">5242880</integer>
-    <string name="picture_compression">auto</string>
+    <string name="picture_compression">never</string>
     <bool name="use_green_background">true</bool>
     <bool name="large_font">false</bool>
     <bool name="show_avatars">true</bool>

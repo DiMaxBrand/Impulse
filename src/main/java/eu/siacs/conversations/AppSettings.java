@@ -75,6 +75,7 @@ public class AppSettings {
     public static final String BACKUP_LOCATION = "backup_location";
     public static final String AUTO_ACCEPT_FILE_SIZE = "auto_accept_file_size";
     public static final String VIDEO_COMPRESSION = "video_compression";
+    public static final String PICTURE_COMPRESSION = "picture_compression";
     public static final String AUTO_SEND_RECORDING = "auto_send_recording";
     public static final String USE_SHARED_STORAGE = "use_shared_storage";
     public static final String QUICK_ACTION = "quick_action";
@@ -83,6 +84,8 @@ public class AppSettings {
     private static final String DEFAULT_AUTO_ACCEPT_FILE_SIZE = "5242880";
     private static final String LEGACY_VIDEO_COMPRESSION = "480";
     private static final String DEFAULT_VIDEO_COMPRESSION = "1080";
+    private static final String LEGACY_PICTURE_COMPRESSION = "auto";
+    private static final String DEFAULT_PICTURE_COMPRESSION = "never";
 
     private static final String ACCEPT_INVITES_FROM_STRANGERS = "accept_invites_from_strangers";
     private static final String NOTIFICATIONS_FROM_STRANGERS = "notifications_from_strangers";
@@ -479,6 +482,14 @@ public class AppSettings {
                 editor.putString(VIDEO_COMPRESSION, DEFAULT_VIDEO_COMPRESSION);
             }
             editor.putBoolean("pref_migrated_video_compression", true).apply();
+        }
+
+        if (!prefs.getBoolean("pref_migrated_picture_compression", false)) {
+            final SharedPreferences.Editor editor = prefs.edit();
+            if (LEGACY_PICTURE_COMPRESSION.equals(prefs.getString(PICTURE_COMPRESSION, null))) {
+                editor.putString(PICTURE_COMPRESSION, DEFAULT_PICTURE_COMPRESSION);
+            }
+            editor.putBoolean("pref_migrated_picture_compression", true).apply();
         }
     }
 }
