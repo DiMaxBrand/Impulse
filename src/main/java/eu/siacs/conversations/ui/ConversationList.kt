@@ -536,6 +536,16 @@ private fun ConversationAvatar(
 
     val isGroup = conversation.getMode() == Conversational.MODE_MULTI
 
+    val hasRealPhoto = remember(conversation) {
+        try {
+            if (isGroup) true
+            else {
+                val contact = conversation.getContact()
+                contact.getAvatar() != null || contact.getProfilePhoto() != null
+            }
+        } catch (_: Exception) { false }
+    }
+
     val avatarState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
     val segmentedState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
     val personBoundsState = remember(conversation.getUuid()) { mutableStateOf<Pair<Float, Float>?>(null) }
@@ -550,7 +560,7 @@ private fun ConversationAvatar(
         } ?: return@LaunchedEffect
         avatarState.value = bm.asImageBitmap()
         val key = conversation.getUuid() ?: return@LaunchedEffect
-        if (!isGroup) {
+        if (!isGroup && hasRealPhoto) {
             AvatarSegmenter.segment(bm, key) { segBm ->
                 segmentedState.value = segBm?.asImageBitmap()
             }
@@ -675,10 +685,8 @@ private fun ConversationAvatar(
             srcOffset = IntOffset((bm.width - cropW) / 2, personTopPx)
             srcSize = IntSize(cropW, cropH)
         } else {
-            val srcW = (bm.width * 0.9f).toInt().coerceAtLeast(1)
-            val srcH = (bm.height * 0.9f).toInt().coerceAtLeast(1)
-            srcOffset = IntOffset((bm.width - srcW) / 2, 0)
-            srcSize = IntSize(srcW, srcH)
+            srcOffset = IntOffset(0, 0)
+            srcSize = IntSize(bm.width, bm.height)
         }
 
         // All passes share the same src→dst transform — no ghost / double image.

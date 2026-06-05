@@ -402,34 +402,11 @@ public class AvatarManager extends AbstractManager {
             return null;
         }
 
-        final var optionalAutoAcceptSize = new AppSettings(context).getAutoAcceptFileSize();
-        if (optionalAutoAcceptSize.isEmpty()) {
+        final var preferred = pick(infos);
+        if (preferred == null || mainItemId.equals(preferred.getId())) {
             return new PreferredFallback(inBandAvatar);
-        } else {
-
-            final var supported =
-                    Collections2.filter(
-                            infos,
-                            i ->
-                                    Objects.nonNull(i.getId())
-                                            && i.getBytes() > 0
-                                            && i.getHeight() > 0
-                                            && i.getWidth() > 0
-                                            && SUPPORTED_CONTENT_TYPES.contains(i.getType()));
-
-            final var autoAcceptSize = optionalAutoAcceptSize.get();
-
-            final var supportedBelowLimit =
-                    Collections2.filter(supported, i -> i.getBytes() <= autoAcceptSize);
-
-            if (supportedBelowLimit.isEmpty()) {
-                return new PreferredFallback(inBandAvatar);
-            } else {
-                final var preferred =
-                        Iterables.getFirst(AVATAR_ORDERING.sortedCopy(supportedBelowLimit), null);
-                return new PreferredFallback(preferred, inBandAvatar);
-            }
         }
+        return new PreferredFallback(preferred, inBandAvatar);
     }
 
     private static Info pick(final Collection<Info> infos) {
