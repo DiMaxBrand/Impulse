@@ -945,8 +945,8 @@
     <string name="reconnecting_video_call">Reconnecting video call</string>
     <string name="disable_tor_to_make_call">Disable Tor to make calls</string>
     <string name="incoming_call">Incoming call</string>
-    <string name="incoming_call_duration_timestamp">Incoming call (%s) · %s</string>
-    <string name="outgoing_call_duration_timestamp">Outgoing call (%s) · %s</string>
+    <string name="incoming_call_duration_timestamp" formatted="false">Incoming call (%s) · %s</string>
+    <string name="outgoing_call_duration_timestamp" formatted="false">Outgoing call (%s) · %s</string>
     <string name="missed_call_timestamp">Missed call · %s</string>
     <string name="outgoing_call">Outgoing call</string>
     <string name="outgoing_call_timestamp">Outgoing call · %s</string>

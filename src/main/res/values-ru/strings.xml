@@ -980,8 +980,8 @@
     <string name="search_group_chats">Поиск конференций</string>
     <string name="download_failed_invalid_file">Загрузка не выполнена: файл испорчен</string>
     <string name="rtp_state_content_add_video">Перейти на видеовызов\?</string>
-    <string name="outgoing_call_duration_timestamp">Исходящий вызов (%s) · %s</string>
-    <string name="incoming_call_duration_timestamp">Входящий вызов (%s) · %s</string>
+    <string name="outgoing_call_duration_timestamp" formatted="false">Исходящий вызов (%s) · %s</string>
+    <string name="incoming_call_duration_timestamp" formatted="false">Входящий вызов (%s) · %s</string>
     <string name="account_registrations_are_not_supported">Регистрации аккаунтов не поддерживаются</string>
     <string name="audio_video_disabled_tor">Звонки отключены при использовании Tor</string>
     <string name="pref_up_push_account_summary">Аккаунт для получения push-уведомлений</string>
