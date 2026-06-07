@@ -44,6 +44,7 @@ android {
         resValue("string", "applicationId", applicationId!!)
         val appName = "Impulse"
         buildConfigField("String", "APP_NAME", "\"$appName\"")
+        buildConfigField("String", "TELEMETRY_JID", "\"\"")
         base {
             archivesName.set("com.dimax.impulse-1.7.3+2.20.0")
         }

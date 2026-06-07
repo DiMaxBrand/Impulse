@@ -4,6 +4,7 @@ import static eu.siacs.conversations.utils.Random.SECURE_RANDOM;
 
 import android.util.Log;
 import eu.siacs.conversations.Config;
+import eu.siacs.conversations.TelemetryReporter;
 import eu.siacs.conversations.entities.Account;
 import eu.siacs.conversations.http.ServiceOutageStatus;
 import eu.siacs.conversations.services.XmppConnectionService;
@@ -37,6 +38,7 @@ public class AccountStateProcessor extends XmppConnection.Delegate
         }
 
         if (account.getStatus() == Account.State.ONLINE) {
+            TelemetryReporter.maybeSend(account, this.service);
             synchronized (this.service.mLowPingTimeoutMode) {
                 if (this.service.mLowPingTimeoutMode.remove(account.getJid().asBareJid())) {
                     Log.d(
