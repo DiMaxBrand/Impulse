@@ -19,7 +19,8 @@ object AvatarSegmenter {
     private val cache = LruCache<String, Bitmap>(32)
     private val inProgress = mutableSetOf<String>()
 
-    fun segment(source: Bitmap, key: String, onResult: (Bitmap?) -> Unit) {
+    fun segment(source: Bitmap, key: String, shouldSegment: Boolean = true, onResult: (Bitmap?) -> Unit) {
+        if (!shouldSegment) { onResult(null); return }
         val cached = cache[key]
         if (cached != null) {
             onResult(cached)

@@ -1,6 +1,5 @@
 package eu.siacs.conversations
 
-import android.graphics.Bitmap
 import android.net.Uri
 import eu.siacs.conversations.xmpp.Jid
 import im.conversations.android.xmpp.model.state.Active
@@ -45,11 +44,6 @@ object Config {
     const val AVATAR_THUMBNAIL_SIZE = 192
     const val AVATAR_THUMBNAIL_CHAR_LIMIT = 9400
     const val AVATAR_FULL_SIZE = 1280
-
-    const val IMAGE_SIZE = 1920
-    @JvmField val IMAGE_FORMAT: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG
-    const val IMAGE_QUALITY = 75
-    const val IMAGE_MAX_SIZE = 524288
 
     const val USE_OPUS_VOICE_MESSAGES = false
     const val MESSAGE_MERGE_WINDOW = 90_000

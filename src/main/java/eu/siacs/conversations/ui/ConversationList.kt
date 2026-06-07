@@ -528,10 +528,8 @@ private fun ConversationAvatar(
         } ?: return@LaunchedEffect
         avatarState.value = bm.asImageBitmap()
         val key = conversation.getUuid() ?: return@LaunchedEffect
-        if (!isGroup && hasRealPhoto) {
-            AvatarSegmenter.segment(bm, key) { segBm ->
-                segmentedState.value = segBm?.asImageBitmap()
-            }
+        AvatarSegmenter.segment(bm, key, shouldSegment = !isGroup && hasRealPhoto) { segBm ->
+            segmentedState.value = segBm?.asImageBitmap()
         }
     }
 
