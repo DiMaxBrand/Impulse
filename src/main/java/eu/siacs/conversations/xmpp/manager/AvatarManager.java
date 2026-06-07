@@ -877,6 +877,19 @@ public class AvatarManager extends AbstractManager {
                                                 address)));
                     }
                     final var avatarFile = FileBackend.getAvatarFile(context, actualHash);
+                    // For own account: don't let the vCard thumbnail overwrite a
+                    // higher-quality PEP full-size avatar that's already cached locally.
+                    if (address.asBareJid().equals(getAccount().getJid().asBareJid())) {
+                        final var existingHash = getAccount().getAvatar();
+                        if (existingHash != null && !existingHash.equals(actualHash)) {
+                            final var existingFile =
+                                    FileBackend.getAvatarFile(context, existingHash);
+                            if (existingFile.exists()
+                                    && existingFile.length() > photo.length) {
+                                return Futures.immediateVoidFuture();
+                            }
+                        }
+                    }
                     if (avatarFile.exists()) {
                         setAvatar(address, actualHash);
                         return Futures.immediateVoidFuture();
