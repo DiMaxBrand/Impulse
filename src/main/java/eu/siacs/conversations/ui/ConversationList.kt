@@ -25,12 +25,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -111,10 +108,6 @@ fun interface ConversationClickListener {
     fun onClick(conversation: Conversation)
 }
 
-fun interface ConversationSwipeListener {
-    fun onSwiped(conversation: Conversation, position: Int)
-}
-
 private fun presenceShape(
     isGroup: Boolean,
     availability: Presence.Availability?,
@@ -153,7 +146,6 @@ object ConversationListHelper {
         composeView: ComposeView,
         state: ConversationListState,
         onConversationClick: ConversationClickListener,
-        onConversationSwiped: ConversationSwipeListener,
         fab: ExtendedFloatingActionButton,
     ) {
         composeView.setViewCompositionStrategy(
@@ -165,7 +157,6 @@ object ConversationListHelper {
                     conversations = state.list,
                     revision = state.revision.intValue,
                     onConversationClick = { onConversationClick.onClick(it) },
-                    onConversationSwiped = { c, pos -> onConversationSwiped.onSwiped(c, pos) },
                     onFirstVisibleIndexChanged = { index ->
                         composeView.post { if (index > 0) fab.shrink() else fab.extend() }
                     },
@@ -189,7 +180,6 @@ fun ConversationList(
     conversations: List<Conversation>,
     revision: Int,
     onConversationClick: (Conversation) -> Unit,
-    onConversationSwiped: (Conversation, Int) -> Unit,
     onFirstVisibleIndexChanged: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -210,35 +200,13 @@ fun ConversationList(
             key = { _, c -> c.getUuid() ?: c.hashCode().toString() },
         ) { index, conversation ->
             val shape = conversationItemShape(index, conversations.size)
-            val swipeState = rememberSwipeToDismissBoxState(
-                confirmValueChange = { value ->
-                    if (value != SwipeToDismissBoxValue.Settled) {
-                        onConversationSwiped(conversation, index)
-                        true
-                    } else {
-                        false
-                    }
-                },
-            )
-            SwipeToDismissBox(
-                state = swipeState,
+            ConversationItem(
+                conversation = conversation,
+                revision = revision,
+                onClick = { onConversationClick(conversation) },
+                shape = shape,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                backgroundContent = {
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .clip(shape)
-                            .background(MaterialTheme.colorScheme.secondaryFixedDim),
-                    )
-                },
-            ) {
-                ConversationItem(
-                    conversation = conversation,
-                    revision = revision,
-                    onClick = { onConversationClick(conversation) },
-                    shape = shape,
-                )
-            }
+            )
         }
     }
 }
@@ -737,7 +705,6 @@ private fun ConversationListEmptyPreview() {
             conversations = emptyList(),
             revision = 0,
             onConversationClick = {},
-            onConversationSwiped = { _, _ -> },
             onFirstVisibleIndexChanged = {},
             modifier = Modifier.fillMaxSize(),
         )

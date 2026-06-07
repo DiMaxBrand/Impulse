@@ -49,7 +49,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import com.google.android.material.search.SearchView
-import com.google.android.material.snackbar.Snackbar
 import de.gultsch.common.MiniUri
 import de.gultsch.common.Patterns
 import eu.siacs.conversations.BuildConfig
@@ -57,13 +56,9 @@ import eu.siacs.conversations.Config
 import eu.siacs.conversations.R
 import eu.siacs.conversations.databinding.FragmentConversationsOverviewBinding
 import eu.siacs.conversations.entities.Conversation
-import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.ui.activity.SettingsActivity
 import eu.siacs.conversations.ui.adapter.SearchSuggestionAdapter
-import eu.siacs.conversations.ui.interfaces.OnConversationArchived
 import eu.siacs.conversations.ui.interfaces.OnConversationSelected
-import eu.siacs.conversations.ui.util.PendingActionHelper
-import eu.siacs.conversations.ui.util.PendingItem
 import eu.siacs.conversations.ui.widget.AccountPickerDialog
 import eu.siacs.conversations.utils.AccountUtils
 import eu.siacs.conversations.utils.CharSequences
@@ -79,11 +74,9 @@ import eu.siacs.conversations.services.AbstractQuickConversationsService
 class ConversationsOverviewFragment : XmppFragment() {
 
     private val conversations: MutableList<Conversation> = mutableListOf()
-    private val swipedConversation = PendingItem<Conversation>()
     private var binding: FragmentConversationsOverviewBinding? = null
     private lateinit var composeState: ConversationListState
     private var searchSuggestionAdapter: SearchSuggestionAdapter? = null
-    private val pendingActionHelper = PendingActionHelper()
 
     private val globalMenuProvider = object : MenuProvider {
         override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
@@ -164,56 +157,6 @@ class ConversationsOverviewFragment : XmppFragment() {
         }
     }
 
-    private fun onConversationSwiped(c: Conversation, position: Int) {
-        pendingActionHelper.execute()
-        swipedConversation.push(c)
-        conversations.remove(swipedConversation.peek()!!)
-        composeState.remove(swipedConversation.peek()!!)
-        requireXmppActivity().xmppConnectionService.markRead(swipedConversation.peek())
-        val formerlySelected = ConversationFragment.getConversation(activity) == swipedConversation.peek()
-        (activity as? OnConversationArchived)?.onConversationArchived(swipedConversation.peek()!!)
-
-        val title = when {
-            c.getMode() == Conversational.MODE_MULTI && c.mucOptions.isPrivateAndNonAnonymous ->
-                R.string.title_undo_swipe_out_group_chat
-            c.getMode() == Conversational.MODE_MULTI ->
-                R.string.title_undo_swipe_out_channel
-            else ->
-                R.string.title_undo_swipe_out_chat
-        }
-
-        val snackbar = Snackbar.make(binding!!.list, title, 5000)
-            .setAction(R.string.undo) { undoSwipe(formerlySelected, position) }
-            .addCallback(object : Snackbar.Callback() {
-                override fun onDismissed(transientBottomBar: Snackbar, event: Int) {
-                    when (event) {
-                        DISMISS_EVENT_SWIPE, DISMISS_EVENT_TIMEOUT -> pendingActionHelper.execute()
-                    }
-                }
-            })
-
-        pendingActionHelper.push {
-            if (snackbar.isShownOrQueued) snackbar.dismiss()
-            val conversation = swipedConversation.pop() ?: return@push
-            if (!conversation.isRead && conversation.getMode() == Conversational.MODE_SINGLE) return@push
-            requireXmppActivity().xmppConnectionService.archiveConversation(c)
-        }
-        snackbar.show()
-    }
-
-    private fun undoSwipe(formerlySelected: Boolean, position: Int) {
-        pendingActionHelper.undo()
-        val c = swipedConversation.pop() ?: return
-        if (!conversations.contains(c)) {
-            val safePos = minOf(position, conversations.size)
-            conversations.add(safePos, c)
-            composeState.insert(c, safePos)
-        }
-        if (formerlySelected) {
-            (activity as? OnConversationSelected)?.onConversationSelected(c)
-        }
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {}
 
     override fun onDestroyView() {
@@ -223,7 +166,6 @@ class ConversationsOverviewFragment : XmppFragment() {
     }
 
     override fun onPause() {
-        pendingActionHelper.execute()
         super.onPause()
     }
 
@@ -264,7 +206,6 @@ class ConversationsOverviewFragment : XmppFragment() {
                 (activity as? OnConversationSelected)?.onConversationSelected(c)
                     ?: Log.w(TAG, "Activity does not implement OnConversationSelected")
             },
-            ::onConversationSwiped,
             binding.fab,
         )
 
@@ -373,14 +314,6 @@ class ConversationsOverviewFragment : XmppFragment() {
         }
         binding.searchBar.invalidateMenu()
         requireXmppActivity().xmppConnectionService.populateWithOrderedConversations(conversations)
-        val removed = swipedConversation.peek()
-        if (removed != null) {
-            if (removed.isRead) {
-                conversations.remove(removed)
-            } else {
-                pendingActionHelper.execute()
-            }
-        }
         composeState.update(conversations)
     }
 
@@ -389,9 +322,7 @@ class ConversationsOverviewFragment : XmppFragment() {
 
         @JvmStatic
         fun getSuggestion(activity: FragmentActivity): Conversation? {
-            val fragment = activity.supportFragmentManager.findFragmentById(R.id.main_fragment)
-            val exception = (fragment as? ConversationsOverviewFragment)?.swipedConversation?.peek()
-            return getSuggestion(activity, exception)
+            return getSuggestion(activity, null)
         }
 
         @JvmStatic
