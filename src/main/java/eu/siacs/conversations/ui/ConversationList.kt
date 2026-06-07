@@ -504,6 +504,9 @@ private fun ConversationAvatar(
 
     val isGroup = conversation.getMode() == Conversational.MODE_MULTI
 
+    // Load at full resolution so the 3D zoom effect stays crisp at any overflow depth.
+    val avatarLoadSizePx = 1440
+
     val hasRealPhoto = remember(conversation) {
         try {
             if (isGroup) true
@@ -524,7 +527,7 @@ private fun ConversationAvatar(
     LaunchedEffect(conversation) {
         val activity = context as? XmppActivity ?: return@LaunchedEffect
         val bm = withContext(Dispatchers.IO) {
-            activity.avatarService().get(conversation, canvasSizePx.toInt(), false)
+            activity.avatarService().get(conversation, avatarLoadSizePx, false)
         } ?: return@LaunchedEffect
         avatarState.value = bm.asImageBitmap()
         val key = conversation.getUuid() ?: return@LaunchedEffect
