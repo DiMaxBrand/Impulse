@@ -656,8 +656,13 @@ private fun ConversationAvatar(
         }
 
         // All passes share the same src→dst transform — no ghost / double image.
-        val dstOffset = IntOffset(0, 0)
-        val dstSize = IntSize(canvasW, canvasH)
+        // When person bounds are known, zoom uniformly (dst square = canvasH × canvasH) so the
+        // photo is NOT stretched as the overflow zone grows — it zooms in and shifts up instead.
+        // The extra horizontal width is centered and clipped by the shape/clipRect above.
+        // For groups / no bounds: canvasH == canvasW (no overflow), so behavior is identical.
+        val dstW = if (!isGroup && pb != null) canvasH else canvasW
+        val dstOffset = IntOffset((canvasW - dstW) / 2, 0)
+        val dstSize = IntSize(dstW, canvasH)
 
         // Pass 1: photo clipped to morph shape
         clipPath(reusedPath) {
