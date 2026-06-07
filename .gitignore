@@ -48,6 +48,3 @@ proguard/
 import-summary.txt
 .navigation/
 preview/
-
-# Private local notes — never commit
-TODO.md
