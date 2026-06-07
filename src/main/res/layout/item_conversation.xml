@@ -1,23 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <FrameLayout
-        android:background="?colorSecondaryFixedDim"
-        android:layout_width="fill_parent"
+    <!--
+        ListItemLayout: official M3 Expressive container. updateAppearance(position, count)
+        sets state_first / state_middle / state_last / state_single on the layout, which
+        ListItemCardView uses to apply position-aware corner radii automatically.
+        The GradientDrawable background (set in the adapter) provides the swipe-reveal colour;
+        clipToOutline clips the sliding card within that rounded shell.
+    -->
+    <com.google.android.material.listitem.ListItemLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:descendantFocusability="blocksDescendants">
+        android:layout_marginHorizontal="8dp"
+        android:layout_marginVertical="2dp"
+        android:clipToOutline="true">
 
-        <FrameLayout
-            android:background="?colorSurface"
+        <com.google.android.material.listitem.ListItemCardView
             android:id="@+id/frame"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:descendantFocusability="blocksDescendants"
+            android:duplicateParentState="true"
+            android:focusable="true"
+            app:cardBackgroundColor="?colorSurfaceContainerLow"
+            app:cardElevation="0dp"
+            app:rippleColor="?colorControlHighlight">
 
             <RelativeLayout
-                android:layout_width="fill_parent"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="?android:selectableItemBackground"
                 android:orientation="horizontal"
                 android:padding="8dp">
 
@@ -30,7 +44,7 @@
                     app:shapeAppearanceOverlay="@style/ShapeAppearance.RoundedCornersMedium" />
 
                 <RelativeLayout
-                    android:layout_width="fill_parent"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
                     android:layout_marginStart="@dimen/avatar_item_distance"
@@ -59,8 +73,8 @@
                             android:id="@+id/txt_img_wrapper"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_alignWithParentIfMissing="true"
                             android:layout_alignParentStart="true"
+                            android:layout_alignWithParentIfMissing="true"
                             android:layout_centerVertical="true"
                             android:layout_toStartOf="@+id/message_status"
                             android:orientation="horizontal">
@@ -95,7 +109,7 @@
                                 android:maxLines="1"
                                 android:minHeight="18sp"
                                 android:scrollHorizontally="false"
-                                tools:text="Hi. What’s up?" />
+                                tools:text="Hi. What's up?" />
                         </LinearLayout>
 
                         <ImageView
@@ -107,8 +121,8 @@
                             android:layout_marginStart="4dp"
                             android:layout_toStartOf="@+id/notification_status"
                             android:src="@drawable/ic_done_all_24dp"
-                            app:tint="?colorPrimary"
-                            android:visibility="visible" />
+                            android:visibility="visible"
+                            app:tint="?colorPrimary" />
 
                         <ImageView
                             android:id="@+id/notification_status"
@@ -154,10 +168,10 @@
                         android:layout_height="wrap_content"
                         android:layout_alignBaseline="@+id/conversation_name"
                         android:layout_alignParentEnd="true"
-                        android:gravity="right"
+                        android:gravity="end"
                         tools:text="23:42" />
                 </RelativeLayout>
             </RelativeLayout>
-        </FrameLayout>
-    </FrameLayout>
+        </com.google.android.material.listitem.ListItemCardView>
+    </com.google.android.material.listitem.ListItemLayout>
 </layout>

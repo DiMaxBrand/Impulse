@@ -173,11 +173,11 @@ public class UnifiedPushBroker {
             final UnifiedPushDatabase.PushTarget renewal,
             final Messenger messenger,
             final UnifiedPushManager.Registration registration) {
-        final var endpoint = registration.endpoint().toString();
-        final var expiration = registration.expiration().toEpochMilli();
+        final var endpoint = registration.getEndpoint().toString();
+        final var expiration = registration.getExpiration().toEpochMilli();
         Log.d(
                 Config.LOGTAG,
-                "registered endpoint " + endpoint + " expiration=" + registration.expiration());
+                "registered endpoint " + endpoint + " expiration=" + registration.getExpiration());
         final UnifiedPushDatabase unifiedPushDatabase = UnifiedPushDatabase.getInstance(service);
         final boolean modified =
                 unifiedPushDatabase.updateEndpoint(

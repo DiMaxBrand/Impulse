@@ -951,7 +951,7 @@ public class XmppConnection implements Runnable {
                 tokenMechanism = null;
             }
             if (tokenMechanism != null && !Strings.isNullOrEmpty(token)) {
-                if (ChannelBinding.priority(tokenMechanism.channelBinding())
+                if (ChannelBinding.priority(tokenMechanism.getChannelBinding())
                         >= ChannelBindingMechanism.getPriority(currentSaslMechanism)) {
                     this.account.setFastToken(tokenMechanism, token);
                     Log.d(

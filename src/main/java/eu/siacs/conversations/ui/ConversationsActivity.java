@@ -350,6 +350,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AvatarSegmenter.INSTANCE.clearAll();
         ConversationMenuConfigurator.reloadFeatures(this);
         OmemoSetting.load(this);
         this.binding = DataBindingUtil.setContentView(this, R.layout.activity_conversations);

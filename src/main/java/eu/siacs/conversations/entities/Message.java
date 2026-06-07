@@ -827,6 +827,12 @@ public class Message extends AbstractEntity
         String extension;
         if (storageLocation != null) {
             extension = MimeUtils.extractRelevantExtension(storageLocation.file().getName());
+            if (extension == null) {
+                final String url = URL.tryParse(body.split("\n")[0]);
+                if (url != null) {
+                    extension = MimeUtils.extractRelevantExtension(url);
+                }
+            }
         } else {
             final String url = URL.tryParse(body.split("\n")[0]);
             if (url == null) {
