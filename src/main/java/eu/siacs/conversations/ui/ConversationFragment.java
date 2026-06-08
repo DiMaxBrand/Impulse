@@ -1056,7 +1056,7 @@ public class ConversationFragment extends XmppFragment
         if (reply != null) {
             final String replyId = reply.getServerMsgId() != null ? reply.getServerMsgId() : reply.getUuid();
             message.setRepliedTo(replyId);
-            pendingReplyMessage = null;
+            clearPendingReply();
         }
         if (conversation.getNextEncryption() == Message.ENCRYPTION_PGP) {
             sendPgpMessage(message);
@@ -1402,7 +1402,9 @@ public class ConversationFragment extends XmppFragment
         messageListAdapter = new MessageAdapter((XmppActivity) getActivity(), this.messageList);
         messageListAdapter.setOnContactPictureClicked(this);
         messageListAdapter.setOnContactPictureLongClicked(this);
+        messageListAdapter.setOnReplyCardClicked(this::onReplyCardClicked);
         binding.messagesView.setAdapter(messageListAdapter);
+        binding.replyBannerCancel.setOnClickListener(v -> clearPendingReply());
 
         registerForContextMenu(binding.messagesView);
 
@@ -1450,8 +1452,35 @@ public class ConversationFragment extends XmppFragment
     }
 
     private void quoteMessage(Message message) {
-        quoteText(MessageUtils.prepareQuote(message));
         pendingReplyMessage = message;
+        binding.replyBannerSender.setText(UIHelper.getMessageDisplayName(message));
+        binding.replyBannerPreview.setText(MessageUtils.replyPreview(message));
+        binding.replyBanner.setVisibility(View.VISIBLE);
+        binding.textInput.requestFocus();
+        final android.view.inputmethod.InputMethodManager imm =
+                (android.view.inputmethod.InputMethodManager)
+                        requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.showSoftInput(binding.textInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+        }
+    }
+
+    private void clearPendingReply() {
+        pendingReplyMessage = null;
+        binding.replyBanner.setVisibility(View.GONE);
+    }
+
+    private void onReplyCardClicked(final String repliedToId) {
+        synchronized (messageList) {
+            for (int i = 0; i < messageList.size(); i++) {
+                final Message m = messageList.get(i);
+                if (repliedToId.equals(m.getServerMsgId())) {
+                    binding.messagesView.setSelectionFromTop(i, 0);
+                    messageListAdapter.highlightMessage(m.getUuid());
+                    return;
+                }
+            }
+        }
     }
 
     @Override
