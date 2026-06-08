@@ -478,6 +478,38 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         return startsWithQuote;
     }
 
+    private void displayReplyCard(
+            final BubbleMessageItemViewHolder viewHolder, final Message message) {
+        final String repliedTo = message.getRepliedTo();
+        if (repliedTo == null) {
+            viewHolder.replyCard().setVisibility(View.GONE);
+            return;
+        }
+        final Message original = findRepliedToMessage(message, repliedTo);
+        if (original == null) {
+            viewHolder.replyCard().setVisibility(View.GONE);
+            return;
+        }
+        viewHolder.replyCard().setVisibility(View.VISIBLE);
+        viewHolder.replySender().setText(UIHelper.getMessageDisplayName(original));
+        viewHolder.replyPreview().setText(MessageUtils.replyPreview(original));
+    }
+
+    @Nullable
+    private Message findRepliedToMessage(final Message context, final String repliedToId) {
+        for (int i = getCount() - 1; i >= 0; i--) {
+            final Message m = getItem(i);
+            if (m != null && repliedToId.equals(m.getServerMsgId())) {
+                return m;
+            }
+        }
+        if (context.getConversation() instanceof Conversation conversation) {
+            return activity.xmppConnectionService.databaseBackend
+                    .getMessageWithServerMsgId(conversation, repliedToId);
+        }
+        return null;
+    }
+
     private void displayTextMessage(
             final BubbleMessageItemViewHolder viewHolder,
             final Message message,
@@ -908,6 +940,8 @@ public class MessageAdapter extends ArrayAdapter<Message> {
                                 return false;
                             }
                         });
+
+        displayReplyCard(viewHolder, message);
 
         final Transferable transferable = message.getTransferable();
         final boolean unInitiatedButKnownSize = MessageUtils.unInitiatedButKnownSize(message);
@@ -1591,6 +1625,12 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         protected abstract ImageView contactPicture();
 
         protected abstract ChipGroup reactions();
+
+        protected abstract View replyCard();
+
+        protected abstract TextView replySender();
+
+        protected abstract TextView replyPreview();
     }
 
     private static class StartBubbleMessageItemViewHolder extends BubbleMessageItemViewHolder {
@@ -1664,6 +1704,21 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         protected ChipGroup reactions() {
             return this.binding.reactions;
         }
+
+        @Override
+        protected View replyCard() {
+            return this.binding.messageContent.replyCard;
+        }
+
+        @Override
+        protected TextView replySender() {
+            return this.binding.messageContent.replySender;
+        }
+
+        @Override
+        protected TextView replyPreview() {
+            return this.binding.messageContent.replyPreview;
+        }
     }
 
     private static class EndBubbleMessageItemViewHolder extends BubbleMessageItemViewHolder {
@@ -1733,6 +1788,21 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         @Override
         protected ChipGroup reactions() {
             return this.binding.reactions;
+        }
+
+        @Override
+        protected View replyCard() {
+            return this.binding.messageContent.replyCard;
+        }
+
+        @Override
+        protected TextView replySender() {
+            return this.binding.messageContent.replySender;
+        }
+
+        @Override
+        protected TextView replyPreview() {
+            return this.binding.messageContent.replyPreview;
         }
     }
 

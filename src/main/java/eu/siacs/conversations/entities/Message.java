@@ -91,6 +91,7 @@ public class Message extends AbstractEntity
     public static final String OCCUPANT_ID = "occupantId";
     public static final String REACTIONS = "reactions";
     public static final String PINNED = "pinned";
+    public static final String REPLIED_TO = "repliedTo";
     public static final String ME_COMMAND = "/me ";
 
     public static final String ERROR_MESSAGE_CANCELLED = "eu.siacs.conversations.cancelled";
@@ -124,6 +125,7 @@ public class Message extends AbstractEntity
     private String occupantId;
     private Collection<Reaction> reactions = Collections.emptyList();
     private boolean pinned = false;
+    private String repliedTo = null;
 
     private Boolean isGeoUri = null;
     private Boolean isEmojisOnly = null;
@@ -287,6 +289,10 @@ public class Message extends AbstractEntity
         if (pinnedIndex >= 0) {
             message.pinned = cursor.getInt(pinnedIndex) > 0;
         }
+        final int repliedToIndex = cursor.getColumnIndex(REPLIED_TO);
+        if (repliedToIndex >= 0) {
+            message.repliedTo = cursor.getString(repliedToIndex);
+        }
         return message;
     }
 
@@ -379,6 +385,7 @@ public class Message extends AbstractEntity
         values.put(OCCUPANT_ID, occupantId);
         values.put(REACTIONS, Reaction.toString(this.reactions));
         values.put(PINNED, pinned ? 1 : 0);
+        values.put(REPLIED_TO, repliedTo);
         return values;
     }
 
@@ -494,6 +501,14 @@ public class Message extends AbstractEntity
 
     public void setServerMsgId(String id) {
         this.serverMsgId = id;
+    }
+
+    public String getRepliedTo() {
+        return this.repliedTo;
+    }
+
+    public void setRepliedTo(final String id) {
+        this.repliedTo = id;
     }
 
     public boolean isRead() {
