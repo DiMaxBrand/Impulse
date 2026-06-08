@@ -47,15 +47,14 @@
 
             </LinearLayout>
 
-            <com.google.android.material.imageview.ShapeableImageView
+            <eu.siacs.conversations.ui.widget.SquircleImageView
                 android:id="@+id/reply_thumbnail"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:layout_gravity="center_vertical"
                 android:layout_marginEnd="6dp"
                 android:scaleType="centerCrop"
-                android:visibility="gone"
-                app:shapeAppearance="@style/ShapeAppearance.Impulse.Squircle" />
+                android:visibility="gone" />
 
         </LinearLayout>
 
