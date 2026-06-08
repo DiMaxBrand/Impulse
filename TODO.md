@@ -8,10 +8,6 @@
 
 - [ ] README rebrand — remove upstream store links, update issue tracker URL, add roadmap section.
 
-## Refactoring
-
-- [ ] Merge `java-to-kotlin` branch into `dev` (277 Java → Kotlin conversions).
-
 ## UI / Compose migration
 
 - [ ] **Port the conversation (chat) screen to Jetpack Compose + Material 3 Expressive** — the individual chat screen with a contact or group (not the conversation list). Covers: message list, bubble rendering, reply card, input bar, attachment chooser, pinned-message banner. This unblocks native spring animations (e.g. Option E reply card morph) and M3 Expressive shape tokens.
