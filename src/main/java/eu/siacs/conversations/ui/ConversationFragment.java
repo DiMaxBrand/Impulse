@@ -496,6 +496,7 @@ public class ConversationFragment extends XmppFragment
                 return true;
             };
     private Message selectedMessage;
+    private Message pendingReplyMessage = null;
     private final List<Message> pinnedMessages = new ArrayList<>();
     private int currentPinnedIndex = 0;
     private boolean pinnedBannerDismissed = false;
@@ -1051,6 +1052,12 @@ public class ConversationFragment extends XmppFragment
             message.putEdited(message.getUuid(), message.getServerMsgId());
             message.setUuid(UUID.randomUUID().toString());
         }
+        final Message reply = pendingReplyMessage;
+        if (reply != null) {
+            final String replyId = reply.getServerMsgId() != null ? reply.getServerMsgId() : reply.getUuid();
+            message.setRepliedTo(replyId);
+            pendingReplyMessage = null;
+        }
         if (conversation.getNextEncryption() == Message.ENCRYPTION_PGP) {
             sendPgpMessage(message);
         } else {
@@ -1444,6 +1451,7 @@ public class ConversationFragment extends XmppFragment
 
     private void quoteMessage(Message message) {
         quoteText(MessageUtils.prepareQuote(message));
+        pendingReplyMessage = message;
     }
 
     @Override

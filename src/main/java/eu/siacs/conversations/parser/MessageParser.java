@@ -45,6 +45,7 @@ import im.conversations.android.xmpp.model.carbons.Sent;
 import im.conversations.android.xmpp.model.conference.DirectInvite;
 import im.conversations.android.xmpp.model.correction.Replace;
 import im.conversations.android.xmpp.model.fallback.Body;
+import im.conversations.android.xmpp.model.reply.Reply;
 import im.conversations.android.xmpp.model.fallback.Fallback;
 import im.conversations.android.xmpp.model.forward.Forwarded;
 import im.conversations.android.xmpp.model.jmi.JingleMessage;
@@ -521,6 +522,10 @@ public class MessageParser extends AbstractParser
             message.setRemoteMsgId(remoteMsgId);
             message.setServerMsgId(serverMsgId);
             message.setCarbon(isCarbon);
+            final var replyElement = packet.getExtension(Reply.class);
+            if (replyElement != null && replyElement.getId() != null) {
+                message.setRepliedTo(replyElement.getId());
+            }
             message.setTime(timestamp);
             if (body != null && body.content != null && body.content.equals(oobUrl)) {
                 message.setOob(true);
