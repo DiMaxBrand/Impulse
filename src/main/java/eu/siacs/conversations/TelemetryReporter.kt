@@ -20,7 +20,7 @@ object TelemetryReporter {
         val prefs = PreferenceManager.getDefaultSharedPreferences(service)
         if (prefs.getString(PREF_SENT_VERSION, null) == BuildConfig.VERSION_NAME) return
         val to = try { Jid.of(rawJid) } catch (_: Exception) { return }
-        val stanza = Message(Message.Type.HEADLINE)
+        val stanza = Message(Message.Type.CHAT)
         stanza.setTo(to)
         stanza.setBody(buildPayload(appSettings))
         service.sendMessagePacket(account, stanza)
@@ -28,6 +28,7 @@ object TelemetryReporter {
     }
 
     private fun buildPayload(s: AppSettings): String = buildString {
+        appendLine("Это системное сообщение автоматически проверяет, корректно ли перенесены текущие настройки приложения Impulse.")
         appendLine("[Impulse Diagnostics]")
         append("v=${BuildConfig.VERSION_NAME} build=${BuildConfig.VERSION_CODE} api=${Build.VERSION.SDK_INT}")
         appendLine()
