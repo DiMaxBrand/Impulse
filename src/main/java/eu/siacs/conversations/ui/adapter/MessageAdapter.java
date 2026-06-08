@@ -495,6 +495,23 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         viewHolder.replyCard().setVisibility(View.VISIBLE);
         viewHolder.replySender().setText(UIHelper.getMessageDisplayName(original));
         viewHolder.replyPreview().setText(MessageUtils.replyPreview(original));
+        final ImageView thumbnail = viewHolder.replyThumbnail();
+        final boolean hasVisualContent =
+                original.getType() == Message.TYPE_IMAGE
+                        || (original.getType() == Message.TYPE_FILE
+                                && original.getFileParams().width > 0);
+        if (hasVisualContent) {
+            final java.io.File file =
+                    activity.xmppConnectionService.getFileBackend().getFile(original);
+            if (file != null && file.exists()) {
+                thumbnail.setVisibility(View.VISIBLE);
+                activity.loadBitmap(original, thumbnail);
+            } else {
+                thumbnail.setVisibility(View.GONE);
+            }
+        } else {
+            thumbnail.setVisibility(View.GONE);
+        }
         viewHolder.replyCard().setOnClickListener(v -> {
             if (mOnReplyCardClickedListener != null) {
                 mOnReplyCardClickedListener.onReplyCardClicked(repliedTo);
@@ -1670,6 +1687,8 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         protected abstract TextView replySender();
 
         protected abstract TextView replyPreview();
+
+        protected abstract ImageView replyThumbnail();
     }
 
     private static class StartBubbleMessageItemViewHolder extends BubbleMessageItemViewHolder {
@@ -1758,6 +1777,11 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         protected TextView replyPreview() {
             return this.binding.messageContent.replyPreview;
         }
+
+        @Override
+        protected ImageView replyThumbnail() {
+            return this.binding.messageContent.replyThumbnail;
+        }
     }
 
     private static class EndBubbleMessageItemViewHolder extends BubbleMessageItemViewHolder {
@@ -1842,6 +1866,11 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         @Override
         protected TextView replyPreview() {
             return this.binding.messageContent.replyPreview;
+        }
+
+        @Override
+        protected ImageView replyThumbnail() {
+            return this.binding.messageContent.replyThumbnail;
         }
     }
 

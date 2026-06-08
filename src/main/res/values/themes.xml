@@ -119,6 +119,11 @@
          Right side (open, interior space): 16dp top + bottom — more rounded.
          Consecutive items match at every junction. -->
     <!-- Default shape for list items; corners are overridden per-position in adapter code. -->
+    <style name="ShapeAppearance.Impulse.Squircle" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">28%</item>
+    </style>
+
     <style name="ShapeAppearance.Impulse.ListItem" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">5dp</item>
