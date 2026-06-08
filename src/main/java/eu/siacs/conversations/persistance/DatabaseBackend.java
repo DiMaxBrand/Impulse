@@ -102,6 +102,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                     + " NUMBER, "
                     + Contact.AVATAR
                     + " TEXT, "
+                    + Contact.AVATAR_VCARD
+                    + " TEXT, "
                     + Contact.LAST_PRESENCE
                     + " TEXT, "
                     + Contact.LAST_TIME
@@ -395,6 +397,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + Account.OPTIONS
                         + " NUMBER, "
                         + Account.AVATAR
+                        + " TEXT, "
+                        + Account.AVATAR_VCARD
                         + " TEXT, "
                         + Account.KEYS
                         + " TEXT, "
@@ -1128,8 +1132,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
             }
         }
         if (oldVersion < 58 && newVersion >= 58) {
-            db.execSQL("ALTER TABLE contacts ADD COLUMN avatar_vcard TEXT");
-            db.execSQL("ALTER TABLE accounts ADD COLUMN avatar_vcard TEXT");
+            db.execSQL("ALTER TABLE " + Contact.TABLENAME + " ADD COLUMN " + Contact.AVATAR_VCARD + " TEXT");
+            db.execSQL("ALTER TABLE " + Account.TABLENAME + " ADD COLUMN " + Account.AVATAR_VCARD + " TEXT");
         }
         if (oldVersion < 59 && newVersion >= 59) {
             db.execSQL(

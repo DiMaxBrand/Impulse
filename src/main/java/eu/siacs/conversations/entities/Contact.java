@@ -50,6 +50,7 @@ public class Contact implements ListItem, Blockable, MucOptions.IdentifiableUser
     public static final String KEYS = "pgpkey";
     public static final String ACCOUNT = "accountUuid";
     public static final String AVATAR = "avatar";
+    public static final String AVATAR_VCARD = "avatar_vcard";
     public static final String LAST_PRESENCE = "last_presence";
     public static final String LAST_TIME = "last_time";
     public static final String GROUPS = "groups";
@@ -67,6 +68,7 @@ public class Contact implements ListItem, Blockable, MucOptions.IdentifiableUser
     private JSONArray groups = new JSONArray();
     protected Account account;
     protected String avatar;
+    private String avatarVCard;
 
     private String mLastPresence = null;
     private RtpCapability.Capability rtpCapability;
@@ -82,6 +84,7 @@ public class Contact implements ListItem, Blockable, MucOptions.IdentifiableUser
             final Uri systemAccount,
             final String keys,
             final String avatar,
+            final String avatarVCard,
             final String presence,
             final String groups,
             final RtpCapability.Capability rtpCapability) {
@@ -101,6 +104,7 @@ public class Contact implements ListItem, Blockable, MucOptions.IdentifiableUser
         }
         this.keys = tmpJsonObject;
         this.avatar = avatar;
+        this.avatarVCard = avatarVCard;
         try {
             this.groups = (groups == null ? new JSONArray() : new JSONArray(groups));
         } catch (JSONException e) {
@@ -141,6 +145,7 @@ public class Contact implements ListItem, Blockable, MucOptions.IdentifiableUser
                 systemAccount,
                 cursor.getString(cursor.getColumnIndexOrThrow(KEYS)),
                 cursor.getString(cursor.getColumnIndexOrThrow(AVATAR)),
+                cursor.getString(cursor.getColumnIndexOrThrow(AVATAR_VCARD)),
                 cursor.getString(cursor.getColumnIndexOrThrow(LAST_PRESENCE)),
                 cursor.getString(cursor.getColumnIndexOrThrow(GROUPS)),
                 RtpCapability.Capability.of(
@@ -223,6 +228,7 @@ public class Contact implements ListItem, Blockable, MucOptions.IdentifiableUser
             values.put(PHOTOURI, photoUri);
             values.put(KEYS, keys.toString());
             values.put(AVATAR, avatar);
+            values.put(AVATAR_VCARD, avatarVCard);
             values.put(LAST_PRESENCE, mLastPresence);
             values.put(GROUPS, groups.toString());
             values.put(RTP_CAPABILITY, rtpCapability == null ? null : rtpCapability.toString());
@@ -451,6 +457,18 @@ public class Contact implements ListItem, Blockable, MucOptions.IdentifiableUser
 
     public String getAvatar() {
         return this.avatar;
+    }
+
+    public boolean setAvatarVCard(final String hash) {
+        if (this.avatarVCard != null && this.avatarVCard.equals(hash)) {
+            return false;
+        }
+        this.avatarVCard = hash;
+        return true;
+    }
+
+    public String getAvatarVCard() {
+        return this.avatarVCard;
     }
 
     public boolean mutualPresenceSubscription() {

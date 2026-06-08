@@ -372,7 +372,7 @@ public class AvatarManager extends AbstractManager {
         Preconditions.checkArgument(VCardUpdate.isValidSHA1(hash));
         final var avatarFile = FileBackend.getAvatarFile(context, hash);
         if (avatarFile.exists()) {
-            setAvatar(address, hash);
+            applyVCardAvatar(address, hash, avatarFile.length());
         } else if (service.isDataSaverDisabled()) {
             final var future = this.fetchAndStoreVCard(address, hash);
             Futures.addCallback(
@@ -877,36 +877,92 @@ public class AvatarManager extends AbstractManager {
                                                 address)));
                     }
                     final var avatarFile = FileBackend.getAvatarFile(context, actualHash);
-                    // Don't let the vCard thumbnail overwrite a higher-quality PEP
-                    // full-size avatar already cached locally — for own account or any contact.
-                    final var acc = getAccount();
-                    final String existingHash =
-                            address.asBareJid().equals(acc.getJid().asBareJid())
-                                    ? acc.getAvatar()
-                                    : acc.getRoster()
-                                            .getContact(address.asBareJid())
-                                            .getAvatar();
-                    if (existingHash != null && !existingHash.equals(actualHash)) {
-                        final var existingFile =
-                                FileBackend.getAvatarFile(context, existingHash);
-                        if (existingFile.exists() && existingFile.length() > photo.length) {
-                            return Futures.immediateVoidFuture();
-                        }
-                    }
-                    if (avatarFile.exists()) {
-                        setAvatar(address, actualHash);
+                    if (!avatarFile.exists()) {
+                        final var writeFuture = write(avatarFile, photo);
+                        return Futures.transform(
+                                writeFuture,
+                                v -> {
+                                    applyVCardAvatar(address, actualHash, photo.length);
+                                    return null;
+                                },
+                                MoreExecutors.directExecutor());
+                    } else {
+                        applyVCardAvatar(address, actualHash, avatarFile.length());
                         return Futures.immediateVoidFuture();
                     }
-                    final var writeFuture = write(avatarFile, photo);
-                    return Futures.transform(
-                            writeFuture,
-                            v -> {
-                                setAvatar(address, actualHash);
-                                return null;
-                            },
-                            MoreExecutors.directExecutor());
                 },
                 AVATAR_COMPRESSION_EXECUTOR);
+    }
+
+    private void applyVCardAvatar(
+            final Jid address, final String vcardHash, final long vcardFileLength) {
+        final var acc = getAccount();
+        final boolean isOwn = address.asBareJid().equals(acc.getJid().asBareJid());
+        final String oldVCardHash;
+        final String currentDisplayHash;
+        if (isOwn) {
+            oldVCardHash = acc.getAvatarVCard();
+            currentDisplayHash = acc.getAvatar();
+        } else {
+            final Contact contact = acc.getRoster().getContact(address.asBareJid());
+            oldVCardHash = contact.getAvatarVCard();
+            currentDisplayHash = contact.getAvatar();
+        }
+        final boolean vcardChanged = !vcardHash.equals(oldVCardHash);
+        setAvatarVCardField(address, vcardHash);
+        if (currentDisplayHash != null && !currentDisplayHash.equals(vcardHash)) {
+            final var displayFile = FileBackend.getAvatarFile(context, currentDisplayHash);
+            if (displayFile.exists() && displayFile.length() > vcardFileLength) {
+                // A higher-quality display avatar exists (PEP full-size).
+                // If the vCard hash changed the contact may have a new full-size too.
+                if (vcardChanged) {
+                    triggerPepAvatarRefresh(address, vcardHash);
+                }
+                return;
+            }
+        }
+        setAvatar(address, vcardHash);
+    }
+
+    private void triggerPepAvatarRefresh(final Jid address, final String fallbackVCardHash) {
+        Futures.addCallback(
+                fetchAndStore(address),
+                new FutureCallback<>() {
+                    @Override
+                    public void onSuccess(final Void result) {
+                        Log.d(
+                                Config.LOGTAG,
+                                "refreshed PEP avatar for "
+                                        + address
+                                        + " after vCard change");
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull final Throwable t) {
+                        Log.d(
+                                Config.LOGTAG,
+                                "no PEP avatar for " + address + "; using vCard fallback");
+                        setAvatar(address, fallbackVCardHash);
+                    }
+                },
+                MoreExecutors.directExecutor());
+    }
+
+    private void setAvatarVCardField(final Jid from, final String vcardHash) {
+        if (!from.isBareJid()) {
+            return;
+        }
+        final var account = getAccount();
+        if (account.getJid().asBareJid().equals(from)) {
+            if (account.setAvatarVCard(vcardHash)) {
+                getDatabase().updateAccount(account);
+            }
+        } else {
+            final Contact contact = account.getRoster().getContact(from);
+            if (contact.setAvatarVCard(vcardHash)) {
+                connection.getManager(RosterManager.class).writeToDatabaseAsync();
+            }
+        }
     }
 
     private static final class ImageCompressionException extends IllegalStateException {
