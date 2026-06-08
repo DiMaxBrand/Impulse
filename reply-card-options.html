@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impulse — Reply Card Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Text:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── M3 tokens ── */
+:root {
+  --primary:           #6750A4;
+  --on-primary:        #FFFFFF;
+  --primary-container: #EADDFF;
+  --on-primary-cont:   #21005D;
+  --secondary-cont:    #E8DEF8;
+  --on-secondary-cont: #1D192B;
+  --tertiary:          #7D5260;
+  --tertiary-cont:     #FFD8E4;
+  --on-tertiary-cont:  #31111D;
+  --surface:           #FFFBFE;
+  --surface-var:       #E7E0EC;
+  --on-surface:        #1C1B1F;
+  --on-surface-var:    #49454F;
+  --outline:           #79747E;
+  --outline-var:       #CAC4D0;
+  --page-bg:           #ECE6F0;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Google Sans Text', 'Roboto', sans-serif;
+  background: var(--page-bg);
+  min-height: 100vh;
+  padding: 32px 24px;
+  color: var(--on-surface);
+}
+
+.page-header { margin-bottom: 32px; }
+.page-header h1 {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  color: var(--on-surface);
+}
+.page-header p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--on-surface-var);
+  line-height: 1.5;
+}
+
+/* ── Card grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.option-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+}
+
+.chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: var(--primary-container);
+  border-radius: 20px;
+  padding: 3px 10px;
+  margin-bottom: 8px;
+}
+
+.option-card h2 {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.option-card p {
+  font-size: 13px;
+  color: var(--on-surface-var);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* ── Chat window ── */
+.chat {
+  background: #F3EDF7;
+  border-radius: 14px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 10px 14px 6px;
+  font-size: 14px;
+  line-height: 1.45;
+  position: relative;
+  word-break: break-word;
+}
+.bubble-in {
+  align-self: flex-start;
+  background: var(--secondary-cont);
+  color: var(--on-secondary-cont);
+  border-radius: 18px 18px 18px 4px;
+}
+.bubble-out {
+  align-self: flex-end;
+  background: var(--primary-container);
+  color: var(--on-primary-cont);
+  border-radius: 18px 18px 4px 18px;
+}
+
+.bubble-time {
+  font-size: 10px;
+  text-align: right;
+  margin-top: 4px;
+  opacity: 0.55;
+  display: block;
+}
+
+/* ═══════════════════════════════════════════
+   OPTION A — Telegram style
+   ═══════════════════════════════════════════ */
+.rp-a {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 5px 8px;
+  background: rgba(103,80,164,.09);
+  transition: background .15s;
+  user-select: none;
+}
+.rp-a:hover  { background: rgba(103,80,164,.16); }
+.rp-a:active { background: rgba(103,80,164,.22); }
+.rp-a .bar {
+  width: 3px; flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--primary);
+}
+.rp-a .rp-body { flex: 1; min-width: 0; }
+.rp-a .rp-name {
+  font-size: 11.5px; font-weight: 600;
+  color: var(--primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rp-a .rp-text {
+  font-size: 11.5px;
+  color: var(--on-surface-var);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════
+   OPTION B — M3 Outlined card, no avatar
+   ═══════════════════════════════════════════ */
+.rp-b {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--outline-var);
+  background: transparent;
+  transition: background .15s, border-color .15s;
+  user-select: none;
+}
+.rp-b:hover  { background: rgba(103,80,164,.05); border-color: var(--outline); }
+.rp-b:active { background: rgba(103,80,164,.10); }
+.rp-b .rp-name {
+  font-size: 11.5px; font-weight: 600;
+  color: var(--primary);
+}
+.rp-b .rp-text {
+  font-size: 11.5px;
+  color: var(--on-surface-var);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════
+   OPTION C — M3 Outlined card WITH avatar
+   ═══════════════════════════════════════════ */
+.rp-c {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--outline-var);
+  background: transparent;
+  transition: background .15s, border-color .15s;
+  user-select: none;
+}
+.rp-c:hover  { background: rgba(103,80,164,.05); border-color: var(--outline); }
+.rp-c:active { background: rgba(103,80,164,.10); }
+.rp-c .av {
+  width: 30px; height: 30px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600;
+}
+.rp-c .rp-body { flex: 1; min-width: 0; }
+.rp-c .rp-name {
+  font-size: 11.5px; font-weight: 600;
+  color: var(--primary);
+}
+.rp-c .rp-text {
+  font-size: 11.5px;
+  color: var(--on-surface-var);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════
+   OPTION D — WhatsApp style + media thumbnail
+   ═══════════════════════════════════════════ */
+.rp-d {
+  display: flex;
+  margin-bottom: 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: filter .15s;
+  user-select: none;
+}
+.rp-d:hover  { filter: brightness(0.95); }
+.rp-d:active { filter: brightness(0.88); }
+.rp-d .bar {
+  width: 4px; flex-shrink: 0;
+  background: var(--primary);
+}
+.rp-d .rp-body {
+  flex: 1;
+  background: rgba(103,80,164,.13);
+  padding: 6px 10px;
+  min-width: 0;
+}
+.rp-d .rp-name {
+  font-size: 11.5px; font-weight: 700;
+  color: var(--primary);
+}
+.rp-d .rp-text {
+  font-size: 11.5px;
+  color: var(--on-surface);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rp-d .thumb {
+  width: 46px; height: 46px; flex-shrink: 0;
+  background: var(--surface-var);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+
+/* ═══════════════════════════════════════════
+   OPTION E — M3 Expressive / Compose
+   Spring-morphing squircle shape
+   ═══════════════════════════════════════════ */
+.rp-e-wrap {
+  margin-bottom: 8px;
+  /* clip so children don't overflow during morph */
+  isolation: isolate;
+}
+.rp-e {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-radius: 14px;
+  padding: 9px 12px;
+  background: rgba(103,80,164,.11);
+  /* spring transition via JS — transitions set here as fallback */
+  transition:
+    border-radius .45s cubic-bezier(.34,1.56,.64,1),
+    background    .2s  ease,
+    transform     .45s cubic-bezier(.34,1.56,.64,1),
+    box-shadow    .3s  ease;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+/* Ripple layer */
+.rp-e::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(103,80,164,.28) 0%, transparent 65%);
+  opacity: 0;
+  transition: opacity .35s ease;
+  pointer-events: none;
+}
+.rp-e.pressed::after { opacity: 1; }
+.rp-e.pressed {
+  border-radius: 22px !important;
+  transform: scale(0.96) !important;
+  background: rgba(103,80,164,.2) !important;
+  box-shadow: 0 2px 12px rgba(103,80,164,.25) !important;
+}
+.rp-e .accent-dot {
+  width: 4px; height: 28px; flex-shrink: 0;
+  border-radius: 3px;
+  background: var(--primary);
+  opacity: 0.6;
+  transition: height .45s cubic-bezier(.34,1.56,.64,1),
+              border-radius .45s cubic-bezier(.34,1.56,.64,1);
+}
+.rp-e.pressed .accent-dot {
+  height: 20px;
+  border-radius: 6px;
+}
+.rp-e .rp-body { flex: 1; min-width: 0; }
+.rp-e .rp-name {
+  font-size: 11.5px; font-weight: 600;
+  color: var(--primary);
+}
+.rp-e .rp-text {
+  font-size: 11.5px;
+  color: var(--on-surface-var);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Compose badge ── */
+.compose-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: #F6EDFF;
+  border-radius: 10px;
+}
+.compose-badge span {
+  font-size: 11px;
+  color: var(--primary);
+  font-weight: 500;
+}
+.compose-badge .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .5; transform: scale(0.75); }
+}
+
+/* ── Comparison note row ── */
+.note-row {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 18px 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.note-row .icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+.note-row h3 { font-family:'Google Sans',sans-serif; font-size:14px; font-weight:500; margin-bottom:4px; }
+.note-row p  { font-size:13px; color:var(--on-surface-var); line-height:1.5; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Reply Card — 5 Options</h1>
+  <p>Each option shown inside a real message context. Option E has a spring-morph animation — press &amp; hold to feel it.</p>
+</div>
+
+<div class="grid">
+
+  <!-- ── OPTION A ── -->
+  <div class="option-card">
+    <div class="chip">Option A</div>
+    <h2>Telegram Style</h2>
+    <p>Thin left accent bar with a semi-transparent tinted background. No border. Minimal visual weight — text dominates.</p>
+    <div class="chat">
+      <div class="bubble bubble-in">
+        Hey, are you coming to the party tonight? 🎉
+        <span class="bubble-time">14:22</span>
+      </div>
+      <div class="bubble bubble-out">
+        <div class="rp-a">
+          <div class="bar"></div>
+          <div class="rp-body">
+            <div class="rp-name">Alice</div>
+            <div class="rp-text">Hey, are you coming to the party tonight? 🎉</div>
+          </div>
+        </div>
+        Yeah, I'll be there around 8!
+        <span class="bubble-time">14:25 ✓✓</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── OPTION B ── -->
+  <div class="option-card">
+    <div class="chip">Option B</div>
+    <h2>M3 Outlined Card</h2>
+    <p>Stroke-only card, no fill. Clean boundary between reply and message. Heavier visual separation than A.</p>
+    <div class="chat">
+      <div class="bubble bubble-in">
+        Hey, are you coming to the party tonight? 🎉
+        <span class="bubble-time">14:22</span>
+      </div>
+      <div class="bubble bubble-out">
+        <div class="rp-b">
+          <div class="rp-name">Alice</div>
+          <div class="rp-text">Hey, are you coming to the party tonight? 🎉</div>
+        </div>
+        Yeah, I'll be there around 8!
+        <span class="bubble-time">14:25 ✓✓</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── OPTION C ── -->
+  <div class="option-card">
+    <div class="chip">Option C</div>
+    <h2>M3 Card + Avatar</h2>
+    <p>Outlined card with the sender's circular avatar. Immediately shows who was replied to without reading the name.</p>
+    <div class="chat">
+      <div class="bubble bubble-in">
+        Hey, are you coming to the party tonight? 🎉
+        <span class="bubble-time">14:22</span>
+      </div>
+      <div class="bubble bubble-out">
+        <div class="rp-c">
+          <div class="av">A</div>
+          <div class="rp-body">
+            <div class="rp-name">Alice</div>
+            <div class="rp-text">Hey, are you coming to the party tonight? 🎉</div>
+          </div>
+        </div>
+        Yeah, I'll be there around 8!
+        <span class="bubble-time">14:25 ✓✓</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── OPTION D ── -->
+  <div class="option-card">
+    <div class="chip">Option D</div>
+    <h2>WhatsApp Style</h2>
+    <p>Thick filled bar + tinted background. Thumbnail slot on the right for image/file replies. Familiar to most users.</p>
+    <div class="chat">
+      <div class="bubble bubble-in">
+        Hey, are you coming to the party tonight? 🎉
+        <span class="bubble-time">14:22</span>
+      </div>
+      <div class="bubble bubble-out">
+        <div class="rp-d">
+          <div class="bar"></div>
+          <div class="rp-body">
+            <div class="rp-name">Alice</div>
+            <div class="rp-text">Hey, are you coming to the party tonight? 🎉</div>
+          </div>
+          <div class="thumb">🎉</div>
+        </div>
+        Yeah, I'll be there around 8!
+        <span class="bubble-time">14:25 ✓✓</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── OPTION E ── -->
+  <div class="option-card">
+    <div class="chip">Option E — Expressive</div>
+    <h2>M3 Expressive / Compose</h2>
+    <p>Squircle shape that morphs its corner radius on press using spring physics. Hold the card to feel the animation.</p>
+    <div class="chat">
+      <div class="bubble bubble-in">
+        Hey, are you coming to the party tonight? 🎉
+        <span class="bubble-time">14:22</span>
+      </div>
+      <div class="bubble bubble-out">
+        <div class="rp-e-wrap">
+          <div class="rp-e" id="rp-e">
+            <div class="accent-dot"></div>
+            <div class="rp-body">
+              <div class="rp-name">Alice</div>
+              <div class="rp-text">Hey, are you coming to the party tonight? 🎉</div>
+            </div>
+          </div>
+        </div>
+        Yeah, I'll be there around 8!
+        <span class="bubble-time">14:25 ✓✓</span>
+      </div>
+    </div>
+    <div class="compose-badge">
+      <div class="dot"></div>
+      <span>Jetpack Compose / M3 Expressive — spring morph on every press</span>
+    </div>
+  </div>
+
+  <!-- ── Comparison note ── -->
+  <div class="note-row">
+    <div class="icon">💡</div>
+    <div>
+      <h3>Implementation note</h3>
+      <p>
+        A, B, C, D are all implementable today in the existing View system with no Compose dependency.
+        Option E's spring morph is demoed here in CSS/JS but would use
+        <code>Modifier.bounceClick()</code> or <code>AnimatedShape</code> in Jetpack Compose,
+        and can be back-ported to Views via a custom <code>ViewPropertyAnimator</code> with an overshoot interpolator.
+        The current code uses <strong>Option A</strong>.
+      </p>
+    </div>
+  </div>
+
+</div><!-- .grid -->
+
+<script>
+/* Spring-morph for Option E */
+const el = document.getElementById('rp-e');
+if (el) {
+  function press() {
+    el.style.transition = 'border-radius .12s ease, background .12s ease, transform .12s ease, box-shadow .12s ease';
+    el.classList.add('pressed');
+  }
+  function release() {
+    el.style.transition =
+      'border-radius .55s cubic-bezier(.34,1.56,.64,1),' +
+      'background .25s ease,' +
+      'transform .55s cubic-bezier(.34,1.56,.64,1),' +
+      'box-shadow .35s ease';
+    el.classList.remove('pressed');
+  }
+  el.addEventListener('mousedown',  press);
+  el.addEventListener('touchstart', press, { passive: true });
+  el.addEventListener('mouseup',    release);
+  el.addEventListener('touchend',   release);
+  el.addEventListener('mouseleave', release);
+}
+</script>
+</body>
+</html>
