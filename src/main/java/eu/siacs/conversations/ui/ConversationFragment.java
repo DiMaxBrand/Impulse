@@ -2521,7 +2521,7 @@ public class ConversationFragment extends XmppFragment
         conversation.remove(message);
         requireXmppActivity().xmppConnectionService.databaseBackend.deleteMessage(message.getUuid());
         requireXmppActivity().xmppConnectionService.getNotificationService().clear(message);
-        messageListAdapter.notifyDataSetChanged();
+        refresh();
     }
 
     private void retractMessage(final Message message) {
