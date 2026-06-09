@@ -837,9 +837,7 @@ public class MessageParser extends AbstractParser
                 getManager(ReactionManager.class).processReactions(packet, counterpart, query);
             }
 
-            if (original.hasExtension(Retract.class)
-                    && originalFrom != null
-                    && originalFrom.isBareJid()) {
+            if (original.hasExtension(Retract.class) && originalFrom != null) {
                 getManager(ModerationManager.class).handleRetraction(original);
             }
 
