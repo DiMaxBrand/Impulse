@@ -6,9 +6,9 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 
 - Version name and code live in `build.gradle.kts`:
   ```kotlin
-  val baseVersionCode = 42195   // increment by 1 on every release
-  versionName = "1.7.0+2.20.0" // SemVer; the +build part is used by automated systems — do NOT treat it as upstream tracking metadata or change it when bumping the version
-  archivesName.set("com.dimax.impulse-1.7.0+2.20.0")
+  val baseVersionCode = 42200   // increment by 1 on every release
+  versionName = "1.9.1+2.20.0" // SemVer; the +build part is used by automated systems — do NOT treat it as upstream tracking metadata or change it when bumping the version
+  archivesName.set("com.dimax.impulse-1.9.1+2.20.0")
   ```
 - For small fixes increment PATCH (3rd component): `1.7.1+2.20.0`, `1.7.2+2.20.0`, etc.
 - Release versionCode = `100 * baseVersionCode + abiCode` (arm64-v8a = 4, universal = 0).
