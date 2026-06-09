@@ -480,11 +480,10 @@ public class AppSettings {
                     .putInt("pref_migration_version", 1)
                     .apply();
         }
-        if (version < 2) {
-            // Migration 2: enable "automatically save to gallery" — default changed from false to true.
+        if (!prefs.getBoolean("pref_migrated_use_shared_storage", false)) {
             prefs.edit()
                     .putBoolean(USE_SHARED_STORAGE, true)
-                    .putInt("pref_migration_version", 2)
+                    .putBoolean("pref_migrated_use_shared_storage", true)
                     .apply();
         }
 
