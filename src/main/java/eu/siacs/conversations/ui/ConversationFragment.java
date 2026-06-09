@@ -1389,6 +1389,12 @@ public class ConversationFragment extends XmppFragment
             pinnedBannerDismissed = true;
             binding.pinnedMessageBanner.setVisibility(View.GONE);
         });
+        binding.pinnedMessageUnpin.setOnClickListener(v -> {
+            final int index = currentPinnedIndex < pinnedMessages.size() ? currentPinnedIndex : 0;
+            if (index < pinnedMessages.size()) {
+                unpinMessage(pinnedMessages.get(index));
+            }
+        });
         binding.messagesView.setOnScrollListener(mOnScrollListener);
         binding.messagesView.setTranscriptMode(ListView.TRANSCRIPT_MODE_NORMAL);
         binding.mediaPreview.setAdapter(mediaPreviewAdapter);
