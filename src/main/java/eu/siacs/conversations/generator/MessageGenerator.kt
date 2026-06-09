@@ -131,7 +131,11 @@ class MessageGenerator(service: XmppConnectionService) : AbstractGenerator(servi
             packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.GROUPCHAT)
         }
         val retract = Retract()
-        retract.setAttribute("id", message.serverMsgId ?: message.getUuid())
+        val retractId = if (conversation.getMode() == Conversational.MODE_SINGLE && !message.isPrivateMessage)
+            message.getUuid()
+        else
+            message.serverMsgId ?: message.getUuid()
+        retract.setAttribute("id", retractId)
         packet.addExtension(retract)
         val fallback = Fallback()
         fallback.setAttribute("for", Namespace.RETRACTION)
