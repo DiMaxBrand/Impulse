@@ -1261,4 +1261,7 @@
     <string name="attachment_choice_location">Местоположение</string>
     <string name="attachment_choice_recording">Запись</string>
     <string name="attachment_choice_video">Видео</string>
+    <string name="delete_message_title">Удалить сообщение?</string>
+    <string name="delete_for_everyone">У всех</string>
+    <string name="delete_for_myself">У себя</string>
 </resources>

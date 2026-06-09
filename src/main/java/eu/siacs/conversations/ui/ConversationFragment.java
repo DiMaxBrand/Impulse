@@ -1541,6 +1541,7 @@ public class ConversationFragment extends XmppFragment
             final MenuItem downloadFile = menu.findItem(R.id.download_file);
             final MenuItem cancelTransmission = menu.findItem(R.id.cancel_transmission);
             final MenuItem deleteFile = menu.findItem(R.id.delete_file);
+            final MenuItem deleteMessage = menu.findItem(R.id.delete_message);
             final MenuItem moderateMessage = menu.findItem(R.id.moderation);
             final MenuItem showErrorMessage = menu.findItem(R.id.show_error_message);
             final MenuItem saveFile = menu.findItem(R.id.save_file);
@@ -1677,6 +1678,9 @@ public class ConversationFragment extends XmppFragment
             if (cancelable) {
                 cancelTransmission.setVisible(true);
             }
+            if (!deleted) {
+                deleteMessage.setVisible(true);
+            }
             if (m.isFileOrImage() && !deleted && !cancelable) {
                 final var path = m.getRelativeFilePath();
                 if (path != null) {
@@ -1753,6 +1757,10 @@ public class ConversationFragment extends XmppFragment
             }
             case R.id.retry_decryption -> {
                 retryDecryption(selectedMessage);
+                yield true;
+            }
+            case R.id.delete_message -> {
+                showDeleteMessageSheet(selectedMessage);
                 yield true;
             }
             case R.id.delete_file -> {
@@ -2535,6 +2543,31 @@ public class ConversationFragment extends XmppFragment
                 });
         builder.setPositiveButton(R.string.confirm, null);
         builder.create().show();
+    }
+
+    private void showDeleteMessageSheet(final Message message) {
+        new DeleteMessageBottomSheet(
+                        message,
+                        () -> retractMessage(message),
+                        () -> deleteMessageLocally(message))
+                .show(getChildFragmentManager(), "delete_message");
+    }
+
+    private void deleteMessageLocally(final Message message) {
+        final Conversation conversation = (Conversation) message.getConversation();
+        conversation.remove(message);
+        requireXmppActivity().xmppConnectionService.databaseBackend.deleteMessage(message.getUuid());
+        requireXmppActivity().xmppConnectionService.getNotificationService().clear(message);
+        messageListAdapter.notifyDataSetChanged();
+    }
+
+    private void retractMessage(final Message message) {
+        final Conversation conversation = (Conversation) message.getConversation();
+        final Account account = conversation.getAccount();
+        final var packet =
+                requireXmppActivity().xmppConnectionService.getMessageGenerator().generateRetraction(message);
+        requireXmppActivity().xmppConnectionService.sendMessagePacket(account, packet);
+        deleteMessageLocally(message);
     }
 
     private void deleteFile(final Message message) {

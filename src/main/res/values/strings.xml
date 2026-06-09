@@ -1200,4 +1200,7 @@
     <string name="attachment_choice_camera">Camera</string>
     <string name="attachment_choice_video">Video</string>
     <string name="attachment_choice_recording">Recording</string>
+    <string name="delete_message_title">Delete message?</string>
+    <string name="delete_for_everyone">Everyone</string>
+    <string name="delete_for_myself">Myself</string>
 </resources>
