@@ -137,7 +137,10 @@ class ModerationManager(
             return
         }
         val inMemoryMessage = conversation.findMessageWithServerMsgId(stanzaId)
-        val retractedMessage = inMemoryMessage ?: getDatabase().getMessageWithServerMsgId(conversation, stanzaId)
+            ?: conversation.findMessageWithUuid(stanzaId)
+        val retractedMessage = inMemoryMessage
+            ?: getDatabase().getMessageWithServerMsgId(conversation, stanzaId)
+            ?: getDatabase().getIndividualMessage(stanzaId)
         if (retractedMessage == null) {
             Log.d(Config.LOGTAG, "received 1:1 retraction for $stanzaId — message not found")
             return
