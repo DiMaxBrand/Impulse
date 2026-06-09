@@ -12,6 +12,7 @@ import eu.siacs.conversations.xmpp.Jid
 import im.conversations.android.xmpp.model.correction.Replace
 import im.conversations.android.xmpp.model.hints.Store
 import im.conversations.android.xmpp.model.markers.Markable
+import im.conversations.android.xmpp.model.fallback.Fallback
 import im.conversations.android.xmpp.model.retraction.Retract
 import im.conversations.android.xmpp.model.unique.OriginId
 
@@ -132,6 +133,9 @@ class MessageGenerator(service: XmppConnectionService) : AbstractGenerator(servi
         val retract = Retract()
         retract.setAttribute("id", message.serverMsgId ?: message.getUuid())
         packet.addExtension(retract)
+        val fallback = Fallback()
+        fallback.setAttribute("for", Namespace.RETRACTION)
+        packet.addExtension(fallback)
         packet.setBody(RETRACTION_FALLBACK_MESSAGE)
         return packet
     }
