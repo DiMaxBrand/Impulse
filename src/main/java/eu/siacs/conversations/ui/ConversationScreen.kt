@@ -1,0 +1,944 @@
+package eu.siacs.conversations.ui
+
+import android.text.format.DateUtils
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import eu.siacs.conversations.R
+import eu.siacs.conversations.entities.Conversation
+import eu.siacs.conversations.entities.Conversational
+import eu.siacs.conversations.entities.Message
+import eu.siacs.conversations.entities.Transferable
+import eu.siacs.conversations.ui.adapter.MessageAdapter
+import eu.siacs.conversations.utils.UIHelper
+import im.conversations.android.xmpp.model.stanza.Presence
+import im.conversations.android.xmpp.model.state.Composing
+import eu.siacs.conversations.xmpp.manager.ChatStateManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/** Observable state for the Compose conversation screen. */
+class ConversationScreenState {
+    internal val conversation = mutableStateOf<Conversation?>(null)
+    internal val messages: SnapshotStateList<Message> = mutableStateListOf()
+    internal val revision = mutableIntStateOf(0)
+    internal val unreadCount = mutableIntStateOf(0)
+    internal val inputText = mutableStateOf("")
+
+    fun update(conversation: Conversation?, source: List<Message>) {
+        this.conversation.value = conversation
+        messages.clear()
+        messages.addAll(source)
+        unreadCount.intValue = conversation?.unreadCount() ?: 0
+        revision.intValue++
+    }
+
+    fun setInput(text: String) {
+        inputText.value = text
+    }
+
+    fun getInput(): String = inputText.value
+}
+
+/** Actions the screen delegates back to the hosting fragment. */
+interface ConversationScreenListener {
+    fun onBackPressed()
+
+    fun onSendTextMessage(body: String)
+
+    fun onAttachImage()
+
+    fun onAttachFile()
+
+    fun onCall(video: Boolean)
+
+    fun onOpenDetails()
+
+    fun onOpenMessage(message: Message)
+
+    fun onDownloadMessage(message: Message)
+
+    fun onLoadMoreMessages()
+
+    fun onScrolledToBottom()
+}
+
+object ConversationScreenHelper {
+    @JvmStatic
+    fun setup(
+        composeView: ComposeView,
+        state: ConversationScreenState,
+        listener: ConversationScreenListener,
+    ) {
+        composeView.setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+        )
+        composeView.setContent { ImpulseExpressiveTheme { ConversationScreen(state, listener) } }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val colorScheme =
+        if (isSystemInDarkTheme()) dynamicDarkColorScheme(context)
+        else dynamicLightColorScheme(context)
+    MaterialExpressiveTheme(
+        colorScheme = colorScheme,
+        motionScheme = MotionScheme.expressive(),
+        content = content,
+    )
+}
+
+/** A chronological list entry: either a message bubble or a date pill. */
+private sealed interface ChatItem {
+    val key: String
+
+    data class Msg(
+        val message: Message,
+        val firstOfGroup: Boolean,
+        val lastOfGroup: Boolean,
+    ) : ChatItem {
+        override val key: String
+            get() = message.getUuid() ?: message.hashCode().toString()
+    }
+
+    data class DatePill(val timestamp: Long) : ChatItem {
+        override val key: String
+            get() = "date-$timestamp"
+    }
+}
+
+private fun sameDay(a: Long, b: Long): Boolean {
+    return UIHelper.sameDay(a, b)
+}
+
+private fun sameSender(a: Message, b: Message): Boolean {
+    val aReceived = a.status == Message.STATUS_RECEIVED
+    val bReceived = b.status == Message.STATUS_RECEIVED
+    if (aReceived != bReceived) return false
+    if (!aReceived) return true
+    val ac = a.counterpart
+    val bc = b.counterpart
+    return ac != null && bc != null && ac == bc
+}
+
+private const val GROUP_WINDOW_MILLIS = 5 * 60 * 1000L
+
+private fun groupable(a: Message, b: Message): Boolean {
+    if (a.type == Message.TYPE_STATUS || b.type == Message.TYPE_STATUS) return false
+    if (a.type == Message.TYPE_RTP_SESSION || b.type == Message.TYPE_RTP_SESSION) return false
+    return sameSender(a, b) &&
+        Math.abs(a.timeSent - b.timeSent) < GROUP_WINDOW_MILLIS &&
+        sameDay(a.timeSent, b.timeSent)
+}
+
+/** Builds the display list, newest first (for the reversed LazyColumn). */
+private fun buildChatItems(messages: List<Message>): List<ChatItem> {
+    val chronological = ArrayList<ChatItem>(messages.size + 8)
+    for (i in messages.indices) {
+        val message = messages[i]
+        val previous = messages.getOrNull(i - 1)
+        val next = messages.getOrNull(i + 1)
+        if (previous == null || !sameDay(previous.timeSent, message.timeSent)) {
+            chronological.add(ChatItem.DatePill(message.timeSent))
+        }
+        val firstOfGroup = previous == null || !groupable(previous, message)
+        val lastOfGroup =
+            next == null || !groupable(message, next) || !sameDay(message.timeSent, next.timeSent)
+        chronological.add(ChatItem.Msg(message, firstOfGroup, lastOfGroup))
+    }
+    return chronological.asReversed()
+}
+
+@Composable
+fun ConversationScreen(state: ConversationScreenState, listener: ConversationScreenListener) {
+    val conversation = state.conversation.value
+    Scaffold(
+        topBar = {
+            ConversationTopBar(
+                conversation = conversation,
+                revision = state.revision.intValue,
+                listener = listener,
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                MessageList(
+                    state = state,
+                    listener = listener,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            InputBar(state = state, listener = listener)
+        }
+    }
+}
+
+@Composable
+private fun ConversationTopBar(
+    conversation: Conversation?,
+    revision: Int,
+    listener: ConversationScreenListener,
+) {
+    val context = LocalContext.current
+    val isSingle = conversation?.getMode() == Conversational.MODE_SINGLE
+
+    val availability: Presence.Availability? =
+        remember(conversation, revision) {
+            if (conversation != null && isSingle) {
+                try {
+                    conversation.getContact().shownStatus
+                } catch (_: Exception) {
+                    null
+                }
+            } else null
+        }
+    val isTyping: Boolean =
+        remember(conversation, revision) {
+            if (conversation != null && isSingle) {
+                try {
+                    val s =
+                        conversation.getAccount()
+                            .xmppConnection
+                            ?.getManager(ChatStateManager::class.java)
+                            ?.getIncoming(conversation.getAddress())
+                    s == Composing::class.java
+                } catch (_: Exception) {
+                    false
+                }
+            } else false
+        }
+
+    val avatarState = remember(conversation?.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+    val avatarSizePx = with(LocalDensity.current) { 40.dp.toPx() }.toInt()
+    LaunchedEffect(conversation, revision) {
+        val activity = context as? XmppActivity ?: return@LaunchedEffect
+        val c = conversation ?: return@LaunchedEffect
+        val bm =
+            withContext(Dispatchers.IO) {
+                try {
+                    activity.avatarService().get(c, avatarSizePx, false)
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        if (bm != null) avatarState.value = bm.asImageBitmap()
+    }
+
+    var menuOpen by remember { mutableStateOf(false) }
+
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = listener::onBackPressed) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back_24dp),
+                    contentDescription = stringResource(R.string.back),
+                )
+            }
+        },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val avatar = avatarState.value
+                if (avatar != null) {
+                    Image(
+                        bitmap = avatar,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(40.dp).clip(CircleShape),
+                    )
+                } else {
+                    Box(
+                        modifier =
+                            Modifier.size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = conversation?.getName()?.toString() ?: "",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    val subtitle: String? =
+                        when {
+                            isTyping -> stringResource(R.string.typing_indicator)
+                            availability == Presence.Availability.CHAT ||
+                                availability == Presence.Availability.ONLINE ->
+                                stringResource(R.string.presence_online)
+                            availability == Presence.Availability.AWAY ||
+                                availability == Presence.Availability.XA ->
+                                stringResource(R.string.presence_away)
+                            availability == Presence.Availability.DND ->
+                                stringResource(R.string.presence_dnd)
+                            else -> null
+                        }
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.labelMedium,
+                            color =
+                                if (isTyping) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        },
+        actions = {
+            if (isSingle) {
+                IconButton(onClick = { listener.onCall(false) }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_call_24dp),
+                        contentDescription = stringResource(R.string.audio_call),
+                    )
+                }
+                IconButton(onClick = { listener.onCall(true) }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_videocam_24dp),
+                        contentDescription = stringResource(R.string.video_call),
+                    )
+                }
+            }
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_more_horiz_24dp),
+                    contentDescription = null,
+                )
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            stringResource(
+                                if (isSingle) R.string.action_contact_details
+                                else R.string.action_muc_details
+                            )
+                        )
+                    },
+                    onClick = {
+                        menuOpen = false
+                        listener.onOpenDetails()
+                    },
+                )
+            }
+        },
+        colors =
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MessageList(
+    state: ConversationScreenState,
+    listener: ConversationScreenListener,
+    modifier: Modifier = Modifier,
+) {
+    val revision = state.revision.intValue
+    val items = remember(revision) { buildChatItems(state.messages) }
+    val listState = rememberLazyListState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    // Request older messages when the user approaches the (chronological) top.
+    LaunchedEffect(listState, revision) {
+        snapshotFlow {
+                val info = listState.layoutInfo
+                val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                last >= info.totalItemsCount - 4 && info.totalItemsCount > 0
+            }
+            .distinctUntilChanged()
+            .collect { nearTop -> if (nearTop) listener.onLoadMoreMessages() }
+    }
+
+    // Notify when the newest message becomes visible so read markers can be sent.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex == 0 }
+            .distinctUntilChanged()
+            .collect { atBottom -> if (atBottom) listener.onScrolledToBottom() }
+    }
+
+    // Keep pinned to the bottom when a new message arrives while we are (nearly) there.
+    val newestKey = items.firstOrNull()?.key
+    LaunchedEffect(newestKey) {
+        if (listState.firstVisibleItemIndex <= 1) {
+            listState.animateScrollToItem(0)
+            listener.onScrolledToBottom()
+        }
+    }
+
+    Box(modifier = modifier) {
+        LazyColumn(
+            state = listState,
+            reverseLayout = true,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding =
+                androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+        ) {
+            itemsIndexed(items, key = { _, item -> item.key }) { index, item ->
+                val itemModifier = Modifier.animateItem()
+                when (item) {
+                    is ChatItem.DatePill ->
+                        DatePill(timestamp = item.timestamp, modifier = itemModifier)
+                    is ChatItem.Msg ->
+                        MessageRow(
+                            item = item,
+                            isNewest = index == 0,
+                            listener = listener,
+                            modifier = itemModifier,
+                        )
+                }
+            }
+        }
+
+        val showScrollToBottom by
+            remember { androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex > 2 } }
+        AnimatedVisibility(
+            visible = showScrollToBottom,
+            enter = scaleIn(),
+            exit = scaleOut(),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        ) {
+            Box {
+                SmallFloatingActionButton(
+                    onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_keyboard_double_arrow_down_24dp),
+                        contentDescription = null,
+                    )
+                }
+                val unread = state.unreadCount.intValue
+                if (unread > 0) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier =
+                            Modifier.align(Alignment.TopEnd)
+                                .size(18.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    ) {
+                        Text(
+                            text = if (unread > 99) "99+" else unread.toString(),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DatePill(timestamp: Long, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+            Text(
+                text =
+                    DateUtils.getRelativeTimeSpanString(
+                            timestamp,
+                            System.currentTimeMillis(),
+                            DateUtils.DAY_IN_MILLIS,
+                            DateUtils.FORMAT_SHOW_WEEKDAY,
+                        )
+                        .toString(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
+private val CORNER_LARGE: Dp = 20.dp
+private val CORNER_SMALL: Dp = 5.dp
+
+private fun bubbleShape(item: ChatItem.Msg, outgoing: Boolean): RoundedCornerShape {
+    val top = if (item.firstOfGroup) CORNER_LARGE else CORNER_SMALL
+    val bottom = if (item.lastOfGroup) CORNER_LARGE else CORNER_SMALL
+    return if (outgoing) {
+        RoundedCornerShape(
+            topStart = CORNER_LARGE,
+            topEnd = top,
+            bottomStart = CORNER_LARGE,
+            bottomEnd = bottom,
+        )
+    } else {
+        RoundedCornerShape(
+            topStart = top,
+            topEnd = CORNER_LARGE,
+            bottomStart = bottom,
+            bottomEnd = CORNER_LARGE,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MessageRow(
+    item: ChatItem.Msg,
+    isNewest: Boolean,
+    listener: ConversationScreenListener,
+    modifier: Modifier = Modifier,
+) {
+    val message = item.message
+    val outgoing = message.status != Message.STATUS_RECEIVED
+
+    // Expressive "pop": the newest message springs in.
+    val pop = remember(item.key) { Animatable(if (isNewest) 0.8f else 1f) }
+    if (isNewest) {
+        LaunchedEffect(item.key) {
+            pop.animateTo(
+                1f,
+                animationSpec =
+                    androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+                    ),
+            )
+        }
+    }
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(
+                    start = if (outgoing) 48.dp else 12.dp,
+                    end = if (outgoing) 12.dp else 48.dp,
+                    top = if (item.firstOfGroup) 6.dp else 1.dp,
+                    bottom = 1.dp,
+                )
+                .graphicsLayer {
+                    scaleX = pop.value
+                    scaleY = pop.value
+                    transformOrigin =
+                        androidx.compose.ui.graphics.TransformOrigin(
+                            if (outgoing) 1f else 0f,
+                            1f,
+                        )
+                },
+        horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
+    ) {
+        MessageBubble(item = item, outgoing = outgoing, listener = listener)
+    }
+}
+
+@Composable
+private fun MessageBubble(
+    item: ChatItem.Msg,
+    outgoing: Boolean,
+    listener: ConversationScreenListener,
+) {
+    val message = item.message
+    val failed = message.status == Message.STATUS_SEND_FAILED
+    val containerColor =
+        when {
+            failed -> MaterialTheme.colorScheme.errorContainer
+            outgoing -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceContainerHigh
+        }
+    val contentColor =
+        when {
+            failed -> MaterialTheme.colorScheme.onErrorContainer
+            outgoing -> MaterialTheme.colorScheme.onPrimaryContainer
+            else -> MaterialTheme.colorScheme.onSurface
+        }
+
+    Surface(
+        shape = bubbleShape(item, outgoing),
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier.widthIn(max = 320.dp),
+    ) {
+        Column(
+            modifier =
+                Modifier.combinedClickable(
+                        onClick = { listener.onOpenMessage(message) },
+                        onLongClick = {},
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            MessageContent(message = message, listener = listener)
+            MessageFooter(message = message, outgoing = outgoing)
+        }
+    }
+}
+
+@Composable
+private fun MessageContent(message: Message, listener: ConversationScreenListener) {
+    val context = LocalContext.current
+    val activity = context as? XmppActivity
+    val transferable = message.transferable
+
+    when {
+        message.isDeleted -> {
+            Text(
+                text = stringResource(R.string.file_deleted),
+                style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        transferable != null && transferable.getStatus() == Transferable.STATUS_DOWNLOADING -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.receiving_x_file,
+                        UIHelper.getFileDescriptionString(context, message),
+                        transferable.getProgress()),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        message.isFileOrImage -> {
+            val fileBackend = activity?.xmppConnectionService?.fileBackend
+            val isImage = message.type == Message.TYPE_IMAGE
+            if (isImage && fileBackend != null) {
+                val thumb = remember(message.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+                val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
+                LaunchedEffect(message.getUuid()) {
+                    val bm =
+                        withContext(Dispatchers.IO) {
+                            try {
+                                fileBackend.getThumbnail(message, sizePx, false)
+                            } catch (_: Exception) {
+                                null
+                            }
+                        }
+                    if (bm != null) thumb.value = bm.asImageBitmap()
+                }
+                val bitmap = thumb.value
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier =
+                            Modifier.widthIn(max = 280.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { listener.onOpenMessage(message) },
+                    )
+                } else {
+                    FileRow(
+                        iconRes = R.drawable.ic_image_24dp,
+                        label = UIHelper.getFileDescriptionString(context, message),
+                    )
+                }
+            } else {
+                FileRow(
+                    iconRes = R.drawable.ic_attach_file_24dp,
+                    label = UIHelper.getFileDescriptionString(context, message),
+                )
+            }
+        }
+        message.isGeoUri -> {
+            FileRow(
+                iconRes = R.drawable.ic_location_pin_24dp,
+                label = stringResource(R.string.location),
+            )
+        }
+        message.treatAsDownloadable() -> {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { listener.onDownloadMessage(message) },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_download_24dp),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = UIHelper.getMessagePreview(context, message).first.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        else -> {
+            Text(
+                text = message.body?.trim() ?: "",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FileRow(iconRes: Int, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(text = label, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
+    message: Message,
+    outgoing: Boolean,
+) {
+    val context = LocalContext.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
+    ) {
+        Text(
+            text = DateUtils.formatDateTime(context, message.timeSent, DateUtils.FORMAT_SHOW_TIME),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (message.encryption != Message.ENCRYPTION_NONE) {
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                painter = painterResource(R.drawable.ic_lock_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(12.dp),
+            )
+        }
+        if (outgoing && message.type != Message.TYPE_RTP_SESSION) {
+            val statusDrawable = MessageAdapter.getMessageStatusAsDrawable(message, message.status)
+            if (statusDrawable != null) {
+                val displayed = message.status == Message.STATUS_SEND_DISPLAYED
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    painter =
+                        painterResource(
+                            if (displayed) R.drawable.ic_done_all_bold_24dp else statusDrawable
+                        ),
+                    contentDescription = null,
+                    tint =
+                        if (displayed) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
+    val context = LocalContext.current
+    val conversation = state.conversation.value
+    var attachMenuOpen by remember { mutableStateOf(false) }
+    val text = state.inputText.value
+    val hasText = text.isNotBlank()
+
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            modifier =
+                Modifier.fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+        ) {
+            Box {
+                IconButton(onClick = { attachMenuOpen = true }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_attach_file_24dp),
+                        contentDescription = stringResource(R.string.attach_file),
+                    )
+                }
+                DropdownMenu(
+                    expanded = attachMenuOpen,
+                    onDismissRequest = { attachMenuOpen = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.attachment_choice_gallery)) },
+                        leadingIcon = {
+                            Icon(painterResource(R.drawable.ic_image_24dp), null)
+                        },
+                        onClick = {
+                            attachMenuOpen = false
+                            listener.onAttachImage()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.attachment_choice_file)) },
+                        leadingIcon = {
+                            Icon(painterResource(R.drawable.ic_attach_file_24dp), null)
+                        },
+                        onClick = {
+                            attachMenuOpen = false
+                            listener.onAttachFile()
+                        },
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+            ) {
+                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    if (text.isEmpty()) {
+                        Text(
+                            text =
+                                conversation?.let { UIHelper.getMessageHint(context, it) }
+                                    ?: stringResource(R.string.send_message),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    BasicTextField(
+                        value = text,
+                        onValueChange = { state.setInput(it) },
+                        textStyle =
+                            LocalTextStyle.current.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                        cursorBrush =
+                            androidx.compose.ui.graphics.SolidColor(
+                                MaterialTheme.colorScheme.primary
+                            ),
+                        maxLines = 6,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
+            // Morphing send button: rounded square at rest, springs to a pill once there
+            // is something to send.
+            val corner by
+                androidx.compose.animation.core.animateDpAsState(
+                    targetValue = if (hasText) 24.dp else 14.dp,
+                    animationSpec =
+                        androidx.compose.animation.core.spring(
+                            dampingRatio =
+                                androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessMedium,
+                        ),
+                    label = "sendCorner",
+                )
+            FilledIconButton(
+                onClick = {
+                    if (hasText) {
+                        listener.onSendTextMessage(text.trim())
+                    }
+                },
+                enabled = hasText,
+                shape = RoundedCornerShape(corner),
+                colors =
+                    IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    painter =
+                        painterResource(
+                            if (conversation != null &&
+                                conversation.nextEncryption != Message.ENCRYPTION_NONE
+                            )
+                                R.drawable.ic_send_encrypted_24dp
+                            else R.drawable.ic_send_24dp
+                        ),
+                    contentDescription = stringResource(R.string.send_message),
+                )
+            }
+        }
+    }
+}
