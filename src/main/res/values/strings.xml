@@ -1201,4 +1201,7 @@
     <string name="delete_message_title">Delete message?</string>
     <string name="delete_for_everyone">Everyone</string>
     <string name="delete_for_myself">Myself</string>
+    <string name="delete_leftover_message">Delete leftover message</string>
+    <string name="delete_leftover_message_title">Delete leftover message?</string>
+    <string name="delete_leftover_message_explanation">The file was already deleted from this device. Here you can remove the remaining entry from this chat entirely — or still delete the message for everyone.</string>
 </resources>

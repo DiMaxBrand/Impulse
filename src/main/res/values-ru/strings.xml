@@ -1265,4 +1265,7 @@
     <string name="delete_message_title">Удалить сообщение?</string>
     <string name="delete_for_everyone">У всех</string>
     <string name="delete_for_myself">У себя</string>
+    <string name="delete_leftover_message">Удалить оставшееся сообщение</string>
+    <string name="delete_leftover_message_title">Удалить оставшееся сообщение?</string>
+    <string name="delete_leftover_message_explanation">Файл уже был удалён с этого устройства. Здесь можно полностью убрать оставшуюся запись из чата — или всё же удалить сообщение у всех.</string>
 </resources>

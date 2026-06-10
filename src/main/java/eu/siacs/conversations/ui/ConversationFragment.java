@@ -1646,16 +1646,16 @@ public class ConversationFragment extends XmppFragment
             if (cancelable) {
                 cancelTransmission.setVisible(true);
             }
-            if (!deleted) {
-                deleteMessage.setVisible(true);
-                if (m.isFileOrImage()) {
-                    deleteMessage.setTitle(
-                            requireContext()
-                                    .getString(
-                                            R.string.delete_x_file,
-                                            UIHelper.getFileDescriptionString(
-                                                    requireContext(), m)));
-                }
+            deleteMessage.setVisible(true);
+            if (deleted) {
+                deleteMessage.setTitle(R.string.delete_leftover_message);
+            } else if (m.isFileOrImage()) {
+                deleteMessage.setTitle(
+                        requireContext()
+                                .getString(
+                                        R.string.delete_x_file,
+                                        UIHelper.getFileDescriptionString(
+                                                requireContext(), m)));
             }
             if (m.isFileOrImage() && !deleted && !cancelable) {
                 final var path = m.getRelativeFilePath();
@@ -2519,6 +2519,22 @@ public class ConversationFragment extends XmppFragment
     }
 
     private void deleteMessageLocally(final Message message) {
+        if (message.isFileOrImage() && !message.isDeleted() && message.getRelativeFilePath() != null) {
+            // keep a "File deleted" placeholder bubble; long-pressing it offers
+            // re-download or deleting the leftover entry entirely
+            if (requireXmppActivity().xmppConnectionService.getFileBackend().deleteFile(message)) {
+                message.setDeleted(true);
+                requireXmppActivity().xmppConnectionService.evictPreview(message.getUuid());
+                requireXmppActivity().xmppConnectionService.updateMessage(message, false);
+                requireConversationsActivity().onConversationsListItemUpdated();
+                refresh();
+            }
+            return;
+        }
+        deleteMessageEntirely(message);
+    }
+
+    private void deleteMessageEntirely(final Message message) {
         final Conversation conversation = (Conversation) message.getConversation();
         if (message.isFileOrImage() && message.getRelativeFilePath() != null) {
             requireXmppActivity().xmppConnectionService.getFileBackend().deleteFile(message);
@@ -2536,7 +2552,7 @@ public class ConversationFragment extends XmppFragment
         final var packet =
                 requireXmppActivity().xmppConnectionService.getMessageGenerator().generateRetraction(message);
         requireXmppActivity().xmppConnectionService.sendMessagePacket(account, packet);
-        deleteMessageLocally(message);
+        deleteMessageEntirely(message);
     }
 
     private void saveFile(final Message message) {
