@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -32,11 +33,13 @@
         <com.google.android.material.button.MaterialButtonGroup
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            style="@style/Widget.Material3.MaterialButtonGroup.Connected">
+            style="@style/Widget.Material3Expressive.MaterialButtonGroup.Connected"
+            app:shapeAppearance="@xml/delete_message_group_shape_state_list"
+            app:innerCornerSize="@xml/delete_message_inner_corner_size_state_list">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_delete_everyone"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -44,7 +47,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_delete_myself"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -52,7 +55,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_cancel"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
