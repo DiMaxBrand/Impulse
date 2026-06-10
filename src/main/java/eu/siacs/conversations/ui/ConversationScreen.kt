@@ -590,15 +590,25 @@ private fun MessageList(
 
 @Composable
 private fun TypingBubble(modifier: Modifier = Modifier) {
-    Row(modifier = modifier.fillMaxWidth().padding(start = 12.dp, top = 6.dp, bottom = 1.dp)) {
+    Row(
+        modifier =
+            modifier.fillMaxWidth().padding(start = 12.dp - TAIL_WIDTH, top = 6.dp, bottom = 1.dp)
+    ) {
         Surface(
-            shape = RoundedCornerShape(CORNER_LARGE),
+            shape =
+                rememberBubbleShape(firstOfGroup = true, lastOfGroup = true, outgoing = false),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             val transition = rememberInfiniteTransition(label = "typing")
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                modifier =
+                    Modifier.padding(
+                        start = 16.dp + TAIL_WIDTH,
+                        end = 16.dp,
+                        top = 14.dp,
+                        bottom = 14.dp,
+                    ),
             ) {
                 repeat(3) { index ->
                     val alpha by
@@ -659,26 +669,94 @@ private fun DatePill(timestamp: Long, modifier: Modifier = Modifier) {
 
 private val CORNER_LARGE: Dp = 20.dp
 private val CORNER_SMALL: Dp = 5.dp
+private val TAIL_WIDTH: Dp = 8.dp
+private val TAIL_HEIGHT: Dp = 14.dp
 
-private fun bubbleShape(item: ChatItem.Msg, outgoing: Boolean): RoundedCornerShape {
-    val top = if (item.firstOfGroup) CORNER_LARGE else CORNER_SMALL
-    val bottom = if (item.lastOfGroup) CORNER_LARGE else CORNER_SMALL
-    return if (outgoing) {
-        RoundedCornerShape(
-            topStart = CORNER_LARGE,
-            topEnd = top,
-            bottomStart = CORNER_LARGE,
-            bottomEnd = bottom,
-        )
-    } else {
-        RoundedCornerShape(
-            topStart = top,
-            topEnd = CORNER_LARGE,
-            bottomStart = bottom,
-            bottomEnd = CORNER_LARGE,
-        )
+/**
+ * Bubble shape. Middle-of-group bubbles are plain rounded rects; the last bubble of a group
+ * carries a small curled tail at its bottom corner on the sender's side. The tail occupies
+ * [TAIL_WIDTH] inside the layout bounds, so callers compensate row padding and content padding
+ * on that side to keep bubble bodies aligned within the group.
+ */
+@Composable
+private fun rememberBubbleShape(
+    firstOfGroup: Boolean,
+    lastOfGroup: Boolean,
+    outgoing: Boolean,
+): androidx.compose.ui.graphics.Shape {
+    val density = LocalDensity.current
+    return remember(firstOfGroup, lastOfGroup, outgoing, density) {
+        val top = if (firstOfGroup) CORNER_LARGE else CORNER_SMALL
+        if (!lastOfGroup) {
+            if (outgoing) {
+                RoundedCornerShape(
+                    topStart = CORNER_LARGE,
+                    topEnd = top,
+                    bottomStart = CORNER_LARGE,
+                    bottomEnd = CORNER_SMALL,
+                )
+            } else {
+                RoundedCornerShape(
+                    topStart = top,
+                    topEnd = CORNER_LARGE,
+                    bottomStart = CORNER_SMALL,
+                    bottomEnd = CORNER_LARGE,
+                )
+            }
+        } else {
+            with(density) {
+                bubbleTailShape(
+                    outgoing = outgoing,
+                    groupTopCorner = top.toPx(),
+                    largeCorner = CORNER_LARGE.toPx(),
+                    tailWidth = TAIL_WIDTH.toPx(),
+                    tailHeight = TAIL_HEIGHT.toPx(),
+                )
+            }
+        }
     }
 }
+
+private fun bubbleTailShape(
+    outgoing: Boolean,
+    groupTopCorner: Float,
+    largeCorner: Float,
+    tailWidth: Float,
+    tailHeight: Float,
+): androidx.compose.ui.graphics.Shape =
+    androidx.compose.foundation.shape.GenericShape { size, layoutDirection ->
+        val rtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
+        // The tail sits on the sender's side: end for outgoing, start for incoming.
+        val tailOnRight = outgoing != rtl
+        val left = if (tailOnRight) 0f else tailWidth
+        val right = if (tailOnRight) size.width - tailWidth else size.width
+        val h = size.height
+        val topLeft = if (tailOnRight) largeCorner else groupTopCorner
+        val topRight = if (tailOnRight) groupTopCorner else largeCorner
+        val bottomLeft = if (tailOnRight) largeCorner else 0f
+        val bottomRight = if (tailOnRight) 0f else largeCorner
+        addRoundRect(
+            androidx.compose.ui.geometry.RoundRect(
+                rect = androidx.compose.ui.geometry.Rect(left, 0f, right, h),
+                topLeft = androidx.compose.ui.geometry.CornerRadius(topLeft),
+                topRight = androidx.compose.ui.geometry.CornerRadius(topRight),
+                bottomRight = androidx.compose.ui.geometry.CornerRadius(bottomRight),
+                bottomLeft = androidx.compose.ui.geometry.CornerRadius(bottomLeft),
+            )
+        )
+        // Curled tail flowing out of the square bottom corner.
+        if (tailOnRight) {
+            moveTo(right, h - tailHeight)
+            quadraticTo(right, h - tailHeight / 4f, size.width, h)
+            lineTo(right - tailWidth, h)
+            close()
+        } else {
+            moveTo(left, h - tailHeight)
+            quadraticTo(left, h - tailHeight / 4f, 0f, h)
+            lineTo(left + tailWidth, h)
+            close()
+        }
+    }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -710,13 +788,16 @@ private fun MessageRow(
         }
     }
 
+    // The tail of a group's last bubble pokes into the screen margin so bubble bodies stay
+    // aligned with the grouped bubbles above.
+    val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
                 .padding(
-                    start = if (outgoing) 48.dp else 12.dp,
-                    end = if (outgoing) 12.dp else 48.dp,
+                    start = if (outgoing) 48.dp else 12.dp - tailInset,
+                    end = if (outgoing) 12.dp - tailInset else 48.dp,
                     top = if (item.firstOfGroup) 6.dp else 1.dp,
                     bottom = 1.dp,
                 )
@@ -774,11 +855,17 @@ private fun MessageBubble(
             else -> MaterialTheme.colorScheme.onSurface
         }
 
+    val hasTail = item.lastOfGroup
     Surface(
-        shape = bubbleShape(item, outgoing),
+        shape =
+            rememberBubbleShape(
+                firstOfGroup = item.firstOfGroup,
+                lastOfGroup = item.lastOfGroup,
+                outgoing = outgoing,
+            ),
         color = containerColor,
         contentColor = contentColor,
-        modifier = Modifier.widthIn(max = 320.dp),
+        modifier = Modifier.widthIn(max = if (hasTail) 320.dp + TAIL_WIDTH else 320.dp),
     ) {
         Column(
             modifier =
@@ -786,7 +873,12 @@ private fun MessageBubble(
                         onClick = { listener.onOpenMessage(message) },
                         onLongClick = { onLongPress(message) },
                     )
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(
+                        start = if (hasTail && !outgoing) 12.dp + TAIL_WIDTH else 12.dp,
+                        end = if (hasTail && outgoing) 12.dp + TAIL_WIDTH else 12.dp,
+                        top = 8.dp,
+                        bottom = 8.dp,
+                    )
         ) {
             val repliedToId = message.getRepliedTo()
             if (repliedToId != null) {
