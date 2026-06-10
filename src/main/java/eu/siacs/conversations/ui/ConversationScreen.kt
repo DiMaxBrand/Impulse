@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -88,6 +89,7 @@ import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.entities.Transferable
 import eu.siacs.conversations.ui.adapter.MessageAdapter
+import eu.siacs.conversations.utils.MessageUtils
 import eu.siacs.conversations.utils.UIHelper
 import im.conversations.android.xmpp.model.stanza.Presence
 import im.conversations.android.xmpp.model.state.Composing
@@ -104,6 +106,8 @@ class ConversationScreenState {
     internal val revision = mutableIntStateOf(0)
     internal val unreadCount = mutableIntStateOf(0)
     internal val inputText = mutableStateOf("")
+    internal val replyingTo = mutableStateOf<Message?>(null)
+    internal val correcting = mutableStateOf<Message?>(null)
 
     fun update(conversation: Conversation?, source: List<Message>) {
         this.conversation.value = conversation
@@ -141,6 +145,8 @@ interface ConversationScreenListener {
     fun onLoadMoreMessages()
 
     fun onScrolledToBottom()
+
+    fun onRecordVoice()
 }
 
 object ConversationScreenHelper {
@@ -235,6 +241,7 @@ private fun buildChatItems(messages: List<Message>): List<ChatItem> {
 @Composable
 fun ConversationScreen(state: ConversationScreenState, listener: ConversationScreenListener) {
     val conversation = state.conversation.value
+    var menuTarget by remember { mutableStateOf<Message?>(null) }
     Scaffold(
         topBar = {
             ConversationTopBar(
@@ -250,11 +257,21 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 MessageList(
                     state = state,
                     listener = listener,
+                    onLongPress = { menuTarget = it },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
             InputBar(state = state, listener = listener)
         }
+    }
+    val target = menuTarget
+    if (target != null) {
+        MessageContextSheet(
+            message = target,
+            state = state,
+            listener = listener,
+            onDismiss = { menuTarget = null },
+        )
     }
 }
 
@@ -422,6 +439,7 @@ private fun ConversationTopBar(
 private fun MessageList(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
+    onLongPress: (Message) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val revision = state.revision.intValue
@@ -474,6 +492,32 @@ private fun MessageList(
         }
     }
 
+    // Resolves the message a reply refers to, by stanza id or uuid.
+    val resolveReply: (String) -> Message? =
+        remember(revision) {
+            { id ->
+                state.messages.lastOrNull { m ->
+                    id == m.serverMsgId || id == m.getUuid() || id == m.remoteMsgId
+                }
+            }
+        }
+
+    var highlightKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(highlightKey) {
+        if (highlightKey != null) {
+            kotlinx.coroutines.delay(1500)
+            highlightKey = null
+        }
+    }
+    val onReplyCardClick: (Message) -> Unit = { original ->
+        val key = original.getUuid() ?: ""
+        val index = items.indexOfFirst { it.key == key }
+        if (index >= 0) {
+            highlightKey = key
+            scope.launch { listState.animateScrollToItem(index) }
+        }
+    }
+
     Box(modifier = modifier) {
         LazyColumn(
             state = listState,
@@ -494,7 +538,11 @@ private fun MessageList(
                         MessageRow(
                             item = item,
                             isNewest = index == 0,
+                            highlighted = item.key == highlightKey,
                             listener = listener,
+                            onLongPress = onLongPress,
+                            resolveReply = resolveReply,
+                            onReplyCardClick = onReplyCardClick,
                             modifier = itemModifier,
                         )
                 }
@@ -637,7 +685,11 @@ private fun bubbleShape(item: ChatItem.Msg, outgoing: Boolean): RoundedCornerSha
 private fun MessageRow(
     item: ChatItem.Msg,
     isNewest: Boolean,
+    highlighted: Boolean,
     listener: ConversationScreenListener,
+    onLongPress: (Message) -> Unit,
+    resolveReply: (String) -> Message?,
+    onReplyCardClick: (Message) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val message = item.message
@@ -679,7 +731,15 @@ private fun MessageRow(
                 },
         horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
     ) {
-        MessageBubble(item = item, outgoing = outgoing, listener = listener)
+        MessageBubble(
+            item = item,
+            outgoing = outgoing,
+            highlighted = highlighted,
+            listener = listener,
+            onLongPress = onLongPress,
+            resolveReply = resolveReply,
+            onReplyCardClick = onReplyCardClick,
+        )
     }
 }
 
@@ -687,16 +747,26 @@ private fun MessageRow(
 private fun MessageBubble(
     item: ChatItem.Msg,
     outgoing: Boolean,
+    highlighted: Boolean,
     listener: ConversationScreenListener,
+    onLongPress: (Message) -> Unit,
+    resolveReply: (String) -> Message?,
+    onReplyCardClick: (Message) -> Unit,
 ) {
     val message = item.message
     val failed = message.status == Message.STATUS_SEND_FAILED
-    val containerColor =
+    val baseColor =
         when {
             failed -> MaterialTheme.colorScheme.errorContainer
             outgoing -> MaterialTheme.colorScheme.primaryContainer
             else -> MaterialTheme.colorScheme.surfaceContainerHigh
         }
+    val containerColor by
+        androidx.compose.animation.animateColorAsState(
+            targetValue =
+                if (highlighted) MaterialTheme.colorScheme.tertiaryContainer else baseColor,
+            label = "bubbleHighlight",
+        )
     val contentColor =
         when {
             failed -> MaterialTheme.colorScheme.onErrorContainer
@@ -704,7 +774,6 @@ private fun MessageBubble(
             else -> MaterialTheme.colorScheme.onSurface
         }
 
-    val context = LocalContext.current
     Surface(
         shape = bubbleShape(item, outgoing),
         color = containerColor,
@@ -715,29 +784,94 @@ private fun MessageBubble(
             modifier =
                 Modifier.combinedClickable(
                         onClick = { listener.onOpenMessage(message) },
-                        onLongClick = {
-                            val body = message.body
-                            if (!body.isNullOrBlank()) {
-                                val clipboard =
-                                    context.getSystemService(
-                                        android.content.Context.CLIPBOARD_SERVICE
-                                    ) as android.content.ClipboardManager
-                                clipboard.setPrimaryClip(
-                                    android.content.ClipData.newPlainText("message", body)
-                                )
-                                android.widget.Toast.makeText(
-                                        context,
-                                        R.string.message_copied_to_clipboard,
-                                        android.widget.Toast.LENGTH_SHORT,
-                                    )
-                                    .show()
-                            }
-                        },
+                        onLongClick = { onLongPress(message) },
                     )
                     .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
+            val repliedToId = message.getRepliedTo()
+            if (repliedToId != null) {
+                val original = remember(repliedToId) { resolveReply(repliedToId) }
+                if (original != null) {
+                    ReplyCard(original = original, onClick = { onReplyCardClick(original) })
+                }
+            }
             MessageContent(message = message, listener = listener)
             MessageFooter(message = message, outgoing = outgoing)
+        }
+    }
+}
+
+@Composable
+private fun ReplyCard(original: Message, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+        modifier = modifier.fillMaxWidth().padding(bottom = 6.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min),
+        ) {
+            Box(
+                modifier =
+                    Modifier.width(3.dp)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.primary)
+            )
+            Column(
+                modifier =
+                    Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = UIHelper.getMessageDisplayName(original),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = MessageUtils.replyPreview(original),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (original.type == Message.TYPE_IMAGE && !original.isDeleted) {
+                val activity = context as? XmppActivity
+                val fileBackend = activity?.xmppConnectionService?.fileBackend
+                if (fileBackend != null) {
+                    val thumb =
+                        remember(original.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+                    val sizePx = with(LocalDensity.current) { 40.dp.toPx() }.toInt()
+                    LaunchedEffect(original.getUuid()) {
+                        val bm =
+                            withContext(Dispatchers.IO) {
+                                try {
+                                    fileBackend.getThumbnail(original, sizePx, false)
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+                        if (bm != null) thumb.value = bm.asImageBitmap()
+                    }
+                    val bitmap = thumb.value
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier =
+                                Modifier.padding(end = 6.dp)
+                                    .size(40.dp)
+                                    // approximates the squircle used by the View reply card
+                                    .clip(RoundedCornerShape(28)),
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -875,6 +1009,15 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (message.edited()) {
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                painter = painterResource(R.drawable.ic_edit_24dp),
+                contentDescription = stringResource(R.string.correct_message),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(12.dp),
+            )
+        }
         if (message.encryption != Message.ENCRYPTION_NONE) {
             Spacer(Modifier.width(4.dp))
             Icon(
@@ -905,6 +1048,187 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     }
 }
 
+/** One entry of the long-press context sheet. */
+private class SheetAction(
+    val iconRes: Int,
+    val label: String,
+    val onClick: () -> Unit,
+)
+
+/**
+ * Long-press message menu: an M3 Expressive bottom sheet whose actions are rendered as a
+ * grouped list — large outer corners, tight inner corners — matching the bubble language.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun MessageContextSheet(
+    message: Message,
+    state: ConversationScreenState,
+    listener: ConversationScreenListener,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val conversation = state.conversation.value
+    val actions = buildList {
+        add(
+            SheetAction(R.drawable.ic_reply_24dp, stringResource(R.string.reply)) {
+                state.correcting.value = null
+                state.replyingTo.value = message
+            }
+        )
+        val body = message.body
+        if (!body.isNullOrBlank() && !message.isFileOrImage) {
+            add(
+                SheetAction(
+                    R.drawable.ic_description_24dp,
+                    stringResource(android.R.string.copy),
+                ) {
+                    val clipboard =
+                        context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(
+                        android.content.ClipData.newPlainText("message", body)
+                    )
+                    android.widget.Toast.makeText(
+                            context,
+                            R.string.message_copied_to_clipboard,
+                            android.widget.Toast.LENGTH_SHORT,
+                        )
+                        .show()
+                }
+            )
+        }
+        val editable = conversation?.getLastEditableMessage()
+        if (editable != null && editable.getUuid() == message.getUuid()) {
+            add(
+                SheetAction(R.drawable.ic_edit_24dp, stringResource(R.string.correct_message)) {
+                    state.replyingTo.value = null
+                    state.correcting.value = message
+                    state.setInput(message.body ?: "")
+                }
+            )
+        }
+        val fileDescription = UIHelper.getFileDescriptionString(context, message)
+        if (message.isFileOrImage && !message.isDeleted) {
+            add(
+                SheetAction(
+                    R.drawable.ic_attach_file_24dp,
+                    stringResource(R.string.open_x_file, fileDescription),
+                ) {
+                    listener.onOpenMessage(message)
+                }
+            )
+        } else if (message.treatAsDownloadable()) {
+            add(
+                SheetAction(
+                    R.drawable.ic_download_24dp,
+                    stringResource(R.string.download_x_file, fileDescription),
+                ) {
+                    listener.onDownloadMessage(message)
+                }
+            )
+        }
+    }
+
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                text = stringResource(R.string.message_options),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
+            )
+            actions.forEachIndexed { index, action ->
+                val top = if (index == 0) CORNER_LARGE else CORNER_SMALL
+                val bottom = if (index == actions.lastIndex) CORNER_LARGE else CORNER_SMALL
+                Surface(
+                    onClick = {
+                        onDismiss()
+                        action.onClick()
+                    },
+                    shape =
+                        RoundedCornerShape(
+                            topStart = top,
+                            topEnd = top,
+                            bottomStart = bottom,
+                            bottomEnd = bottom,
+                        ),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(action.iconRes),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Spacer(Modifier.width(14.dp))
+                        Text(text = action.label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun ComposerBanner(state: ConversationScreenState) {
+    val replyingTo = state.replyingTo.value
+    val correcting = state.correcting.value
+    if (replyingTo == null && correcting == null) return
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
+    ) {
+        Icon(
+            painter =
+                painterResource(
+                    if (correcting != null) R.drawable.ic_edit_24dp else R.drawable.ic_reply_24dp
+                ),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text =
+                    if (correcting != null) stringResource(R.string.send_corrected_message)
+                    else UIHelper.getMessageDisplayName(replyingTo!!),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = MessageUtils.replyPreview(correcting ?: replyingTo!!),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        IconButton(
+            onClick = {
+                if (state.correcting.value != null) state.setInput("")
+                state.replyingTo.value = null
+                state.correcting.value = null
+            }
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_close_24dp),
+                contentDescription = stringResource(R.string.cancel),
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
@@ -913,8 +1237,11 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     var attachMenuOpen by remember { mutableStateOf(false) }
     val text = state.inputText.value
     val hasText = text.isNotBlank()
+    val correcting = state.correcting.value != null
 
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Column {
+        ComposerBanner(state)
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier =
@@ -964,8 +1291,10 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     if (text.isEmpty()) {
                         Text(
                             text =
-                                conversation?.let { UIHelper.getMessageHint(context, it) }
-                                    ?: stringResource(R.string.send_message),
+                                if (correcting) stringResource(R.string.send_corrected_message)
+                                else
+                                    conversation?.let { UIHelper.getMessageHint(context, it) }
+                                        ?: stringResource(R.string.send_message),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -1002,33 +1331,48 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                         ),
                     label = "sendCorner",
                 )
+            val showMic = !hasText && !correcting
             FilledIconButton(
                 onClick = {
-                    if (hasText) {
+                    if (showMic) {
+                        listener.onRecordVoice()
+                    } else if (hasText) {
                         listener.onSendTextMessage(text.trim())
                     }
                 },
-                enabled = hasText,
+                enabled = showMic || hasText,
                 shape = RoundedCornerShape(corner),
                 colors =
                     IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor =
+                            if (showMic) MaterialTheme.colorScheme.secondaryContainer
+                            else MaterialTheme.colorScheme.primary,
+                        contentColor =
+                            if (showMic) MaterialTheme.colorScheme.onSecondaryContainer
+                            else MaterialTheme.colorScheme.onPrimary,
                     ),
                 modifier = Modifier.size(48.dp),
             ) {
                 Icon(
                     painter =
                         painterResource(
-                            if (conversation != null &&
-                                conversation.nextEncryption != Message.ENCRYPTION_NONE
-                            )
-                                R.drawable.ic_send_encrypted_24dp
-                            else R.drawable.ic_send_24dp
+                            when {
+                                showMic -> R.drawable.ic_mic_24dp
+                                correcting -> R.drawable.ic_done_24dp
+                                conversation != null &&
+                                    conversation.nextEncryption != Message.ENCRYPTION_NONE ->
+                                    R.drawable.ic_send_encrypted_24dp
+                                else -> R.drawable.ic_send_24dp
+                            }
                         ),
-                    contentDescription = stringResource(R.string.send_message),
+                    contentDescription =
+                        stringResource(
+                            if (showMic) R.string.attachment_choice_recording
+                            else R.string.send_message
+                        ),
                 )
             }
+        }
         }
     }
 }

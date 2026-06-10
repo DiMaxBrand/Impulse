@@ -37,10 +37,20 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
   tails; outgoing = primaryContainer, incoming = surfaceContainerHigh; morphing
   send button; newest-message spring pop; date pills; scroll-to-bottom FAB with
   unread badge; typing bubble + typing subtitle in the top bar.
-- Not yet ported from the old fragment: message correction/quotes, PGP send,
-  voice recording, camera capture, location sharing, in-bubble audio player,
-  full message context menu (long-press currently copies text). MUC private
-  messages from `MucDetailsContextMenuHelper` still target the old fragment.
+- XEP-0461 replies cherry-picked from `fix-avatar-quality` (b3ff462, c238afb,
+  4928632, dc27de6 — quotes only, avatar commits NOT picked). **DB is at v59
+  with the v58 avatar migration skipped** — when cherry-picking the avatar
+  work later, renumber its migration to v60 (devices on this branch are
+  already past 58 and would silently skip it).
+- Ported into Compose: reply cards (tap scrolls + highlights), reply banner,
+  message correction (edit banner + edited icon, `getLastEditableMessage()`
+  rule), Expressive grouped-list context sheet (reply/copy/edit/open/download),
+  voice recording (mic button → `RecordingActivity` → attach).
+- Not yet ported from the old fragment: PGP send, camera capture, location
+  sharing, in-bubble audio player. MUC private messages from
+  `MucDetailsContextMenuHelper` still target the old fragment.
+- `Message.replaceUuid()` exists because Kotlin cannot resolve `setUuid()`
+  (collides with the protected `uuid` property of `AbstractEntity.kt`).
 
 ## Signing
 

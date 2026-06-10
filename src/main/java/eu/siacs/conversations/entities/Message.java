@@ -816,6 +816,12 @@ public class Message extends AbstractEntity
         this.uuid = uuid;
     }
 
+    /** Same as {@link #setUuid} but callable from Kotlin, where the name {@code setUuid}
+     * collides with the protected {@code uuid} property of the Kotlin base entity. */
+    public void replaceUuid(final String uuid) {
+        this.uuid = uuid;
+    }
+
     public String getEditedId() {
         if (this.edits.isEmpty()) {
             throw new IllegalStateException("Attempting to access unedited message");

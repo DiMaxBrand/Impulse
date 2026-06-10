@@ -73,6 +73,21 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
         }
 
+    private val recordVoiceLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                val uri = result.data?.data
+                if (uri != null) attachUris(listOf(uri), asImage = false)
+            }
+        }
+
+    private val recordAudioPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                recordVoiceLauncher.launch(Intent(requireActivity(), RecordingActivity::class.java))
+            }
+        }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -102,6 +117,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     fun reInit(conversation: Conversation, extras: Bundle) {
+        if (this.conversation !== conversation) {
+            state.replyingTo.value = null
+            state.correcting.value = null
+            state.setInput("")
+        }
         this.conversation = conversation
         this.pendingConversationUuid = null
         conversation.messagesLoaded.set(true)
@@ -176,12 +196,31 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 return
             }
         }
-        val message = Message(c, body, c.nextEncryption)
-        Message.configurePrivateMessage(message)
+        val correcting = state.correcting.value
+        val message: Message
+        if (correcting != null) {
+            message = correcting
+            message.setBody(body)
+            message.putEdited(message.getUuid(), message.serverMsgId)
+            message.replaceUuid(java.util.UUID.randomUUID().toString())
+        } else {
+            message = Message(c, body, c.nextEncryption)
+            Message.configurePrivateMessage(message)
+        }
+        val reply = state.replyingTo.value
+        if (reply != null) {
+            message.setRepliedTo(reply.serverMsgId ?: reply.getUuid())
+        }
         service.sendMessage(message)
+        state.replyingTo.value = null
+        state.correcting.value = null
         state.setInput("")
         refreshMessages()
         markRead()
+    }
+
+    override fun onRecordVoice() {
+        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
     /** Returns true when the OMEMO trust screen had to be opened first. */
