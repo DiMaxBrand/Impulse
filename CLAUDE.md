@@ -25,6 +25,23 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 | `material-icons` | Material Icons Rounded icon set |
 | `allow-sending-videos` | Future: custom Compose media picker |
 
+## Session handoff: reimagine-conversation-screen (2026-06-10)
+
+- The chat screen is now `ConversationComposeFragment` + `ConversationScreen.kt`
+  (Compose, `MaterialExpressiveTheme`, dynamic colors). `ConversationsActivity`
+  hosts it in both main and secondary (tablet) containers; the old
+  `ConversationFragment` is still in the tree but no longer instantiated.
+- Entity accessors (`getUuid()`, `getMode()`, `getAccount()`, …) are Kotlin
+  functions, NOT properties — property syntax does not compile.
+- Visual decisions (user-approved): Expressive grouped bubbles 20dp/5dp, no
+  tails; outgoing = primaryContainer, incoming = surfaceContainerHigh; morphing
+  send button; newest-message spring pop; date pills; scroll-to-bottom FAB with
+  unread badge; typing bubble + typing subtitle in the top bar.
+- Not yet ported from the old fragment: message correction/quotes, PGP send,
+  voice recording, camera capture, location sharing, in-bubble audio player,
+  full message context menu (long-press currently copies text). MUC private
+  messages from `MucDetailsContextMenuHelper` still target the old fragment.
+
 ## Signing
 
 Signing credentials are in `signing.properties` (not committed). The build reads this file automatically — no manual keystore entry needed in Android Studio.

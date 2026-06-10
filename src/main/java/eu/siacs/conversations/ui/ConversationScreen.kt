@@ -429,6 +429,24 @@ private fun MessageList(
     val listState = rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
+    val conversation = state.conversation.value
+    val isTyping: Boolean =
+        remember(conversation, revision) {
+            if (conversation != null && conversation.getMode() == Conversational.MODE_SINGLE) {
+                try {
+                    val s =
+                        conversation
+                            .getAccount()
+                            .xmppConnection
+                            ?.getManager(ChatStateManager::class.java)
+                            ?.getIncoming(conversation.getAddress())
+                    s == Composing::class.java
+                } catch (_: Exception) {
+                    false
+                }
+            } else false
+        }
+
     // Request older messages when the user approaches the (chronological) top.
     LaunchedEffect(listState, revision) {
         snapshotFlow {
@@ -464,6 +482,9 @@ private fun MessageList(
             contentPadding =
                 androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
         ) {
+            if (isTyping) {
+                item(key = "typing-indicator") { TypingBubble(modifier = Modifier.animateItem()) }
+            }
             itemsIndexed(items, key = { _, item -> item.key }) { index, item ->
                 val itemModifier = Modifier.animateItem()
                 when (item) {
@@ -513,6 +534,51 @@ private fun MessageList(
                             style = MaterialTheme.typography.labelSmall,
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TypingBubble(modifier: Modifier = Modifier) {
+    Row(modifier = modifier.fillMaxWidth().padding(start = 12.dp, top = 6.dp, bottom = 1.dp)) {
+        Surface(
+            shape = RoundedCornerShape(CORNER_LARGE),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+            val transition = rememberInfiniteTransition(label = "typing")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            ) {
+                repeat(3) { index ->
+                    val alpha by
+                        transition.animateFloat(
+                            initialValue = 0.25f,
+                            targetValue = 1f,
+                            animationSpec =
+                                infiniteRepeatable(
+                                    animation =
+                                        tween(
+                                            durationMillis = 600,
+                                            delayMillis = index * 200,
+                                            easing = LinearEasing,
+                                        ),
+                                    repeatMode = RepeatMode.Reverse,
+                                ),
+                            label = "dot$index",
+                        )
+                    Box(
+                        modifier =
+                            Modifier.padding(horizontal = 2.dp)
+                                .size(7.dp)
+                                .graphicsLayer { this.alpha = alpha }
+                                .background(
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                    CircleShape,
+                                )
+                    )
                 }
             }
         }
@@ -638,6 +704,7 @@ private fun MessageBubble(
             else -> MaterialTheme.colorScheme.onSurface
         }
 
+    val context = LocalContext.current
     Surface(
         shape = bubbleShape(item, outgoing),
         color = containerColor,
@@ -648,7 +715,24 @@ private fun MessageBubble(
             modifier =
                 Modifier.combinedClickable(
                         onClick = { listener.onOpenMessage(message) },
-                        onLongClick = {},
+                        onLongClick = {
+                            val body = message.body
+                            if (!body.isNullOrBlank()) {
+                                val clipboard =
+                                    context.getSystemService(
+                                        android.content.Context.CLIPBOARD_SERVICE
+                                    ) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(
+                                    android.content.ClipData.newPlainText("message", body)
+                                )
+                                android.widget.Toast.makeText(
+                                        context,
+                                        R.string.message_copied_to_clipboard,
+                                        android.widget.Toast.LENGTH_SHORT,
+                                    )
+                                    .show()
+                            }
+                        },
                     )
                     .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
@@ -747,6 +831,12 @@ private fun MessageContent(message: Message, listener: ConversationScreenListene
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
+        }
+        message.type == Message.TYPE_RTP_SESSION -> {
+            FileRow(
+                iconRes = R.drawable.ic_call_24dp,
+                label = UIHelper.getMessagePreview(context, message).first.toString(),
+            )
         }
         else -> {
             Text(
