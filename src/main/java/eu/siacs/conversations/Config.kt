@@ -41,9 +41,9 @@ object Config {
     const val POST_CONNECTIVITY_CHANGE_PING_INTERVAL = 30
     const val CONNECT_DISCO_TIMEOUT = 20
 
-    const val AVATAR_THUMBNAIL_SIZE = 192
-    const val AVATAR_THUMBNAIL_CHAR_LIMIT = 9400
-    const val AVATAR_FULL_SIZE = 1280
+    const val AVATAR_THUMBNAIL_SIZE = 256
+    const val AVATAR_THUMBNAIL_CHAR_LIMIT = 16000
+    const val AVATAR_FULL_SIZE = 1920
 
     const val USE_OPUS_VOICE_MESSAGES = false
     const val MESSAGE_MERGE_WINDOW = 90_000

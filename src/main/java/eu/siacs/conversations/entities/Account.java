@@ -43,6 +43,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
     public static final String ROSTERVERSION = "rosterversion";
     public static final String KEYS = "keys";
     public static final String AVATAR = "avatar";
+    public static final String AVATAR_VCARD = "avatar_vcard";
     public static final String DISPLAY_NAME = "display_name";
     public static final String HOSTNAME = "hostname";
     public static final String PORT = "port";
@@ -78,6 +79,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
     private State lastErrorStatus = State.OFFLINE;
     protected String resource;
     protected String avatar;
+    protected String avatarVCard;
     protected String hostname = null;
     protected int port = 5222;
     protected boolean online = false;
@@ -103,6 +105,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
                 null,
                 null,
                 null,
+                null,
                 Resolver.XMPP_PORT_STARTTLS,
                 im.conversations.android.xmpp.model.stanza.Presence.Availability.ONLINE,
                 null,
@@ -120,6 +123,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
             final String rosterVersion,
             final String keys,
             final String avatar,
+            final String avatarVCard,
             String displayName,
             String hostname,
             int port,
@@ -136,6 +140,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
         this.rosterVersion = rosterVersion;
         this.keys = parseKeys(keys);
         this.avatar = avatar;
+        this.avatarVCard = avatarVCard;
         this.displayName = displayName;
         this.hostname = hostname;
         this.port = port;
@@ -183,6 +188,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
                 cursor.getString(cursor.getColumnIndexOrThrow(ROSTERVERSION)),
                 cursor.getString(cursor.getColumnIndexOrThrow(KEYS)),
                 cursor.getString(cursor.getColumnIndexOrThrow(AVATAR)),
+                cursor.getString(cursor.getColumnIndexOrThrow(AVATAR_VCARD)),
                 cursor.getString(cursor.getColumnIndexOrThrow(DISPLAY_NAME)),
                 cursor.getString(cursor.getColumnIndexOrThrow(HOSTNAME)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(PORT)),
@@ -517,6 +523,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
         }
         values.put(ROSTERVERSION, rosterVersion);
         values.put(AVATAR, avatar);
+        values.put(AVATAR_VCARD, avatarVCard);
         values.put(DISPLAY_NAME, displayName);
         values.put(HOSTNAME, hostname);
         values.put(PORT, port);
@@ -626,6 +633,18 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
 
     public String getAvatar() {
         return this.avatar;
+    }
+
+    public boolean setAvatarVCard(final String hash) {
+        if (this.avatarVCard != null && this.avatarVCard.equals(hash)) {
+            return false;
+        }
+        this.avatarVCard = hash;
+        return true;
+    }
+
+    public String getAvatarVCard() {
+        return this.avatarVCard;
     }
 
     public MiniUri.Xmpp getShareableUri() {

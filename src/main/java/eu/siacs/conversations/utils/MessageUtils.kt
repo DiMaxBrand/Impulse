@@ -45,6 +45,22 @@ object MessageUtils {
 
     @JvmStatic
     fun prepareQuote(message: Message): String {
+        // For media messages, return a human-readable placeholder instead of the raw URL
+        when (message.type) {
+            Message.TYPE_IMAGE -> return "📷 Photo"
+            Message.TYPE_FILE -> {
+                val fileParams = message.fileParams
+                val url = fileParams?.url
+                if (url != null) {
+                    val name = url.substringAfterLast('/').substringBefore('?').ifEmpty { null }
+                    if (name != null) return "📎 $name"
+                }
+                return "📎 File"
+            }
+            Message.TYPE_PRIVATE_FILE -> return "📎 File"
+            Message.TYPE_RTP_SESSION -> return "📞 Call"
+        }
+
         val builder = StringBuilder()
         val body: String
         if (message.hasMeCommand()) {
@@ -72,6 +88,22 @@ object MessageUtils {
             builder.append(line.trim())
         }
         return builder.toString()
+    }
+
+    @JvmStatic
+    fun replyPreview(message: Message): String {
+        return when (message.type) {
+            Message.TYPE_IMAGE -> "📷 Photo"
+            Message.TYPE_FILE, Message.TYPE_PRIVATE_FILE -> {
+                val url = message.fileParams?.url
+                val name = url?.substringAfterLast('/')?.substringBefore('?')?.ifEmpty { null }
+                if (name != null) "📎 $name" else "📎 File"
+            }
+            Message.TYPE_RTP_SESSION -> "📞 Call"
+            else -> message.body.trim().let {
+                if (it.length > 120) it.take(120) + "…" else it
+            }
+        }
     }
 
     @JvmStatic

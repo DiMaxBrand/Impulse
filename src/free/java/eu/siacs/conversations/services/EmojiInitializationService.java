@@ -4,7 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
-import androidx.emoji2.bundled.BundledEmojiCompatConfig;
+import androidx.emoji2.text.DefaultEmojiCompatConfig;
 import androidx.emoji2.text.EmojiCompat;
 
 import eu.siacs.conversations.Config;
@@ -12,7 +12,11 @@ import eu.siacs.conversations.Config;
 public class EmojiInitializationService {
 
     public static void execute(final Context context) {
-        EmojiCompat.init(new BundledEmojiCompatConfig(context).setReplaceAll(true))
+        final EmojiCompat.Config config = DefaultEmojiCompatConfig.create(context);
+        if (config == null) {
+            return;
+        }
+        EmojiCompat.init(config.setReplaceAll(true))
                 .registerInitCallback(
                         new EmojiCompat.InitCallback() {
                             @Override

@@ -119,6 +119,8 @@ public class MessageAdapter extends ArrayAdapter<Message> {
     private final DisplayMetrics metrics;
     private OnContactPictureClicked mOnContactPictureClickedListener;
     private OnContactPictureLongClicked mOnContactPictureLongClickedListener;
+    private OnReplyCardClicked mOnReplyCardClickedListener;
+    @Nullable private String highlightedMessageUuid = null;
     private BubbleDesign bubbleDesign = new BubbleDesign(false, false, false, true, true);
     private final boolean mForceNames;
 
@@ -476,6 +478,60 @@ public class MessageAdapter extends ArrayAdapter<Message> {
             quoteDepth++;
         }
         return startsWithQuote;
+    }
+
+    private void displayReplyCard(
+            final BubbleMessageItemViewHolder viewHolder, final Message message) {
+        final String repliedTo = message.getRepliedTo();
+        if (repliedTo == null) {
+            viewHolder.replyCard().setVisibility(View.GONE);
+            return;
+        }
+        final Message original = findRepliedToMessage(message, repliedTo);
+        if (original == null) {
+            viewHolder.replyCard().setVisibility(View.GONE);
+            return;
+        }
+        viewHolder.replyCard().setVisibility(View.VISIBLE);
+        viewHolder.replySender().setText(UIHelper.getMessageDisplayName(original));
+        viewHolder.replyPreview().setText(MessageUtils.replyPreview(original));
+        final ImageView thumbnail = viewHolder.replyThumbnail();
+        final boolean hasVisualContent =
+                original.getType() == Message.TYPE_IMAGE
+                        || (original.getType() == Message.TYPE_FILE
+                                && original.getFileParams().width > 0);
+        if (hasVisualContent) {
+            final java.io.File file =
+                    activity.xmppConnectionService.getFileBackend().getFile(original);
+            if (file != null && file.exists()) {
+                thumbnail.setVisibility(View.VISIBLE);
+                activity.loadBitmap(original, thumbnail);
+            } else {
+                thumbnail.setVisibility(View.GONE);
+            }
+        } else {
+            thumbnail.setVisibility(View.GONE);
+        }
+        viewHolder.replyCard().setOnClickListener(v -> {
+            if (mOnReplyCardClickedListener != null) {
+                mOnReplyCardClickedListener.onReplyCardClicked(repliedTo);
+            }
+        });
+    }
+
+    @Nullable
+    private Message findRepliedToMessage(final Message context, final String repliedToId) {
+        for (int i = getCount() - 1; i >= 0; i--) {
+            final Message m = getItem(i);
+            if (m != null && repliedToId.equals(m.getServerMsgId())) {
+                return m;
+            }
+        }
+        if (context.getConversation() instanceof Conversation conversation) {
+            return activity.xmppConnectionService.databaseBackend
+                    .getMessageWithServerMsgId(conversation, repliedToId);
+        }
+        return null;
     }
 
     private void displayTextMessage(
@@ -872,6 +928,15 @@ public class MessageAdapter extends ArrayAdapter<Message> {
             throw new IllegalStateException("Unrecognized BubbleMessageItemViewHolder");
         }
         setBubblePadding(viewHolder.root(), mergeIntoTop, mergeIntoBottom);
+        final boolean highlighted = message.getUuid().equals(highlightedMessageUuid);
+        if (highlighted) {
+            viewHolder.messageBox().setBackgroundTintList(
+                    ColorStateList.valueOf(
+                            MaterialColors.getColor(viewHolder.messageBox(),
+                                    com.google.android.material.R.attr.colorTertiaryFixed)));
+        } else {
+            setBackgroundTint(viewHolder.messageBox(), bubbleColor);
+        }
         if (showAvatar) {
             final var requiresAvatar =
                     viewHolder instanceof StartBubbleMessageItemViewHolder
@@ -908,6 +973,8 @@ public class MessageAdapter extends ArrayAdapter<Message> {
                                 return false;
                             }
                         });
+
+        displayReplyCard(viewHolder, message);
 
         final Transferable transferable = message.getTransferable();
         final boolean unInitiatedButKnownSize = MessageUtils.unInitiatedButKnownSize(message);
@@ -1431,6 +1498,29 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         void onContactPictureLongClicked(View v, Message message);
     }
 
+    public interface OnReplyCardClicked {
+        void onReplyCardClicked(String repliedToId);
+    }
+
+    public void setOnReplyCardClicked(final OnReplyCardClicked listener) {
+        this.mOnReplyCardClickedListener = listener;
+    }
+
+    public void highlightMessage(final String uuid) {
+        this.highlightedMessageUuid = uuid;
+        notifyDataSetChanged();
+        notifyItemHighlightExpiry(uuid);
+    }
+
+    private void notifyItemHighlightExpiry(final String uuid) {
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (uuid.equals(this.highlightedMessageUuid)) {
+                this.highlightedMessageUuid = null;
+                notifyDataSetChanged();
+            }
+        }, 1500);
+    }
+
     public static void setBackgroundTint(final ViewGroup view, final BubbleColor bubbleColor) {
         view.setBackgroundTintList(bubbleToColorStateList(view, bubbleColor));
     }
@@ -1591,6 +1681,14 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         protected abstract ImageView contactPicture();
 
         protected abstract ChipGroup reactions();
+
+        protected abstract View replyCard();
+
+        protected abstract TextView replySender();
+
+        protected abstract TextView replyPreview();
+
+        protected abstract ImageView replyThumbnail();
     }
 
     private static class StartBubbleMessageItemViewHolder extends BubbleMessageItemViewHolder {
@@ -1664,6 +1762,26 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         protected ChipGroup reactions() {
             return this.binding.reactions;
         }
+
+        @Override
+        protected View replyCard() {
+            return this.binding.messageContent.replyCard;
+        }
+
+        @Override
+        protected TextView replySender() {
+            return this.binding.messageContent.replySender;
+        }
+
+        @Override
+        protected TextView replyPreview() {
+            return this.binding.messageContent.replyPreview;
+        }
+
+        @Override
+        protected ImageView replyThumbnail() {
+            return this.binding.messageContent.replyThumbnail;
+        }
     }
 
     private static class EndBubbleMessageItemViewHolder extends BubbleMessageItemViewHolder {
@@ -1733,6 +1851,26 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         @Override
         protected ChipGroup reactions() {
             return this.binding.reactions;
+        }
+
+        @Override
+        protected View replyCard() {
+            return this.binding.messageContent.replyCard;
+        }
+
+        @Override
+        protected TextView replySender() {
+            return this.binding.messageContent.replySender;
+        }
+
+        @Override
+        protected TextView replyPreview() {
+            return this.binding.messageContent.replyPreview;
+        }
+
+        @Override
+        protected ImageView replyThumbnail() {
+            return this.binding.messageContent.replyThumbnail;
         }
     }
 
