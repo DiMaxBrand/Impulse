@@ -47,8 +47,8 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
   rule), Expressive grouped-list context sheet (reply/copy/edit/open/download),
   voice recording (mic button → `RecordingActivity` → attach).
 - Not yet ported from the old fragment: PGP send, camera capture, location
-  sharing, in-bubble audio player. MUC private messages from
-  `MucDetailsContextMenuHelper` still target the old fragment.
+  sharing, in-bubble audio player. (MUC private messages ARE ported:
+  `privateMessageWith()` + EXTRA_NICK handling + tertiary PM banner.)
 - `Message.replaceUuid()` exists because Kotlin cannot resolve `setUuid()`
   (collides with the protected `uuid` property of `AbstractEntity.kt`).
 

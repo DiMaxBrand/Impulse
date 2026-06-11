@@ -1270,6 +1270,48 @@ private fun MessageContextSheet(
 
 @Composable
 private fun ComposerBanner(state: ConversationScreenState) {
+    // Revision read keeps this banner in sync with nextCounterpart changes.
+    val revision = state.revision.intValue
+    val conversation = state.conversation.value
+    val nextCounterpart = remember(conversation, revision) { conversation?.getNextCounterpart() }
+    if (nextCounterpart != null) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_lock_open_outline_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text =
+                    stringResource(
+                        R.string.send_private_message_to,
+                        nextCounterpart.resource ?: "",
+                    ),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.tertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(
+                onClick = {
+                    conversation?.setNextCounterpart(null)
+                    state.revision.intValue++
+                }
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close_24dp),
+                    contentDescription = stringResource(R.string.cancel),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
     val replyingTo = state.replyingTo.value
     val correcting = state.correcting.value
     if (replyingTo == null && correcting == null) return

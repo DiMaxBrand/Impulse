@@ -131,8 +131,47 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         ) {
             state.setInput(text)
         }
+        val nick = extras.getString(ConversationsActivity.EXTRA_NICK)
+        if (!nick.isNullOrEmpty()) {
+            if (extras.getBoolean(ConversationsActivity.EXTRA_IS_PRIVATE_MESSAGE, false)) {
+                val address = conversation.getAddress()
+                try {
+                    privateMessageWith(
+                        eu.siacs.conversations.xmpp.Jid.of(
+                            address.getLocal(),
+                            address.getDomain(),
+                            nick,
+                        )
+                    )
+                } catch (_: IllegalArgumentException) {}
+            } else if (conversation.mucOptions.participating() ||
+                conversation.getNextCounterpart() != null
+            ) {
+                highlightInConference(nick)
+            }
+        }
         refreshMessages()
         markRead()
+    }
+
+    /** Switches the composer to a private message addressed to the given MUC participant. */
+    fun privateMessageWith(counterpart: eu.siacs.conversations.xmpp.Jid) {
+        val c = conversation ?: return
+        eu.siacs.conversations.xmpp.manager.ChatStateManager.send(c, Config.DEFAULT_CHAT_STATE)
+        c.setNextCounterpart(counterpart)
+        state.setInput("")
+        refreshMessages()
+    }
+
+    private fun highlightInConference(nick: String) {
+        val current = state.getInput()
+        state.setInput(
+            when {
+                current.isBlank() -> "$nick: "
+                current.endsWith(" ") -> "$current$nick "
+                else -> "$current $nick "
+            }
+        )
     }
 
     fun getConversation(): Conversation? = conversation
