@@ -546,7 +546,7 @@
     <string name="gp_medium">Postrzedni</string>
     <string name="gp_long">Dugi</string>
     <string name="pref_broadcast_last_activity">Roznajmuj użycie</string>
-    <string name="pref_broadcast_last_activity_summary">Informuje twoje kōntakty ô tym, kedy używosz Conversations</string>
+    <string name="pref_broadcast_last_activity_summary">Informuje twoje kōntakty ô tym, kedy używosz Impulse</string>
     <string name="pref_privacy">Prywatność</string>
     <string name="pref_theme_options">Tymat</string>
     <string name="pref_theme_options_summary">Wybier paleta farbōw</string>
@@ -734,7 +734,7 @@
     <string name="foreground_service_channel_description">Ta kategoryjo powiadōmiyń je używano, coby pokazować stałe powiadōmiynie, co ôznaczo, iże %1$s funguje.</string>
     <string name="notification_group_status_information">Wiadōmość Statusu</string>
     <string name="error_channel_name">Problymy z połōnczyniym</string>
-    <string name="error_channel_description">Ta kategoryjo powiadōmiyń je używano, coby pokazować stałe powiadōmiynie, co ôznaczo, iże Conversations mo problymy z połōnczyniym.</string>
+    <string name="error_channel_description">Ta kategoryjo powiadōmiyń je używano, coby pokazować stałe powiadōmiynie, co ôznaczo, iże Impulse mo problymy z połōnczyniym.</string>
     <string name="notification_group_messages">Wiadōmości</string>
     <string name="notification_group_calls">Połōnczynia</string>
     <string name="messages_channel_name">Wiadōmości</string>
@@ -811,7 +811,7 @@
     <string name="ebook">e-book</string>
     <string name="video_original">Ôryginalne (niyskōmpresowane)</string>
     <string name="open_with">Ôtwōrz ze pōmocōm…</string>
-    <string name="set_profile_picture">Profilowy ôbrozek Conversations</string>
+    <string name="set_profile_picture">Profilowy ôbrozek Impulse</string>
     <string name="choose_account">Ôbier kōnto</string>
     <string name="restore_backup">Prziwrōć kopijo ibryczno</string>
     <string name="restore">Prziwrōć</string>
@@ -859,10 +859,10 @@
     <string name="add_anway">Przidej tak by tak</string>
     <string name="this_looks_like_channel">To wyglōndo jak adresa ôd kanału</string>
     <string name="share_backup_files">Udostympnij zbiory kopiji ibrycznych</string>
-    <string name="conversations_backup">Kopijo ibryczno Conversations</string>
+    <string name="conversations_backup">Kopijo ibryczno Impulse</string>
     <string name="event">Zdarzynie</string>
     <string name="open_backup">Ôtwōrz kopijo ibryczno</string>
-    <string name="not_a_backup_file">Wybrany zbiōr to niy ma zbiōr kopije ibrycznyj Conversations</string>
+    <string name="not_a_backup_file">Wybrany zbiōr to niy ma zbiōr kopije ibrycznyj Impulse</string>
     <string name="account_already_setup">To kōnto już je nasztalowane</string>
     <string name="please_enter_password">Podej hasło dlo tego kōnta</string>
     <string name="unable_to_perform_this_action">Niy idzie wykōnać tyj akcyje</string>

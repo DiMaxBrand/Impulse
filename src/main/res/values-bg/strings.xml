@@ -520,7 +520,7 @@
     <string name="gp_medium">Средно</string>
     <string name="gp_long">Дълго</string>
     <string name="pref_broadcast_last_activity">Информиране за използването</string>
-    <string name="pref_broadcast_last_activity_summary">Позволява на контактите Ви да знаят кога използвате Conversations</string>
+    <string name="pref_broadcast_last_activity_summary">Позволява на контактите Ви да знаят кога използвате Impulse</string>
     <string name="pref_privacy">Поверителност</string>
     <string name="pref_theme_options">Тема</string>
     <string name="pref_theme_options_summary">Изберете цветовата схема</string>
@@ -775,7 +775,7 @@
     <string name="ebook">е-книга</string>
     <string name="video_original">Оригинално (некомпресирано)</string>
     <string name="open_with">Отваряне с…</string>
-    <string name="set_profile_picture">Профилна снимка за Conversations</string>
+    <string name="set_profile_picture">Профилна снимка за Impulse</string>
     <string name="choose_account">Изберете профил</string>
     <string name="restore_backup">Възстановяване от резервно копие</string>
     <string name="restore">Възстановяване</string>
@@ -823,10 +823,10 @@
     <string name="add_anway">Добавяне въпреки това</string>
     <string name="this_looks_like_channel">Това прилича на адрес на канал</string>
     <string name="share_backup_files">Споделяне на файловете с резервни копия</string>
-    <string name="conversations_backup">Резервно копие от Conversations</string>
+    <string name="conversations_backup">Резервно копие от Impulse</string>
     <string name="event">Събитие</string>
     <string name="open_backup">Отваряне на резервно копие</string>
-    <string name="not_a_backup_file">Избраният файл не е резервно копие от Conversations</string>
+    <string name="not_a_backup_file">Избраният файл не е резервно копие от Impulse</string>
     <string name="account_already_setup">Този профил вече е настроен</string>
     <string name="please_enter_password">Въведете паролата за този профил</string>
     <string name="unable_to_perform_this_action">Това действие не може да бъде извършено</string>

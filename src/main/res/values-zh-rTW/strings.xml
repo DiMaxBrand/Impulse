@@ -727,7 +727,7 @@
     <string name="ebook">電子書</string>
     <string name="video_original">原始 (未壓縮)</string>
     <string name="open_with">開啟為…</string>
-    <string name="set_profile_picture">Conversations 設定檔圖片</string>
+    <string name="set_profile_picture">Impulse 設定檔圖片</string>
     <string name="choose_account">選擇帳戶</string>
     <string name="restore_backup">還原備份</string>
     <string name="restore">還原</string>
@@ -775,10 +775,10 @@
     <string name="add_anway">仍要新增</string>
     <string name="this_looks_like_channel">這似乎是一個頻道位址</string>
     <string name="share_backup_files">分享備份檔案</string>
-    <string name="conversations_backup">Conversations 備份</string>
+    <string name="conversations_backup">Impulse 備份</string>
     <string name="event">活動</string>
     <string name="open_backup">開啟備份</string>
-    <string name="not_a_backup_file">你選取的檔案的並不是 Conversations 備份檔案</string>
+    <string name="not_a_backup_file">你選取的檔案的並不是 Impulse 備份檔案</string>
     <string name="account_already_setup">此帳戶已完成設定</string>
     <string name="please_enter_password">請輸入此帳戶的密碼</string>
     <string name="unable_to_perform_this_action">無法執行此動作</string>

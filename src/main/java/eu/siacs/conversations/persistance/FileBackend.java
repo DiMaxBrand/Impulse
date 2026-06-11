@@ -72,6 +72,11 @@ public class FileBackend {
 
     private static final Object THUMBNAIL_LOCK = new Object();
 
+    private static final int IMAGE_SIZE = 1920;
+    private static final Bitmap.CompressFormat IMAGE_FORMAT = Bitmap.CompressFormat.JPEG;
+    private static final int IMAGE_QUALITY = 75;
+    private static final int IMAGE_MAX_SIZE = 524288;
+
     private static final String FILE_PROVIDER = ".files";
     private static final float IGNORE_PADDING = 0.15f;
     private final XmppConnectionService mXmppConnectionService;
@@ -741,19 +746,16 @@ public class FileBackend {
                 originalBitmap.recycle();
                 throw new ImageCompressionException("Source file had alpha channel");
             }
-            Bitmap scaledBitmap = resize(originalBitmap, Config.IMAGE_SIZE);
+            Bitmap scaledBitmap = resize(originalBitmap, IMAGE_SIZE);
             final int rotation = getRotation(mXmppConnectionService, image);
             scaledBitmap = rotate(scaledBitmap, rotation);
             boolean targetSizeReached = false;
-            int quality = Config.IMAGE_QUALITY;
-            final int imageMaxSize =
-                    mXmppConnectionService
-                            .getResources()
-                            .getInteger(R.integer.auto_accept_filesize);
+            int quality = IMAGE_QUALITY;
+            final int imageMaxSize = IMAGE_MAX_SIZE;
             while (!targetSizeReached) {
                 os = new FileOutputStream(file);
                 Log.d(Config.LOGTAG, "compressing image with quality " + quality);
-                boolean success = scaledBitmap.compress(Config.IMAGE_FORMAT, quality, os);
+                boolean success = scaledBitmap.compress(IMAGE_FORMAT, quality, os);
                 if (!success) {
                     throw new FileCopyException(R.string.error_compressing_image);
                 }
@@ -817,13 +819,13 @@ public class FileBackend {
     public void copyImageToPrivateStorage(final Message message, final Uri image)
             throws FileCopyException, ImageCompressionException {
         final var file = getFile(image);
-        if (Config.IMAGE_FORMAT == Bitmap.CompressFormat.JPEG
+        if (IMAGE_FORMAT == Bitmap.CompressFormat.JPEG
                 && file.isPresent()
                 && new Cache(mXmppConnectionService).isCachedFile(file.get())) {
             setupRelativeFilePath(message, file.get().getName());
         } else {
             final String filename =
-                    switch (Config.IMAGE_FORMAT) {
+                    switch (IMAGE_FORMAT) {
                         case JPEG -> String.format("%s.%s", message.getUuid(), "jpg");
                         case PNG -> String.format("%s.%s", message.getUuid(), "png");
                         case WEBP -> String.format("%s.%s", message.getUuid(), "webp");

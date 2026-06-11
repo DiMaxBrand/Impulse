@@ -112,4 +112,15 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
     </style>
+
+    <!-- M3 Expressive diagonal shape: small at top-left/bottom-right, large at top-right/bottom-left.
+         Creates an S-curve visual flow down the chat list. -->
+    <!-- Left side (near screen edge): 5dp top + bottom — almost flat.
+         Right side (open, interior space): 16dp top + bottom — more rounded.
+         Consecutive items match at every junction. -->
+    <!-- Default shape for list items; corners are overridden per-position in adapter code. -->
+    <style name="ShapeAppearance.Impulse.ListItem" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">5dp</item>
+    </style>
 </resources>

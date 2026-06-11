@@ -367,10 +367,10 @@
     <string name="group_chats_and_channels"><![CDATA[Vestlusrühmad ja kanalid]]></string>
     <string name="search_channels">Otsi kanaleid</string>
     <string name="register_new_account">Registreeri uus kasutajakonto</string>
-    <string name="conversations_backup">Conversationsi varukoopia</string>
+    <string name="conversations_backup">Impulsei varukoopia</string>
     <string name="event">Sündmus</string>
     <string name="open_backup">Ava varukoopia</string>
-    <string name="not_a_backup_file">See fail ei ole Conversationsi varukoopia fail</string>
+    <string name="not_a_backup_file">See fail ei ole Impulsei varukoopia fail</string>
     <string name="outdated_backup_file_format">Sa proovid importida aegunud vorminguga varukoopia failist</string>
     <string name="account_already_setup">See kasutajakonto on juba seadistatud</string>
     <string name="add_to_favorites">Tõsta ülal esile</string>

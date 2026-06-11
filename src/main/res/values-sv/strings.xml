@@ -795,10 +795,10 @@
     <string name="add_anway">Lägg till ändå</string>
     <string name="this_looks_like_channel">Det här ser ut som en gruppchattadress</string>
     <string name="share_backup_files">Dela säkerhetskopior</string>
-    <string name="conversations_backup">Säkerhetskopior för Conversations</string>
+    <string name="conversations_backup">Säkerhetskopior för Impulse</string>
     <string name="event">Händelse</string>
     <string name="open_backup">Öppna säkerhetskopia</string>
-    <string name="not_a_backup_file">Filen du valde är inte en säkerhetskopia för Conversations</string>
+    <string name="not_a_backup_file">Filen du valde är inte en säkerhetskopia för Impulse</string>
     <string name="account_already_setup">Det här kontot har redan konfigurerats</string>
     <string name="please_enter_password">Var god och ange lösenordet för det här kontot</string>
     <string name="unable_to_perform_this_action">Det gick inte att utföra den här åtgärden</string>

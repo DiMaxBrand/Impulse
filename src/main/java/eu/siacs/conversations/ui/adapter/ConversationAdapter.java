@@ -2,6 +2,7 @@ package eu.siacs.conversations.ui.adapter;
 
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,13 +13,13 @@ import androidx.core.widget.ImageViewCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.color.MaterialColors;
+import com.google.android.material.listitem.ListItemLayout;
 import com.google.common.base.Optional;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.databinding.ItemConversationBinding;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Conversational;
 import eu.siacs.conversations.entities.Message;
-import eu.siacs.conversations.ui.ConversationFragment;
 import eu.siacs.conversations.ui.XmppActivity;
 import eu.siacs.conversations.ui.util.Attachment;
 import eu.siacs.conversations.ui.util.AvatarWorkerTask;
@@ -66,16 +67,26 @@ public class ConversationAdapter
             viewHolder.binding.conversationName.setText(name);
         }
 
-        if (conversation == ConversationFragment.getConversation(activity)) {
-            viewHolder.binding.frame.setBackgroundResource(
-                    R.drawable.background_selected_item_conversation);
-            // viewHolder.binding.frame.setBackgroundColor(MaterialColors.getColor(viewHolder.binding.frame, com.google.android.material.R.attr.colorSurfaceDim));
-        } else {
-            viewHolder.binding.frame.setBackgroundColor(
-                    MaterialColors.getColor(
-                            viewHolder.binding.frame,
-                            com.google.android.material.R.attr.colorSurface));
-        }
+        viewHolder.binding.frame.setCardBackgroundColor(
+                MaterialColors.getColor(
+                        viewHolder.binding.frame,
+                        com.google.android.material.R.attr.colorSurfaceContainerLow));
+
+        // Official M3 Expressive API: sets state_first/middle/last/single on the
+        // ListItemLayout, which ListItemCardView uses to pick position-aware corner radii.
+        ((ListItemLayout) viewHolder.itemView).updateAppearance(position, getItemCount());
+        // Swipe-reveal shell: GradientDrawable keeps the reveal colour + matching corners.
+        final float density = activity.getResources().getDisplayMetrics().density;
+        final float small = 5f * density;
+        final float large = 16f * density;
+        final float topR = position > 0 ? small : large;
+        final float botR = position < getItemCount() - 1 ? small : large;
+        final GradientDrawable shell = new GradientDrawable();
+        shell.setColor(MaterialColors.getColor(
+                viewHolder.itemView,
+                com.google.android.material.R.attr.colorSecondaryFixedDim));
+        shell.setCornerRadii(new float[]{topR, topR, topR, topR, botR, botR, botR, botR});
+        viewHolder.itemView.setBackground(shell);
 
         final Message message = conversation.getLatestMessage();
         final int status = message.getStatus();
@@ -250,7 +261,7 @@ public class ConversationAdapter
                 conversation,
                 viewHolder.binding.conversationImage,
                 R.dimen.avatar_on_conversation_overview);
-        viewHolder.itemView.setOnClickListener(v -> listener.onConversationClick(v, conversation));
+        viewHolder.binding.frame.setOnClickListener(v -> listener.onConversationClick(v, conversation));
     }
 
     @Override

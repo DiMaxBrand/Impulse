@@ -575,7 +575,7 @@
     <string name="not_fetching_history_retention_period">پیغام‌ها به خاطر زمان نگه‌داری آفلاین دریافت نمی‌شوند.</string>
     <string name="pref_validate_hostname_summary">تأییدیه‌های امنیتی سرورهایی که دارای نام میزبان تأییدشده هستند تأیید می‌شوند</string>
     <string name="join_public_channel">عضو کانال عمومی شوید</string>
-    <string name="conversations_backup">پشتیان Conversations</string>
+    <string name="conversations_backup">پشتیان Impulse</string>
     <string name="presence_xa">دور از دسترس</string>
     <string name="this_device_is_no_longer_in_use">این دستگاه دیگر فعالیتی ندارد</string>
     <string name="action_directions">مسیریابی</string>
@@ -907,7 +907,7 @@
     <string name="retry_decryption">رمزگشایی دوباره</string>
     <string name="only_the_owner_can_change_group_chat_avatar">تنها مالک می‌تواند تصویر نمایهٔ گفتگوی عمومی را عوض کند</string>
     <string name="error_channel_description">این نوع از اعلان وقتی نمایش می‌یابد که در اتصال یک حساب مشکلی وجود داشته باشد.</string>
-    <string name="set_profile_picture">تصویر نمایهٔ Conversations</string>
+    <string name="set_profile_picture">تصویر نمایهٔ Impulse</string>
     <string name="shared_file_with_x">پرونده با %s هم‌رسانی شد</string>
     <string name="type_tablet">تبلت</string>
     <string name="view_media">دیدن رسانه</string>

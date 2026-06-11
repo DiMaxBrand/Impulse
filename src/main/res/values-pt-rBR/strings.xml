@@ -834,10 +834,10 @@
     <string name="add_anway">Adicionar mesmo assim</string>
     <string name="this_looks_like_channel">Isto se parece com um endereço de canal</string>
     <string name="share_backup_files">Compartilhar arquivos de backup</string>
-    <string name="conversations_backup">Backup do Conversations</string>
+    <string name="conversations_backup">Backup do Impulse</string>
     <string name="event">Evento</string>
     <string name="open_backup">Abrir backup</string>
-    <string name="not_a_backup_file">O arquivo que você selecionou não é um backup do Conversations</string>
+    <string name="not_a_backup_file">O arquivo que você selecionou não é um backup do Impulse</string>
     <string name="account_already_setup">Esta conta já foi configurada</string>
     <string name="please_enter_password">Digite a senha para esta conta</string>
     <string name="unable_to_perform_this_action">Não foi possível executar esta ação</string>

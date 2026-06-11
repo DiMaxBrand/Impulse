@@ -404,10 +404,10 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
         if (fastMechanism == null || Strings.isNullOrEmpty(token)) {
             return null;
         }
-        if (fastMechanism.hashFunction().equals("SHA-256")) {
-            return new HashedTokenSha256(this, fastMechanism.channelBinding());
-        } else if (fastMechanism.hashFunction().equals("SHA-512")) {
-            return new HashedTokenSha512(this, fastMechanism.channelBinding());
+        if (fastMechanism.getHashFunction().equals("SHA-256")) {
+            return new HashedTokenSha256(this, fastMechanism.getChannelBinding());
+        } else if (fastMechanism.getHashFunction().equals("SHA-512")) {
+            return new HashedTokenSha512(this, fastMechanism.getChannelBinding());
         } else {
             return null;
         }

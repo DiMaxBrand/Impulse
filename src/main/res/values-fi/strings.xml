@@ -777,7 +777,7 @@
     <string name="share_backup_files">Jaa varmuuskopiotiedostot</string>
     <string name="event">Tapahtuma</string>
     <string name="open_backup">Avaa varmuuskopio</string>
-    <string name="not_a_backup_file">Valitsemasi tiedosto ei ole Conversationsin varmuuskopio</string>
+    <string name="not_a_backup_file">Valitsemasi tiedosto ei ole Impulsein varmuuskopio</string>
     <string name="account_already_setup">Tämä tili on jo asennettu</string>
     <string name="please_enter_password">Syötä tämän tilin salasana</string>
     <string name="unable_to_perform_this_action">Toiminnon suorittaminen epäonnistui</string>

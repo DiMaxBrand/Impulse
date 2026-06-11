@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name" translatable="true">Impulse</string>
     <string name="action_settings">Settings</string>
     <string name="action_accounts">Manage accounts</string>
     <string name="action_account">Manage account</string>
@@ -424,6 +425,7 @@
     <string name="offering_x_file">Offering %s</string>
     <string name="hide_offline">Hide offline</string>
     <string name="contact_is_typing">%s is typing…</string>
+    <string name="typing_indicator">typing…</string>
     <string name="contact_has_stopped_typing">%s has stopped typing</string>
     <string name="its_time_for_contact">It’s ^1 for ^2</string>
     <string name="contact_has_paused_their_notifications">%s has paused their notifications</string>
@@ -895,10 +897,10 @@
     <string name="add_anway">Add anyway</string>
     <string name="this_looks_like_channel">This looks like a channel address</string>
     <string name="share_backup_files">Share backup files</string>
-    <string name="conversations_backup">Conversations backup</string>
+    <string name="conversations_backup">Impulse backup</string>
     <string name="event">Event</string>
     <string name="open_backup">Open backup</string>
-    <string name="not_a_backup_file">The file you selected is not a Conversations backup file</string>
+    <string name="not_a_backup_file">The file you selected is not an Impulse backup file</string>
     <string name="outdated_backup_file_format">You are trying to import an outdated backup file format</string>
     <string name="non_quicksy_backup">Quicksy can only restore backups for quicksy.im accounts</string>
     <string name="account_already_setup">This account has already been setup</string>
@@ -943,8 +945,8 @@
     <string name="reconnecting_video_call">Reconnecting video call</string>
     <string name="disable_tor_to_make_call">Disable Tor to make calls</string>
     <string name="incoming_call">Incoming call</string>
-    <string name="incoming_call_duration_timestamp">Incoming call (%s) · %s</string>
-    <string name="outgoing_call_duration_timestamp">Outgoing call (%s) · %s</string>
+    <string name="incoming_call_duration_timestamp" formatted="false">Incoming call (%s) · %s</string>
+    <string name="outgoing_call_duration_timestamp" formatted="false">Outgoing call (%s) · %s</string>
     <string name="missed_call_timestamp">Missed call · %s</string>
     <string name="outgoing_call">Outgoing call</string>
     <string name="outgoing_call_timestamp">Outgoing call · %s</string>

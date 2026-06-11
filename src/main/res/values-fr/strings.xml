@@ -839,7 +839,7 @@
     <string name="conversations_backup">Sauvegarder les conversations</string>
     <string name="event">Événement </string>
     <string name="open_backup">Ouvrir sauvegarde</string>
-    <string name="not_a_backup_file">Le fichier sélectionné n\'est pas une sauvegarde de Conversations</string>
+    <string name="not_a_backup_file">Le fichier sélectionné n\'est pas une sauvegarde de Impulse</string>
     <string name="account_already_setup">Ce compte a déjà été configuré</string>
     <string name="please_enter_password">Veuillez saisir le mot de passe pour ce compte</string>
     <string name="unable_to_perform_this_action">Impossible de réaliser cette action</string>
