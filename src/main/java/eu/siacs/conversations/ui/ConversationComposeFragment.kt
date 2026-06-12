@@ -81,6 +81,21 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
         }
 
+    private val inviteLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == AppCompatActivity.RESULT_OK && result.data != null) {
+                val invite = XmppActivity.ConferenceInvite.parse(result.data)
+                if (invite != null && invite.execute(requireXmppActivity())) {
+                    Toast.makeText(
+                            requireContext(),
+                            R.string.creating_conference,
+                            Toast.LENGTH_LONG,
+                        )
+                        .show()
+                }
+            }
+        }
+
     private val recordAudioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
@@ -355,6 +370,20 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val c = conversation ?: return
         if (c.getMode() != Conversational.MODE_SINGLE) return
         val service = getXmppConnectionService() ?: return
+        // An ongoing call with this contact takes precedence: return to it instead.
+        val ongoing =
+            try {
+                c.getAccount()
+                    .xmppConnection
+                    .getManager(eu.siacs.conversations.xmpp.manager.JingleManager::class.java)
+                    .getOngoingRtpConnection(c.getContact())
+            } catch (_: Exception) {
+                com.google.common.base.Optional.absent()
+            }
+        if (ongoing.isPresent) {
+            returnToOngoingCall(c, ongoing.get())
+            return
+        }
         if (eu.siacs.conversations.xmpp.manager.JingleManager.isBusy(service.accounts)) {
             Toast.makeText(requireContext(), R.string.only_one_call_at_a_time, Toast.LENGTH_LONG)
                 .show()
@@ -366,6 +395,33 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             )
         } else {
             audioCallPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun returnToOngoingCall(
+        c: Conversation,
+        id: eu.siacs.conversations.xmpp.jingle.OngoingRtpSession,
+    ) {
+        val account = c.getAccount()
+        val intent = Intent(requireActivity(), RtpSessionActivity::class.java)
+        intent.action = Intent.ACTION_VIEW
+        intent.putExtra(RtpSessionActivity.EXTRA_ACCOUNT, account.jid.asBareJid().toString())
+        intent.putExtra(RtpSessionActivity.EXTRA_WITH, id.getWith().toString())
+        when (id) {
+            is eu.siacs.conversations.xmpp.jingle.AbstractJingleConnection -> {
+                intent.putExtra(RtpSessionActivity.EXTRA_SESSION_ID, id.getSessionId())
+                startActivity(intent)
+            }
+            is eu.siacs.conversations.xmpp.manager.JingleManager.RtpSessionProposal -> {
+                intent.putExtra(
+                    RtpSessionActivity.EXTRA_LAST_ACTION,
+                    if (eu.siacs.conversations.xmpp.jingle.Media.audioOnly(id.media))
+                        RtpSessionActivity.ACTION_MAKE_VOICE_CALL
+                    else RtpSessionActivity.ACTION_MAKE_VIDEO_CALL,
+                )
+                intent.putExtra(RtpSessionActivity.EXTRA_PROPOSED_SESSION_ID, id.sessionId)
+                startActivity(intent)
+            }
         }
     }
 
@@ -464,6 +520,121 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onScrolledToBottom() {
         markRead()
+    }
+
+    override fun onSearchMessages() {
+        val c = conversation ?: return
+        val intent = Intent(requireActivity(), SearchActivity::class.java)
+        intent.putExtra(SearchActivity.EXTRA_CONVERSATION_UUID, c.getUuid())
+        startActivity(intent)
+    }
+
+    override fun onInviteContact() {
+        val c = conversation ?: return
+        inviteLauncher.launch(ChooseContactActivity.create(requireActivity(), c))
+    }
+
+    override fun onChooseEncryption() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val labels =
+            arrayOf<CharSequence>(
+                getString(R.string.encryption_choice_omemo),
+                getString(R.string.encryption_choice_unencrypted),
+            )
+        val encryptions = intArrayOf(Message.ENCRYPTION_AXOLOTL, Message.ENCRYPTION_NONE)
+        val checked = encryptions.indexOf(c.nextEncryption).coerceAtLeast(0)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireActivity())
+            .setTitle(R.string.choose_encryption)
+            .setSingleChoiceItems(labels, checked) { dialog, which ->
+                if (c.setNextEncryption(encryptions[which])) {
+                    service.updateConversation(c)
+                }
+                refreshMessages()
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    override fun onMuteConversation() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val durations = resources.getIntArray(R.array.mute_options_durations)
+        val labels =
+            Array<CharSequence>(durations.size) { i ->
+                if (durations[i] == -1) getString(R.string.until_further_notice)
+                else
+                    eu.siacs.conversations.utils.TimeFrameUtils.resolve(
+                        requireContext(),
+                        1000L * durations[i],
+                    )
+            }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireActivity())
+            .setTitle(R.string.disable_notifications)
+            .setItems(labels) { _, which ->
+                val till =
+                    if (durations[which] == -1) Long.MAX_VALUE
+                    else System.currentTimeMillis() + durations[which] * 1000L
+                c.setMutedTill(till)
+                service.updateConversation(c)
+                (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+                refreshMessages()
+            }
+            .show()
+    }
+
+    override fun onUnmuteConversation() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        c.setMutedTill(0)
+        service.updateConversation(c)
+        (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+        refreshMessages()
+    }
+
+    override fun onTogglePinned() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val pinned = c.getBooleanAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, false)
+        c.setAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, !pinned)
+        service.updateConversation(c)
+        refreshMessages()
+    }
+
+    override fun onClearHistory() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val dialogView =
+            requireActivity().layoutInflater.inflate(R.layout.dialog_clear_history, null)
+        val endConversationCheckBox =
+            dialogView.findViewById<android.widget.CheckBox>(R.id.end_conversation_checkbox)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireActivity())
+            .setTitle(R.string.clear_conversation_history)
+            .setView(dialogView)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.confirm) { _, _ ->
+                service.clearConversationHistory(c)
+                if (endConversationCheckBox.isChecked) {
+                    service.archiveConversation(c)
+                    (activity as? ConversationsActivity)?.onConversationArchived(c)
+                } else {
+                    (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+                    refreshMessages()
+                }
+            }
+            .show()
+    }
+
+    override fun onBlockContact() {
+        val c = conversation ?: return
+        val activity = activity as? XmppActivity ?: return
+        BlockContactDialog.show(activity, c)
+    }
+
+    override fun onArchiveConversation() {
+        val c = conversation ?: return
+        getXmppConnectionService()?.archiveConversation(c)
     }
 
     companion object {

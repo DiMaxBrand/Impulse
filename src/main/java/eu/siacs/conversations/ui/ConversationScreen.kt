@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -147,6 +146,24 @@ interface ConversationScreenListener {
     fun onScrolledToBottom()
 
     fun onRecordVoice()
+
+    fun onSearchMessages()
+
+    fun onInviteContact()
+
+    fun onChooseEncryption()
+
+    fun onMuteConversation()
+
+    fun onUnmuteConversation()
+
+    fun onTogglePinned()
+
+    fun onClearHistory()
+
+    fun onBlockContact()
+
+    fun onArchiveConversation()
 }
 
 object ConversationScreenHelper {
@@ -252,7 +269,9 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         },
         containerColor = MaterialTheme.colorScheme.surface,
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
+        // No imePadding here: the activity uses adjustResize, so the window itself shrinks for
+        // the keyboard. Adding ime insets on top of that doubled the offset.
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 MessageList(
                     state = state,
@@ -273,6 +292,37 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             onDismiss = { menuTarget = null },
         )
     }
+}
+
+/** M3 Expressive floating menu: large rounded container on surfaceContainer. */
+@Composable
+private fun ExpressiveDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        content = content,
+    )
+}
+
+@Composable
+private fun ExpressiveMenuItem(iconRes: Int, label: String, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(label) },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -338,7 +388,13 @@ private fun ConversationTopBar(
             }
         },
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                    Modifier.clip(RoundedCornerShape(12.dp))
+                        .clickable { listener.onOpenDetails() }
+                        .padding(vertical = 2.dp, horizontal = 2.dp),
+            ) {
                 val avatar = avatarState.value
                 if (avatar != null) {
                     Image(
@@ -404,26 +460,122 @@ private fun ConversationTopBar(
                     )
                 }
             }
+            // Menu visibility state, refreshed with every conversation update.
+            val isMuted =
+                remember(conversation, revision) {
+                    try {
+                        conversation?.isMuted ?: false
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
+            val isPinned =
+                remember(conversation, revision) {
+                    conversation?.getBooleanAttribute(
+                        Conversation.ATTRIBUTE_PINNED_ON_TOP,
+                        false,
+                    ) ?: false
+                }
+            val canInvite =
+                remember(conversation, revision) {
+                    try {
+                        if (conversation == null) false
+                        else if (isSingle)
+                            !conversation
+                                .getAccount()
+                                .xmppConnection
+                                .getManager(
+                                    eu.siacs.conversations.xmpp.manager.MultiUserChatManager::class
+                                        .java
+                                )
+                                .services
+                                .isEmpty()
+                        else conversation.mucOptions.canInvite()
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
+            val showEncryption =
+                remember(conversation, revision) {
+                    try {
+                        conversation != null &&
+                            !eu.siacs.conversations.crypto.OmemoSetting.isAlways() &&
+                            (isSingle || conversation.mucOptions.participating())
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
                     painter = painterResource(R.drawable.ic_more_horiz_24dp),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.more_options),
                 )
             }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            stringResource(
-                                if (isSingle) R.string.action_contact_details
-                                else R.string.action_muc_details
-                            )
-                        )
-                    },
-                    onClick = {
+            ExpressiveDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                val dismissThen: (() -> Unit) -> () -> Unit = { action ->
+                    {
                         menuOpen = false
-                        listener.onOpenDetails()
-                    },
+                        action()
+                    }
+                }
+                ExpressiveMenuItem(
+                    R.drawable.ic_search_24dp,
+                    stringResource(R.string.search_messages),
+                    dismissThen(listener::onSearchMessages),
+                )
+                if (canInvite) {
+                    ExpressiveMenuItem(
+                        R.drawable.ic_person_add_24dp,
+                        stringResource(
+                            if (isSingle) R.string.start_group_chat else R.string.invite_contact
+                        ),
+                        dismissThen(listener::onInviteContact),
+                    )
+                }
+                if (showEncryption) {
+                    ExpressiveMenuItem(
+                        R.drawable.ic_lock_24dp,
+                        stringResource(R.string.choose_encryption),
+                        dismissThen(listener::onChooseEncryption),
+                    )
+                }
+                if (isMuted) {
+                    ExpressiveMenuItem(
+                        R.drawable.ic_notifications_24dp,
+                        stringResource(R.string.enable_notifications),
+                        dismissThen(listener::onUnmuteConversation),
+                    )
+                } else {
+                    ExpressiveMenuItem(
+                        R.drawable.ic_notifications_off_24dp,
+                        stringResource(R.string.disable_notifications),
+                        dismissThen(listener::onMuteConversation),
+                    )
+                }
+                ExpressiveMenuItem(
+                    R.drawable.ic_star_24dp,
+                    stringResource(
+                        if (isPinned) R.string.remove_from_favorites
+                        else R.string.add_to_favorites
+                    ),
+                    dismissThen(listener::onTogglePinned),
+                )
+                ExpressiveMenuItem(
+                    R.drawable.ic_delete_24dp,
+                    stringResource(R.string.action_clear_history),
+                    dismissThen(listener::onClearHistory),
+                )
+                if (isSingle) {
+                    ExpressiveMenuItem(
+                        R.drawable.ic_cancel_24dp,
+                        stringResource(R.string.action_block_contact),
+                        dismissThen(listener::onBlockContact),
+                    )
+                }
+                ExpressiveMenuItem(
+                    R.drawable.ic_archive_24dp,
+                    stringResource(R.string.action_archive_chat),
+                    dismissThen(listener::onArchiveConversation),
                 )
             }
         },
@@ -994,6 +1146,11 @@ private fun MessageContent(message: Message, listener: ConversationScreenListene
                 )
             }
         }
+        message.isFileOrImage &&
+            !message.isDeleted &&
+            message.mimeType?.startsWith("audio/") == true -> {
+            AudioMessageContent(message)
+        }
         message.isFileOrImage -> {
             val fileBackend = activity?.xmppConnectionService?.fileBackend
             val isImage = message.type == Message.TYPE_IMAGE
@@ -1070,6 +1227,125 @@ private fun MessageContent(message: Message, listener: ConversationScreenListene
                 style = MaterialTheme.typography.bodyLarge,
             )
         }
+    }
+}
+
+private fun formatAudioTime(millis: Int): String {
+    val totalSeconds = millis / 1000
+    return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
+}
+
+/** Inline audio player: play/pause button, seek bar and time, all inside the bubble. */
+@Composable
+private fun AudioMessageContent(message: Message) {
+    val context = LocalContext.current
+    val activity = context as? XmppActivity
+    val file =
+        remember(message.getUuid()) {
+            try {
+                activity?.xmppConnectionService?.fileBackend?.getFile(message)
+            } catch (_: Exception) {
+                null
+            }
+        }
+    if (file == null || !file.exists()) {
+        FileRow(
+            iconRes = R.drawable.ic_mic_24dp,
+            label = UIHelper.getFileDescriptionString(context, message),
+        )
+        return
+    }
+
+    var playing by remember(message.getUuid()) { mutableStateOf(false) }
+    var positionMs by remember(message.getUuid()) { mutableIntStateOf(0) }
+    var durationMs by
+        remember(message.getUuid()) { mutableIntStateOf(message.fileParams?.runtime ?: 0) }
+    val playerHolder =
+        remember(message.getUuid()) { mutableStateOf<android.media.MediaPlayer?>(null) }
+
+    fun obtainPlayer(): android.media.MediaPlayer? {
+        playerHolder.value?.let {
+            return it
+        }
+        return try {
+            val player = android.media.MediaPlayer()
+            player.setDataSource(file.absolutePath)
+            player.prepare()
+            durationMs = player.duration
+            player.setOnCompletionListener {
+                playing = false
+                positionMs = 0
+            }
+            playerHolder.value = player
+            player
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    androidx.compose.runtime.DisposableEffect(message.getUuid()) {
+        onDispose {
+            try {
+                playerHolder.value?.release()
+            } catch (_: Exception) {}
+            playerHolder.value = null
+        }
+    }
+
+    LaunchedEffect(playing) {
+        while (playing) {
+            playerHolder.value?.let { positionMs = it.currentPosition }
+            kotlinx.coroutines.delay(250)
+        }
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.width(232.dp)) {
+        FilledIconButton(
+            onClick = {
+                val player = obtainPlayer() ?: return@FilledIconButton
+                if (playing) {
+                    player.pause()
+                    playing = false
+                } else {
+                    player.start()
+                    playing = true
+                }
+            },
+            colors =
+                IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            modifier = Modifier.size(36.dp),
+        ) {
+            Icon(
+                painter =
+                    painterResource(
+                        if (playing) R.drawable.ic_pause_24dp else R.drawable.ic_play_arrow_24dp
+                    ),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        androidx.compose.material3.Slider(
+            value =
+                if (durationMs > 0) positionMs.toFloat() / durationMs else 0f,
+            onValueChange = { fraction ->
+                val player = obtainPlayer() ?: return@Slider
+                val target = (fraction * durationMs).toInt()
+                player.seekTo(target)
+                positionMs = target
+            },
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+        )
+        Text(
+            text =
+                formatAudioTime(
+                    if (playing || positionMs > 0) positionMs else durationMs
+                ),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -1389,30 +1665,24 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                         contentDescription = stringResource(R.string.attach_file),
                     )
                 }
-                DropdownMenu(
+                ExpressiveDropdownMenu(
                     expanded = attachMenuOpen,
                     onDismissRequest = { attachMenuOpen = false },
                 ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.attachment_choice_gallery)) },
-                        leadingIcon = {
-                            Icon(painterResource(R.drawable.ic_image_24dp), null)
-                        },
-                        onClick = {
-                            attachMenuOpen = false
-                            listener.onAttachImage()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.attachment_choice_file)) },
-                        leadingIcon = {
-                            Icon(painterResource(R.drawable.ic_attach_file_24dp), null)
-                        },
-                        onClick = {
-                            attachMenuOpen = false
-                            listener.onAttachFile()
-                        },
-                    )
+                    ExpressiveMenuItem(
+                        R.drawable.ic_image_24dp,
+                        stringResource(R.string.attachment_choice_gallery),
+                    ) {
+                        attachMenuOpen = false
+                        listener.onAttachImage()
+                    }
+                    ExpressiveMenuItem(
+                        R.drawable.ic_attach_file_24dp,
+                        stringResource(R.string.attachment_choice_file),
+                    ) {
+                        attachMenuOpen = false
+                        listener.onAttachFile()
+                    }
                 }
             }
 
