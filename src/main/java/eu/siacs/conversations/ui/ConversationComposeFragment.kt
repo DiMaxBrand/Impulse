@@ -248,7 +248,14 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
         val reply = state.replyingTo.value
         if (reply != null) {
-            message.setRepliedTo(reply.serverMsgId ?: reply.getUuid())
+            // XEP-0461: prefer the archive stanza-id; for received messages fall back to the
+            // sender's own message id (remoteMsgId) so THEIR client can resolve the reference —
+            // our local uuid is meaningless outside this device.
+            val replyId =
+                reply.serverMsgId
+                    ?: (if (reply.status == Message.STATUS_RECEIVED) reply.remoteMsgId else null)
+                    ?: reply.getUuid()
+            message.setRepliedTo(replyId)
         }
         service.sendMessage(message)
         state.replyingTo.value = null
