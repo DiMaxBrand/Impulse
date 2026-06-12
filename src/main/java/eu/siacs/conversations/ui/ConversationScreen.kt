@@ -71,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -107,6 +108,8 @@ class ConversationScreenState {
     internal val inputText = mutableStateOf("")
     internal val replyingTo = mutableStateOf<Message?>(null)
     internal val correcting = mutableStateOf<Message?>(null)
+    internal val attachments: SnapshotStateList<eu.siacs.conversations.ui.util.Attachment> =
+        mutableStateListOf()
 
     fun update(conversation: Conversation?, source: List<Message>) {
         this.conversation.value = conversation
@@ -146,6 +149,10 @@ interface ConversationScreenListener {
     fun onScrolledToBottom()
 
     fun onRecordVoice()
+
+    fun onInputChanged(text: String)
+
+    fun onCommitAttachments()
 
     fun onSearchMessages()
 
@@ -691,6 +698,7 @@ private fun MessageList(
                             item = item,
                             isNewest = index == 0,
                             highlighted = item.key == highlightKey,
+                            revision = revision,
                             listener = listener,
                             onLongPress = onLongPress,
                             resolveReply = resolveReply,
@@ -916,6 +924,9 @@ private fun MessageRow(
     item: ChatItem.Msg,
     isNewest: Boolean,
     highlighted: Boolean,
+    // Message objects mutate internally (status, transfer progress); passing the revision
+    // counter down defeats Compose skipping so bubbles re-render on every conversation update.
+    revision: Int,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
     resolveReply: (String) -> Message?,
@@ -968,6 +979,7 @@ private fun MessageRow(
             item = item,
             outgoing = outgoing,
             highlighted = highlighted,
+            revision = revision,
             listener = listener,
             onLongPress = onLongPress,
             resolveReply = resolveReply,
@@ -981,6 +993,7 @@ private fun MessageBubble(
     item: ChatItem.Msg,
     outgoing: Boolean,
     highlighted: Boolean,
+    revision: Int,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
     resolveReply: (String) -> Message?,
@@ -1039,8 +1052,14 @@ private fun MessageBubble(
                     ReplyCard(original = original, onClick = { onReplyCardClick(original) })
                 }
             }
-            MessageContent(message = message, listener = listener)
-            MessageFooter(message = message, outgoing = outgoing)
+            MessageContent(
+                message = message,
+                revision = revision,
+                contentColor = contentColor,
+                onLongPress = { onLongPress(message) },
+                listener = listener,
+            )
+            MessageFooter(message = message, outgoing = outgoing, revision = revision)
         }
     }
 }
@@ -1121,7 +1140,13 @@ private fun ReplyCard(original: Message, onClick: () -> Unit, modifier: Modifier
 }
 
 @Composable
-private fun MessageContent(message: Message, listener: ConversationScreenListener) {
+private fun MessageContent(
+    message: Message,
+    revision: Int,
+    contentColor: androidx.compose.ui.graphics.Color,
+    onLongPress: () -> Unit,
+    listener: ConversationScreenListener,
+) {
     val context = LocalContext.current
     val activity = context as? XmppActivity
     val transferable = message.transferable
@@ -1222,9 +1247,11 @@ private fun MessageContent(message: Message, listener: ConversationScreenListene
             )
         }
         else -> {
-            Text(
-                text = message.body?.trim() ?: "",
-                style = MaterialTheme.typography.bodyLarge,
+            LinkifiedMessageText(
+                message = message,
+                revision = revision,
+                contentColor = contentColor,
+                onLongPress = onLongPress,
             )
         }
     }
@@ -1366,6 +1393,7 @@ private fun FileRow(iconRes: Int, label: String) {
 private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     message: Message,
     outgoing: Boolean,
+    @Suppress("UNUSED_PARAMETER") revision: Int,
 ) {
     val context = LocalContext.current
     Row(
@@ -1639,6 +1667,140 @@ private fun ComposerBanner(state: ConversationScreenState) {
     }
 }
 
+/** Staged attachments waiting for the send button, with per-item remove. */
+@Composable
+private fun AttachmentPreviewStrip(state: ConversationScreenState) {
+    val context = LocalContext.current
+    androidx.compose.foundation.lazy.LazyRow(
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
+        itemsIndexed(
+            state.attachments,
+            key = { _, attachment -> attachment.uuid.toString() },
+        ) { _, attachment ->
+            Box {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    modifier = Modifier.size(72.dp),
+                ) {
+                    val isImage =
+                        attachment.type == eu.siacs.conversations.ui.util.Attachment.Type.IMAGE
+                    if (isImage) {
+                        val thumb =
+                            remember(attachment.uuid) { mutableStateOf<ImageBitmap?>(null) }
+                        LaunchedEffect(attachment.uuid) {
+                            val bm =
+                                withContext(Dispatchers.IO) {
+                                    try {
+                                        context.contentResolver.loadThumbnail(
+                                            attachment.uri,
+                                            android.util.Size(144, 144),
+                                            null,
+                                        )
+                                    } catch (_: Exception) {
+                                        null
+                                    }
+                                }
+                            if (bm != null) thumb.value = bm.asImageBitmap()
+                        }
+                        val bitmap = thumb.value
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    } else {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Icon(
+                                painter =
+                                    painterResource(
+                                        if (attachment.type ==
+                                            eu.siacs.conversations.ui.util.Attachment.Type
+                                                .RECORDING
+                                        )
+                                            R.drawable.ic_mic_24dp
+                                        else R.drawable.ic_attach_file_24dp
+                                    ),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                Surface(
+                    onClick = { state.attachments.remove(attachment) },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(20.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close_24dp),
+                        contentDescription = stringResource(R.string.cancel),
+                        tint = MaterialTheme.colorScheme.inverseOnSurface,
+                        modifier = Modifier.padding(3.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Message body rendered by a real TextView so the old screen's linkification pipeline applies:
+ * web links, geo and XMPP URIs (handled in-app by [FixedURLSpan]), styling and big emoji.
+ */
+@Composable
+private fun LinkifiedMessageText(
+    message: Message,
+    revision: Int,
+    contentColor: androidx.compose.ui.graphics.Color,
+    onLongPress: () -> Unit,
+) {
+    val linkColor = MaterialTheme.colorScheme.primary
+    androidx.compose.ui.viewinterop.AndroidView(
+        factory = { ctx ->
+            android.widget.TextView(ctx).apply {
+                textSize = 16f
+                movementMethod =
+                    eu.siacs.conversations.ui.widget.ClickableMovementMethod.getInstance()
+                autoLinkMask = 0
+            }
+        },
+        update = { textView ->
+            textView.setTextColor(contentColor.toArgb())
+            textView.setLinkTextColor(linkColor.toArgb())
+            val body =
+                android.text.SpannableStringBuilder(message.body?.trim() ?: "")
+            val emojiMatcher =
+                eu.siacs.conversations.utils.Emoticons.getEmojiPattern(body).matcher(body)
+            while (emojiMatcher.find()) {
+                if (emojiMatcher.start() < emojiMatcher.end()) {
+                    body.setSpan(
+                        android.text.style.RelativeSizeSpan(1.2f),
+                        emojiMatcher.start(),
+                        emojiMatcher.end(),
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                    )
+                }
+            }
+            eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
+            de.gultsch.common.Linkify.addLinks(body)
+            eu.siacs.conversations.ui.text.FixedURLSpan.fix(body)
+            textView.text = body
+            textView.setOnLongClickListener {
+                onLongPress()
+                true
+            }
+        },
+    )
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
@@ -1648,10 +1810,14 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     val text = state.inputText.value
     val hasText = text.isNotBlank()
     val correcting = state.correcting.value != null
+    val hasAttachments = state.attachments.isNotEmpty()
 
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column {
         ComposerBanner(state)
+        if (hasAttachments) {
+            AttachmentPreviewStrip(state)
+        }
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier =
@@ -1707,7 +1873,10 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     }
                     BasicTextField(
                         value = text,
-                        onValueChange = { state.setInput(it) },
+                        onValueChange = {
+                            state.setInput(it)
+                            listener.onInputChanged(it)
+                        },
                         textStyle =
                             LocalTextStyle.current.copy(
                                 color = MaterialTheme.colorScheme.onSurface
@@ -1735,16 +1904,16 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                         ),
                     label = "sendCorner",
                 )
-            val showMic = !hasText && !correcting
+            val showMic = !hasText && !correcting && !hasAttachments
             FilledIconButton(
                 onClick = {
-                    if (showMic) {
-                        listener.onRecordVoice()
-                    } else if (hasText) {
-                        listener.onSendTextMessage(text.trim())
+                    when {
+                        hasAttachments -> listener.onCommitAttachments()
+                        showMic -> listener.onRecordVoice()
+                        hasText -> listener.onSendTextMessage(text.trim())
                     }
                 },
-                enabled = showMic || hasText,
+                enabled = showMic || hasText || hasAttachments,
                 shape = RoundedCornerShape(corner),
                 colors =
                     IconButtonDefaults.filledIconButtonColors(

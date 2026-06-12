@@ -24,10 +24,13 @@ import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.services.CallIntegrationConnectionService
 import eu.siacs.conversations.services.XmppConnectionService
 import eu.siacs.conversations.ui.interfaces.OnConversationRead
+import androidx.lifecycle.lifecycleScope
+import eu.siacs.conversations.ui.util.Attachment
 import eu.siacs.conversations.ui.util.PresenceSelector
 import eu.siacs.conversations.ui.util.ViewUtil
 import eu.siacs.conversations.xmpp.jingle.RtpCapability
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.launch
 
 /**
  * Jetpack Compose replacement for [ConversationFragment]: the screen showing a single
@@ -40,24 +43,26 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private var conversation: Conversation? = null
     private var pendingConversationUuid: String? = null
     private val loadingMoreMessages = AtomicBoolean(false)
-    private var pendingSendText: String? = null
+    private var pendingTrustAction: (() -> Unit)? = null
+    private var lastComposedText = ""
+    private var typingPauseJob: kotlinx.coroutines.Job? = null
 
     private val pickImagesLauncher =
         registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-            attachUris(uris, asImage = true)
+            stageUris(uris, Attachment.Type.IMAGE)
         }
 
     private val pickFileLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            if (uri != null) attachUris(listOf(uri), asImage = false)
+            if (uri != null) stageUris(listOf(uri), Attachment.Type.FILE)
         }
 
     private val trustKeysLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == AppCompatActivity.RESULT_OK) {
-                val text = pendingSendText
-                pendingSendText = null
-                if (text != null) onSendTextMessage(text)
+                val action = pendingTrustAction
+                pendingTrustAction = null
+                action?.invoke()
             }
         }
 
@@ -76,8 +81,19 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private val recordVoiceLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == AppCompatActivity.RESULT_OK) {
-                val uri = result.data?.data
-                if (uri != null) attachUris(listOf(uri), asImage = false)
+                val data = result.data
+                val uri = data?.data
+                if (uri != null) {
+                    val autoSend =
+                        data.getBooleanExtra(RecordingActivity.EXTRA_AUTO_SEND_RECORDING, false)
+                    if (autoSend) {
+                        commitAttachments(
+                            Attachment.of(requireContext(), uri, Attachment.Type.RECORDING)
+                        )
+                    } else {
+                        stageUris(listOf(uri), Attachment.Type.RECORDING)
+                    }
+                }
             }
         }
 
@@ -242,7 +258,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val service = getXmppConnectionService() ?: return
         when (c.nextEncryption) {
             Message.ENCRYPTION_AXOLOTL -> {
-                if (trustKeysIfNeeded(c, body)) return
+                if (trustKeysIfNeeded(c) { onSendTextMessage(body) }) return
             }
             Message.ENCRYPTION_PGP -> {
                 // OpenPGP sending is not wired into the Compose screen yet.
@@ -284,8 +300,81 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
+    private fun stageUris(uris: List<Uri>, type: Attachment.Type) {
+        val context = context ?: return
+        for (uri in uris) {
+            state.attachments.addAll(Attachment.of(context, uri, type))
+        }
+    }
+
+    override fun onCommitAttachments() {
+        val c = conversation ?: return
+        if (c.nextEncryption == Message.ENCRYPTION_AXOLOTL &&
+            trustKeysIfNeeded(c) { onCommitAttachments() }
+        ) {
+            return
+        }
+        val attachments = state.attachments.toList()
+        state.attachments.clear()
+        commitAttachments(attachments)
+    }
+
+    private fun commitAttachments(attachments: List<Attachment>) {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val context = context ?: return
+        for (attachment in attachments) {
+            val future =
+                if (attachment.type == Attachment.Type.IMAGE)
+                    service.attachImageToConversation(c, attachment.uri, attachment.mime)
+                else service.attachFileToConversation(c, attachment.uri, attachment.mime)
+            Futures.addCallback(
+                future,
+                object : FutureCallback<Void?> {
+                    override fun onSuccess(result: Void?) {
+                        runOnUiThread { refreshMessages() }
+                    }
+
+                    override fun onFailure(t: Throwable) {
+                        runOnUiThread {
+                            val ctx = getContext() ?: return@runOnUiThread
+                            Toast.makeText(ctx, t.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
+                ContextCompat.getMainExecutor(context),
+            )
+        }
+    }
+
+    override fun onInputChanged(text: String) {
+        val c = conversation ?: return
+        if (getXmppConnectionService() == null) return
+        typingPauseJob?.cancel()
+        if (text.isEmpty() && lastComposedText.isNotEmpty()) {
+            eu.siacs.conversations.xmpp.manager.ChatStateManager.send(
+                c,
+                Config.DEFAULT_CHAT_STATE,
+            )
+        } else if (text.isNotEmpty() && text != lastComposedText) {
+            eu.siacs.conversations.xmpp.manager.ChatStateManager.send(
+                c,
+                im.conversations.android.xmpp.model.state.Composing::class.java,
+            )
+            typingPauseJob =
+                viewLifecycleOwner.lifecycleScope.launch {
+                    kotlinx.coroutines.delay(3000)
+                    eu.siacs.conversations.xmpp.manager.ChatStateManager.send(
+                        c,
+                        im.conversations.android.xmpp.model.state.Paused::class.java,
+                    )
+                }
+        }
+        lastComposedText = text
+    }
+
     /** Returns true when the OMEMO trust screen had to be opened first. */
-    private fun trustKeysIfNeeded(conversation: Conversation, body: String): Boolean {
+    private fun trustKeysIfNeeded(conversation: Conversation, action: () -> Unit): Boolean {
         val axolotlService = conversation.getAccount().axolotlService
         val targets = axolotlService.getCryptoTargets(conversation)
         val hasUnaccepted = !conversation.acceptedCryptoTargets.containsAll(targets)
@@ -315,7 +404,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             downloadInProgress
         ) {
             axolotlService.createSessionsIfNeeded(conversation)
-            pendingSendText = body
+            pendingTrustAction = action
             val intent = Intent(requireActivity(), TrustKeysActivity::class.java)
             intent.putExtra("contacts", targets.map { it.toString() }.toTypedArray())
             intent.putExtra(
@@ -336,34 +425,6 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onAttachFile() {
         pickFileLauncher.launch("*/*")
-    }
-
-    private fun attachUris(uris: List<Uri>, asImage: Boolean) {
-        val c = conversation ?: return
-        val service = getXmppConnectionService() ?: return
-        val context = context ?: return
-        for (uri in uris) {
-            val type = context.contentResolver.getType(uri)
-            val future =
-                if (asImage) service.attachImageToConversation(c, uri, type)
-                else service.attachFileToConversation(c, uri, type)
-            Futures.addCallback(
-                future,
-                object : FutureCallback<Void?> {
-                    override fun onSuccess(result: Void?) {
-                        runOnUiThread { refreshMessages() }
-                    }
-
-                    override fun onFailure(t: Throwable) {
-                        runOnUiThread {
-                            val ctx = getContext() ?: return@runOnUiThread
-                            Toast.makeText(ctx, t.message, Toast.LENGTH_LONG).show()
-                        }
-                    }
-                },
-                ContextCompat.getMainExecutor(context),
-            )
-        }
     }
 
     override fun onCall(video: Boolean) {
