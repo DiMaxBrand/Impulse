@@ -53,7 +53,7 @@ object TelemetryReporter {
         append("call_integration=${s.isCallIntegration().b}")
         appendLine()
         appendLine()
-        append("Кстати, это чат с поддержкой Impulse. Вы можете написать сюда в любое время, если вам нужна помощь — скорее всего, мы ответим в тот же день.")
+        append("Кстати, это чат с поддержкой Импульса. Вы можете написать сюда в любое время, если вам нужна помощь — скорее всего, мы ответим в тот же день.")
     }
 
     private val Boolean.b get() = if (this) 1 else 0
