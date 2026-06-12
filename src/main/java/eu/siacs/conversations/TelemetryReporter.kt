@@ -3,9 +3,9 @@ package eu.siacs.conversations
 import android.os.Build
 import androidx.preference.PreferenceManager
 import eu.siacs.conversations.entities.Account
+import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.services.XmppConnectionService
 import eu.siacs.conversations.xmpp.Jid
-import im.conversations.android.xmpp.model.stanza.Message
 
 object TelemetryReporter {
 
@@ -20,10 +20,10 @@ object TelemetryReporter {
         val prefs = PreferenceManager.getDefaultSharedPreferences(service)
         if (prefs.getString(PREF_SENT_VERSION, null) == BuildConfig.VERSION_NAME) return
         val to = try { Jid.of(rawJid) } catch (_: Exception) { return }
-        val stanza = Message(Message.Type.CHAT)
-        stanza.setTo(to)
-        stanza.setBody(buildPayload(appSettings))
-        service.sendMessagePacket(account, stanza)
+        val conversation = service.findOrCreateConversation(account, to, false, true)
+        conversation.nextEncryption = Message.ENCRYPTION_NONE
+        val message = Message(conversation, buildPayload(appSettings), Message.ENCRYPTION_NONE)
+        service.sendMessage(message)
         prefs.edit().putString(PREF_SENT_VERSION, BuildConfig.VERSION_NAME).apply()
     }
 
