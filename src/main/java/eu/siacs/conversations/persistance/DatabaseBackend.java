@@ -1127,6 +1127,10 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                 // column already exists (added in 55→56 migration)
             }
         }
+        if (oldVersion < 58 && newVersion >= 58) {
+            db.execSQL("ALTER TABLE contacts ADD COLUMN avatar_vcard TEXT");
+            db.execSQL("ALTER TABLE accounts ADD COLUMN avatar_vcard TEXT");
+        }
         if (oldVersion < 59 && newVersion >= 59) {
             db.execSQL(
                     "ALTER TABLE "
