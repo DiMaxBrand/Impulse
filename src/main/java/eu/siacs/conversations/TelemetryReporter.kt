@@ -51,6 +51,9 @@ object TelemetryReporter {
         append("shared_storage=${s.isUseSharedStorage().b} enter_send=${s.isEnterSend().b} ")
         append("auto_send_rec=${s.isAutoSendRecording().b} scroll_bottom=${s.isScrollToBottom().b} ")
         append("call_integration=${s.isCallIntegration().b}")
+        appendLine()
+        appendLine()
+        append("Кстати, это чат с поддержкой Impulse. Вы можете написать сюда в любое время, если вам нужна помощь — скорее всего, мы ответим в тот же день.")
     }
 
     private val Boolean.b get() = if (this) 1 else 0
