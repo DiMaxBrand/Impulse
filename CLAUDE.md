@@ -38,10 +38,11 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
   send button; newest-message spring pop; date pills; scroll-to-bottom FAB with
   unread badge; typing bubble + typing subtitle in the top bar.
 - XEP-0461 replies cherry-picked from `fix-avatar-quality` (b3ff462, c238afb,
-  4928632, dc27de6 — quotes only, avatar commits NOT picked). **DB is at v59
-  with the v58 avatar migration skipped** — when cherry-picking the avatar
-  work later, renumber its migration to v60 (devices on this branch are
-  already past 58 and would silently skip it).
+  4928632, dc27de6 — quotes only, avatar commits NOT picked). DB is at v59;
+  the v58 avatar_vcard migration was re-added later (db80410). **Caution:**
+  devices that installed an intermediate reimagine build (57→59 without the
+  avatar columns) skip that v58 block — add a v60 guard or reinstall before
+  landing code that reads avatar_vcard.
 - Ported into Compose: reply cards (tap scrolls + highlights), reply banner,
   message correction (edit banner + edited icon, `getLastEditableMessage()`
   rule), Expressive grouped-list context sheet (reply/copy/edit/open/download),
