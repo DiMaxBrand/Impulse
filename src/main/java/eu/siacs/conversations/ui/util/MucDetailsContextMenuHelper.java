@@ -22,7 +22,7 @@ import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.MucOptions.User;
 import eu.siacs.conversations.ui.ConferenceDetailsActivity;
-import eu.siacs.conversations.ui.ConversationFragment;
+import eu.siacs.conversations.ui.ConversationComposeFragment;
 import eu.siacs.conversations.ui.ConversationsActivity;
 import eu.siacs.conversations.ui.MucUsersActivity;
 import eu.siacs.conversations.ui.XmppActivity;
@@ -180,7 +180,8 @@ public final class MucDetailsContextMenuHelper {
                 return true;
             case R.id.send_private_message:
                 if (activity instanceof ConversationsActivity) {
-                    ConversationFragment conversationFragment = ConversationFragment.get(activity);
+                    final ConversationComposeFragment conversationFragment =
+                            ConversationComposeFragment.get(activity);
                     if (conversationFragment != null) {
                         conversationFragment.privateMessageWith(user.getFullJid());
                         return true;

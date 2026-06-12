@@ -8,6 +8,7 @@ src/quicksyPlaystore/res/values/push.xml
 
 # https://github.com/github/gitignore/blob/master/Gradle.gitignore
 .gradle/
+.kotlin/
 build/
 captures/
 signing.properties

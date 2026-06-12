@@ -12,6 +12,7 @@ import eu.siacs.conversations.xmpp.Jid
 import im.conversations.android.xmpp.model.correction.Replace
 import im.conversations.android.xmpp.model.hints.Store
 import im.conversations.android.xmpp.model.markers.Markable
+import im.conversations.android.xmpp.model.reply.Reply
 import im.conversations.android.xmpp.model.unique.OriginId
 
 class MessageGenerator(service: XmppConnectionService) : AbstractGenerator(service) {
@@ -49,6 +50,11 @@ class MessageGenerator(service: XmppConnectionService) : AbstractGenerator(servi
         }
         if (message.edited()) {
             packet.addExtension(Replace(message.editedIdWireFormat))
+        }
+        val repliedTo = message.repliedTo
+        if (repliedTo != null) {
+            val to = conversation.getContact().getAddress().asBareJid().toString()
+            packet.addExtension(Reply.create(to, repliedTo))
         }
         return packet
     }

@@ -25,6 +25,33 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 | `material-icons` | Material Icons Rounded icon set |
 | `allow-sending-videos` | Future: custom Compose media picker |
 
+## Session handoff: reimagine-conversation-screen (2026-06-10)
+
+- The chat screen is now `ConversationComposeFragment` + `ConversationScreen.kt`
+  (Compose, `MaterialExpressiveTheme`, dynamic colors). `ConversationsActivity`
+  hosts it in both main and secondary (tablet) containers; the old
+  `ConversationFragment` is still in the tree but no longer instantiated.
+- Entity accessors (`getUuid()`, `getMode()`, `getAccount()`, …) are Kotlin
+  functions, NOT properties — property syntax does not compile.
+- Visual decisions (user-approved): Expressive grouped bubbles 20dp/5dp, no
+  tails; outgoing = primaryContainer, incoming = surfaceContainerHigh; morphing
+  send button; newest-message spring pop; date pills; scroll-to-bottom FAB with
+  unread badge; typing bubble + typing subtitle in the top bar.
+- XEP-0461 replies cherry-picked from `fix-avatar-quality` (b3ff462, c238afb,
+  4928632, dc27de6 — quotes only, avatar commits NOT picked). **DB is at v59
+  with the v58 avatar migration skipped** — when cherry-picking the avatar
+  work later, renumber its migration to v60 (devices on this branch are
+  already past 58 and would silently skip it).
+- Ported into Compose: reply cards (tap scrolls + highlights), reply banner,
+  message correction (edit banner + edited icon, `getLastEditableMessage()`
+  rule), Expressive grouped-list context sheet (reply/copy/edit/open/download),
+  voice recording (mic button → `RecordingActivity` → attach).
+- Not yet ported from the old fragment: PGP send, camera capture, location
+  sharing, in-bubble audio player. (MUC private messages ARE ported:
+  `privateMessageWith()` + EXTRA_NICK handling + tertiary PM banner.)
+- `Message.replaceUuid()` exists because Kotlin cannot resolve `setUuid()`
+  (collides with the protected `uuid` property of `AbstractEntity.kt`).
+
 ## Signing
 
 Signing credentials are in `signing.properties` (not committed). The build reads this file automatically — no manual keystore entry needed in Android Studio.

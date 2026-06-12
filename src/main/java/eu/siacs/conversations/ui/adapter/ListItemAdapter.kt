@@ -2,7 +2,6 @@ package eu.siacs.conversations.ui.adapter
 
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,7 +13,6 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.databinding.DataBindingUtil
 import com.google.android.material.listitem.ListItemLayout
 import eu.siacs.conversations.AppSettings
-import eu.siacs.conversations.Config
 import eu.siacs.conversations.R
 import eu.siacs.conversations.databinding.ItemContactBinding
 import eu.siacs.conversations.entities.Contact
@@ -66,9 +64,7 @@ open class ListItemAdapter : ArrayAdapter<ListItem> {
             viewHolder = view.tag as ViewHolder
             resultView = view
         }
-        if (resultView.isActivated) {
-            Log.d(Config.LOGTAG, "item ${item?.displayName} is activated")
-        }
+
         val tags = item?.getTags()
         if (tags != null && ((isBlockNoteworthy && Contact.isNoteworthy(tags)) || this.showDynamicTags)) {
             UserAdapter.setHats(viewHolder.tags, tags, mOnTagClickedListener)
