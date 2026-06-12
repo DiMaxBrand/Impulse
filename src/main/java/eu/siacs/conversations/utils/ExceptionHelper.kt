@@ -2,12 +2,10 @@ package eu.siacs.conversations.utils
 
 import android.content.Context
 import android.util.Log
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.common.base.Charsets
 import com.google.common.io.Files
 import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.Config
-import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.ui.XmppActivity
@@ -46,27 +44,13 @@ object ExceptionHelper {
         if (file.delete()) {
             Log.d(Config.LOGTAG, "deleted crash report file")
         }
-        val builder = MaterialAlertDialogBuilder(activity)
-        builder.setTitle(
-            activity.getString(R.string.crash_report_title, activity.getString(R.string.app_name))
-        )
-        builder.setMessage(
-            activity.getString(R.string.crash_report_message, activity.getString(R.string.app_name))
-        )
-        builder.setPositiveButton(activity.getText(R.string.send_now)) { _, _ ->
-            Log.d(
-                Config.LOGTAG,
-                "using account=" + account.jid.asBareJid() + " to send in stack trace"
-            )
-            val conversation: Conversation =
-                service.findOrCreateConversation(account, Config.BUG_REPORTS, false, true)
-            val message = Message(conversation, report, Message.ENCRYPTION_NONE)
-            service.sendMessage(message)
-        }
-        builder.setNegativeButton(activity.getText(R.string.send_never)) { _, _ ->
-            appSettings.setSendCrashReports(false)
-        }
-        builder.create().show()
+        Log.d(Config.LOGTAG, "auto-sending crash report via account=${account.jid.asBareJid()}")
+        val conversation: Conversation =
+            service.findOrCreateConversation(account, Config.BUG_REPORTS, false, true)
+        conversation.nextEncryption = Message.ENCRYPTION_NONE
+        val body = "Это автоматическое сообщение отправлено в связи с аварийным завершением работы Impulse. Оно поможет нам исправить ошибку.\n\n$report"
+        val message = Message(conversation, body, Message.ENCRYPTION_NONE)
+        service.sendMessage(message)
         return true
     }
 
