@@ -79,6 +79,7 @@ public class AppSettings {
     public static final String AUTO_SEND_RECORDING = "auto_send_recording";
     public static final String USE_SHARED_STORAGE = "use_shared_storage";
     public static final String QUICK_ACTION = "quick_action";
+    public static final String SHARE_DIAGNOSTICS = "share_diagnostics";
 
     private static final String LEGACY_AUTO_ACCEPT_FILE_SIZE = "524288";
     private static final String DEFAULT_AUTO_ACCEPT_FILE_SIZE = "5242880";
@@ -215,6 +216,18 @@ public class AppSettings {
 
     public boolean isUseSharedStorage() {
         return getBooleanPreference(USE_SHARED_STORAGE, R.bool.use_shared_storage);
+    }
+
+    public boolean isShareDiagnostics() {
+        return getBooleanPreference(SHARE_DIAGNOSTICS, R.bool.share_diagnostics);
+    }
+
+    public String getPictureCompression() {
+        return getStringPreference(PICTURE_COMPRESSION, R.string.picture_compression);
+    }
+
+    public String getThemeSetting() {
+        return getStringPreference(THEME, R.string.theme);
     }
 
     public boolean isUseTor() {

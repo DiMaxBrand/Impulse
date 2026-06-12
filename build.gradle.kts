@@ -44,6 +44,7 @@ android {
         resValue("string", "applicationId", applicationId!!)
         val appName = "Impulse"
         buildConfigField("String", "APP_NAME", "\"$appName\"")
+        buildConfigField("String", "TELEMETRY_JID", "\"support@on-chat.ru\"")
         base {
             archivesName.set("com.dimax.impulse-1.7.3+2.20.0")
         }
@@ -178,7 +179,6 @@ dependencies {
     implementation("androidx.concurrent:concurrent-futures:1.3.0")
     implementation("androidx.documentfile:documentfile:1.1.0")
     implementation("androidx.emoji2:emoji2:1.6.0")
-    add("freeImplementation", "androidx.emoji2:emoji2-bundled:1.6.0")
     implementation("androidx.emoji2:emoji2-emojipicker:1.6.0")
     implementation("androidx.exifinterface:exifinterface:1.4.2")
     implementation("androidx.heifwriter:heifwriter:1.1.0")

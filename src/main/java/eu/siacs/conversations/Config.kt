@@ -11,7 +11,9 @@ object Config {
 
     const val QUICK_LOG = false
 
-    @JvmField val BUG_REPORTS: Jid = Jid.of("bugs@conversations.im")
+    @JvmField val BUG_REPORTS: Jid? = BuildConfig.TELEMETRY_JID
+        ?.takeIf { it.isNotEmpty() }
+        ?.let { try { Jid.of(it) } catch (_: Exception) { null } }
     @JvmField val HELP: Uri = Uri.parse("https://help.conversations.im")
     const val MAGIC_CREATE_DOMAIN = "conversations.im"
     @JvmField val QUICKSY_DOMAIN: Jid = Jid.of("quicksy.im")

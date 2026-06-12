@@ -1023,6 +1023,8 @@
     <string name="delete_and_close">Архивировать и удалить беседу</string>
     <string name="remove_bookmark_and_close">Удалить закладку для %s и архивировать беседу?</string>
     <string name="pref_send_crash_reports">Отправлять отчёты о сбоях</string>
+    <string name="pref_share_diagnostics">Делиться анонимной диагностикой</string>
+    <string name="pref_share_diagnostics_summary">Один раз за версию отправляет анонимные настройки приложения разработчикам Импульса для улучшения работы</string>
     <string name="switch_to_chat">Перейти к беседе</string>
     <string name="pref_summary_appearance">Тема, цвета, снимки, ввод</string>
     <string name="unified_push_summary">Ретранслятор уведомлений для приложений, совместимых с UnifiedPush</string>
