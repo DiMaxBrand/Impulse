@@ -48,7 +48,7 @@ object ExceptionHelper {
         val conversation: Conversation =
             service.findOrCreateConversation(account, Config.BUG_REPORTS, false, true)
         conversation.nextEncryption = Message.ENCRYPTION_NONE
-        val body = "Это автоматическое сообщение отправлено в связи с аварийным завершением работы Impulse. Оно поможет нам исправить ошибку.\n\n$report"
+        val body = "Это автоматическое сообщение отправлено в связи с аварийным завершением работы Импульса. Оно поможет нам исправить ошибку.\n\n$report"
         val message = Message(conversation, body, Message.ENCRYPTION_NONE)
         service.sendMessage(message)
         return true
