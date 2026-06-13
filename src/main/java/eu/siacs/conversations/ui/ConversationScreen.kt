@@ -909,7 +909,7 @@ private fun bubbleTailShape(
         val tipR = tailWidth * 0.35f
         if (tailOnRight) {
             moveTo(right, h - tailHeight)
-            cubicTo(right, h - tailHeight * 0.3f, size.width, h - tipR * 2f, size.width, h - tipR)
+            cubicTo(size.width, h - tailHeight, size.width, h - tipR * 2f, size.width, h - tipR)
             arcTo(
                 rect = androidx.compose.ui.geometry.Rect(size.width - tipR * 2, h - tipR * 2, size.width, h),
                 startAngleDegrees = 0f,
