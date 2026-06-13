@@ -260,7 +260,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val c = conversation ?: return
         if (!isResumed) return
         val activity = activity as? OnConversationRead ?: return
-        val lastUuid = state.messages.lastOrNull()?.getUuid()
+        val lastUuid = state.messages.value.lastOrNull()?.getUuid()
         activity.onConversationRead(c, lastUuid ?: "")
         state.unreadCount.intValue = 0
     }
@@ -572,7 +572,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val c = conversation ?: return
         val service = getXmppConnectionService() ?: return
         if (!c.messagesLoaded.get()) return
-        val oldest = state.messages.firstOrNull() ?: return
+        val oldest = state.messages.value.firstOrNull() ?: return
         if (!loadingMoreMessages.compareAndSet(false, true)) return
         service.loadMoreMessages(
             c,

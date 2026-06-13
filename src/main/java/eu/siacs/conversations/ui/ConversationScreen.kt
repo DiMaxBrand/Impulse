@@ -104,7 +104,7 @@ import kotlinx.coroutines.withContext
 /** Observable state for the Compose conversation screen. */
 class ConversationScreenState {
     internal val conversation = mutableStateOf<Conversation?>(null)
-    internal val messages: SnapshotStateList<Message> = mutableStateListOf()
+    internal val messages = mutableStateOf<List<Message>>(emptyList())
     internal val revision = mutableIntStateOf(0)
     internal val unreadCount = mutableIntStateOf(0)
     internal val inputText = mutableStateOf("")
@@ -115,8 +115,7 @@ class ConversationScreenState {
 
     fun update(conversation: Conversation?, source: List<Message>) {
         this.conversation.value = conversation
-        messages.clear()
-        messages.addAll(source)
+        messages.value = source
         unreadCount.intValue = conversation?.unreadCount() ?: 0
         revision.intValue++
     }
@@ -608,7 +607,7 @@ private fun MessageList(
     modifier: Modifier = Modifier,
 ) {
     val revision = state.revision.intValue
-    val items = remember(revision) { buildChatItems(state.messages) }
+    val items by remember { androidx.compose.runtime.derivedStateOf { buildChatItems(state.messages.value) } }
     val listState = rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
@@ -661,7 +660,7 @@ private fun MessageList(
     val resolveReply: (String) -> Message? =
         remember(revision) {
             { id ->
-                state.messages.lastOrNull { m ->
+                state.messages.value.lastOrNull { m ->
                     id == m.serverMsgId || id == m.getUuid() || id == m.remoteMsgId
                 }
             }
