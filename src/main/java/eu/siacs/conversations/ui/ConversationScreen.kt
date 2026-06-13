@@ -119,7 +119,10 @@ sealed class RecordingUiState {
 
 /** Observable state for the Compose conversation screen. */
 class ConversationScreenState {
-    internal val conversation = mutableStateOf<Conversation?>(null)
+    // neverEqualPolicy: Conversation is a mutable Java object — same reference after an
+    // in-place status update looks equal to structuralEqualityPolicy, so Compose would skip
+    // recomposition. neverEqualPolicy treats every write as a change.
+    internal val conversation = mutableStateOf<Conversation?>(null, androidx.compose.runtime.neverEqualPolicy())
     internal val messages = mutableStateOf<List<Message>>(emptyList())
     internal val revision = mutableIntStateOf(0)
     internal val unreadCount = mutableIntStateOf(0)
@@ -630,7 +633,16 @@ private fun MessageList(
     modifier: Modifier = Modifier,
 ) {
     val revision = state.revision.intValue
-    val items by remember { androidx.compose.runtime.derivedStateOf { buildChatItems(state.messages.value) } }
+    // Include revision in derivedStateOf so the list recomputes on every refresh() call —
+    // Message objects are mutable Java objects whose delivery status changes in-place,
+    // so messages.value alone (same list reference) wouldn't trigger recomputation.
+    val items by remember {
+        androidx.compose.runtime.derivedStateOf {
+            @Suppress("UNUSED_EXPRESSION")
+            state.revision.intValue
+            buildChatItems(state.messages.value)
+        }
+    }
     val listState = rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
@@ -1955,86 +1967,90 @@ private fun LinkifiedMessageText(
                 movementMethod =
                     eu.siacs.conversations.ui.widget.ClickableMovementMethod.getInstance()
                 autoLinkMask = 0
+                // Pre-seed raw body so there is never a blank frame before update() runs.
+                text = message.body?.trim() ?: ""
             }
         },
         update = { textView ->
+            val rawBody = message.body?.trim() ?: ""
             textView.setTextColor(contentColor.toArgb())
             textView.setLinkTextColor(linkColor.toArgb())
-            val rawBody = message.body?.trim() ?: ""
-            val displayName = eu.siacs.conversations.utils.UIHelper.getMessageDisplayName(message)
-            val body: android.text.SpannableStringBuilder
-            if (message.hasMeCommand() && displayName != null) {
-                val replaced = displayName + " " + rawBody.removePrefix(eu.siacs.conversations.entities.Message.ME_COMMAND)
-                body = android.text.SpannableStringBuilder(replaced)
-                body.setSpan(
-                    android.text.style.StyleSpan(android.graphics.Typeface.BOLD_ITALIC),
-                    0,
-                    displayName.length,
-                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
-            } else {
-                body = android.text.SpannableStringBuilder(rawBody)
-                // Private message header: "Private message to Nick: " prefix
-                if (message.isPrivateMessage()) {
-                    val prefix = if (message.status <= eu.siacs.conversations.entities.Message.STATUS_RECEIVED) {
-                        textView.context.getString(eu.siacs.conversations.R.string.private_message) + " "
-                    } else {
-                        val cp = message.counterpart
-                        textView.context.getString(eu.siacs.conversations.R.string.private_message_to,
-                            cp?.resource ?: "") + " "
-                    }
-                    body.insert(0, prefix)
-                    body.setSpan(
-                        android.text.style.ForegroundColorSpan(eu.siacs.conversations.utils.UIHelper.getColorForName(prefix)),
-                        0, prefix.length,
-                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                    body.setSpan(
-                        android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
-                        0, prefix.length,
-                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                }
+            textView.setOnLongClickListener {
+                onLongPress()
+                true
             }
-            val emojiMatcher =
-                eu.siacs.conversations.utils.Emoticons.getEmojiPattern(body).matcher(body)
-            while (emojiMatcher.find()) {
-                if (emojiMatcher.start() < emojiMatcher.end()) {
+            try {
+                val displayName = eu.siacs.conversations.utils.UIHelper.getMessageDisplayName(message)
+                val body: android.text.SpannableStringBuilder
+                if (message.hasMeCommand() && displayName != null) {
+                    val replaced = displayName + " " + rawBody.removePrefix(eu.siacs.conversations.entities.Message.ME_COMMAND)
+                    body = android.text.SpannableStringBuilder(replaced)
                     body.setSpan(
-                        android.text.style.RelativeSizeSpan(1.2f),
-                        emojiMatcher.start(),
-                        emojiMatcher.end(),
+                        android.text.style.StyleSpan(android.graphics.Typeface.BOLD_ITALIC),
+                        0,
+                        displayName.length,
                         android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
                     )
-                }
-            }
-            // MUC nick highlight: bold own nick in group messages
-            if (message.conversation.getMode() == eu.siacs.conversations.entities.Conversational.MODE_MULTI
-                && message.status == eu.siacs.conversations.entities.Message.STATUS_RECEIVED
-                && message.conversation is eu.siacs.conversations.entities.Conversation
-            ) {
-                val conv = message.conversation as eu.siacs.conversations.entities.Conversation
-                val nick = conv.mucOptions?.getActualNick()
-                if (!nick.isNullOrEmpty()) {
-                    val pattern = eu.siacs.conversations.services.NotificationService
-                        .generateNickHighlightPattern(nick)
-                    val matcher = pattern.matcher(body)
-                    while (matcher.find()) {
+                } else {
+                    body = android.text.SpannableStringBuilder(rawBody)
+                    if (message.isPrivateMessage()) {
+                        val prefix = if (message.status <= eu.siacs.conversations.entities.Message.STATUS_RECEIVED) {
+                            textView.context.getString(eu.siacs.conversations.R.string.private_message) + " "
+                        } else {
+                            val cp = message.counterpart
+                            textView.context.getString(eu.siacs.conversations.R.string.private_message_to,
+                                cp?.resource ?: "") + " "
+                        }
+                        body.insert(0, prefix)
+                        body.setSpan(
+                            android.text.style.ForegroundColorSpan(eu.siacs.conversations.utils.UIHelper.getColorForName(prefix)),
+                            0, prefix.length,
+                            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
                         body.setSpan(
                             android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
-                            matcher.start(), matcher.end(),
+                            0, prefix.length,
+                            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                }
+                val emojiMatcher =
+                    eu.siacs.conversations.utils.Emoticons.getEmojiPattern(body).matcher(body)
+                while (emojiMatcher.find()) {
+                    if (emojiMatcher.start() < emojiMatcher.end()) {
+                        body.setSpan(
+                            android.text.style.RelativeSizeSpan(1.2f),
+                            emojiMatcher.start(),
+                            emojiMatcher.end(),
                             android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
                         )
                     }
                 }
-            }
-            eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
-            de.gultsch.common.Linkify.addLinks(body)
-            eu.siacs.conversations.ui.text.FixedURLSpan.fix(body)
-            textView.text = body
-            textView.setOnLongClickListener {
-                onLongPress()
-                true
+                if (message.conversation.getMode() == eu.siacs.conversations.entities.Conversational.MODE_MULTI
+                    && message.status == eu.siacs.conversations.entities.Message.STATUS_RECEIVED
+                    && message.conversation is eu.siacs.conversations.entities.Conversation
+                ) {
+                    val conv = message.conversation as eu.siacs.conversations.entities.Conversation
+                    val nick = conv.mucOptions?.getActualNick()
+                    if (!nick.isNullOrEmpty()) {
+                        val pattern = eu.siacs.conversations.services.NotificationService
+                            .generateNickHighlightPattern(nick)
+                        val matcher = pattern.matcher(body)
+                        while (matcher.find()) {
+                            body.setSpan(
+                                android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                                matcher.start(), matcher.end(),
+                                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                            )
+                        }
+                    }
+                }
+                eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
+                de.gultsch.common.Linkify.addLinks(body)
+                eu.siacs.conversations.ui.text.FixedURLSpan.fix(body)
+                textView.text = body
+            } catch (_: Exception) {
+                textView.text = android.text.SpannableStringBuilder(rawBody)
             }
         },
     )
