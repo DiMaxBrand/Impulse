@@ -1,16 +1,25 @@
 package eu.siacs.conversations.ui
 
 import android.text.format.DateUtils
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -2138,30 +2147,85 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 Modifier.fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 8.dp),
         ) {
-            Box {
-                IconButton(onClick = { attachMenuOpen = true }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_attach_file_24dp),
-                        contentDescription = stringResource(R.string.attach_file),
+            // Attach button → toolbar container transform.
+            // AnimatedContent + SizeTransform give a spring-driven horizontal expand from the
+            // button position: the button's container grows rightward into a pill-shaped
+            // toolbar with M3 Expressive spring physics, then shrinks back on dismiss.
+            AnimatedContent(
+                targetState = attachMenuOpen,
+                transitionSpec = {
+                    ContentTransform(
+                        targetContentEnter =
+                            expandHorizontally(
+                                expandFrom = Alignment.Start,
+                                animationSpec =
+                                    spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMedium,
+                                    ),
+                            ) + fadeIn(),
+                        initialContentExit =
+                            shrinkHorizontally(
+                                shrinkTowards = Alignment.Start,
+                                animationSpec =
+                                    spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium,
+                                    ),
+                            ) + fadeOut(),
+                        sizeTransform = SizeTransform(clip = false),
                     )
-                }
-                ExpressiveDropdownMenu(
-                    expanded = attachMenuOpen,
-                    onDismissRequest = { attachMenuOpen = false },
-                ) {
-                    ExpressiveMenuItem(
-                        R.drawable.ic_image_24dp,
-                        stringResource(R.string.attachment_choice_gallery),
+                },
+                label = "attachTransform",
+            ) { isOpen ->
+                if (isOpen) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.height(48.dp),
                     ) {
-                        attachMenuOpen = false
-                        listener.onAttachImage()
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    attachMenuOpen = false
+                                    listener.onAttachImage()
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_image_24dp),
+                                    contentDescription =
+                                        stringResource(R.string.attachment_choice_gallery),
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    attachMenuOpen = false
+                                    listener.onAttachFile()
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_attach_file_24dp),
+                                    contentDescription =
+                                        stringResource(R.string.attachment_choice_file),
+                                )
+                            }
+                            IconButton(onClick = { attachMenuOpen = false }) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_close_24dp),
+                                    contentDescription = stringResource(R.string.cancel),
+                                )
+                            }
+                        }
                     }
-                    ExpressiveMenuItem(
-                        R.drawable.ic_attach_file_24dp,
-                        stringResource(R.string.attachment_choice_file),
-                    ) {
-                        attachMenuOpen = false
-                        listener.onAttachFile()
+                } else {
+                    IconButton(onClick = { attachMenuOpen = true }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_attach_file_24dp),
+                            contentDescription = stringResource(R.string.attach_file),
+                        )
                     }
                 }
             }
