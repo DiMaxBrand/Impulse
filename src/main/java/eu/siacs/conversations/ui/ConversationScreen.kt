@@ -729,7 +729,11 @@ private fun MessageList(
                 item(key = "typing-indicator") { TypingBubble(modifier = Modifier.animateItem()) }
             }
             itemsIndexed(items, key = { _, item -> item.key }) { index, item ->
-                val itemModifier = Modifier.animateItem()
+                // fadeInSpec/fadeOutSpec = null: animateItem() triggers enter-fade whenever a slot
+                // re-enters the composition window (scroll back after leaving lookahead range).
+                // That renders items at alpha≈0 for ~300 ms — visually blank. Disable fade; keep
+                // placement so bubbles shift smoothly when new messages arrive.
+                val itemModifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
                 when (item) {
                     is ChatItem.DatePill ->
                         DatePill(timestamp = item.timestamp, modifier = itemModifier)
