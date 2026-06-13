@@ -886,50 +886,39 @@ private fun bubbleTailShape(
 ): androidx.compose.ui.graphics.Shape =
     androidx.compose.foundation.shape.GenericShape { size, layoutDirection ->
         val rtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
-        // The tail sits on the sender's side: end for outgoing, start for incoming.
         val tailOnRight = outgoing != rtl
-        val left = if (tailOnRight) 0f else tailWidth
-        val right = if (tailOnRight) size.width - tailWidth else size.width
-        val h = size.height
-        val topLeft = if (tailOnRight) largeCorner else groupTopCorner
-        val topRight = if (tailOnRight) groupTopCorner else largeCorner
-        val bottomLeft = if (tailOnRight) largeCorner else 0f
-        val bottomRight = if (tailOnRight) 0f else largeCorner
-        addRoundRect(
-            androidx.compose.ui.geometry.RoundRect(
-                rect = androidx.compose.ui.geometry.Rect(left, 0f, right, h),
-                topLeft = androidx.compose.ui.geometry.CornerRadius(topLeft),
-                topRight = androidx.compose.ui.geometry.CornerRadius(topRight),
-                bottomRight = androidx.compose.ui.geometry.CornerRadius(bottomRight),
-                bottomLeft = androidx.compose.ui.geometry.CornerRadius(bottomLeft),
-            )
-        )
-        // Tail with rounded tip flowing out of the square bottom corner.
-        // A cubic bezier arcs outward from the bubble edge; a 90° arcTo rounds the tip.
         val tipR = tailWidth * 0.5f
+        val h = size.height
+        // Draw the entire bubble+tail outline as one continuous clockwise path so there
+        // is no subpath junction at the 0-dp corner where the tail meets the bubble body.
         if (tailOnRight) {
-            moveTo(right, h - tailHeight)
+            val right = size.width - tailWidth
+            moveTo(largeCorner, 0f)
+            lineTo(right - groupTopCorner, 0f)
+            arcTo(androidx.compose.ui.geometry.Rect(right - 2 * groupTopCorner, 0f, right, 2 * groupTopCorner), 270f, 90f, false)
+            lineTo(right, h - tailHeight)
             cubicTo(right, h - tailHeight * 0.3f, size.width, h - tipR * 2f, size.width, h - tipR)
-            arcTo(
-                rect = androidx.compose.ui.geometry.Rect(size.width - tipR * 2, h - tipR * 2, size.width, h),
-                startAngleDegrees = 0f,
-                sweepAngleDegrees = 90f,
-                forceMoveTo = false,
-            )
+            arcTo(androidx.compose.ui.geometry.Rect(size.width - tipR * 2, h - tipR * 2, size.width, h), 0f, 90f, false)
             lineTo(right, h)
-            close()
+            lineTo(largeCorner, h)
+            arcTo(androidx.compose.ui.geometry.Rect(0f, h - 2 * largeCorner, 2 * largeCorner, h), 90f, 90f, false)
+            lineTo(0f, largeCorner)
+            arcTo(androidx.compose.ui.geometry.Rect(0f, 0f, 2 * largeCorner, 2 * largeCorner), 180f, 90f, false)
         } else {
-            moveTo(left, h - tailHeight)
-            cubicTo(left, h - tailHeight * 0.3f, 0f, h - tipR * 2f, 0f, h - tipR)
-            arcTo(
-                rect = androidx.compose.ui.geometry.Rect(0f, h - tipR * 2, tipR * 2, h),
-                startAngleDegrees = 180f,
-                sweepAngleDegrees = -90f,
-                forceMoveTo = false,
-            )
+            val left = tailWidth
+            moveTo(left + groupTopCorner, 0f)
+            lineTo(size.width - largeCorner, 0f)
+            arcTo(androidx.compose.ui.geometry.Rect(size.width - 2 * largeCorner, 0f, size.width, 2 * largeCorner), 270f, 90f, false)
+            lineTo(size.width, h - largeCorner)
+            arcTo(androidx.compose.ui.geometry.Rect(size.width - 2 * largeCorner, h - 2 * largeCorner, size.width, h), 0f, 90f, false)
             lineTo(left, h)
-            close()
+            lineTo(tipR, h)
+            arcTo(androidx.compose.ui.geometry.Rect(0f, h - 2 * tipR, 2 * tipR, h), 90f, 90f, false)
+            cubicTo(0f, h - tipR * 2f, left, h - tailHeight * 0.3f, left, h - tailHeight)
+            lineTo(left, groupTopCorner)
+            arcTo(androidx.compose.ui.geometry.Rect(left, 0f, left + 2 * groupTopCorner, 2 * groupTopCorner), 180f, 90f, false)
         }
+        close()
     }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
