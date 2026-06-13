@@ -904,16 +904,30 @@ private fun bubbleTailShape(
                 bottomLeft = androidx.compose.ui.geometry.CornerRadius(bottomLeft),
             )
         )
-        // Curled tail flowing out of the square bottom corner.
+        // Tail with rounded tip flowing out of the square bottom corner.
+        // A cubic bezier arcs outward from the bubble edge; a 90° arcTo rounds the tip.
+        val tipR = tailWidth * 0.35f
         if (tailOnRight) {
             moveTo(right, h - tailHeight)
-            quadraticTo(right, h - tailHeight / 4f, size.width, h)
-            lineTo(right - tailWidth, h)
+            cubicTo(right, h - tailHeight * 0.3f, size.width, h - tipR * 2f, size.width, h - tipR)
+            arcTo(
+                rect = androidx.compose.ui.geometry.Rect(size.width - tipR * 2, h - tipR * 2, size.width, h),
+                startAngleDegrees = 0f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false,
+            )
+            lineTo(right, h)
             close()
         } else {
             moveTo(left, h - tailHeight)
-            quadraticTo(left, h - tailHeight / 4f, 0f, h)
-            lineTo(left + tailWidth, h)
+            cubicTo(left, h - tailHeight * 0.3f, 0f, h - tipR * 2f, 0f, h - tipR)
+            arcTo(
+                rect = androidx.compose.ui.geometry.Rect(0f, h - tipR * 2, tipR * 2, h),
+                startAngleDegrees = 180f,
+                sweepAngleDegrees = -90f,
+                forceMoveTo = false,
+            )
+            lineTo(left, h)
             close()
         }
     }
