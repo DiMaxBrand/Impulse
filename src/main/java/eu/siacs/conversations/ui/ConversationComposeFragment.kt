@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.media.MediaRecorder
+import android.os.Build
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -48,10 +50,21 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private var pendingTrustAction: (() -> Unit)? = null
     private var lastComposedText = ""
     private var typingPauseJob: kotlinx.coroutines.Job? = null
+    private var mediaRecorder: MediaRecorder? = null
+    private var recordingFile: java.io.File? = null
+    private var recordingStartMs = 0L
+    private var totalPausedMs = 0L
+    private var pauseStartMs = 0L
+    private var timerJob: kotlinx.coroutines.Job? = null
 
-    private val pickImagesLauncher =
-        registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-            stageUris(uris, Attachment.Type.IMAGE)
+    private val pickMediaLauncher =
+        registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+            val ctx = context ?: return@registerForActivityResult
+            uris.forEach { uri ->
+                val mime = ctx.contentResolver.getType(uri)
+                val type = if (mime?.startsWith("video/") == true) Attachment.Type.FILE else Attachment.Type.IMAGE
+                stageUris(listOf(uri), type)
+            }
         }
 
     private val pickFileLauncher =
@@ -117,7 +130,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private val recordAudioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
-                recordVoiceLauncher.launch(Intent(requireActivity(), RecordingActivity::class.java))
+                startNativeRecording()
             }
         }
 
@@ -147,6 +160,14 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     override fun onResume() {
         super.onResume()
         markRead()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (state.recordingState.value is RecordingUiState.Active) {
+            stopRecordingSession(save = false)
+            state.recordingState.value = RecordingUiState.Idle
+        }
     }
 
     fun reInit(conversation: Conversation, extras: Bundle) {
@@ -315,8 +336,153 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         markRead()
     }
 
-    override fun onRecordVoice() {
+    override fun onStartRecording() {
         recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    override fun onPauseRecording() {
+        val recording = state.recordingState.value as? RecordingUiState.Active ?: return
+        val recorder = mediaRecorder ?: return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
+        if (!recording.paused) {
+            try {
+                recorder.pause()
+                pauseStartMs = System.currentTimeMillis()
+                timerJob?.cancel()
+            } catch (_: IllegalStateException) {
+                return
+            }
+            state.recordingState.value = RecordingUiState.Active(recording.elapsedMs, paused = true)
+        } else {
+            try {
+                recorder.resume()
+                totalPausedMs += System.currentTimeMillis() - pauseStartMs
+                pauseStartMs = 0L
+            } catch (_: IllegalStateException) {
+                return
+            }
+            state.recordingState.value = RecordingUiState.Active(recording.elapsedMs, paused = false)
+            startRecordingTimer()
+        }
+    }
+
+    override fun onCancelRecording() {
+        stopRecordingSession(save = false)
+        state.recordingState.value = RecordingUiState.Idle
+    }
+
+    override fun onSendRecording() {
+        val currentElapsed = (state.recordingState.value as? RecordingUiState.Active)?.elapsedMs ?: 0L
+        stopRecordingSession(save = true)
+        val file = recordingFile ?: run {
+            state.recordingState.value = RecordingUiState.Idle
+            return
+        }
+        val ctx = context ?: run {
+            state.recordingState.value = RecordingUiState.Idle
+            return
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            ctx,
+            "${ctx.packageName}.files",
+            file,
+        )
+        val attachment = eu.siacs.conversations.ui.util.Attachment.of(ctx, uri, eu.siacs.conversations.ui.util.Attachment.Type.RECORDING).firstOrNull()
+        if (attachment != null) {
+            commitAttachments(listOf(attachment))
+        }
+        state.recordingState.value = RecordingUiState.Idle
+        recordingFile = null
+    }
+
+    private fun startNativeRecording() {
+        val ctx = context ?: return
+        val outputFormat =
+            if (eu.siacs.conversations.Config.USE_OPUS_VOICE_MESSAGES &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+            ) {
+                MediaRecorder.OutputFormat.OGG
+            } else {
+                MediaRecorder.OutputFormat.MPEG_4
+            }
+        val file = eu.siacs.conversations.persistance.FileBackend.Cache(ctx).recording(outputFormat)
+        recordingFile = file
+
+        @Suppress("DEPRECATION")
+        val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(ctx)
+        } else {
+            MediaRecorder()
+        }
+        try {
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+        } catch (e: RuntimeException) {
+            recorder.release()
+            Toast.makeText(ctx, R.string.unable_to_start_recording, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            recorder.setPrivacySensitive(true)
+        }
+        if (eu.siacs.conversations.Config.USE_OPUS_VOICE_MESSAGES &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        ) {
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.OGG)
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.OPUS)
+            recorder.setAudioEncodingBitRate(32_000)
+        } else {
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.HE_AAC)
+            recorder.setAudioSamplingRate(24_000)
+            recorder.setAudioEncodingBitRate(28_000)
+        }
+        recorder.setOutputFile(file.absolutePath)
+        try {
+            recorder.prepare()
+            recorder.start()
+        } catch (e: Exception) {
+            recorder.release()
+            Toast.makeText(ctx, R.string.unable_to_start_recording, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        mediaRecorder = recorder
+        recordingStartMs = System.currentTimeMillis()
+        totalPausedMs = 0L
+        pauseStartMs = 0L
+        state.recordingState.value = RecordingUiState.Active(0L, paused = false)
+        startRecordingTimer()
+    }
+
+    private fun startRecordingTimer() {
+        timerJob?.cancel()
+        timerJob = lifecycleScope.launch {
+            while (true) {
+                val elapsed = System.currentTimeMillis() - recordingStartMs - totalPausedMs
+                val current = state.recordingState.value
+                if (current is RecordingUiState.Active && !current.paused) {
+                    state.recordingState.value = RecordingUiState.Active(elapsed, paused = false)
+                }
+                kotlinx.coroutines.delay(100)
+            }
+        }
+    }
+
+    private fun stopRecordingSession(save: Boolean) {
+        timerJob?.cancel()
+        timerJob = null
+        val recorder = mediaRecorder ?: return
+        try {
+            recorder.stop()
+            recorder.release()
+        } catch (_: Exception) {
+        } finally {
+            mediaRecorder = null
+        }
+        if (!save) {
+            recordingFile?.delete()
+            recordingFile = null
+        }
     }
 
     private fun stageUris(uris: List<Uri>, type: Attachment.Type) {
@@ -439,7 +605,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onAttachImage() {
-        pickImagesLauncher.launch("image/*")
+        pickMediaLauncher.launch(
+            androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+        )
     }
 
     override fun onAttachFile() {

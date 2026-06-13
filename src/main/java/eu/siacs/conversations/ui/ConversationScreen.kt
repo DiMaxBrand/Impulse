@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -83,6 +84,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
@@ -101,6 +103,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+sealed class RecordingUiState {
+    object Idle : RecordingUiState()
+    data class Active(val elapsedMs: Long, val paused: Boolean) : RecordingUiState()
+}
+
 /** Observable state for the Compose conversation screen. */
 class ConversationScreenState {
     internal val conversation = mutableStateOf<Conversation?>(null)
@@ -112,6 +119,7 @@ class ConversationScreenState {
     internal val correcting = mutableStateOf<Message?>(null)
     internal val attachments: SnapshotStateList<eu.siacs.conversations.ui.util.Attachment> =
         mutableStateListOf()
+    val recordingState = mutableStateOf<RecordingUiState>(RecordingUiState.Idle)
 
     fun update(conversation: Conversation?, source: List<Message>) {
         this.conversation.value = conversation
@@ -149,7 +157,13 @@ interface ConversationScreenListener {
 
     fun onScrolledToBottom()
 
-    fun onRecordVoice()
+    fun onStartRecording()
+
+    fun onPauseRecording()
+
+    fun onCancelRecording()
+
+    fun onSendRecording()
 
     fun onInputChanged(text: String)
 
@@ -1002,10 +1016,10 @@ private fun MessageRow(
             listener = listener,
             modifier = Modifier
                 .fillMaxWidth()
+                .offset(y = (-4).dp)
                 .padding(
                     start = if (outgoing) 48.dp else 10.dp,
                     end = if (outgoing) 10.dp else 48.dp,
-                    bottom = 2.dp,
                 ),
         )
     }
@@ -1035,7 +1049,7 @@ private fun ReactionChips(
                 shape = RoundedCornerShape(50),
                 color =
                     if (isOurs) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    else MaterialTheme.colorScheme.secondaryContainer,
                 modifier =
                     Modifier.combinedClickable(
                         onClick = {
@@ -1048,17 +1062,17 @@ private fun ReactionChips(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                 ) {
                     Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
                     if (count > 1) {
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(3.dp))
                         Text(
                             text = count.toString(),
                             style = MaterialTheme.typography.labelMedium,
                             color =
                                 if (isOurs) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                else MaterialTheme.colorScheme.onSecondaryContainer,
                         )
                     }
                 }
@@ -1068,13 +1082,13 @@ private fun ReactionChips(
             Surface(
                 onClick = { listener.onAddReaction(message) },
                 shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
-                Text(
-                    text = "+",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                Icon(
+                    painter = painterResource(R.drawable.ic_add_reaction_24dp),
+                    contentDescription = stringResource(R.string.add_reaction),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(4.dp).size(16.dp),
                 )
             }
         }
@@ -1358,6 +1372,15 @@ private fun MessageContent(
                 text = stringResource(R.string.decryption_failed),
                 style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        message.bodyIsOnlyEmojis() && message.type != Message.TYPE_PRIVATE -> {
+            val emojiText = message.body?.trim() ?: ""
+            val scale = if (eu.siacs.conversations.utils.Emoticons.isEmoji(emojiText)) 3.0f else 2.0f
+            Text(
+                text = emojiText,
+                fontSize = (16f * scale).sp,
+                lineHeight = (16f * scale * 1.2f).sp,
             )
         }
         else -> {
@@ -1658,6 +1681,35 @@ private fun MessageContextSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
             )
+            // Show send-failure error detail at the top of the sheet
+            val errorMessage = if (message.status == Message.STATUS_SEND_FAILED) {
+                message.errorMessage
+            } else null
+            if (!errorMessage.isNullOrBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(CORNER_LARGE),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_error_24dp),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = errorMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
+            }
             actions.forEachIndexed { index, action ->
                 val top = if (index == 0) CORNER_LARGE else CORNER_SMALL
                 val bottom = if (index == actions.lastIndex) CORNER_LARGE else CORNER_SMALL
@@ -1899,8 +1951,42 @@ private fun LinkifiedMessageText(
         update = { textView ->
             textView.setTextColor(contentColor.toArgb())
             textView.setLinkTextColor(linkColor.toArgb())
-            val body =
-                android.text.SpannableStringBuilder(message.body?.trim() ?: "")
+            val rawBody = message.body?.trim() ?: ""
+            val displayName = eu.siacs.conversations.utils.UIHelper.getMessageDisplayName(message)
+            val body: android.text.SpannableStringBuilder
+            if (message.hasMeCommand() && displayName != null) {
+                val replaced = displayName + " " + rawBody.removePrefix(eu.siacs.conversations.entities.Message.ME_COMMAND)
+                body = android.text.SpannableStringBuilder(replaced)
+                body.setSpan(
+                    android.text.style.StyleSpan(android.graphics.Typeface.BOLD_ITALIC),
+                    0,
+                    displayName.length,
+                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            } else {
+                body = android.text.SpannableStringBuilder(rawBody)
+                // Private message header: "Private message to Nick: " prefix
+                if (message.isPrivateMessage()) {
+                    val prefix = if (message.status <= eu.siacs.conversations.entities.Message.STATUS_RECEIVED) {
+                        textView.context.getString(eu.siacs.conversations.R.string.private_message) + " "
+                    } else {
+                        val cp = message.counterpart
+                        textView.context.getString(eu.siacs.conversations.R.string.private_message_to,
+                            cp?.resource ?: "") + " "
+                    }
+                    body.insert(0, prefix)
+                    body.setSpan(
+                        android.text.style.ForegroundColorSpan(eu.siacs.conversations.utils.UIHelper.getColorForName(prefix)),
+                        0, prefix.length,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    body.setSpan(
+                        android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                        0, prefix.length,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+            }
             val emojiMatcher =
                 eu.siacs.conversations.utils.Emoticons.getEmojiPattern(body).matcher(body)
             while (emojiMatcher.find()) {
@@ -1911,6 +1997,26 @@ private fun LinkifiedMessageText(
                         emojiMatcher.end(),
                         android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
                     )
+                }
+            }
+            // MUC nick highlight: bold own nick in group messages
+            if (message.conversation.getMode() == eu.siacs.conversations.entities.Conversational.MODE_MULTI
+                && message.status == eu.siacs.conversations.entities.Message.STATUS_RECEIVED
+                && message.conversation is eu.siacs.conversations.entities.Conversation
+            ) {
+                val conv = message.conversation as eu.siacs.conversations.entities.Conversation
+                val nick = conv.mucOptions?.getActualNick()
+                if (!nick.isNullOrEmpty()) {
+                    val pattern = eu.siacs.conversations.services.NotificationService
+                        .generateNickHighlightPattern(nick)
+                    val matcher = pattern.matcher(body)
+                    while (matcher.find()) {
+                        body.setSpan(
+                            android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                            matcher.start(), matcher.end(),
+                            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                        )
+                    }
                 }
             }
             eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
@@ -1925,6 +2031,86 @@ private fun LinkifiedMessageText(
     )
 }
 
+@Composable
+private fun RecordingBar(
+    recording: RecordingUiState.Active,
+    listener: ConversationScreenListener,
+) {
+    val minutes = (recording.elapsedMs / 60000).toInt()
+    val seconds = ((recording.elapsedMs % 60000) / 1000).toInt()
+    val timerText = String.format("%02d:%02d", minutes, seconds)
+    val infiniteTransition = rememberInfiniteTransition(label = "recDot")
+    val dotAlpha by if (!recording.paused) {
+        infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 0.2f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(600, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+            label = "recDotAlpha",
+        )
+    } else {
+        androidx.compose.runtime.remember { mutableStateOf(0.2f) }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .height(48.dp),
+    ) {
+        IconButton(onClick = { listener.onCancelRecording() }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_delete_24dp),
+                contentDescription = stringResource(R.string.cancel),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+        Spacer(Modifier.width(4.dp))
+        Box(
+            modifier =
+                Modifier.size(10.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = dotAlpha))
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = timerText,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = { listener.onPauseRecording() }) {
+            Icon(
+                painter =
+                    painterResource(
+                        if (recording.paused) R.drawable.ic_play_arrow_24dp
+                        else R.drawable.ic_pause_24dp
+                    ),
+                contentDescription = null,
+            )
+        }
+        FilledIconButton(
+            onClick = { listener.onSendRecording() },
+            shape = RoundedCornerShape(16.dp),
+            colors =
+                IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            modifier = Modifier.size(48.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_send_24dp),
+                contentDescription = stringResource(R.string.send_message),
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
@@ -1935,6 +2121,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     val hasText = text.isNotBlank()
     val correcting = state.correcting.value != null
     val hasAttachments = state.attachments.isNotEmpty()
+    val recording = state.recordingState.value
 
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column {
@@ -1942,6 +2129,9 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         if (hasAttachments) {
             AttachmentPreviewStrip(state)
         }
+        if (recording is RecordingUiState.Active) {
+            RecordingBar(recording, listener)
+        } else {
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier =
@@ -2033,7 +2223,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 onClick = {
                     when {
                         hasAttachments -> listener.onCommitAttachments()
-                        showMic -> listener.onRecordVoice()
+                        showMic -> listener.onStartRecording()
                         hasText -> listener.onSendTextMessage(text.trim())
                     }
                 },
@@ -2070,6 +2260,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 )
             }
         }
+        } // end else (not recording)
         }
     }
 }
