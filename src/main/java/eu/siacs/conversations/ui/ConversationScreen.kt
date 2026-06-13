@@ -1340,6 +1340,27 @@ private fun MessageContent(
                 label = UIHelper.getMessagePreview(context, message).first.toString(),
             )
         }
+        message.encryption == Message.ENCRYPTION_AXOLOTL_NOT_FOR_THIS_DEVICE -> {
+            Text(
+                text = stringResource(R.string.not_encrypted_for_this_device),
+                style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        message.encryption == Message.ENCRYPTION_AXOLOTL_FAILED -> {
+            Text(
+                text = stringResource(R.string.omemo_decryption_failed),
+                style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        message.encryption == Message.ENCRYPTION_DECRYPTION_FAILED -> {
+            Text(
+                text = stringResource(R.string.decryption_failed),
+                style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         else -> {
             LinkifiedMessageText(
                 message = message,

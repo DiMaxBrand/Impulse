@@ -164,6 +164,23 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         ) {
             state.setInput(text)
         }
+        val sharedUris: List<Uri> = run {
+            @Suppress("DEPRECATION")
+            val list = extras.getParcelableArrayList<Uri>(Intent.EXTRA_STREAM)
+            if (!list.isNullOrEmpty()) list
+            else {
+                @Suppress("DEPRECATION")
+                listOfNotNull(extras.getParcelable<Uri>(Intent.EXTRA_STREAM))
+            }
+        }
+        if (sharedUris.isNotEmpty()) {
+            val mimeType = extras.getString(ConversationsActivity.EXTRA_TYPE)
+            stageUris(
+                sharedUris,
+                if (mimeType?.startsWith("image/") == true) Attachment.Type.IMAGE
+                else Attachment.Type.FILE,
+            )
+        }
         val nick = extras.getString(ConversationsActivity.EXTRA_NICK)
         if (!nick.isNullOrEmpty()) {
             if (extras.getBoolean(ConversationsActivity.EXTRA_IS_PRIVATE_MESSAGE, false)) {
