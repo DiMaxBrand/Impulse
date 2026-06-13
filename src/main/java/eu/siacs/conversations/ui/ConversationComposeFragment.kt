@@ -16,11 +16,13 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import eu.siacs.conversations.Config
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
+import eu.siacs.conversations.utils.Emoticons
 import eu.siacs.conversations.services.CallIntegrationConnectionService
 import eu.siacs.conversations.services.XmppConnectionService
 import eu.siacs.conversations.ui.interfaces.OnConversationRead
@@ -696,6 +698,34 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     override fun onArchiveConversation() {
         val c = conversation ?: return
         getXmppConnectionService()?.archiveConversation(c)
+    }
+
+    override fun onSendReactions(message: Message, reactions: Set<String>) {
+        val activity = activity as? XmppActivity ?: return
+        activity.sendReactions(message, reactions)
+    }
+
+    override fun onAddReaction(message: Message) {
+        val activity = activity as? XmppActivity ?: return
+        activity.addReaction(message) { reactions ->
+            activity.sendReactions(message, reactions.toSet())
+        }
+    }
+
+    override fun onShowReactionDetails(message: Message, emoji: String) {
+        val ctx = context ?: return
+        val normalized = Emoticons.normalizeToVS16(emoji)
+        val reactions = message.getReactions().filter { it.normalizedReaction() == normalized }
+        val isMuc = message.conversation.getMode() == Conversational.MODE_MULTI
+        val names = reactions.map { r ->
+            if (isMuc) r.from?.getResource() ?: "?"
+            else r.from?.asBareJid()?.toString() ?: "?"
+        }.toTypedArray()
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(emoji)
+            .setItems(names, null)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     companion object {

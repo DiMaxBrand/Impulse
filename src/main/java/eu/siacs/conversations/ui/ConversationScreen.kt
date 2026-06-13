@@ -87,10 +87,12 @@ import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
+import eu.siacs.conversations.entities.Reaction
 import eu.siacs.conversations.entities.Transferable
 import eu.siacs.conversations.ui.adapter.MessageAdapter
 import eu.siacs.conversations.utils.MessageUtils
 import eu.siacs.conversations.utils.UIHelper
+import im.conversations.android.xmpp.model.reactions.Restrictions
 import im.conversations.android.xmpp.model.stanza.Presence
 import im.conversations.android.xmpp.model.state.Composing
 import eu.siacs.conversations.xmpp.manager.ChatStateManager
@@ -171,6 +173,10 @@ interface ConversationScreenListener {
     fun onBlockContact()
 
     fun onArchiveConversation()
+
+    fun onSendReactions(message: Message, reactions: Set<String>)
+    fun onAddReaction(message: Message)
+    fun onShowReactionDetails(message: Message, emoji: String)
 }
 
 object ConversationScreenHelper {
@@ -957,37 +963,122 @@ private fun MessageRow(
     // The tail of a group's last bubble pokes into the screen margin so bubble bodies stay
     // aligned with the grouped bubbles above.
     val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(
-                    start = if (outgoing) 48.dp else 12.dp - tailInset,
-                    end = if (outgoing) 12.dp - tailInset else 48.dp,
-                    top = if (item.firstOfGroup) 6.dp else 1.dp,
-                    bottom = 1.dp,
-                )
-                .graphicsLayer {
-                    scaleX = pop.value
-                    scaleY = pop.value
-                    transformOrigin =
-                        androidx.compose.ui.graphics.TransformOrigin(
-                            if (outgoing) 1f else 0f,
-                            1f,
-                        )
-                },
-        horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
-    ) {
-        MessageBubble(
-            item = item,
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = if (outgoing) 48.dp else 12.dp - tailInset,
+                        end = if (outgoing) 12.dp - tailInset else 48.dp,
+                        top = if (item.firstOfGroup) 6.dp else 1.dp,
+                        bottom = 1.dp,
+                    )
+                    .graphicsLayer {
+                        scaleX = pop.value
+                        scaleY = pop.value
+                        transformOrigin =
+                            androidx.compose.ui.graphics.TransformOrigin(
+                                if (outgoing) 1f else 0f,
+                                1f,
+                            )
+                    },
+            horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
+        ) {
+            MessageBubble(
+                item = item,
+                outgoing = outgoing,
+                highlighted = highlighted,
+                revision = revision,
+                listener = listener,
+                onLongPress = onLongPress,
+                resolveReply = resolveReply,
+                onReplyCardClick = onReplyCardClick,
+            )
+        }
+        ReactionChips(
+            message = message,
             outgoing = outgoing,
-            highlighted = highlighted,
             revision = revision,
             listener = listener,
-            onLongPress = onLongPress,
-            resolveReply = resolveReply,
-            onReplyCardClick = onReplyCardClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = if (outgoing) 48.dp else 10.dp,
+                    end = if (outgoing) 10.dp else 48.dp,
+                    bottom = 2.dp,
+                ),
         )
+    }
+}
+
+@Composable
+private fun ReactionChips(
+    message: Message,
+    outgoing: Boolean,
+    @Suppress("UNUSED_PARAMETER") revision: Int,
+    listener: ConversationScreenListener,
+    modifier: Modifier = Modifier,
+) {
+    val aggregated = message.getAggregatedReactions()
+    val canAdd = !outgoing && Restrictions.reactionsPerUserRemaining(message)
+    if (aggregated.reactions.isEmpty() && !canAdd) return
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp, if (outgoing) Alignment.End else Alignment.Start),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        aggregated.reactions.forEach { entry ->
+            val emoji = entry.key
+            val count = entry.value
+            val isOurs = emoji in aggregated.ourReactions
+            Surface(
+                shape = RoundedCornerShape(50),
+                color =
+                    if (isOurs) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier =
+                    Modifier.combinedClickable(
+                        onClick = {
+                            val next = aggregated.ourReactions.toMutableSet()
+                            if (isOurs) next.remove(emoji) else next.add(emoji)
+                            listener.onSendReactions(message, next)
+                        },
+                        onLongClick = { listener.onShowReactionDetails(message, emoji) },
+                    ),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
+                    if (count > 1) {
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = count.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color =
+                                if (isOurs) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        if (canAdd) {
+            Surface(
+                onClick = { listener.onAddReaction(message) },
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                Text(
+                    text = "+",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
     }
 }
 
@@ -1524,6 +1615,16 @@ private fun MessageContextSheet(
                     stringResource(R.string.download_x_file, fileDescription),
                 ) {
                     listener.onDownloadMessage(message)
+                }
+            )
+        }
+        if (message.status != Message.STATUS_SEND_FAILED
+            && !message.isDeleted
+            && Restrictions.reactionsPerUserRemaining(message)
+        ) {
+            add(
+                SheetAction(R.drawable.ic_add_reaction_24dp, stringResource(R.string.add_reaction)) {
+                    listener.onAddReaction(message)
                 }
             )
         }
