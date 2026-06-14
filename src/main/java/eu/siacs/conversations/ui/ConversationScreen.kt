@@ -1987,10 +1987,12 @@ private fun LinkifiedMessageText(
     onLongPress: () -> Unit,
 ) {
     val linkColor = MaterialTheme.colorScheme.primary
+    val xmppBg = MaterialTheme.colorScheme.tertiaryContainer
+    val xmppFg = MaterialTheme.colorScheme.onTertiaryContainer
     val context = LocalContext.current
     val msgKey = message.getUuid() ?: System.identityHashCode(message)
-    val annotated = remember(msgKey, revision, contentColor.value, linkColor.value) {
-        buildAnnotatedBody(context, message, contentColor, linkColor)
+    val annotated = remember(msgKey, revision, contentColor.value, linkColor.value, xmppBg.value, xmppFg.value) {
+        buildAnnotatedBody(context, message, contentColor, linkColor, xmppBg, xmppFg)
     }
     androidx.compose.foundation.text.BasicText(
         text = annotated,
@@ -2009,6 +2011,8 @@ private fun buildAnnotatedBody(
     message: Message,
     contentColor: androidx.compose.ui.graphics.Color,
     linkColor: androidx.compose.ui.graphics.Color,
+    xmppBg: androidx.compose.ui.graphics.Color,
+    xmppFg: androidx.compose.ui.graphics.Color,
 ): androidx.compose.ui.text.AnnotatedString {
     val rawBody = message.body?.trim() ?: ""
     return try {
@@ -2073,7 +2077,7 @@ private fun buildAnnotatedBody(
         }
         eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
         de.gultsch.common.Linkify.addLinks(body)
-        spannableToAnnotated(body, linkColor, context)
+        spannableToAnnotated(body, linkColor, xmppBg, xmppFg, context)
     } catch (_: Exception) {
         androidx.compose.ui.text.AnnotatedString(rawBody)
     }
@@ -2082,6 +2086,8 @@ private fun buildAnnotatedBody(
 private fun spannableToAnnotated(
     spannable: android.text.SpannableStringBuilder,
     linkColor: androidx.compose.ui.graphics.Color,
+    xmppBg: androidx.compose.ui.graphics.Color,
+    xmppFg: androidx.compose.ui.graphics.Color,
     context: android.content.Context,
 ): androidx.compose.ui.text.AnnotatedString {
     return androidx.compose.ui.text.buildAnnotatedString {
@@ -2119,22 +2125,26 @@ private fun spannableToAnnotated(
                     addStyle(androidx.compose.ui.text.SpanStyle(fontSize = (16f * span.sizeChange).sp), start, end)
                 is android.text.style.URLSpan -> {
                     val url = span.url
-                    addStyle(
+                    val isXmpp = url.startsWith("xmpp:")
+                    val baseStyle = if (isXmpp) {
+                        // XMPP URIs get chip-like styling: tertiary container background
+                        // signals "this opens inside the app" vs a browser link.
+                        androidx.compose.ui.text.SpanStyle(
+                            color = xmppFg,
+                            background = xmppBg,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    } else {
                         androidx.compose.ui.text.SpanStyle(
                             color = linkColor,
                             textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
-                        ),
-                        start, end,
-                    )
+                        )
+                    }
+                    addStyle(baseStyle, start, end)
                     addLink(
                         androidx.compose.ui.text.LinkAnnotation.Clickable(
                             tag = url,
-                            styles = androidx.compose.ui.text.TextLinkStyles(
-                                style = androidx.compose.ui.text.SpanStyle(
-                                    color = linkColor,
-                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
-                                ),
-                            ),
+                            styles = androidx.compose.ui.text.TextLinkStyles(style = baseStyle),
                             linkInteractionListener = { openUrl(context, url) },
                         ),
                         start, end,
