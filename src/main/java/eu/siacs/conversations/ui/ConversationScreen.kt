@@ -2005,12 +2005,11 @@ private fun LinkifiedMessageText(
                 movementMethod =
                     eu.siacs.conversations.ui.widget.ClickableMovementMethod.getInstance()
                 autoLinkMask = 0
-                // Never let the body scroll. A pooled TextView can retain a non-zero
-                // scrollY from a previous (taller) slot; with a movementMethod installed
-                // the view is scrollable, so that stale offset pushes the first line out of
-                // the viewport — the "first https:// line vanishes, blank gap at bottom" bug.
-                // The bubble is wrap_content and shows the full body, so scrolling is never
-                // wanted here.
+                // Pre-seed raw body so the view measures with the correct height from the
+                // first layout pass. update() may run after layout via SideEffect; without
+                // this seed, the factory-fresh view measures as 0-height and the layout is
+                // committed blank before update() ever fires.
+                text = message.body?.trim() ?: ""
                 isVerticalScrollBarEnabled = false
                 setScroller(null)
             }
