@@ -1028,7 +1028,16 @@ private fun MessageRow(
     // The tail of a group's last bubble pokes into the screen margin so bubble bodies stay
     // aligned with the grouped bubbles above.
     val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = {},
+                onLongClick = { onLongPress(message) },
+                indication = null,
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+            ),
+    ) {
         Row(
             modifier =
                 Modifier
@@ -1361,7 +1370,10 @@ private fun MessageContent(
                         modifier =
                             Modifier.widthIn(max = 280.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable { listener.onOpenMessage(message) },
+                                .combinedClickable(
+                                    onClick = { listener.onOpenMessage(message) },
+                                    onLongClick = onLongPress,
+                                ),
                     )
                 } else {
                     FileRow(
