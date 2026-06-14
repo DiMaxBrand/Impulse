@@ -729,11 +729,28 @@ private fun MessageList(
                 item(key = "typing-indicator") { TypingBubble(modifier = Modifier.animateItem()) }
             }
             itemsIndexed(items, key = { _, item -> item.key }) { index, item ->
+                // All three animateItem specs are null to prevent intermittent blank bubbles.
+                //
                 // fadeInSpec/fadeOutSpec = null: animateItem() triggers enter-fade whenever a slot
                 // re-enters the composition window (scroll back after leaving lookahead range).
-                // That renders items at alpha≈0 for ~300 ms — visually blank. Disable fade; keep
-                // placement so bubbles shift smoothly when new messages arrive.
-                val itemModifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
+                // That renders items at alpha≈0 for ~300 ms — visually blank.
+                //
+                // placementSpec = null: the default placement spring animates an item from an
+                // off-screen offset to its final position over several frames. For items that
+                // contain an AndroidView (LinkifiedMessageText), the embedded TextView is created
+                // fresh by the key()-wrapped factory during those same frames but hasn't been
+                // through Android's measure/layout pass yet — its RenderNode has no valid
+                // dimensions. Whether the RenderThread draws before or after the View layout pass
+                // completes is a VSYNC race: the same message can appear blank on one scroll and
+                // fully visible on the next. Removing the placement spring eliminates the race
+                // window entirely. New messages still appear naturally at the bottom because the
+                // LaunchedEffect(newestKey) pins the list there; placement animation is not needed
+                // for the normal bottom-pinned conversation flow.
+                val itemModifier = Modifier.animateItem(
+                    fadeInSpec = null,
+                    placementSpec = null,
+                    fadeOutSpec = null,
+                )
                 when (item) {
                     is ChatItem.DatePill ->
                         DatePill(timestamp = item.timestamp, modifier = itemModifier)
@@ -1964,6 +1981,23 @@ private fun LinkifiedMessageText(
     onLongPress: () -> Unit,
 ) {
     val linkColor = MaterialTheme.colorScheme.primary
+    // ROOT CAUSE of the blank-bubble / vanishing-first-line bug:
+    //
+    // Compose 1.7+ LazyColumn parks scrolled-off items in a *reusable-composition pool* and
+    // later reactivates them for a different message. The AndroidView's TextView is recycled with
+    // that pool. On reactivation, the AndroidViewHolder restores the node's previously recorded
+    // measured size and only re-measures the embedded view if its Compose *constraints* change.
+    // Two short bodies (or two URLs) routinely resolve to the SAME bubble/content width, so the
+    // constraints are identical, the holder skips re-measure, TextView.onMeasure never runs, and
+    // the RenderNode keeps the previous occupant's pixels — or, after onReset cleared the text,
+    // nothing at all (blank). requestLayout()/invalidate()/scrollTo from inside update() can't fix
+    // this: at apply time the holder is mid-reactivation and the request is coalesced away. The
+    // damage is progressive because each scroll cycle recycles more views into the pool.
+    //
+    // Fix: give the subtree a per-message composition identity via key(uuid). A different message
+    // can no longer reuse a previous message's TextView; it gets a fresh one (factory re-runs),
+    // which has no stale RenderNode and no inherited scrollY. Both symptoms disappear at the source.
+    androidx.compose.runtime.key(message.getUuid()) {
     androidx.compose.ui.viewinterop.AndroidView(
         factory = { ctx ->
             android.widget.TextView(ctx).apply {
@@ -2067,32 +2101,26 @@ private fun LinkifiedMessageText(
             }
         },
     )
+    }
 }
 
 /**
- * Sets the body on a TextView that lives inside a LazyColumn (and is therefore pooled and
- * recycled across slots by AndroidView), in a way that survives Android's measurement cache.
+ * Sets the body on the body TextView. The per-message key() wrapper around the AndroidView is the
+ * actual fix for the blank-bubble / vanishing-first-line bug (see LinkifiedMessageText): it stops
+ * one message's TextView from being recycled for another, so there is no stale RenderNode or
+ * inherited scrollY to begin with.
  *
- * Root cause of the "blank bubble / vanishing first line" bug:
- * When Compose hands a pooled TextView to a new slot, it re-measures it with the SAME width
- * MeasureSpec it was last measured with. [TextView.setText] funnels through
- * `checkForRelayout()`, which — for a width-unchanged view — frequently calls only
- * `invalidate()` instead of `requestLayout()`. Without `requestLayout()` the view keeps the
- * `PFLAG_FORCE_LAYOUT` flag clear, so `View.measure()` short-circuits via its measure cache and
- * `onMeasure`/`onLayout` never run again. The recycled RenderNode is therefore never repainted
- * with the new text's Layout: correct bubble width (reused measurement) but stale/blank content,
- * worsening as more views get recycled while scrolling.
- *
- * Forcing `requestLayout()` (which sets `PFLAG_FORCE_LAYOUT`) guarantees a real re-measure and
- * re-layout, rebuilding the text Layout for the pooled view. We also pin `scrollY = 0` so a
- * stale scroll offset inherited from a previous slot can never hide the first line.
+ * This helper keeps two cheap safeguards for the rare case where the view is still measured against
+ * an identical cached MeasureSpec: forceLayout() unconditionally sets PFLAG_FORCE_LAYOUT (unlike
+ * requestLayout(), which can be coalesced away by an already-pending layout pass), guaranteeing the
+ * next measure pass rebuilds the text Layout; scrollTo(0, 0) pins the first line into view.
  */
 private fun android.widget.TextView.applyPooledBody(body: CharSequence) {
     // BufferType.SPANNABLE keeps the spans (links, styling, emoji sizing) intact.
     setText(body, android.widget.TextView.BufferType.SPANNABLE)
     scrollTo(0, 0)
-    // Defeat View's measurement cache for recycled views: without an explicit relayout request
-    // Compose may reuse the cached measurement and never repaint the new text.
+    // forceLayout() cannot be swallowed by a pending pass the way requestLayout() can.
+    forceLayout()
     requestLayout()
     invalidate()
 }
