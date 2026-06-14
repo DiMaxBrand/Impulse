@@ -1971,19 +1971,21 @@ private fun LinkifiedMessageText(
                 movementMethod =
                     eu.siacs.conversations.ui.widget.ClickableMovementMethod.getInstance()
                 autoLinkMask = 0
-                text = message.body?.trim() ?: ""
+                // Never let the body scroll. A pooled TextView can retain a non-zero
+                // scrollY from a previous (taller) slot; with a movementMethod installed
+                // the view is scrollable, so that stale offset pushes the first line out of
+                // the viewport — the "first https:// line vanishes, blank gap at bottom" bug.
+                // The bubble is wrap_content and shows the full body, so scrolling is never
+                // wanted here.
+                isVerticalScrollBarEnabled = false
+                setScroller(null)
             }
         },
-        onReset = { textView ->
-            // Compose 1.7+ pools AndroidView instances inside LazyList. onReset fires when a
-            // pooled view is assigned to a different slot, BEFORE update() runs. Without this,
-            // the recycled view shows stale text/spans/scroll from the previous slot.
-            textView.text = ""
-            textView.scrollTo(0, 0)
-        },
         update = { textView ->
+            // Read `revision` so the update block re-runs when the message body is edited in
+            // place (correction) without its LazyColumn key changing.
+            @Suppress("UNUSED_EXPRESSION") revision
             val rawBody = message.body?.trim() ?: ""
-            textView.scrollTo(0, 0)
             textView.setTextColor(contentColor.toArgb())
             textView.setLinkTextColor(linkColor.toArgb())
             textView.setOnLongClickListener {
@@ -2059,12 +2061,40 @@ private fun LinkifiedMessageText(
                 eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
                 de.gultsch.common.Linkify.addLinks(body)
                 eu.siacs.conversations.ui.text.FixedURLSpan.fix(body)
-                textView.text = body
+                textView.applyPooledBody(body)
             } catch (_: Exception) {
-                textView.text = android.text.SpannableStringBuilder(rawBody)
+                textView.applyPooledBody(android.text.SpannableStringBuilder(rawBody))
             }
         },
     )
+}
+
+/**
+ * Sets the body on a TextView that lives inside a LazyColumn (and is therefore pooled and
+ * recycled across slots by AndroidView), in a way that survives Android's measurement cache.
+ *
+ * Root cause of the "blank bubble / vanishing first line" bug:
+ * When Compose hands a pooled TextView to a new slot, it re-measures it with the SAME width
+ * MeasureSpec it was last measured with. [TextView.setText] funnels through
+ * `checkForRelayout()`, which — for a width-unchanged view — frequently calls only
+ * `invalidate()` instead of `requestLayout()`. Without `requestLayout()` the view keeps the
+ * `PFLAG_FORCE_LAYOUT` flag clear, so `View.measure()` short-circuits via its measure cache and
+ * `onMeasure`/`onLayout` never run again. The recycled RenderNode is therefore never repainted
+ * with the new text's Layout: correct bubble width (reused measurement) but stale/blank content,
+ * worsening as more views get recycled while scrolling.
+ *
+ * Forcing `requestLayout()` (which sets `PFLAG_FORCE_LAYOUT`) guarantees a real re-measure and
+ * re-layout, rebuilding the text Layout for the pooled view. We also pin `scrollY = 0` so a
+ * stale scroll offset inherited from a previous slot can never hide the first line.
+ */
+private fun android.widget.TextView.applyPooledBody(body: CharSequence) {
+    // BufferType.SPANNABLE keeps the spans (links, styling, emoji sizing) intact.
+    setText(body, android.widget.TextView.BufferType.SPANNABLE)
+    scrollTo(0, 0)
+    // Defeat View's measurement cache for recycled views: without an explicit relayout request
+    // Compose may reuse the cached measurement and never repaint the new text.
+    requestLayout()
+    invalidate()
 }
 
 @Composable
