@@ -2095,35 +2095,17 @@ private fun LinkifiedMessageText(
                 eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
                 de.gultsch.common.Linkify.addLinks(body)
                 eu.siacs.conversations.ui.text.FixedURLSpan.fix(body)
-                textView.applyPooledBody(body)
+                textView.text = body
+                textView.scrollTo(0, 0)
             } catch (_: Exception) {
-                textView.applyPooledBody(android.text.SpannableStringBuilder(rawBody))
+                textView.text = android.text.SpannableStringBuilder(rawBody)
+                textView.scrollTo(0, 0)
             }
         },
     )
     }
 }
 
-/**
- * Sets the body on the body TextView. The per-message key() wrapper around the AndroidView is the
- * actual fix for the blank-bubble / vanishing-first-line bug (see LinkifiedMessageText): it stops
- * one message's TextView from being recycled for another, so there is no stale RenderNode or
- * inherited scrollY to begin with.
- *
- * This helper keeps two cheap safeguards for the rare case where the view is still measured against
- * an identical cached MeasureSpec: forceLayout() unconditionally sets PFLAG_FORCE_LAYOUT (unlike
- * requestLayout(), which can be coalesced away by an already-pending layout pass), guaranteeing the
- * next measure pass rebuilds the text Layout; scrollTo(0, 0) pins the first line into view.
- */
-private fun android.widget.TextView.applyPooledBody(body: CharSequence) {
-    // BufferType.SPANNABLE keeps the spans (links, styling, emoji sizing) intact.
-    setText(body, android.widget.TextView.BufferType.SPANNABLE)
-    scrollTo(0, 0)
-    // forceLayout() cannot be swallowed by a pending pass the way requestLayout() can.
-    forceLayout()
-    requestLayout()
-    invalidate()
-}
 
 @Composable
 private fun RecordingBar(
