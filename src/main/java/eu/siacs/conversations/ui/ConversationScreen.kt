@@ -89,7 +89,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -1969,10 +1979,6 @@ private fun AttachmentPreviewStrip(state: ConversationScreenState) {
     }
 }
 
-/**
- * Message body rendered by a real TextView so the old screen's linkification pipeline applies:
- * web links, geo and XMPP URIs (handled in-app by [FixedURLSpan]), styling and big emoji.
- */
 @Composable
 private fun LinkifiedMessageText(
     message: Message,
@@ -1981,127 +1987,202 @@ private fun LinkifiedMessageText(
     onLongPress: () -> Unit,
 ) {
     val linkColor = MaterialTheme.colorScheme.primary
-    // ROOT CAUSE of the blank-bubble / vanishing-first-line bug:
-    //
-    // Compose 1.7+ LazyColumn parks scrolled-off items in a *reusable-composition pool* and
-    // later reactivates them for a different message. The AndroidView's TextView is recycled with
-    // that pool. On reactivation, the AndroidViewHolder restores the node's previously recorded
-    // measured size and only re-measures the embedded view if its Compose *constraints* change.
-    // Two short bodies (or two URLs) routinely resolve to the SAME bubble/content width, so the
-    // constraints are identical, the holder skips re-measure, TextView.onMeasure never runs, and
-    // the RenderNode keeps the previous occupant's pixels — or, after onReset cleared the text,
-    // nothing at all (blank). requestLayout()/invalidate()/scrollTo from inside update() can't fix
-    // this: at apply time the holder is mid-reactivation and the request is coalesced away. The
-    // damage is progressive because each scroll cycle recycles more views into the pool.
-    //
-    // Fix: give the subtree a per-message composition identity via key(uuid). A different message
-    // can no longer reuse a previous message's TextView; it gets a fresh one (factory re-runs),
-    // which has no stale RenderNode and no inherited scrollY. Both symptoms disappear at the source.
-    androidx.compose.runtime.key(message.getUuid()) {
-    androidx.compose.ui.viewinterop.AndroidView(
-        factory = { ctx ->
-            android.widget.TextView(ctx).apply {
-                textSize = 16f
-                movementMethod =
-                    eu.siacs.conversations.ui.widget.ClickableMovementMethod.getInstance()
-                autoLinkMask = 0
-                // Pre-seed raw body so the view measures with the correct height from the
-                // first layout pass. update() may run after layout via SideEffect; without
-                // this seed, the factory-fresh view measures as 0-height and the layout is
-                // committed blank before update() ever fires.
-                text = message.body?.trim() ?: ""
-                isVerticalScrollBarEnabled = false
-                setScroller(null)
-            }
-        },
-        update = { textView ->
-            // Read `revision` so the update block re-runs when the message body is edited in
-            // place (correction) without its LazyColumn key changing.
-            @Suppress("UNUSED_EXPRESSION") revision
-            val rawBody = message.body?.trim() ?: ""
-            textView.setTextColor(contentColor.toArgb())
-            textView.setLinkTextColor(linkColor.toArgb())
-            textView.setOnLongClickListener {
-                onLongPress()
-                true
-            }
-            try {
-                val displayName = eu.siacs.conversations.utils.UIHelper.getMessageDisplayName(message)
-                val body: android.text.SpannableStringBuilder
-                if (message.hasMeCommand() && displayName != null) {
-                    val replaced = displayName + " " + rawBody.removePrefix(eu.siacs.conversations.entities.Message.ME_COMMAND)
-                    body = android.text.SpannableStringBuilder(replaced)
-                    body.setSpan(
-                        android.text.style.StyleSpan(android.graphics.Typeface.BOLD_ITALIC),
-                        0,
-                        displayName.length,
-                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                    )
-                } else {
-                    body = android.text.SpannableStringBuilder(rawBody)
-                    if (message.isPrivateMessage()) {
-                        val prefix = if (message.status <= eu.siacs.conversations.entities.Message.STATUS_RECEIVED) {
-                            textView.context.getString(eu.siacs.conversations.R.string.private_message) + " "
-                        } else {
-                            val cp = message.counterpart
-                            textView.context.getString(eu.siacs.conversations.R.string.private_message_to,
-                                cp?.resource ?: "") + " "
-                        }
-                        body.insert(0, prefix)
-                        body.setSpan(
-                            android.text.style.ForegroundColorSpan(eu.siacs.conversations.utils.UIHelper.getColorForName(prefix)),
-                            0, prefix.length,
-                            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                        )
-                        body.setSpan(
-                            android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
-                            0, prefix.length,
-                            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                        )
-                    }
-                }
-                val emojiMatcher =
-                    eu.siacs.conversations.utils.Emoticons.getEmojiPattern(body).matcher(body)
-                while (emojiMatcher.find()) {
-                    if (emojiMatcher.start() < emojiMatcher.end()) {
-                        body.setSpan(
-                            android.text.style.RelativeSizeSpan(1.2f),
-                            emojiMatcher.start(),
-                            emojiMatcher.end(),
-                            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                        )
-                    }
-                }
-                if (message.conversation.getMode() == eu.siacs.conversations.entities.Conversational.MODE_MULTI
-                    && message.status == eu.siacs.conversations.entities.Message.STATUS_RECEIVED
-                    && message.conversation is eu.siacs.conversations.entities.Conversation
-                ) {
-                    val conv = message.conversation as eu.siacs.conversations.entities.Conversation
-                    val nick = conv.mucOptions?.getActualNick()
-                    if (!nick.isNullOrEmpty()) {
-                        val pattern = eu.siacs.conversations.services.NotificationService
-                            .generateNickHighlightPattern(nick)
-                        val matcher = pattern.matcher(body)
-                        while (matcher.find()) {
-                            body.setSpan(
-                                android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
-                                matcher.start(), matcher.end(),
-                                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                            )
-                        }
-                    }
-                }
-                eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
-                de.gultsch.common.Linkify.addLinks(body)
-                eu.siacs.conversations.ui.text.FixedURLSpan.fix(body)
-                textView.text = body
-                textView.scrollTo(0, 0)
-            } catch (_: Exception) {
-                textView.text = android.text.SpannableStringBuilder(rawBody)
-                textView.scrollTo(0, 0)
-            }
+    val context = LocalContext.current
+    val msgKey = message.getUuid() ?: System.identityHashCode(message)
+    val annotated = remember(msgKey, revision, contentColor.value, linkColor.value) {
+        buildAnnotatedBody(context, message, contentColor, linkColor)
+    }
+    androidx.compose.foundation.text.BasicText(
+        text = annotated,
+        style = androidx.compose.ui.text.TextStyle(
+            fontSize = 16.sp,
+            color = contentColor,
+        ),
+        modifier = Modifier.pointerInput(onLongPress) {
+            detectTapGestures(onLongPress = { onLongPress() })
         },
     )
+}
+
+private fun buildAnnotatedBody(
+    context: android.content.Context,
+    message: Message,
+    contentColor: androidx.compose.ui.graphics.Color,
+    linkColor: androidx.compose.ui.graphics.Color,
+): androidx.compose.ui.text.AnnotatedString {
+    val rawBody = message.body?.trim() ?: ""
+    return try {
+        val body = android.text.SpannableStringBuilder()
+        val displayName = eu.siacs.conversations.utils.UIHelper.getMessageDisplayName(message)
+        if (message.hasMeCommand() && displayName != null) {
+            val replaced = displayName + " " + rawBody.removePrefix(eu.siacs.conversations.entities.Message.ME_COMMAND)
+            body.append(replaced)
+            body.setSpan(
+                android.text.style.StyleSpan(android.graphics.Typeface.BOLD_ITALIC),
+                0, displayName.length,
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
+        } else {
+            body.append(rawBody)
+            if (message.isPrivateMessage()) {
+                val prefix = if (message.status <= eu.siacs.conversations.entities.Message.STATUS_RECEIVED) {
+                    context.getString(eu.siacs.conversations.R.string.private_message) + " "
+                } else {
+                    val cp = message.counterpart
+                    context.getString(eu.siacs.conversations.R.string.private_message_to, cp?.resource ?: "") + " "
+                }
+                body.insert(0, prefix)
+                body.setSpan(
+                    android.text.style.ForegroundColorSpan(eu.siacs.conversations.utils.UIHelper.getColorForName(prefix)),
+                    0, prefix.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+                body.setSpan(
+                    android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                    0, prefix.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
+        }
+        val emojiMatcher = eu.siacs.conversations.utils.Emoticons.getEmojiPattern(body).matcher(body)
+        while (emojiMatcher.find()) {
+            if (emojiMatcher.start() < emojiMatcher.end()) {
+                body.setSpan(
+                    android.text.style.RelativeSizeSpan(1.2f),
+                    emojiMatcher.start(), emojiMatcher.end(),
+                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
+        }
+        if (message.conversation.getMode() == eu.siacs.conversations.entities.Conversational.MODE_MULTI
+            && message.status == eu.siacs.conversations.entities.Message.STATUS_RECEIVED
+            && message.conversation is eu.siacs.conversations.entities.Conversation
+        ) {
+            val conv = message.conversation as eu.siacs.conversations.entities.Conversation
+            val nick = conv.mucOptions?.getActualNick()
+            if (!nick.isNullOrEmpty()) {
+                val pattern = eu.siacs.conversations.services.NotificationService
+                    .generateNickHighlightPattern(nick)
+                val matcher = pattern.matcher(body)
+                while (matcher.find()) {
+                    body.setSpan(
+                        android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                        matcher.start(), matcher.end(),
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                    )
+                }
+            }
+        }
+        eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
+        de.gultsch.common.Linkify.addLinks(body)
+        spannableToAnnotated(body, linkColor, context)
+    } catch (_: Exception) {
+        androidx.compose.ui.text.AnnotatedString(rawBody)
+    }
+}
+
+private fun spannableToAnnotated(
+    spannable: android.text.SpannableStringBuilder,
+    linkColor: androidx.compose.ui.graphics.Color,
+    context: android.content.Context,
+): androidx.compose.ui.text.AnnotatedString {
+    return androidx.compose.ui.text.buildAnnotatedString {
+        append(spannable.toString())
+        for (span in spannable.getSpans(0, spannable.length, Any::class.java)) {
+            val start = spannable.getSpanStart(span)
+            val end = spannable.getSpanEnd(span)
+            if (start < 0 || end < 0 || start >= end) continue
+            when (span) {
+                is android.text.style.StyleSpan -> {
+                    val style = when (span.style) {
+                        android.graphics.Typeface.BOLD ->
+                            androidx.compose.ui.text.SpanStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        android.graphics.Typeface.ITALIC ->
+                            androidx.compose.ui.text.SpanStyle(fontStyle = FontStyle.Italic)
+                        android.graphics.Typeface.BOLD_ITALIC ->
+                            androidx.compose.ui.text.SpanStyle(
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                fontStyle = FontStyle.Italic,
+                            )
+                        else -> null
+                    }
+                    if (style != null) addStyle(style, start, end)
+                }
+                is android.text.style.StrikethroughSpan ->
+                    addStyle(androidx.compose.ui.text.SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), start, end)
+                is android.text.style.TypefaceSpan ->
+                    if (span.family == "monospace") addStyle(
+                        androidx.compose.ui.text.SpanStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+                        start, end,
+                    )
+                is android.text.style.ForegroundColorSpan ->
+                    addStyle(androidx.compose.ui.text.SpanStyle(color = androidx.compose.ui.graphics.Color(span.foregroundColor)), start, end)
+                is android.text.style.RelativeSizeSpan ->
+                    addStyle(androidx.compose.ui.text.SpanStyle(fontSize = (16f * span.sizeChange).sp), start, end)
+                is android.text.style.URLSpan -> {
+                    val url = span.url
+                    addStyle(
+                        androidx.compose.ui.text.SpanStyle(
+                            color = linkColor,
+                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
+                        ),
+                        start, end,
+                    )
+                    addLink(
+                        androidx.compose.ui.text.LinkAnnotation.Clickable(
+                            tag = url,
+                            styles = androidx.compose.ui.text.TextLinkStyles(
+                                style = androidx.compose.ui.text.SpanStyle(
+                                    color = linkColor,
+                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
+                                ),
+                            ),
+                            linkInteractionListener = { openUrl(context, url) },
+                        ),
+                        start, end,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun openUrl(context: android.content.Context, url: String) {
+    val uri = try {
+        de.gultsch.common.MiniUri.asMiniUri(url)
+    } catch (_: Exception) {
+        return
+    }
+    val asXmpp = when {
+        uri is de.gultsch.common.MiniUri.Xmpp -> uri
+        uri is de.gultsch.common.MiniUri.Transformable && uri.transform() is de.gultsch.common.MiniUri.Xmpp ->
+            uri.transform() as de.gultsch.common.MiniUri.Xmpp
+        else -> null
+    }
+    if (asXmpp != null && asXmpp.isAddress) {
+        if (context is ConversationsActivity && context.onXmppUriClicked(asXmpp)) return
+        try {
+            context.startActivity(
+                android.content.Intent(context, eu.siacs.conversations.ui.YuriLauncherActivity::class.java)
+                    .apply { data = asXmpp.asUri() }
+            )
+        } catch (_: android.content.ActivityNotFoundException) {}
+        return
+    }
+    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+    if ("web+ap" == uri.scheme) {
+        if (intent.resolveActivity(context.packageManager) == null) {
+            val https = android.net.Uri.parse(
+                "https://${uri.authority}/${com.google.common.base.Joiner.on('/').join(uri.pathSegments)}"
+            )
+            try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, https)) } catch (_: Exception) {}
+            return
+        }
+    }
+    if ("geo" == uri.scheme) intent.setClass(context, eu.siacs.conversations.ui.ShowLocationActivity::class.java)
+    else intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_DOCUMENT
+    try {
+        context.startActivity(intent)
+    } catch (_: android.content.ActivityNotFoundException) {
+        android.widget.Toast.makeText(context, eu.siacs.conversations.R.string.no_application_found_to_open_link, android.widget.Toast.LENGTH_SHORT).show()
     }
 }
 
