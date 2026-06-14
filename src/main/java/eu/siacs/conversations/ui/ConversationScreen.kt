@@ -1971,12 +1971,19 @@ private fun LinkifiedMessageText(
                 movementMethod =
                     eu.siacs.conversations.ui.widget.ClickableMovementMethod.getInstance()
                 autoLinkMask = 0
-                // Pre-seed raw body so there is never a blank frame before update() runs.
                 text = message.body?.trim() ?: ""
             }
         },
+        onReset = { textView ->
+            // Compose 1.7+ pools AndroidView instances inside LazyList. onReset fires when a
+            // pooled view is assigned to a different slot, BEFORE update() runs. Without this,
+            // the recycled view shows stale text/spans/scroll from the previous slot.
+            textView.text = ""
+            textView.scrollTo(0, 0)
+        },
         update = { textView ->
             val rawBody = message.body?.trim() ?: ""
+            textView.scrollTo(0, 0)
             textView.setTextColor(contentColor.toArgb())
             textView.setLinkTextColor(linkColor.toArgb())
             textView.setOnLongClickListener {
