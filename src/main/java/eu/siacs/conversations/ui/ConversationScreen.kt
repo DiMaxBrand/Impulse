@@ -1875,9 +1875,8 @@ private fun MessageContextSheet(
                 })
             }
         }
-        // Correct/edit
-        val editable = conversation?.getLastEditableMessage()
-        if (editable != null && editable.getUuid() == message.getUuid()) {
+        // Correct/edit — allowed on any sent text message, not just the last one
+        if (message.isEditable && !message.isFileOrImage && !deleted) {
             add(
                 SheetAction(R.drawable.ic_edit_24dp, stringResource(R.string.correct_message)) {
                     state.replyingTo.value = null
