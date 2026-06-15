@@ -150,6 +150,7 @@ class ConversationScreenState {
     internal val pinnedMessages = mutableStateOf<List<Message>>(emptyList())
     internal val pinnedBannerVisible = mutableStateOf(false)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
+    internal val deleteTarget = mutableStateOf<Message?>(null)
 
     fun update(conversation: Conversation?, source: List<Message>) {
         this.conversation.value = conversation
@@ -234,6 +235,8 @@ interface ConversationScreenListener {
     fun onShareMessage(message: Message)
     fun onSaveFile(message: Message)
     fun onDeleteMessage(message: Message)
+    fun onDeleteForEveryone(message: Message)
+    fun onDeleteForMyself(message: Message)
     fun onCancelTransmission(message: Message)
     fun onPinMessage(message: Message)
     fun onUnpinMessage(message: Message)
@@ -372,6 +375,21 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             state = state,
             listener = listener,
             onDismiss = { menuTarget = null },
+        )
+    }
+    val deleteTarget = state.deleteTarget.value
+    if (deleteTarget != null) {
+        DeleteMessageSheet(
+            message = deleteTarget,
+            onDeleteForEveryone = {
+                state.deleteTarget.value = null
+                listener.onDeleteForEveryone(deleteTarget)
+            },
+            onDeleteForMyself = {
+                state.deleteTarget.value = null
+                listener.onDeleteForMyself(deleteTarget)
+            },
+            onDismiss = { state.deleteTarget.value = null },
         )
     }
 }
@@ -1960,7 +1978,7 @@ private fun MessageContextSheet(
             else -> stringResource(R.string.delete_message)
         }
         add(SheetAction(R.drawable.ic_delete_24dp, deleteLabel) {
-            listener.onDeleteMessage(message)
+            state.deleteTarget.value = message
         })
     }
 
@@ -2036,6 +2054,76 @@ private fun MessageContextSheet(
                         Spacer(Modifier.width(14.dp))
                         Text(text = action.label, style = MaterialTheme.typography.bodyLarge)
                     }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun DeleteMessageSheet(
+    message: Message,
+    onDeleteForEveryone: () -> Unit,
+    onDeleteForMyself: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val canRetract = message.status != Message.STATUS_RECEIVED
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                text = stringResource(R.string.delete_message_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
+            )
+            Surface(
+                onClick = onDeleteForEveryone,
+                enabled = canRetract,
+                shape = RoundedCornerShape(topStart = CORNER_LARGE, topEnd = CORNER_LARGE, bottomStart = CORNER_SMALL, bottomEnd = CORNER_SMALL),
+                color = if (canRetract) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainerLow,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_delete_24dp),
+                        contentDescription = null,
+                        tint = if (canRetract) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Text(
+                        text = stringResource(R.string.delete_for_everyone),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (canRetract) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                    )
+                }
+            }
+            Surface(
+                onClick = onDeleteForMyself,
+                shape = RoundedCornerShape(topStart = CORNER_SMALL, topEnd = CORNER_SMALL, bottomStart = CORNER_LARGE, bottomEnd = CORNER_LARGE),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_delete_24dp),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Text(
+                        text = stringResource(R.string.delete_for_myself),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
                 }
             }
             Spacer(Modifier.height(16.dp))

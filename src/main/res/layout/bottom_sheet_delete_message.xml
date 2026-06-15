@@ -1,52 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
 
-    <LinearLayout
+    <Button
+        android:id="@+id/btn_delete_everyone"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingHorizontal="24dp"
-        android:paddingTop="24dp"
-        android:paddingBottom="32dp">
+        android:text="@string/delete_for_everyone" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:text="@string/delete_message_title"
-            android:textAppearance="?textAppearanceTitleMedium" />
+    <Button
+        android:id="@+id/btn_delete_myself"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/delete_for_myself" />
 
-        <com.google.android.material.button.MaterialButtonGroup
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            style="@style/Widget.Material3.MaterialButtonGroup.Connected">
+    <Button
+        android:id="@+id/btn_cancel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/cancel"
+        style="@style/Widget.Material3.Button.TextButton" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_delete_everyone"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/delete_for_everyone" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_delete_myself"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/delete_for_myself" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_cancel"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/cancel" />
-
-        </com.google.android.material.button.MaterialButtonGroup>
-
-    </LinearLayout>
-
-</layout>
+</LinearLayout>

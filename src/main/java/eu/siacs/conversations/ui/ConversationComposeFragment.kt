@@ -977,11 +977,15 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onDeleteMessage(message: Message) {
-        DeleteMessageBottomSheet(
-            message,
-            onDeleteForEveryone = { retractMessage(message) },
-            onDeleteForMyself = { deleteMessageLocally(message) },
-        ).show(childFragmentManager, "delete_message")
+        state.deleteTarget.value = message
+    }
+
+    override fun onDeleteForEveryone(message: Message) {
+        retractMessage(message)
+    }
+
+    override fun onDeleteForMyself(message: Message) {
+        deleteMessageLocally(message)
     }
 
     private fun retractMessage(message: Message) {
