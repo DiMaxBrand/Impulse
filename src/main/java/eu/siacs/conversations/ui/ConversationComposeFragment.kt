@@ -947,9 +947,24 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onDeleteMessage(message: Message) {
+        DeleteMessageBottomSheet(
+            message,
+            onDeleteForEveryone = { retractMessage(message) },
+            onDeleteForMyself = { deleteMessageLocally(message) },
+        ).show(childFragmentManager, "delete_message")
+    }
+
+    private fun retractMessage(message: Message) {
         val service = getXmppConnectionService() ?: return
         val c = message.conversation as? Conversation ?: return
+        val packet = service.getMessageGenerator().generateRetraction(message)
+        service.sendMessagePacket(c.getAccount(), packet)
+        deleteMessageEntirely(message)
+    }
+
+    private fun deleteMessageLocally(message: Message) {
         if (message.isFileOrImage && !message.isDeleted && message.getRelativeFilePath() != null) {
+            val service = getXmppConnectionService() ?: return
             if (service.fileBackend.deleteFile(message)) {
                 message.setDeleted(true)
                 service.evictPreview(message.getUuid())
@@ -958,6 +973,12 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
             return
         }
+        deleteMessageEntirely(message)
+    }
+
+    private fun deleteMessageEntirely(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        val c = message.conversation as? Conversation ?: return
         if (message.isFileOrImage && message.getRelativeFilePath() != null) {
             service.fileBackend.deleteFile(message)
             service.evictPreview(message.getUuid())
@@ -976,12 +997,6 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         } else if (message.status != Message.STATUS_RECEIVED) {
             service.markMessage(message, Message.STATUS_SEND_FAILED, Message.ERROR_MESSAGE_CANCELLED)
         }
-    }
-
-    override fun onRetryDecryption(message: Message) {
-        message.setEncryption(Message.ENCRYPTION_PGP)
-        conversation?.getAccount()?.getPgpDecryptionService()?.decrypt(message, false)
-        refreshMessages()
     }
 
     override fun onPinMessage(message: Message) {

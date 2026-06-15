@@ -218,7 +218,6 @@ interface ConversationScreenListener {
     fun onSaveFile(message: Message)
     fun onDeleteMessage(message: Message)
     fun onCancelTransmission(message: Message)
-    fun onRetryDecryption(message: Message)
     fun onPinMessage(message: Message)
     fun onUnpinMessage(message: Message)
 }
@@ -1808,12 +1807,6 @@ private fun MessageContextSheet(
                     listener.onAddReaction(message)
                 }
             )
-        }
-        // Retry decryption
-        if (message.encryption == Message.ENCRYPTION_DECRYPTION_FAILED && !deleted) {
-            add(SheetAction(R.drawable.ic_refresh_24dp, stringResource(R.string.try_again)) {
-                listener.onRetryDecryption(message)
-            })
         }
         // Cancel in-progress upload/download
         if (cancelable) {
