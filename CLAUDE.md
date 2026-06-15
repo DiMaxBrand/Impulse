@@ -1,5 +1,7 @@
 # Impulse — Claude Code Notes
 
+> **New session?** Read `TODO.md` first — it has the current backlog.
+
 ## Versioning
 
 Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
