@@ -78,6 +78,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -237,6 +238,8 @@ interface ConversationScreenListener {
     fun onDeleteMessage(message: Message)
     fun onDeleteForEveryone(message: Message)
     fun onDeleteForMyself(message: Message)
+    fun onEditingStarted(message: Message)
+    fun onEditingStopped(message: Message)
     fun onCancelTransmission(message: Message)
     fun onPinMessage(message: Message)
     fun onUnpinMessage(message: Message)
@@ -887,6 +890,7 @@ private fun MessageList(
                             item = item,
                             isNewest = index == 0,
                             highlighted = item.key == highlightKey,
+                            isBeingEdited = state.correcting.value?.uuid == item.message.uuid,
                             revision = revision,
                             listener = listener,
                             onLongPress = onLongPress,
@@ -1116,6 +1120,7 @@ private fun MessageRow(
     item: ChatItem.Msg,
     isNewest: Boolean,
     highlighted: Boolean,
+    isBeingEdited: Boolean,
     // Message objects mutate internally (status, transfer progress); passing the revision
     // counter down defeats Compose skipping so bubbles re-render on every conversation update.
     revision: Int,
@@ -1216,6 +1221,7 @@ private fun MessageRow(
                 item = item,
                 outgoing = outgoing,
                 highlighted = highlighted,
+                isBeingEdited = isBeingEdited,
                 revision = revision,
                 listener = listener,
                 onLongPress = onLongPress,
@@ -1314,6 +1320,7 @@ private fun MessageBubble(
     item: ChatItem.Msg,
     outgoing: Boolean,
     highlighted: Boolean,
+    isBeingEdited: Boolean,
     revision: Int,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
@@ -1342,45 +1349,88 @@ private fun MessageBubble(
         }
 
     val hasTail = item.lastOfGroup
-    Surface(
-        shape =
-            rememberBubbleShape(
-                firstOfGroup = item.firstOfGroup,
-                lastOfGroup = item.lastOfGroup,
-                outgoing = outgoing,
-            ),
-        color = containerColor,
-        contentColor = contentColor,
-        modifier = Modifier.widthIn(max = if (hasTail) 320.dp + TAIL_WIDTH else 320.dp),
-    ) {
-        Column(
-            modifier =
-                Modifier.combinedClickable(
-                        onClick = { listener.onOpenMessage(message) },
-                        onLongClick = { onLongPress(message) },
-                    )
-                    .padding(
-                        start = if (hasTail && !outgoing) 12.dp + TAIL_WIDTH else 12.dp,
-                        end = if (hasTail && outgoing) 12.dp + TAIL_WIDTH else 12.dp,
-                        top = 8.dp,
-                        bottom = 8.dp,
-                    )
+    val blurRadius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isBeingEdited) 5.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.spring(),
+        label = "editingBlur",
+    )
+    Box {
+        Surface(
+            shape =
+                rememberBubbleShape(
+                    firstOfGroup = item.firstOfGroup,
+                    lastOfGroup = item.lastOfGroup,
+                    outgoing = outgoing,
+                ),
+            color = containerColor,
+            contentColor = contentColor,
+            modifier = Modifier
+                .widthIn(max = if (hasTail) 320.dp + TAIL_WIDTH else 320.dp)
+                .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
         ) {
-            val repliedToId = message.getRepliedTo()
-            if (repliedToId != null) {
-                val original = remember(repliedToId) { resolveReply(repliedToId) }
-                if (original != null) {
-                    ReplyCard(original = original, onClick = { onReplyCardClick(original) })
+            Column(
+                modifier =
+                    Modifier.combinedClickable(
+                            onClick = { listener.onOpenMessage(message) },
+                            onLongClick = { onLongPress(message) },
+                        )
+                        .padding(
+                            start = if (hasTail && !outgoing) 12.dp + TAIL_WIDTH else 12.dp,
+                            end = if (hasTail && outgoing) 12.dp + TAIL_WIDTH else 12.dp,
+                            top = 8.dp,
+                            bottom = 8.dp,
+                        )
+            ) {
+                val repliedToId = message.getRepliedTo()
+                if (repliedToId != null) {
+                    val original = remember(repliedToId) { resolveReply(repliedToId) }
+                    if (original != null) {
+                        ReplyCard(original = original, onClick = { onReplyCardClick(original) })
+                    }
+                }
+                MessageContent(
+                    message = message,
+                    revision = revision,
+                    contentColor = contentColor,
+                    onLongPress = { onLongPress(message) },
+                    listener = listener,
+                )
+                if (!isBeingEdited) {
+                    MessageFooter(message = message, outgoing = outgoing, revision = revision)
                 }
             }
-            MessageContent(
-                message = message,
-                revision = revision,
-                contentColor = contentColor,
-                onLongPress = { onLongPress(message) },
-                listener = listener,
+        }
+        // Editing indicator: rendered outside the blurred Surface so it stays crisp
+        if (isBeingEdited) {
+            val infiniteTransition = rememberInfiniteTransition(label = "editingPulse")
+            val alpha by infiniteTransition.animateFloat(
+                initialValue = 0.35f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(600),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "editingAlpha",
             )
-            MessageFooter(message = message, outgoing = outgoing, revision = revision)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 8.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_edit_24dp),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                    modifier = Modifier.size(12.dp),
+                )
+                Spacer(Modifier.width(3.dp))
+                Text(
+                    text = stringResource(R.string.editing),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                )
+            }
         }
     }
 }
@@ -1882,6 +1932,7 @@ private fun MessageContextSheet(
                     state.replyingTo.value = null
                     state.correcting.value = message
                     state.setInput(message.body ?: "")
+                    listener.onEditingStarted(message)
                 }
             )
         }
