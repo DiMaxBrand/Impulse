@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- M3 Expressive press morph for the inner corners between connected
+     buttons; mirrors m3expressive_connected_buttons_inner_corner_size_state_list
+     but without its state_checkable requirement, so non-checkable action
+     buttons morph too. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:state_pressed="true"
+        app:cornerSize="?attr/shapeCornerSizeExtraSmall" />
+    <item app:cornerSize="?attr/shapeCornerSizeSmall" />
+</selector>

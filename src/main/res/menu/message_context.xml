@@ -87,7 +87,7 @@
         android:title="@string/save"
         android:visible="false" />
     <item
-        android:id="@+id/delete_file"
-        android:title="@string/delete_x_file"
+        android:id="@+id/delete_message"
+        android:title="@string/delete_message"
         android:visible="false" />
 </menu>

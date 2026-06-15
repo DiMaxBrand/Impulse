@@ -69,7 +69,12 @@ class ModerationManager(
     fun handleRetraction(message: Message) {
         val account = getAccount()
         val from = Jid.Invalid.getNullForInvalid(message.getFrom())
-        if (from == null || from.isFullJid() || message.getType() != Message.Type.GROUPCHAT) {
+        if (from == null) return
+        if (message.getType() == Message.Type.CHAT) {
+            handleDirectRetraction(message, from)
+            return
+        }
+        if (from.isFullJid() || message.getType() != Message.Type.GROUPCHAT) {
             Log.d(
                 Config.LOGTAG,
                 "received retraction from $from but retractions are only supported in MUC"
@@ -117,6 +122,34 @@ class ModerationManager(
             deleteAssociatedFile(retractedMessage)
         }
         this.service.updateConversationUi()
+    }
+
+    private fun handleDirectRetraction(message: Message, from: Jid) {
+        val retraction = message.getExtension(Retract::class.java) ?: return
+        val stanzaId = retraction.getId()
+        if (stanzaId == null) {
+            Log.d(Config.LOGTAG, "1:1 retraction was missing stanza-id")
+            return
+        }
+        val conversation = service.find(getAccount(), from.asBareJid())
+        if (conversation == null) {
+            Log.d(Config.LOGTAG, "received 1:1 retraction but conversation with ${from.asBareJid()} not found")
+            return
+        }
+        val inMemoryMessage = conversation.findMessageWithUuidOrRemoteId(stanzaId)
+        val retractedMessage = inMemoryMessage
+            ?: getDatabase().getMessageWithUuidOrRemoteId(conversation, stanzaId)
+        if (retractedMessage == null) {
+            Log.d(Config.LOGTAG, "received 1:1 retraction for $stanzaId — message not found")
+            return
+        }
+        conversation.remove(retractedMessage)
+        service.getNotificationService().clear(retractedMessage)
+        if (getDatabase().deleteMessage(retractedMessage.getUuid())) {
+            Log.d(Config.LOGTAG, "handled 1:1 retraction for $stanzaId from ${from.asBareJid()}")
+            deleteAssociatedFile(retractedMessage)
+        }
+        service.updateConversationUi()
     }
 
     private fun deleteAssociatedFile(message: eu.siacs.conversations.entities.Message) {

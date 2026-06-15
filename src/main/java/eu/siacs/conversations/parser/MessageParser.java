@@ -832,13 +832,11 @@ public class MessageParser extends AbstractParser
                 getManager(ReactionManager.class).processReactions(packet, counterpart, query);
             }
 
-            if (original.hasExtension(Retract.class)
-                    && originalFrom != null
-                    && originalFrom.isBareJid()) {
-                getManager(ModerationManager.class).handleRetraction(original);
-            }
-
             // end no body
+        }
+
+        if (original.hasExtension(Retract.class) && originalFrom != null) {
+            getManager(ModerationManager.class).handleRetraction(original);
         }
 
         if (original.hasExtension(Event.class)) {

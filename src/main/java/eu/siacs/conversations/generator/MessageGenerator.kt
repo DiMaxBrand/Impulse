@@ -12,6 +12,8 @@ import eu.siacs.conversations.xmpp.Jid
 import im.conversations.android.xmpp.model.correction.Replace
 import im.conversations.android.xmpp.model.hints.Store
 import im.conversations.android.xmpp.model.markers.Markable
+import im.conversations.android.xmpp.model.fallback.Fallback
+import im.conversations.android.xmpp.model.retraction.Retract
 import im.conversations.android.xmpp.model.unique.OriginId
 
 class MessageGenerator(service: XmppConnectionService) : AbstractGenerator(service) {
@@ -116,11 +118,39 @@ class MessageGenerator(service: XmppConnectionService) : AbstractGenerator(servi
         return packet
     }
 
+    fun generateRetraction(message: Message): im.conversations.android.xmpp.model.stanza.Message {
+        val conversation = message.conversation as Conversation
+        val account: Account = conversation.getAccount()
+        val packet = im.conversations.android.xmpp.model.stanza.Message()
+        packet.setFrom(account.jid)
+        if (conversation.getMode() == Conversational.MODE_SINGLE || message.isPrivateMessage) {
+            packet.setTo(message.counterpart)
+            packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.CHAT)
+        } else {
+            packet.setTo(message.counterpart.asBareJid())
+            packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.GROUPCHAT)
+        }
+        val retract = Retract()
+        val retractId = if (conversation.getMode() == Conversational.MODE_SINGLE && !message.isPrivateMessage)
+            message.getUuid()
+        else
+            message.serverMsgId ?: message.getUuid()
+        retract.setAttribute("id", retractId)
+        packet.addExtension(retract)
+        val fallback = Fallback()
+        fallback.setAttribute("for", Namespace.RETRACTION)
+        packet.addExtension(fallback)
+        packet.setBody(RETRACTION_FALLBACK_MESSAGE)
+        return packet
+    }
+
     companion object {
         private const val OMEMO_FALLBACK_MESSAGE =
             "I sent you an OMEMO encrypted message but your client doesn't seem to support that." +
                     " Find more information on https://conversations.im/omemo"
         private const val PGP_FALLBACK_MESSAGE =
             "I sent you a PGP encrypted message but your client doesn't seem to support that."
+        private const val RETRACTION_FALLBACK_MESSAGE =
+            "This person attempted to retract a previous message, but it's not supported by your client."
     }
 }

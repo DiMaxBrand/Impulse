@@ -14,3 +14,15 @@
 
 ## General
 
+- [ ] **Remove cache** — add a "Clear cached files" action in Settings (or under Settings → Storage) that deletes downloaded/cached media from the app's private cache directory. "Automatically save to gallery" is now on by default, so cached copies are redundant once files are saved to shared storage.
+
+## Voice Message Transcription
+
+- [ ] **On-device voice message transcription** using ML Kit Speech-to-Text (we already ship the ML Kit native runtime).
+  - **Transcribe button** — shown on each received voice message bubble. On first use (before the user has ever tapped it), the button glows to draw attention.
+  - **Onboarding bottom sheet** — the first time the user taps the button, show a bottom-sheet popup (same slide-up-to-center style as the delete-message sheet) with the text:
+    - EN: "Try out voice message transcription. The feature is currently available with unlimited use."
+    - RU: "Попробуйте транскрибацию голосовых сообщений. Функция сейчас доступна без ограничений."
+  - After dismissing the sheet (or on subsequent taps), transcription runs immediately and the result is shown inline below the audio waveform inside the bubble.
+  - Store a `transcribed_text` column in the messages table so the result persists across restarts.
+  - Use a `pref_transcription_onboarded` SharedPreferences flag to control the glow and whether the onboarding sheet shows.

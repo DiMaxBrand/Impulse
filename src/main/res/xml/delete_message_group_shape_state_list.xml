@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- M3 Expressive press morph for the outer corners of the connected button
+     group: fully round at rest, springs to small corners while pressed.
+     The stock expressive state lists only morph checkable buttons, so plain
+     action buttons need their own pressed state. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:state_pressed="true"
+        app:shapeAppearance="?attr/shapeAppearanceCornerSmall" />
+    <item app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Full" />
+</selector>

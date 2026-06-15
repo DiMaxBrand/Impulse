@@ -480,6 +480,12 @@ public class AppSettings {
                     .putInt("pref_migration_version", 1)
                     .apply();
         }
+        if (!prefs.getBoolean("pref_migrated_use_shared_storage", false)) {
+            prefs.edit()
+                    .putBoolean(USE_SHARED_STORAGE, true)
+                    .putBoolean("pref_migrated_use_shared_storage", true)
+                    .apply();
+        }
 
         if (!prefs.getBoolean("pref_migrated_auto_accept_filesize", false)) {
             final SharedPreferences.Editor editor = prefs.edit();
