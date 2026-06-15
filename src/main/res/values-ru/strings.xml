@@ -1267,4 +1267,5 @@
     <string name="delete_message_title">Удалить сообщение?</string>
     <string name="delete_for_everyone">У всех</string>
     <string name="delete_for_myself">У себя</string>
+    <string name="editing">редактирует…</string>
 </resources>

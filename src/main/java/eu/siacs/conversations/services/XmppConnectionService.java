@@ -150,6 +150,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
@@ -258,6 +259,9 @@ public class XmppConnectionService extends Service {
     private int unreadCount = -1;
 
     // Ui callback listeners
+    // messageId → true while a remote peer is actively editing that message
+    public final ConcurrentHashMap<String, Boolean> remoteEditingIndicators = new ConcurrentHashMap<>();
+
     private final Set<OnConversationUpdate> mOnConversationUpdates =
             Collections.newSetFromMap(new WeakHashMap<OnConversationUpdate, Boolean>());
     private final Set<OnShowErrorToast> mOnShowErrorToasts =
@@ -3419,6 +3423,15 @@ public class XmppConnectionService extends Service {
         for (OnShowErrorToast listener : threadSafeList(this.mOnShowErrorToasts)) {
             listener.onShowErrorToast(resId);
         }
+    }
+
+    public void updateRemoteEditingIndicator(final String messageId, final boolean active) {
+        if (active) {
+            remoteEditingIndicators.put(messageId, true);
+        } else {
+            remoteEditingIndicators.remove(messageId);
+        }
+        updateConversationUi();
     }
 
     public void updateConversationUi() {

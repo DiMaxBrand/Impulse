@@ -844,6 +844,18 @@ public class MessageParser extends AbstractParser
             getManager(ModerationManager.class).handleRetraction(original);
         }
 
+        final eu.siacs.conversations.xml.Element editingEl =
+                original.findChild("editing", Namespace.IMPULSE_EDITING);
+        if (editingEl != null) {
+            final String editingId = editingEl.getAttribute("id");
+            final String editingAction = editingEl.getAttribute("action");
+            if (editingId != null && editingAction != null) {
+                mXmppConnectionService.updateRemoteEditingIndicator(
+                        editingId, "start".equals(editingAction));
+            }
+            return;
+        }
+
         if (original.hasExtension(Event.class)) {
             getManager(PubSubManager.class).handleEvent(original);
         }

@@ -288,6 +288,15 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val list = ArrayList<Message>()
         c.populateWithMessages(list)
         state.update(c, list)
+        // Sync remote-editing indicators from service into Compose state
+        val service = getXmppConnectionService()
+        if (service != null) {
+            val indicators = service.remoteEditingIndicators
+            for (uuid in list.map { it.getUuid() }) {
+                val active = indicators[uuid] == true
+                state.setRemoteEditing(uuid, active)
+            }
+        }
         refreshPinned()
     }
 
@@ -323,6 +332,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val correcting = state.correcting.value
         val message: Message
         if (correcting != null) {
+            onEditingStopped(correcting)
             message = correcting
             message.setBody(body)
             message.putEdited(message.getUuid(), message.serverMsgId)
@@ -986,6 +996,31 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onDeleteForMyself(message: Message) {
         deleteMessageLocally(message)
+    }
+
+    override fun onEditingStarted(message: Message) {
+        sendEditingStanza(message, "start")
+    }
+
+    override fun onEditingStopped(message: Message) {
+        sendEditingStanza(message, "stop")
+    }
+
+    private fun sendEditingStanza(message: Message, action: String) {
+        val service = getXmppConnectionService() ?: return
+        val c = message.conversation as? Conversation ?: return
+        val packet = im.conversations.android.xmpp.model.stanza.Message()
+        packet.setFrom(c.getAccount().jid)
+        if (c.getMode() == eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {
+            packet.setTo(message.counterpart.asBareJid())
+        } else {
+            packet.setTo(c.getJid().asBareJid())
+        }
+        val editing = eu.siacs.conversations.xml.Element("editing", eu.siacs.conversations.xml.Namespace.IMPULSE_EDITING)
+        editing.setAttribute("id", message.getUuid())
+        editing.setAttribute("action", action)
+        packet.addChild(editing)
+        service.sendMessagePacket(c.getAccount(), packet)
     }
 
     private fun retractMessage(message: Message) {

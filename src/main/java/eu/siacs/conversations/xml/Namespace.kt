@@ -128,4 +128,5 @@ object Namespace {
     const val SERVICE_OUTAGE_STATUS = "urn:xmpp:sos:0"
     const val FALLBACK_INDICATION = "urn:xmpp:fallback:0"
     const val REPLIES = "urn:xmpp:reply:0"
+    const val IMPULSE_EDITING = "im.dimax.impulse:editing:0"
 }

@@ -536,6 +536,7 @@
     <string name="this_field_is_required">This field is required</string>
     <string name="correct_message">Edit</string>
     <string name="send_corrected_message">Send edited message</string>
+    <string name="editing">editing…</string>
     <string name="no_keys_just_confirm">You have already trusted this persons fingerprint. By selecting “Done” you are just confirming that %s is part of this group chat.</string>
     <string name="this_account_is_disabled">You have disabled this account</string>
     <string name="this_account_is_logged_out">You have logged out of this account</string>

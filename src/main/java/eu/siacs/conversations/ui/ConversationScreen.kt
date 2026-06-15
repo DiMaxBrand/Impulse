@@ -152,12 +152,19 @@ class ConversationScreenState {
     internal val pinnedBannerVisible = mutableStateOf(false)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
     internal val deleteTarget = mutableStateOf<Message?>(null)
+    // message UUIDs that a remote peer is actively editing right now
+    internal val remoteEditingIds = mutableStateOf<Set<String>>(emptySet())
 
     fun update(conversation: Conversation?, source: List<Message>) {
         this.conversation.value = conversation
         messages.value = source
         unreadCount.intValue = conversation?.unreadCount() ?: 0
         revision.intValue++
+    }
+
+    fun setRemoteEditing(messageId: String, active: Boolean) {
+        val current = remoteEditingIds.value
+        remoteEditingIds.value = if (active) current + messageId else current - messageId
     }
 
     fun updatePinned(pinned: List<Message>) {
@@ -890,7 +897,8 @@ private fun MessageList(
                             item = item,
                             isNewest = index == 0,
                             highlighted = item.key == highlightKey,
-                            isBeingEdited = state.correcting.value?.uuid == item.message.uuid,
+                            isBeingEdited = state.correcting.value?.uuid == item.message.uuid
+                                    || state.remoteEditingIds.value.contains(item.message.uuid),
                             revision = revision,
                             listener = listener,
                             onLongPress = onLongPress,
@@ -2182,7 +2190,7 @@ private fun DeleteMessageSheet(
 }
 
 @Composable
-private fun ComposerBanner(state: ConversationScreenState) {
+private fun ComposerBanner(state: ConversationScreenState, listener: ConversationScreenListener) {
     // Revision read keeps this banner in sync with nextCounterpart changes.
     val revision = state.revision.intValue
     val conversation = state.conversation.value
@@ -2262,7 +2270,11 @@ private fun ComposerBanner(state: ConversationScreenState) {
         }
         IconButton(
             onClick = {
-                if (state.correcting.value != null) state.setInput("")
+                val wasEditing = state.correcting.value
+                if (wasEditing != null) {
+                    state.setInput("")
+                    listener.onEditingStopped(wasEditing)
+                }
                 state.replyingTo.value = null
                 state.correcting.value = null
             }
@@ -2672,7 +2684,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
 
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column {
-        ComposerBanner(state)
+        ComposerBanner(state, listener)
         if (hasAttachments) {
             AttachmentPreviewStrip(state)
         }
