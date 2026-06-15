@@ -935,7 +935,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val future = requireXmppActivity().xmppConnectionService.fileBackend
             .saveInternalToExternal(storageLocation)
         Futures.addCallback(future, object : FutureCallback<Void> {
-            override fun onSuccess(result: Void?) {
+            override fun onSuccess(result: Void) {
                 Toast.makeText(ctx,
                     resources.getQuantityString(R.plurals.attachments_saved, 1, 1),
                     Toast.LENGTH_LONG).show()
@@ -980,7 +980,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onRetryDecryption(message: Message) {
         message.setEncryption(Message.ENCRYPTION_PGP)
-        conversation?.account?.getPgpDecryptionService()?.decrypt(message, false)
+        conversation?.getAccount()?.getPgpDecryptionService()?.decrypt(message, false)
         refreshMessages()
     }
 
