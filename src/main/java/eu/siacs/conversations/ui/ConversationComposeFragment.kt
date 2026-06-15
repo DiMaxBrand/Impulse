@@ -56,6 +56,19 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private var totalPausedMs = 0L
     private var pauseStartMs = 0L
     private var timerJob: kotlinx.coroutines.Job? = null
+    private val pendingTakePhotoUri = eu.siacs.conversations.ui.util.PendingItem<Uri>()
+
+    private val takePhotoLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                val uri = pendingTakePhotoUri.pop()
+                if (uri != null) {
+                    stageUris(listOf(uri), eu.siacs.conversations.ui.util.Attachment.Type.IMAGE)
+                }
+            } else {
+                pendingTakePhotoUri.pop()
+            }
+        }
 
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
@@ -609,6 +622,22 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         pickMediaLauncher.launch(
             androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
         )
+    }
+
+    override fun onTakePhoto() {
+        val ctx = requireContext()
+        val takePhotoFile = eu.siacs.conversations.persistance.FileBackend.Cache(ctx).takePicture()
+        val photoUri = Uri.fromFile(takePhotoFile)
+        pendingTakePhotoUri.push(photoUri)
+        val intent = android.content.Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(
+                android.provider.MediaStore.EXTRA_OUTPUT,
+                eu.siacs.conversations.persistance.FileBackend.getUriForFile(ctx, takePhotoFile),
+            )
+            addFlags(android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        takePhotoLauncher.launch(intent)
     }
 
     override fun onAttachFile() {

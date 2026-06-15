@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -133,7 +134,10 @@ class ConversationScreenState {
     // in-place status update looks equal to structuralEqualityPolicy, so Compose would skip
     // recomposition. neverEqualPolicy treats every write as a change.
     internal val conversation = mutableStateOf<Conversation?>(null, androidx.compose.runtime.neverEqualPolicy())
-    internal val messages = mutableStateOf<List<Message>>(emptyList())
+    // neverEqualPolicy: same Message references after in-place status mutation look equal to
+    // structuralEqualityPolicy, causing Compose to skip recomposition and leaving the status
+    // icon stale. neverEqualPolicy treats every write as a change.
+    internal val messages = mutableStateOf<List<Message>>(emptyList(), androidx.compose.runtime.neverEqualPolicy())
     internal val revision = mutableIntStateOf(0)
     internal val unreadCount = mutableIntStateOf(0)
     internal val inputText = mutableStateOf("")
@@ -174,6 +178,8 @@ interface ConversationScreenListener {
     fun onSendTextMessage(body: String)
 
     fun onAttachImage()
+
+    fun onTakePhoto()
 
     fun onAttachFile()
 
@@ -1103,6 +1109,8 @@ private fun MessageRow(
 ) {
     val message = item.message
     val outgoing = message.status != Message.STATUS_RECEIVED
+    val isGroupChat = message.getConversation().getMode() == Conversational.MODE_MULTI
+    val showAvatarSlot = !outgoing && isGroupChat
 
     // Expressive "pop": the newest message springs in.
     val pop = remember(item.key) { Animatable(if (isNewest) 0.8f else 1f) }
@@ -1119,6 +1127,22 @@ private fun MessageRow(
         }
     }
 
+    // Avatar for incoming group-chat messages: load once per sender group (last bubble).
+    val context = LocalContext.current
+    val avatarBitmap = if (showAvatarSlot && item.lastOfGroup) {
+        val avatarState = remember(item.key) { mutableStateOf<ImageBitmap?>(null) }
+        val avatarSizePx = with(LocalDensity.current) { 32.dp.toPx() }.toInt()
+        LaunchedEffect(item.key) {
+            val activity = context as? XmppActivity ?: return@LaunchedEffect
+            val bm = withContext(Dispatchers.IO) {
+                try { activity.avatarService().get(message, avatarSizePx, false) }
+                catch (_: Exception) { null }
+            }
+            if (bm != null) avatarState.value = bm.asImageBitmap()
+        }
+        avatarState
+    } else null
+
     // The tail of a group's last bubble pokes into the screen margin so bubble bodies stay
     // aligned with the grouped bubbles above.
     val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
@@ -1133,11 +1157,12 @@ private fun MessageRow(
             ),
     ) {
         Row(
+            verticalAlignment = Alignment.Bottom,
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .padding(
-                        start = if (outgoing) 48.dp else 12.dp - tailInset,
+                        start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp else 12.dp - tailInset,
                         end = if (outgoing) 12.dp - tailInset else 48.dp,
                         top = if (item.firstOfGroup) 6.dp else 1.dp,
                         bottom = 1.dp,
@@ -1153,6 +1178,22 @@ private fun MessageRow(
                     },
             horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
         ) {
+            if (showAvatarSlot) {
+                val bm = avatarBitmap?.value
+                Box(
+                    modifier = Modifier.size(32.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (bm != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = bm,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape),
+                        )
+                    }
+                }
+                Spacer(Modifier.width(6.dp))
+            }
             MessageBubble(
                 item = item,
                 outgoing = outgoing,
@@ -1173,7 +1214,7 @@ private fun MessageRow(
                 .fillMaxWidth()
                 .offset(y = (-4).dp)
                 .padding(
-                    start = if (outgoing) 48.dp else 10.dp,
+                    start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 10.dp,
                     end = if (outgoing) 10.dp else 48.dp,
                 ),
         )
@@ -1923,7 +1964,11 @@ private fun MessageContextSheet(
         })
     }
 
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+    val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.heightIn(max = screenHeight * 2f / 3f),
+    ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
                 text = stringResource(R.string.message_options),
@@ -2553,6 +2598,18 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                                     painter = painterResource(R.drawable.ic_image_24dp),
                                     contentDescription =
                                         stringResource(R.string.attachment_choice_gallery),
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    attachMenuOpen = false
+                                    listener.onTakePhoto()
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_camera_alt_24dp),
+                                    contentDescription =
+                                        stringResource(R.string.attachment_choice_camera),
                                 )
                             }
                             IconButton(
