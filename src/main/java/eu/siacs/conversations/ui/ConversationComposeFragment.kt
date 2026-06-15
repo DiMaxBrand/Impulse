@@ -913,6 +913,91 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             .show()
     }
 
+    override fun onCopyLink(message: Message) {
+        val activity = requireXmppActivity()
+        eu.siacs.conversations.ui.util.ShareUtil.copyLinkToClipboard(activity, message)
+    }
+
+    override fun onCopyUrl(message: Message) {
+        val activity = requireXmppActivity()
+        eu.siacs.conversations.ui.util.ShareUtil.copyUrlToClipboard(activity, message)
+    }
+
+    override fun onShareMessage(message: Message) {
+        val activity = requireXmppActivity()
+        eu.siacs.conversations.ui.util.ShareUtil.share(activity, message)
+    }
+
+    override fun onSaveFile(message: Message) {
+        val ctx = context ?: return
+        val storageLocation = message.getRelativeFilePath() ?: return
+        if (storageLocation.sharedStorage()) return
+        val future = requireXmppActivity().xmppConnectionService.fileBackend
+            .saveInternalToExternal(storageLocation)
+        Futures.addCallback(future, object : FutureCallback<Void> {
+            override fun onSuccess(result: Void?) {
+                Toast.makeText(ctx,
+                    resources.getQuantityString(R.plurals.attachments_saved, 1, 1),
+                    Toast.LENGTH_LONG).show()
+            }
+            override fun onFailure(t: Throwable) {
+                Toast.makeText(ctx, R.string.could_not_save_files, Toast.LENGTH_LONG).show()
+            }
+        }, ContextCompat.getMainExecutor(ctx))
+    }
+
+    override fun onDeleteMessage(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        val c = message.conversation as? Conversation ?: return
+        if (message.isFileOrImage && !message.isDeleted && message.getRelativeFilePath() != null) {
+            if (service.fileBackend.deleteFile(message)) {
+                message.setDeleted(true)
+                service.evictPreview(message.getUuid())
+                service.updateMessage(message, false)
+                refreshMessages()
+            }
+            return
+        }
+        if (message.isFileOrImage && message.getRelativeFilePath() != null) {
+            service.fileBackend.deleteFile(message)
+            service.evictPreview(message.getUuid())
+        }
+        c.remove(message)
+        service.databaseBackend.deleteMessage(message.getUuid())
+        service.getNotificationService().clear(message)
+        refreshMessages()
+    }
+
+    override fun onCancelTransmission(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        val t = message.transferable
+        if (t != null) {
+            t.cancel()
+        } else if (message.status != Message.STATUS_RECEIVED) {
+            service.markMessage(message, Message.STATUS_SEND_FAILED, Message.ERROR_MESSAGE_CANCELLED)
+        }
+    }
+
+    override fun onRetryDecryption(message: Message) {
+        message.setEncryption(Message.ENCRYPTION_PGP)
+        conversation?.account?.getPgpDecryptionService()?.decrypt(message, false)
+        refreshMessages()
+    }
+
+    override fun onPinMessage(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        message.setPinned(true)
+        service.updateMessage(message, false)
+        refresh()
+    }
+
+    override fun onUnpinMessage(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        message.setPinned(false)
+        service.updateMessage(message, false)
+        refresh()
+    }
+
     companion object {
         private const val STATE_CONVERSATION_UUID =
             "eu.siacs.conversations.ui.ConversationComposeFragment.uuid"

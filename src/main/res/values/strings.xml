@@ -1177,6 +1177,9 @@
         <item quantity="other">%d media files saved</item>
     </plurals>
     <string name="could_not_save_files">Could not save files</string>
+    <string name="save_file">Save file</string>
+    <string name="copy_url">Copy URL</string>
+    <string name="delete_leftover_message">Delete message entry</string>
     <plurals name="delete_n_messages">
         <item quantity="one">Delete %d message</item>
         <item quantity="other">Delete %d messages</item>

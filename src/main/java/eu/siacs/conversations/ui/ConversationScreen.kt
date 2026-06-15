@@ -212,6 +212,15 @@ interface ConversationScreenListener {
     fun onSendReactions(message: Message, reactions: Set<String>)
     fun onAddReaction(message: Message)
     fun onShowReactionDetails(message: Message, emoji: String)
+    fun onCopyLink(message: Message)
+    fun onCopyUrl(message: Message)
+    fun onShareMessage(message: Message)
+    fun onSaveFile(message: Message)
+    fun onDeleteMessage(message: Message)
+    fun onCancelTransmission(message: Message)
+    fun onRetryDecryption(message: Message)
+    fun onPinMessage(message: Message)
+    fun onUnpinMessage(message: Message)
 }
 
 object ConversationScreenHelper {
@@ -1666,15 +1675,27 @@ private fun MessageContextSheet(
 ) {
     val context = LocalContext.current
     val conversation = state.conversation.value
+    val deleted = message.isDeleted
+    val transferable = message.transferable
+    val receiving = message.status == Message.STATUS_RECEIVED
+            && (transferable is eu.siacs.conversations.xmpp.jingle.JingleFileTransferConnection
+                || transferable is eu.siacs.conversations.http.HttpDownloadConnection)
+    val waitingOrOffered = message.status == Message.STATUS_WAITING
+            || message.status == Message.STATUS_UNSEND
+            || message.status == Message.STATUS_OFFERED
+    val cancelable = (transferable != null && !deleted) || (waitingOrOffered && message.needsUploading())
+    val fileDescription = UIHelper.getFileDescriptionString(context, message)
     val actions = buildList {
+        // Reply
         add(
             SheetAction(R.drawable.ic_reply_24dp, stringResource(R.string.reply)) {
                 state.correcting.value = null
                 state.replyingTo.value = message
             }
         )
+        // Copy text
         val body = message.body
-        if (!body.isNullOrBlank() && !message.isFileOrImage) {
+        if (!body.isNullOrBlank() && !message.isFileOrImage && !deleted) {
             add(
                 SheetAction(
                     R.drawable.ic_description_24dp,
@@ -1694,7 +1715,23 @@ private fun MessageContextSheet(
                         .show()
                 }
             )
+            // Copy link — first URL found in body
+            val firstLink = de.gultsch.common.Linkify.getLinks(body).firstOrNull()
+            if (firstLink != null) {
+                val copyLinkLabel = when (firstLink.scheme) {
+                    "xmpp" -> stringResource(R.string.copy_jabber_id)
+                    "http", "https", "gemini" -> stringResource(R.string.copy_link)
+                    "geo" -> stringResource(R.string.copy_geo_uri)
+                    "tel" -> stringResource(R.string.copy_telephone_number)
+                    "mailto" -> stringResource(R.string.copy_email_address)
+                    else -> stringResource(R.string.copy_URI)
+                }
+                add(SheetAction(R.drawable.ic_link_24dp, copyLinkLabel) {
+                    listener.onCopyLink(message)
+                })
+            }
         }
+        // Correct/edit
         val editable = conversation?.getLastEditableMessage()
         if (editable != null && editable.getUuid() == message.getUuid()) {
             add(
@@ -1705,8 +1742,8 @@ private fun MessageContextSheet(
                 }
             )
         }
-        val fileDescription = UIHelper.getFileDescriptionString(context, message)
-        if (message.isFileOrImage && !message.isDeleted) {
+        // Open file
+        if (message.isFileOrImage && !deleted) {
             add(
                 SheetAction(
                     R.drawable.ic_attach_file_24dp,
@@ -1715,7 +1752,18 @@ private fun MessageContextSheet(
                     listener.onOpenMessage(message)
                 }
             )
-        } else if (message.treatAsDownloadable()) {
+        }
+        // Download file (deleted locally but still on remote host)
+        if (message.isFileOrImage && deleted && message.hasFileOnRemoteHost()) {
+            add(
+                SheetAction(
+                    R.drawable.ic_download_24dp,
+                    stringResource(R.string.download_x_file, fileDescription),
+                ) {
+                    listener.onDownloadMessage(message)
+                }
+            )
+        } else if (!message.isFileOrImage && message.treatAsDownloadable()) {
             add(
                 SheetAction(
                     R.drawable.ic_download_24dp,
@@ -1725,8 +1773,34 @@ private fun MessageContextSheet(
                 }
             )
         }
+        // Copy URL (remote download URL for file attachments)
+        if (message.encryption == Message.ENCRYPTION_NONE
+            && (message.hasFileOnRemoteHost() || message.treatAsDownloadable())
+        ) {
+            add(SheetAction(R.drawable.ic_link_24dp, stringResource(R.string.copy_url)) {
+                listener.onCopyUrl(message)
+            })
+        }
+        // Save file to shared storage
+        if (message.isFileOrImage && !deleted && !cancelable) {
+            val path = message.getRelativeFilePath()
+            if (path != null && !path.sharedStorage()) {
+                add(SheetAction(R.drawable.ic_save_24dp, stringResource(R.string.save_file)) {
+                    listener.onSaveFile(message)
+                })
+            }
+        }
+        // Share
+        val shareable = (message.isFileOrImage && !deleted && !receiving)
+                || (!message.isFileOrImage && !message.treatAsDownloadable() && transferable == null && !deleted)
+        if (shareable) {
+            add(SheetAction(R.drawable.ic_share_24dp, stringResource(R.string.share_with)) {
+                listener.onShareMessage(message)
+            })
+        }
+        // Add reaction
         if (message.status != Message.STATUS_SEND_FAILED
-            && !message.isDeleted
+            && !deleted
             && Restrictions.reactionsPerUserRemaining(message)
         ) {
             add(
@@ -1735,6 +1809,39 @@ private fun MessageContextSheet(
                 }
             )
         }
+        // Retry decryption
+        if (message.encryption == Message.ENCRYPTION_DECRYPTION_FAILED && !deleted) {
+            add(SheetAction(R.drawable.ic_refresh_24dp, stringResource(R.string.try_again)) {
+                listener.onRetryDecryption(message)
+            })
+        }
+        // Cancel in-progress upload/download
+        if (cancelable) {
+            add(SheetAction(R.drawable.ic_cancel_24dp, stringResource(R.string.cancel_transmission)) {
+                listener.onCancelTransmission(message)
+            })
+        }
+        // Pin / Unpin
+        if (message.type != Message.TYPE_STATUS && message.type != Message.TYPE_RTP_SESSION && !deleted) {
+            if (message.isPinned) {
+                add(SheetAction(R.drawable.ic_push_pin_24dp, stringResource(R.string.unpin_message)) {
+                    listener.onUnpinMessage(message)
+                })
+            } else {
+                add(SheetAction(R.drawable.ic_push_pin_24dp, stringResource(R.string.pin_message)) {
+                    listener.onPinMessage(message)
+                })
+            }
+        }
+        // Delete
+        val deleteLabel = when {
+            deleted -> stringResource(R.string.delete_leftover_message)
+            message.isFileOrImage -> stringResource(R.string.delete_x_file, fileDescription)
+            else -> stringResource(R.string.delete_message)
+        }
+        add(SheetAction(R.drawable.ic_delete_24dp, deleteLabel) {
+            listener.onDeleteMessage(message)
+        })
     }
 
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
