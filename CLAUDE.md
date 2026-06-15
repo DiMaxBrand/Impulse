@@ -20,12 +20,14 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 | Branch | Purpose |
 |---|---|
 | `dev` | Integration branch — all features merge here |
-| `material-3-expressive` | Active development: Compose UI, avatar 3D effect, morphing shapes |
+| `reimagine-conversation-screen` | Active: Compose chat screen (see handoff below) |
+| `allow-deleting-messages` | XEP-0424 retraction, local delete, pin/unpin rework — cherry-pick source |
+| `material-3-expressive` | Compose UI, avatar 3D effect, morphing shapes |
 | `java-to-kotlin` | Incremental Java → Kotlin migration |
 | `material-icons` | Material Icons Rounded icon set |
 | `allow-sending-videos` | Future: custom Compose media picker |
 
-## Session handoff: reimagine-conversation-screen (2026-06-10)
+## Session handoff: reimagine-conversation-screen (2026-06-15)
 
 - The chat screen is now `ConversationComposeFragment` + `ConversationScreen.kt`
   (Compose, `MaterialExpressiveTheme`, dynamic colors). `ConversationsActivity`
@@ -46,12 +48,41 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 - Ported into Compose: reply cards (tap scrolls + highlights), reply banner,
   message correction (edit banner + edited icon, `getLastEditableMessage()`
   rule), Expressive grouped-list context sheet (reply/copy/edit/open/download),
-  voice recording (mic button → `RecordingActivity` → attach).
+  voice recording (mic button → `RecordingActivity` → attach), XEP-0444
+  reaction chips (below bubbles), `/me` command, large emoji, MUC nick
+  highlight, private message banner.
 - Not yet ported from the old fragment: PGP send, camera capture, location
   sharing, in-bubble audio player. (MUC private messages ARE ported:
   `privateMessageWith()` + EXTRA_NICK handling + tertiary PM banner.)
 - `Message.replaceUuid()` exists because Kotlin cannot resolve `setUuid()`
   (collides with the protected `uuid` property of `AbstractEntity.kt`).
+
+### Message text rendering — CRITICAL
+
+**Do NOT use `AndroidView`/`TextView` for message body text.** `LazyColumn`
+recycles composition slots; an `AndroidView`-hosted `TextView` retains stale
+content from its previous occupant — blank messages on scroll, every time.
+
+The correct approach (currently in place): `buildAnnotatedBody()` builds a
+`SpannableStringBuilder` via the same pipeline as the old screen (StylingHelper,
+`de.gultsch.common.Linkify`, emoji sizing, `/me`, nick highlight), then
+`spannableToAnnotated()` converts every span to `SpanStyle`/`LinkAnnotation`
+and renders with `BasicText`. `remember(uuid, revision)` caches per message.
+XMPP URIs get `tertiaryContainer` chip styling; regular links get primary +
+underline. URL click routing replicates `FixedURLSpan` logic (xmpp → in-app,
+geo → `ShowLocationActivity`, web+ap → handler or HTTPS fallback).
+
+**Quoting is intentionally not ported** — XEP-0461 replies cover that use case.
+
+### Long-press / context sheet
+
+- The full row width (`MessageRow` outer `Column`, `fillMaxWidth()`) is a
+  no-ripple `combinedClickable` for long-press — users can long-press anywhere,
+  not just on the bubble.
+- Image thumbnails use `combinedClickable` so long-press opens the sheet;
+  short tap still opens the viewer.
+- Context sheet (`MessageContextSheet`) currently implements: reply, copy text,
+  correct, open file, download file, add reaction. See TODO.md for the backlog.
 
 ## Signing
 
