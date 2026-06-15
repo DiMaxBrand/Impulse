@@ -143,11 +143,21 @@ class ConversationScreenState {
         mutableStateListOf()
     val recordingState = mutableStateOf<RecordingUiState>(RecordingUiState.Idle)
 
+    internal val pinnedMessages = mutableStateOf<List<Message>>(emptyList())
+    internal val pinnedBannerVisible = mutableStateOf(false)
+    internal val requestScrollToUuid = mutableStateOf<String?>(null)
+
     fun update(conversation: Conversation?, source: List<Message>) {
         this.conversation.value = conversation
         messages.value = source
         unreadCount.intValue = conversation?.unreadCount() ?: 0
         revision.intValue++
+    }
+
+    fun updatePinned(pinned: List<Message>) {
+        pinnedMessages.value = pinned
+        if (pinned.isEmpty()) pinnedBannerVisible.value = false
+        else if (!pinnedBannerVisible.value) pinnedBannerVisible.value = true
     }
 
     fun setInput(text: String) {
@@ -212,6 +222,7 @@ interface ConversationScreenListener {
     fun onSendReactions(message: Message, reactions: Set<String>)
     fun onAddReaction(message: Message)
     fun onShowReactionDetails(message: Message, emoji: String)
+    fun onScrollToMessage(message: Message)
     fun onCopyLink(message: Message)
     fun onCopyUrl(message: Message)
     fun onShareMessage(message: Message)
@@ -328,6 +339,15 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         // No imePadding here: the activity uses adjustResize, so the window itself shrinks for
         // the keyboard. Adding ime insets on top of that doubled the offset.
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            val pinned = state.pinnedMessages.value
+            val bannerVisible = state.pinnedBannerVisible.value
+            if (bannerVisible && pinned.isNotEmpty()) {
+                PinnedBanner(
+                    pinnedMessages = pinned,
+                    onDismiss = { state.pinnedBannerVisible.value = false },
+                    onScrollTo = { listener.onScrollToMessage(it) },
+                )
+            }
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 MessageList(
                     state = state,
@@ -379,6 +399,65 @@ private fun ExpressiveMenuItem(iconRes: Int, label: String, onClick: () -> Unit)
         },
         onClick = onClick,
     )
+}
+
+@Composable
+private fun PinnedBanner(
+    pinnedMessages: List<Message>,
+    onDismiss: () -> Unit,
+    onScrollTo: (Message) -> Unit,
+) {
+    var currentIndex by remember(pinnedMessages) { mutableIntStateOf(0) }
+    val message = pinnedMessages.getOrNull(currentIndex) ?: return
+    val total = pinnedMessages.size
+
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_push_pin_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(
+                modifier = Modifier.weight(1f).clickable {
+                    onScrollTo(message)
+                    currentIndex = (currentIndex + 1) % total
+                }
+            ) {
+                Text(
+                    text = if (total > 1)
+                        stringResource(R.string.pinned_message) + " ${currentIndex + 1}/$total"
+                    else
+                        stringResource(R.string.pinned_message),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    text = MessageUtils.replyPreview(message),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close_24dp),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -651,16 +730,13 @@ private fun MessageList(
     modifier: Modifier = Modifier,
 ) {
     val revision = state.revision.intValue
-    // Include revision in derivedStateOf so the list recomputes on every refresh() call —
-    // Message objects are mutable Java objects whose delivery status changes in-place,
-    // so messages.value alone (same list reference) wouldn't trigger recomputation.
-    val items by remember {
-        androidx.compose.runtime.derivedStateOf {
-            @Suppress("UNUSED_EXPRESSION")
-            state.revision.intValue
-            buildChatItems(state.messages.value)
-        }
-    }
+    // Compute items in composable scope, not in derivedStateOf. derivedStateOf suppresses
+    // recomposition when the result is structurally equal — same Message instances produce equal
+    // ChatItem.Msg wrappers, so in-place status changes (sent→delivered→read) would be invisible.
+    // Reading `revision` here makes MessageList recompose on every refresh(), which rebuilds items
+    // and passes the new `revision` into every visible MessageRow so footers re-render.
+    @Suppress("UNUSED_EXPRESSION") revision
+    val items = buildChatItems(state.messages.value)
     val listState = rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
@@ -706,6 +782,16 @@ private fun MessageList(
         if (listState.firstVisibleItemIndex <= 1) {
             listState.animateScrollToItem(0)
             listener.onScrolledToBottom()
+        }
+    }
+
+    // Scroll to a specific message when requested (e.g. from pinned banner tap).
+    val scrollToUuid = state.requestScrollToUuid.value
+    LaunchedEffect(scrollToUuid) {
+        if (scrollToUuid != null) {
+            val idx = items.indexOfFirst { it is ChatItem.Msg && it.message.getUuid() == scrollToUuid }
+            if (idx >= 0) listState.animateScrollToItem(idx)
+            state.requestScrollToUuid.value = null
         }
     }
 
@@ -1644,7 +1730,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                         ),
                     contentDescription = null,
                     tint =
-                        if (displayed) MaterialTheme.colorScheme.primary
+                        if (displayed) MaterialTheme.colorScheme.tertiary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(14.dp),
                 )

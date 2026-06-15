@@ -275,6 +275,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val list = ArrayList<Message>()
         c.populateWithMessages(list)
         state.update(c, list)
+        refreshPinned()
     }
 
     private fun markRead() {
@@ -999,10 +1000,15 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
     }
 
+    override fun onScrollToMessage(message: Message) {
+        state.requestScrollToUuid.value = message.getUuid()
+    }
+
     override fun onPinMessage(message: Message) {
         val service = getXmppConnectionService() ?: return
         message.setPinned(true)
         service.updateMessage(message, false)
+        refreshPinned()
         refresh()
     }
 
@@ -1010,7 +1016,15 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val service = getXmppConnectionService() ?: return
         message.setPinned(false)
         service.updateMessage(message, false)
+        refreshPinned()
         refresh()
+    }
+
+    private fun refreshPinned() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val pinned = service.databaseBackend.getPinnedMessages(c)
+        state.updatePinned(pinned)
     }
 
     companion object {
