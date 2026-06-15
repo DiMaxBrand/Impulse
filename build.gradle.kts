@@ -52,10 +52,11 @@ android {
 
     splits {
         abi {
-            isUniversalApk = false
+            isUniversalApk = true
             isEnable = true
             reset()
-            include("arm64-v8a")
+            //noinspection ChromeOsAbiSupport
+            include(*abiCodes.keys.toTypedArray())
         }
     }
 
