@@ -1240,6 +1240,9 @@
         <item quantity="other">%d медиафайлов сохранено</item>
     </plurals>
     <string name="could_not_save_files">Невозможно сохранить файлы</string>
+    <string name="save_file">Сохранить файл</string>
+    <string name="copy_url">Копировать URL</string>
+    <string name="delete_leftover_message">Удалить запись сообщения</string>
     <string name="filter_type_images">Изображения</string>
     <string name="filter_type_videos">Видео</string>
     <string name="filter_type_audio">Аудио</string>
