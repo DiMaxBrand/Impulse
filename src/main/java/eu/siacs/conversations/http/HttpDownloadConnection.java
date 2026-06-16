@@ -131,11 +131,11 @@ public class HttpDownloadConnection implements Transferable {
 
     private void setupFile() {
         final String reference = mUrl.fragment();
-        if (reference != null && AesGcmURL.IV_KEY.matcher(reference).matches()) {
+        if (reference != null && AesGcmURL.isValidKeyFragment(reference)) {
             // TODO create a folder for partial downloads (because camera and recorder will also
             // write to sub directories)
             this.file = new File(mXmppConnectionService.getCacheDir(), message.getUuid());
-            this.transportSecurity = TransportSecurity.ofAnchor(CryptoHelper.hexToBytes(reference));
+            this.transportSecurity = TransportSecurity.ofAnchor(CryptoHelper.hexToBytes(AesGcmURL.keyPart(reference)));
             Log.d(
                     Config.LOGTAG,
                     "create temporary OMEMO encrypted file: "
@@ -558,7 +558,7 @@ public class HttpDownloadConnection implements Transferable {
             message.setType(privateMessage ? Message.TYPE_PRIVATE_FILE : Message.TYPE_FILE);
             final String url;
             final String ref = mUrl.fragment();
-            if (ref != null && AesGcmURL.IV_KEY.matcher(ref).matches()) {
+            if (ref != null && AesGcmURL.isValidKeyFragment(ref)) {
                 url = AesGcmURL.toAesGcmUrl(mUrl);
             } else {
                 url = mUrl.toString();

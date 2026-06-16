@@ -128,7 +128,7 @@ object MessageUtils {
         }
         val ref = uri.fragment
         val protocol = uri.scheme
-        val encrypted = ref != null && AesGcmURL.IV_KEY.matcher(ref).matches()
+        val encrypted = ref != null && AesGcmURL.isValidKeyFragment(ref)
         val followedByDataUri = lines.size == 2 && lines[1].startsWith("data:")
         val validAesGcm =
             AesGcmURL.PROTOCOL_NAME.equals(protocol, ignoreCase = true)
