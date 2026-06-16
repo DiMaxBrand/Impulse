@@ -2226,53 +2226,28 @@ private fun DeleteMessageSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
             )
-            Surface(
-                onClick = onDeleteForEveryone,
-                enabled = canRetract,
-                shape = RoundedCornerShape(topStart = CORNER_LARGE, topEnd = CORNER_LARGE, bottomStart = CORNER_SMALL, bottomEnd = CORNER_SMALL),
-                color = if (canRetract) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainerLow,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+            val everyoneLabel = stringResource(R.string.delete_for_everyone)
+            val myselfLabel = stringResource(R.string.delete_for_myself)
+            val cancelLabel = stringResource(R.string.cancel)
+            androidx.compose.material3.ButtonGroup(
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_delete_24dp),
-                        contentDescription = null,
-                        tint = if (canRetract) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Spacer(Modifier.width(14.dp))
-                    Text(
-                        text = stringResource(R.string.delete_for_everyone),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (canRetract) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    )
-                }
-            }
-            Surface(
-                onClick = onDeleteForMyself,
-                shape = RoundedCornerShape(topStart = CORNER_SMALL, topEnd = CORNER_SMALL, bottomStart = CORNER_LARGE, bottomEnd = CORNER_LARGE),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_delete_24dp),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Spacer(Modifier.width(14.dp))
-                    Text(
-                        text = stringResource(R.string.delete_for_myself),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
+                clickableItem(
+                    onClick = onDeleteForEveryone,
+                    label = everyoneLabel,
+                    icon = { Text(text = everyoneLabel, maxLines = 1) },
+                    enabled = canRetract,
+                )
+                clickableItem(
+                    onClick = onDeleteForMyself,
+                    label = myselfLabel,
+                    icon = { Text(text = myselfLabel, maxLines = 1) },
+                )
+                clickableItem(
+                    onClick = onDismiss,
+                    label = cancelLabel,
+                    icon = { Text(text = cancelLabel, maxLines = 1) },
+                )
             }
             Spacer(Modifier.height(16.dp))
         }
