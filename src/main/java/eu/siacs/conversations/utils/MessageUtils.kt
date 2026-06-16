@@ -119,7 +119,9 @@ object MessageUtils {
         }
         val uri: URI
         try {
-            uri = URI(lines[0])
+            // Some servers append a `|<filesize>` hint after the key fragment; `|` is not a
+            // legal URI character and trips up strict java.net.URI parsing, so strip it first.
+            uri = URI(lines[0].substringBefore('|'))
         } catch (e: URISyntaxException) {
             return false
         }
