@@ -1807,8 +1807,11 @@ private fun FileRow(iconRes: Int, label: String) {
 private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     message: Message,
     outgoing: Boolean,
-    @Suppress("UNUSED_PARAMETER") revision: Int,
+    revision: Int,
 ) {
+    // Message is a mutated-in-place Java entity; reading `revision` here is what
+    // makes Compose re-read message.status after an in-place status change.
+    val status = remember(revision) { message.status }
     val context = LocalContext.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1838,9 +1841,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
             )
         }
         if (outgoing && message.type != Message.TYPE_RTP_SESSION) {
-            val statusDrawable = MessageAdapter.getMessageStatusAsDrawable(message, message.status)
+            val statusDrawable = MessageAdapter.getMessageStatusAsDrawable(message, status)
             if (statusDrawable != null) {
-                val displayed = message.status == Message.STATUS_SEND_DISPLAYED
+                val displayed = status == Message.STATUS_SEND_DISPLAYED
                 Spacer(Modifier.width(4.dp))
                 Icon(
                     painter =
