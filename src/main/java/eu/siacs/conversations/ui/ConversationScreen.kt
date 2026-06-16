@@ -39,6 +39,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -2043,9 +2045,13 @@ private fun MessageContextSheet(
     val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
     androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismiss,
-        modifier = Modifier.heightIn(max = screenHeight * 2f / 3f),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(
+            modifier = Modifier
+                .heightIn(max = screenHeight * 2f / 3f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
             Text(
                 text = stringResource(R.string.message_options),
                 style = MaterialTheme.typography.titleSmall,
