@@ -897,8 +897,8 @@ private fun MessageList(
                             item = item,
                             isNewest = index == 0,
                             highlighted = item.key == highlightKey,
-                            isBeingEdited = state.correcting.value?.uuid == item.message.uuid
-                                    || state.remoteEditingIds.value.contains(item.message.uuid),
+                            isBeingEdited = state.correcting.value?.getUuid() == item.message.getUuid()
+                                    || state.remoteEditingIds.value.contains(item.message.getUuid()),
                             revision = revision,
                             listener = listener,
                             onLongPress = onLongPress,

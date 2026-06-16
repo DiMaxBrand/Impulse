@@ -292,7 +292,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val service = getXmppConnectionService()
         if (service != null) {
             val indicators = service.remoteEditingIndicators
-            for (uuid in list.map { it.getUuid() }) {
+            for (uuid in list.mapNotNull { it.getUuid() }) {
                 val active = indicators[uuid] == true
                 state.setRemoteEditing(uuid, active)
             }
@@ -1014,7 +1014,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         if (c.getMode() == eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {
             packet.setTo(message.counterpart.asBareJid())
         } else {
-            packet.setTo(c.getJid().asBareJid())
+            packet.setTo(c.getAddress().asBareJid())
         }
         val editing = eu.siacs.conversations.xml.Element("editing", eu.siacs.conversations.xml.Namespace.IMPULSE_EDITING)
         editing.setAttribute("id", message.getUuid())
