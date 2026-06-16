@@ -108,6 +108,9 @@ fun interface ConversationClickListener {
     fun onClick(conversation: Conversation)
 }
 
+/** Person bounding box within a segmented avatar bitmap, as fractions of its dimensions. */
+private data class PersonBounds(val top: Float, val bottom: Float, val centerX: Float)
+
 private fun presenceShape(
     isGroup: Boolean,
     availability: Presence.Availability?,
@@ -519,7 +522,7 @@ private fun ConversationAvatar(
 
     val avatarState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
     val segmentedState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
-    val personBoundsState = remember(conversation.getUuid()) { mutableStateOf<Pair<Float, Float>?>(null) }
+    val personBoundsState = remember(conversation.getUuid()) { mutableStateOf<PersonBounds?>(null) }
     val avatarBitmap by avatarState
     val segmentedBitmap by segmentedState
     val personBounds by personBoundsState
@@ -536,7 +539,7 @@ private fun ConversationAvatar(
         }
     }
 
-    // Scan segmented bitmap to find person top and bottom (off main thread)
+    // Scan segmented bitmap to find the person's bounding box (off main thread)
     LaunchedEffect(segmentedBitmap) {
         val segBm = segmentedBitmap
         if (segBm == null) { personBoundsState.value = null; return@LaunchedEffect }
@@ -546,19 +549,24 @@ private fun ConversationAvatar(
                     it.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
                 else it
             }
-            var top = -1; var bottom = -1
-            outer@ for (row in 0 until bmp.height) {
+            var top = -1; var bottom = -1; var left = -1; var right = -1
+            for (row in 0 until bmp.height) {
                 for (col in 0 until bmp.width) {
-                    if (android.graphics.Color.alpha(bmp.getPixel(col, row)) > 32) { top = row; break@outer }
+                    if (android.graphics.Color.alpha(bmp.getPixel(col, row)) > 32) {
+                        if (top == -1) top = row
+                        bottom = row
+                        if (left == -1 || col < left) left = col
+                        if (right == -1 || col > right) right = col
+                    }
                 }
             }
-            outer@ for (row in bmp.height - 1 downTo 0) {
-                for (col in 0 until bmp.width) {
-                    if (android.graphics.Color.alpha(bmp.getPixel(col, row)) > 32) { bottom = row; break@outer }
-                }
-            }
-            if (top >= 0 && bottom > top) top.toFloat() / bmp.height to bottom.toFloat() / bmp.height
-            else null
+            if (top >= 0 && bottom > top && right >= left) {
+                PersonBounds(
+                    top = top.toFloat() / bmp.height,
+                    bottom = bottom.toFloat() / bmp.height,
+                    centerX = (left + right) / 2f / bmp.width,
+                )
+            } else null
         }
         personBoundsState.value = bounds
     }
@@ -645,13 +653,17 @@ private fun ConversationAvatar(
         val srcSize: IntSize
 
         if (!isGroup && pb != null) {
-            val personTopPx = (pb.first * bm.height).toInt().coerceAtLeast(0)
-            val personBottomPx = (pb.second * bm.height).toInt().coerceAtMost(bm.height)
+            val personTopPx = (pb.top * bm.height).toInt().coerceAtLeast(0)
+            val personBottomPx = (pb.bottom * bm.height).toInt().coerceAtMost(bm.height)
             val personH = (personBottomPx - personTopPx).coerceAtLeast(1)
-            val personIsFullBody = pb.second > 0.75f
+            val personIsFullBody = pb.bottom > 0.75f
             val cropH = if (personIsFullBody) personH else (personH * 0.65f).toInt().coerceAtLeast(1)
             val cropW = cropH.coerceAtMost(bm.width)
-            srcOffset = IntOffset((bm.width - cropW) / 2, personTopPx)
+            // Center the crop window on the person's actual horizontal position instead of the
+            // bitmap's center, so off-center subjects aren't cropped out by the zoom.
+            val personCenterXPx = (pb.centerX * bm.width).toInt()
+            val cropX = (personCenterXPx - cropW / 2).coerceIn(0, bm.width - cropW)
+            srcOffset = IntOffset(cropX, personTopPx)
             srcSize = IntSize(cropW, cropH)
         } else {
             srcOffset = IntOffset(0, 0)
