@@ -7,22 +7,33 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <Button
-            android:id="@+id/btn_delete_everyone"
+        <com.google.android.material.button.MaterialButtonGroup
+            android:id="@+id/delete_options"
+            style="@style/Widget.Material3.MaterialButtonGroup.Connected"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/delete_for_everyone" />
+            android:layout_height="wrap_content">
 
-        <Button
-            android:id="@+id/btn_delete_myself"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/delete_for_myself" />
+            <Button
+                android:id="@+id/btn_delete_everyone"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/delete_for_everyone" />
+
+            <Button
+                android:id="@+id/btn_delete_myself"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/delete_for_myself" />
+
+        </com.google.android.material.button.MaterialButtonGroup>
 
         <Button
             android:id="@+id/btn_cancel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="@string/cancel"
             style="@style/Widget.Material3.Button.TextButton" />
 
