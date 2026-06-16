@@ -1569,10 +1569,62 @@ private fun MessageContent(
             message.mimeType?.startsWith("audio/") == true -> {
             AudioMessageContent(message)
         }
-        message.isFileOrImage -> {
+        message.isFileOrImage &&
+            message.encryption != Message.ENCRYPTION_PGP &&
+            message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
+            (MessageUtils.unInitiatedButKnownSize(message) ||
+                (transferable != null && transferable.getStatus() != Transferable.STATUS_UPLOADING)) -> {
+            val fileDescription = UIHelper.getFileDescriptionString(context, message)
+            when {
+                MessageUtils.unInitiatedButKnownSize(message) ||
+                    transferable?.getStatus() == Transferable.STATUS_OFFER ->
+                    FileActionRow(
+                        iconRes = R.drawable.ic_download_24dp,
+                        label = stringResource(R.string.download_x_file, fileDescription),
+                        onClick = { listener.onDownloadMessage(message) },
+                    )
+                transferable?.getStatus() == Transferable.STATUS_OFFER_CHECK_FILESIZE ->
+                    FileActionRow(
+                        iconRes = R.drawable.ic_download_24dp,
+                        label = stringResource(R.string.check_x_filesize, fileDescription),
+                        onClick = { listener.onDownloadMessage(message) },
+                    )
+                transferable?.getStatus() == Transferable.STATUS_CHECKING ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = stringResource(R.string.checking_x, fileDescription),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                transferable?.getStatus() == Transferable.STATUS_FAILED ->
+                    FileActionRow(
+                        iconRes = R.drawable.ic_error_24dp,
+                        label = stringResource(R.string.file_transmission_failed),
+                        tint = MaterialTheme.colorScheme.error,
+                        onClick = { listener.onDownloadMessage(message) },
+                    )
+                transferable?.getStatus() == Transferable.STATUS_CANCELLED ->
+                    FileActionRow(
+                        iconRes = R.drawable.ic_cancel_24dp,
+                        label = stringResource(R.string.file_transmission_cancelled),
+                        onClick = { listener.onDownloadMessage(message) },
+                    )
+                else ->
+                    FileActionRow(
+                        iconRes = R.drawable.ic_attach_file_24dp,
+                        label = fileDescription,
+                    )
+            }
+        }
+        message.isFileOrImage &&
+            message.encryption != Message.ENCRYPTION_PGP &&
+            message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
+            message.fileParams.width > 0 && message.fileParams.height > 0 -> {
             val fileBackend = activity?.xmppConnectionService?.fileBackend
-            val isImage = message.type == Message.TYPE_IMAGE
-            if (isImage && fileBackend != null) {
+            val isVideo = message.mimeType?.startsWith("video/") == true
+            if (fileBackend != null) {
                 val thumb = remember(message.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
                 val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
                 LaunchedEffect(message.getUuid()) {
@@ -1601,17 +1653,28 @@ private fun MessageContent(
                                 ),
                     )
                 } else {
-                    FileRow(
-                        iconRes = R.drawable.ic_image_24dp,
+                    FileActionRow(
+                        iconRes = if (isVideo) R.drawable.ic_movie_24dp else R.drawable.ic_image_24dp,
                         label = UIHelper.getFileDescriptionString(context, message),
+                        onClick = { listener.onOpenMessage(message) },
                     )
                 }
             } else {
-                FileRow(
-                    iconRes = R.drawable.ic_attach_file_24dp,
+                FileActionRow(
+                    iconRes = if (isVideo) R.drawable.ic_movie_24dp else R.drawable.ic_image_24dp,
                     label = UIHelper.getFileDescriptionString(context, message),
+                    onClick = { listener.onOpenMessage(message) },
                 )
             }
+        }
+        message.isFileOrImage &&
+            message.encryption != Message.ENCRYPTION_PGP &&
+            message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED -> {
+            FileActionRow(
+                iconRes = R.drawable.ic_attach_file_24dp,
+                label = stringResource(R.string.open_x_file, UIHelper.getFileDescriptionString(context, message)),
+                onClick = { listener.onOpenMessage(message) },
+            )
         }
         message.isGeoUri -> {
             FileRow(
@@ -1812,6 +1875,36 @@ private fun FileRow(iconRes: Int, label: String) {
         )
         Spacer(Modifier.width(10.dp))
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/** Material 3 Expressive pill-shaped row for file/transfer affordances inside a bubble. */
+@Composable
+private fun FileActionRow(
+    iconRes: Int,
+    label: String,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    onClick: (() -> Unit)? = null,
+) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier =
+            if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = tint)
+        }
     }
 }
 
