@@ -21,6 +21,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import eu.siacs.conversations.Config
 import eu.siacs.conversations.R
+import eu.siacs.conversations.utils.Compatibility
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
@@ -1066,6 +1067,32 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         } else if (message.status != Message.STATUS_RECEIVED) {
             service.markMessage(message, Message.STATUS_SEND_FAILED, Message.ERROR_MESSAGE_CANCELLED)
         }
+    }
+
+    override fun onResendMessage(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        val activity = activity as? XmppActivity ?: return
+        val c = message.conversation as? Conversation ?: return
+        if (message.isFileOrImage) {
+            val file = service.fileBackend.getFile(message)
+            if (!(file.exists() && file.canRead()) && !message.hasFileOnRemoteHost()) {
+                if (!Compatibility.hasStoragePermission(activity)) {
+                    Toast.makeText(
+                        activity,
+                        getString(R.string.no_storage_permission, getString(R.string.app_name)),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                } else {
+                    Toast.makeText(activity, R.string.file_deleted, Toast.LENGTH_SHORT).show()
+                    message.setDeleted(true)
+                    service.updateMessage(message, false)
+                    (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+                    refreshMessages()
+                }
+                return
+            }
+        }
+        service.resendFailedMessages(message, false)
     }
 
     override fun onScrollToMessage(message: Message) {

@@ -250,6 +250,7 @@ interface ConversationScreenListener {
     fun onEditingStarted(message: Message)
     fun onEditingStopped(message: Message)
     fun onCancelTransmission(message: Message)
+    fun onResendMessage(message: Message)
     fun onPinMessage(message: Message)
     fun onUnpinMessage(message: Message)
 }
@@ -2120,6 +2121,12 @@ private fun MessageContextSheet(
                     listener.onAddReaction(message)
                 }
             )
+        }
+        // Send again (failed outgoing message)
+        if (message.status == Message.STATUS_SEND_FAILED && !deleted) {
+            add(SheetAction(R.drawable.ic_refresh_24dp, stringResource(R.string.send_again)) {
+                listener.onResendMessage(message)
+            })
         }
         // Cancel in-progress upload/download
         if (cancelable) {
