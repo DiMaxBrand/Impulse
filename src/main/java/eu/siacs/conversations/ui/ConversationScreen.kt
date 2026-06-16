@@ -1888,12 +1888,21 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     // makes Compose re-read message.status after an in-place status change.
     val status = remember(revision) { message.status }
     val context = LocalContext.current
+    // Mirrors the legacy MessageAdapter footer, which joined the file size into the same
+    // time/status line (e.g. "1.2 MiB · 14:03") instead of only showing it on the download row.
+    val fileSize = remember(revision) {
+        val transferable = message.transferable
+        if (message.isFileOrImage || transferable != null || MessageUtils.unInitiatedButKnownSize(message)) {
+            message.fileParams.size?.let { UIHelper.filesizeToString(it) }
+        } else null
+    }
+    val timeText = DateUtils.formatDateTime(context, message.timeSent, DateUtils.FORMAT_SHOW_TIME)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
     ) {
         Text(
-            text = DateUtils.formatDateTime(context, message.timeSent, DateUtils.FORMAT_SHOW_TIME),
+            text = if (fileSize != null) "$fileSize · $timeText" else timeText,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
