@@ -1531,6 +1531,8 @@ private fun MessageContent(
     val context = LocalContext.current
     val activity = context as? XmppActivity
     val transferable = message.transferable
+    // transferable.getProgress() mutates in place; reading `revision` re-triggers this read.
+    val transferableProgress = remember(revision) { transferable?.getProgress() }
 
     when {
         message.isDeleted -> {
@@ -1547,7 +1549,17 @@ private fun MessageContent(
                 Text(
                     text = stringResource(R.string.receiving_x_file,
                         UIHelper.getFileDescriptionString(context, message),
-                        transferable.getProgress()),
+                        transferableProgress ?: 0),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        transferable != null && transferable.getStatus() == Transferable.STATUS_UPLOADING -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.sending_file, transferableProgress ?: 0),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
