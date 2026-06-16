@@ -83,6 +83,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -273,15 +274,39 @@ object ConversationScreenHelper {
 @Composable
 private fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val colorScheme =
-        if (isSystemInDarkTheme()) dynamicDarkColorScheme(context)
-        else dynamicLightColorScheme(context)
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
-        motionScheme = MotionScheme.expressive(),
-        content = content,
-    )
+    val isDark = isSystemInDarkTheme()
+    val colorScheme = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    // Material3 has no built-in "success" role. We pick a green seed and harmonize its hue
+    // toward the dynamic primary (same algorithm M3 itself uses), so it still feels designed
+    // together with the wallpaper-derived palette instead of clashing as a flat, static green.
+    val successColors = remember(colorScheme.primary, isDark) {
+        val seedGreen = 0xFF2E7D32.toInt()
+        val harmonized =
+            com.google.android.material.color.utilities.Blend.harmonize(
+                seedGreen,
+                colorScheme.primary.toArgb(),
+            )
+        val palette = com.google.android.material.color.utilities.TonalPalette.fromInt(harmonized)
+        if (isDark) {
+            SuccessColors(success = Color(palette.tone(80)), onSuccess = Color(palette.tone(20)))
+        } else {
+            SuccessColors(success = Color(palette.tone(40)), onSuccess = Color(palette.tone(100)))
+        }
+    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalSuccessColors provides successColors) {
+        MaterialExpressiveTheme(
+            colorScheme = colorScheme,
+            motionScheme = MotionScheme.expressive(),
+            content = content,
+        )
+    }
 }
+
+/** Material3 has no standard "success" role; this is harmonized with the dynamic palette in [ImpulseExpressiveTheme]. */
+private data class SuccessColors(val success: Color, val onSuccess: Color)
+
+private val LocalSuccessColors =
+    androidx.compose.runtime.staticCompositionLocalOf { SuccessColors(Color(0xFF2E7D32), Color.White) }
 
 /** A chronological list entry: either a message bubble or a date pill. */
 private sealed interface ChatItem {
@@ -1936,7 +1961,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                         ),
                     contentDescription = null,
                     tint =
-                        if (displayed) MaterialTheme.colorScheme.tertiary
+                        if (displayed) LocalSuccessColors.current.success
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(14.dp),
                 )
