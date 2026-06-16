@@ -182,6 +182,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             stopRecordingSession(save = false)
             state.recordingState.value = RecordingUiState.Idle
         }
+        AudioPlaybackController.pauseForBackground()
     }
 
     fun reInit(conversation: Conversation, extras: Bundle) {

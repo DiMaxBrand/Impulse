@@ -1773,61 +1773,31 @@ private fun AudioMessageContent(message: Message) {
         return
     }
 
-    var playing by remember(message.getUuid()) { mutableStateOf(false) }
-    var positionMs by remember(message.getUuid()) { mutableIntStateOf(0) }
-    var durationMs by
-        remember(message.getUuid()) { mutableIntStateOf(message.fileParams?.runtime ?: 0) }
-    val playerHolder =
-        remember(message.getUuid()) { mutableStateOf<android.media.MediaPlayer?>(null) }
+    val uuid = message.getUuid() ?: return
+    val playing = AudioPlaybackController.activeUuid == uuid && AudioPlaybackController.isPlaying
+    var tick by remember(uuid) { mutableIntStateOf(0) }
+    val positionMs = remember(uuid, tick) { AudioPlaybackController.positionFor(uuid) }
+    val durationMs =
+        AudioPlaybackController.durations[uuid] ?: (message.fileParams?.runtime ?: 0)
 
-    fun obtainPlayer(): android.media.MediaPlayer? {
-        playerHolder.value?.let {
-            return it
-        }
-        return try {
-            val player = android.media.MediaPlayer()
-            player.setDataSource(file.absolutePath)
-            player.prepare()
-            durationMs = player.duration
-            player.setOnCompletionListener {
-                playing = false
-                positionMs = 0
-            }
-            playerHolder.value = player
-            player
-        } catch (_: Exception) {
-            null
-        }
+    LaunchedEffect(uuid) {
+        AudioPlaybackController.onRowEnteredComposition(uuid, file)
     }
 
-    androidx.compose.runtime.DisposableEffect(message.getUuid()) {
-        onDispose {
-            try {
-                playerHolder.value?.release()
-            } catch (_: Exception) {}
-            playerHolder.value = null
-        }
+    androidx.compose.runtime.DisposableEffect(uuid) {
+        onDispose { AudioPlaybackController.onRowLeftComposition(uuid) }
     }
 
     LaunchedEffect(playing) {
         while (playing) {
-            playerHolder.value?.let { positionMs = it.currentPosition }
+            tick++
             kotlinx.coroutines.delay(250)
         }
     }
 
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.width(232.dp)) {
         FilledIconButton(
-            onClick = {
-                val player = obtainPlayer() ?: return@FilledIconButton
-                if (playing) {
-                    player.pause()
-                    playing = false
-                } else {
-                    player.start()
-                    playing = true
-                }
-            },
+            onClick = { AudioPlaybackController.toggle(uuid, file) },
             colors =
                 IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -1848,10 +1818,9 @@ private fun AudioMessageContent(message: Message) {
             value =
                 if (durationMs > 0) positionMs.toFloat() / durationMs else 0f,
             onValueChange = { fraction ->
-                val player = obtainPlayer() ?: return@Slider
                 val target = (fraction * durationMs).toInt()
-                player.seekTo(target)
-                positionMs = target
+                AudioPlaybackController.seekTo(uuid, file, target)
+                tick++
             },
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
         )
