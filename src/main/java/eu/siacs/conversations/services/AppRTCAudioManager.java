@@ -134,12 +134,14 @@ public class AppRTCAudioManager {
                         Log.d(Config.LOGTAG, "onAudioFocusChange: " + typeOfChange);
                     }
                 };
-        // Request audio playout focus (without ducking) and install listener for changes in focus.
+        // Request exclusive audio playout focus (no ducking) so other apps playing media (e.g.
+        // YouTube) actually stop instead of just lowering their volume, matching how a regular
+        // phone call interrupts background media.
         int result =
                 audioManager.requestAudioFocus(
                         audioFocusChangeListener,
                         AudioManager.STREAM_VOICE_CALL,
-                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
+                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE);
         if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             Log.d(Config.LOGTAG, "Audio focus request granted for VOICE_CALL streams");
         } else {
