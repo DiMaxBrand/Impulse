@@ -850,8 +850,22 @@ public class MessageParser extends AbstractParser
             final String editingId = editingEl.getAttribute("id");
             final String editingAction = editingEl.getAttribute("action");
             if (editingId != null && editingAction != null) {
+                // editingId is the sender's remoteMsgId. Resolve it to the local UUID so the
+                // receiver's UI can look it up by its own message UUID.
+                String localUuid = editingId;
+                if (from != null) {
+                    final eu.siacs.conversations.entities.Conversation conv =
+                            mXmppConnectionService.find(account, from.asBareJid());
+                    if (conv != null) {
+                        final eu.siacs.conversations.entities.Message found =
+                                conv.findMessageWithRemoteId(editingId, from);
+                        if (found != null && found.getUuid() != null) {
+                            localUuid = found.getUuid();
+                        }
+                    }
+                }
                 mXmppConnectionService.updateRemoteEditingIndicator(
-                        editingId, "start".equals(editingAction));
+                        localUuid, "start".equals(editingAction));
             }
             return;
         }

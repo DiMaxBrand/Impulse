@@ -1019,7 +1019,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             packet.setTo(c.getAddress().asBareJid())
         }
         val editing = eu.siacs.conversations.xml.Element("editing", eu.siacs.conversations.xml.Namespace.IMPULSE_EDITING)
-        editing.setAttribute("id", message.getUuid())
+        // Use remoteMsgId (the XMPP stanza id) so the receiver can look up the message by its
+        // own remoteMsgId rather than the sender's local UUID, which the receiver never stores.
+        editing.setAttribute("id", message.remoteMsgId ?: message.getUuid())
         editing.setAttribute("action", action)
         packet.addChild(editing)
         service.sendMessagePacket(c.getAccount(), packet)
