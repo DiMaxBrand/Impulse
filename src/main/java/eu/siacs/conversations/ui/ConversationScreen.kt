@@ -2319,9 +2319,11 @@ private fun DeleteMessageSheet(
                         shape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShape,
                         pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonPressShape,
                     )
-                val everyoneModifier = Modifier.weight(1f).animateWidth(everyoneInteractionSource)
-                val myselfModifier = Modifier.weight(1f).animateWidth(myselfInteractionSource)
-                val cancelModifier = Modifier.weight(1f).animateWidth(cancelInteractionSource)
+                // weight() is a RowScope modifier — invalid inside ButtonGroupScope and causes
+                // zero-width buttons that get clipped. ButtonGroup handles sizing itself.
+                val everyoneModifier = Modifier.animateWidth(everyoneInteractionSource)
+                val myselfModifier = Modifier.animateWidth(myselfInteractionSource)
+                val cancelModifier = Modifier.animateWidth(cancelInteractionSource)
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
