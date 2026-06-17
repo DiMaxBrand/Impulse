@@ -1097,7 +1097,24 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onScrollToMessage(message: Message) {
-        state.requestScrollToUuid.value = message.getUuid()
+        val uuid = message.getUuid()
+        if (state.messages.value.none { it.getUuid() == uuid }) {
+            val service = getXmppConnectionService() ?: return
+            val c = conversation ?: return
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                // Load a batch ending just after this message so it's included in the window.
+                val batch = service.databaseBackend.getMessages(c, 50, message.timeSent + 1)
+                val existingUuids = state.messages.value.mapTo(HashSet()) { it.getUuid() }
+                val fresh = batch.filter { it.getUuid() !in existingUuids }
+                if (fresh.isNotEmpty()) c.addAll(0, fresh)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    refreshMessages()
+                    state.requestScrollToUuid.value = uuid
+                }
+            }
+        } else {
+            state.requestScrollToUuid.value = uuid
+        }
     }
 
     override fun onPinMessage(message: Message) {
