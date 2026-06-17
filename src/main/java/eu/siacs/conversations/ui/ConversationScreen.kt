@@ -847,6 +847,30 @@ private fun MessageList(
         }
     }
 
+    // Auto-advance to the next audio message when one finishes playing naturally.
+    val context = LocalContext.current
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        AudioPlaybackController.onCompletion = { completedUuid ->
+            val completedIdx = items.indexOfFirst { it is ChatItem.Msg && it.message.getUuid() == completedUuid }
+            val next = items.drop(completedIdx + 1)
+                .filterIsInstance<ChatItem.Msg>()
+                .firstOrNull { it.message.mimeType?.startsWith("audio/") == true }
+            if (next != null) {
+                val activity = context as? eu.siacs.conversations.ui.XmppActivity
+                val file = try { activity?.xmppConnectionService?.fileBackend?.getFile(next.message) } catch (_: Exception) { null }
+                if (file != null && file.exists()) {
+                    scope.launch {
+                        kotlinx.coroutines.delay(300)
+                        (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
+                            .playSoundEffect(android.media.AudioManager.FX_KEY_CLICK)
+                        AudioPlaybackController.play(next.message.getUuid()!!, file)
+                    }
+                }
+            }
+        }
+        onDispose { AudioPlaybackController.onCompletion = null }
+    }
+
     // Scroll to a specific message when requested (e.g. from pinned banner tap).
     val scrollToUuid = state.requestScrollToUuid.value
     LaunchedEffect(scrollToUuid) {

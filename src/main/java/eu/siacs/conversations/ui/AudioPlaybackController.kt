@@ -24,6 +24,9 @@ object AudioPlaybackController {
     private val resumableOnReturn = mutableSetOf<String>()
     private var player: MediaPlayer? = null
 
+    /** Invoked on the main thread when a message finishes playing naturally (not paused/stopped). */
+    var onCompletion: ((completedUuid: String) -> Unit)? = null
+
     fun positionFor(uuid: String): Int =
         if (activeUuid == uuid) player?.currentPosition ?: (positions[uuid] ?: 0) else positions[uuid] ?: 0
 
@@ -55,6 +58,7 @@ object AudioPlaybackController {
         mp.setOnCompletionListener {
             isPlaying = false
             positions[uuid] = 0
+            onCompletion?.invoke(uuid)
         }
         val savedPosition = positions[uuid] ?: 0
         if (savedPosition > 0) {
