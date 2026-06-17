@@ -74,7 +74,7 @@ import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 public class DatabaseBackend extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "history";
-    private static final int DATABASE_VERSION = 59;
+    private static final int DATABASE_VERSION = 60;
 
     private static boolean requiresMessageIndexRebuild = false;
     private static DatabaseBackend instance = null;
@@ -1142,6 +1142,19 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                             + " ADD COLUMN "
                             + Message.REPLIED_TO
                             + " TEXT");
+        }
+        if (oldVersion < 60 && newVersion >= 60) {
+            // Guard: devices that hit v59 before repliedTo was added lack the column.
+            try {
+                db.execSQL(
+                        "ALTER TABLE "
+                                + Message.TABLENAME
+                                + " ADD COLUMN "
+                                + Message.REPLIED_TO
+                                + " TEXT");
+            } catch (final Exception e) {
+                // column already exists — added by v59 migration on clean upgrade paths
+            }
         }
     }
 
