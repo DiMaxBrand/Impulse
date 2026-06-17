@@ -859,11 +859,21 @@ private fun MessageList(
                 val activity = context as? eu.siacs.conversations.ui.XmppActivity
                 val file = try { activity?.xmppConnectionService?.fileBackend?.getFile(next.message) } catch (_: Exception) { null }
                 if (file != null && file.exists()) {
+                    val nextIdx = items.indexOf(next)
                     scope.launch {
                         kotlinx.coroutines.delay(300)
                         (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
                             .playSoundEffect(android.media.AudioManager.FX_KEY_CLICK)
                         AudioPlaybackController.play(next.message.getUuid()!!, file)
+                        // Scroll so the newly active bubble sits near the upper-center of the
+                        // viewport. scrollOffset pushes the item down from the top edge; using
+                        // ~60 % of the viewport height leaves it in the upper third.
+                        // LazyColumn clamps this automatically if there isn't enough content below.
+                        if (nextIdx >= 0) {
+                            val viewportHeight = listState.layoutInfo.viewportSize.height
+                            val offset = (viewportHeight * 0.60f).toInt()
+                            listState.animateScrollToItem(nextIdx, scrollOffset = offset)
+                        }
                     }
                 }
             }

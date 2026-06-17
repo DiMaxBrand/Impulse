@@ -94,19 +94,13 @@ object AudioPlaybackController {
         }
     }
 
-    /** Called when a playing bubble is scrolled out of view. */
+    /** Called when a playing bubble is scrolled out of view. Playback continues uninterrupted. */
     fun onRowLeftComposition(uuid: String) {
-        if (activeUuid == uuid && isPlaying) {
-            pause(uuid, userInitiated = false)
-        }
+        // Intentionally a no-op: audio keeps playing when the bubble scrolls out of view.
     }
 
-    /** Called when a bubble re-enters view; resumes only if it was auto-paused by scrolling. */
+    /** Called when a bubble enters view. No-op since scroll-out no longer pauses playback. */
     fun onRowEnteredComposition(uuid: String, file: File) {
-        if (activeUuid == uuid && resumableOnReturn.contains(uuid)) {
-            resumableOnReturn.remove(uuid)
-            play(uuid, file)
-        }
     }
 
     /** Called when the conversation screen stops (app backgrounded or navigated away). */
