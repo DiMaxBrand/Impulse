@@ -1285,11 +1285,11 @@ private fun MessageRow(
 private fun ReactionChips(
     message: Message,
     outgoing: Boolean,
-    @Suppress("UNUSED_PARAMETER") revision: Int,
+    revision: Int,
     listener: ConversationScreenListener,
     modifier: Modifier = Modifier,
 ) {
-    val aggregated = message.getAggregatedReactions()
+    val aggregated = remember(revision) { message.getAggregatedReactions() }
     val canAdd = !outgoing && Restrictions.reactionsPerUserRemaining(message)
     if (aggregated.reactions.isEmpty() && !canAdd) return
     Row(
