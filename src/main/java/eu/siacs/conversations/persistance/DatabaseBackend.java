@@ -499,6 +499,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + Message.PINNED
                         + " INTEGER DEFAULT 0,"
                         + Message.REMOTE_MSG_ID
+                        + " TEXT,"
+                        + Message.REPLIED_TO
                         + " TEXT, FOREIGN KEY("
                         + Message.CONVERSATION
                         + ") REFERENCES "
