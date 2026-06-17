@@ -2294,68 +2294,26 @@ private fun DeleteMessageSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
             )
-            val everyoneLabel = stringResource(R.string.delete_for_everyone)
-            val myselfLabel = stringResource(R.string.delete_for_myself)
-            val cancelLabel = stringResource(R.string.cancel)
-            val everyoneInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            val myselfInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            val cancelInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            androidx.compose.material3.ButtonGroup(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                val leadingShapes =
-                    androidx.compose.material3.ButtonShapes(
-                        shape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShape,
-                        pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonPressShape,
-                    )
-                val middleShapes =
-                    androidx.compose.material3.ButtonShapes(
-                        shape = RoundedCornerShape(CORNER_SMALL),
-                        pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonPressShape,
-                    )
-                val trailingShapes =
-                    androidx.compose.material3.ButtonShapes(
-                        shape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShape,
-                        pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonPressShape,
-                    )
-                val everyoneModifier = Modifier.weight(1f).animateWidth(everyoneInteractionSource)
-                val myselfModifier = Modifier.weight(1f).animateWidth(myselfInteractionSource)
-                val cancelModifier = Modifier.weight(1f).animateWidth(cancelInteractionSource)
-                customItem(
-                    buttonGroupContent = {
-                        androidx.compose.material3.Button(
-                            onClick = onDeleteForEveryone,
-                            shapes = leadingShapes,
-                            enabled = canRetract,
-                            interactionSource = everyoneInteractionSource,
-                            modifier = everyoneModifier,
-                        ) { Text(text = everyoneLabel, maxLines = 1) }
-                    },
-                    menuContent = {},
-                )
-                customItem(
-                    buttonGroupContent = {
-                        androidx.compose.material3.Button(
-                            onClick = onDeleteForMyself,
-                            shapes = middleShapes,
-                            interactionSource = myselfInteractionSource,
-                            modifier = myselfModifier,
-                        ) { Text(text = myselfLabel, maxLines = 1) }
-                    },
-                    menuContent = {},
-                )
-                customItem(
-                    buttonGroupContent = {
-                        androidx.compose.material3.Button(
-                            onClick = onDismiss,
-                            shapes = trailingShapes,
-                            interactionSource = cancelInteractionSource,
-                            modifier = cancelModifier,
-                        ) { Text(text = cancelLabel, maxLines = 1) }
-                    },
-                    menuContent = {},
-                )
+                androidx.compose.material3.Button(
+                    onClick = onDeleteForEveryone,
+                    enabled = canRetract,
+                    shape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShape,
+                    modifier = Modifier.weight(1f),
+                ) { Text(text = stringResource(R.string.delete_for_everyone), maxLines = 1) }
+                androidx.compose.material3.Button(
+                    onClick = onDeleteForMyself,
+                    shape = RoundedCornerShape(CORNER_SMALL),
+                    modifier = Modifier.weight(1f),
+                ) { Text(text = stringResource(R.string.delete_for_myself), maxLines = 1) }
+                androidx.compose.material3.Button(
+                    onClick = onDismiss,
+                    shape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShape,
+                    modifier = Modifier.weight(1f),
+                ) { Text(text = stringResource(R.string.cancel), maxLines = 1) }
             }
             Spacer(Modifier.height(16.dp))
         }
