@@ -852,9 +852,10 @@ private fun MessageList(
     androidx.compose.runtime.DisposableEffect(Unit) {
         AudioPlaybackController.onCompletion = { completedUuid ->
             val completedIdx = items.indexOfFirst { it is ChatItem.Msg && it.message.getUuid() == completedUuid }
-            val next = items.drop(completedIdx + 1)
+            // reverseLayout=true: index 0 is the bottom (newest). Lower index = newer = below.
+            val next = items.take(completedIdx)
                 .filterIsInstance<ChatItem.Msg>()
-                .firstOrNull { it.message.mimeType?.startsWith("audio/") == true }
+                .lastOrNull { it.message.mimeType?.startsWith("audio/") == true }
             if (next != null) {
                 val activity = context as? eu.siacs.conversations.ui.XmppActivity
                 val file = try { activity?.xmppConnectionService?.fileBackend?.getFile(next.message) } catch (_: Exception) { null }
