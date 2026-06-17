@@ -438,14 +438,11 @@ public class Conversation extends AbstractEntity
                 }
                 if (mcp.equals(counterpart)
                         && ((message.getStatus() == Message.STATUS_RECEIVED) == received)
-                        && (carbon == message.isCarbon() || received)) {
-                    if (id.equals(message.getRemoteMsgId())
-                            && !message.isFileOrImage()
-                            && !message.treatAsDownloadable()) {
-                        return message;
-                    } else {
-                        return null;
-                    }
+                        && (carbon == message.isCarbon() || received)
+                        && id.equals(message.getRemoteMsgId())
+                        && !message.isFileOrImage()
+                        && !message.treatAsDownloadable()) {
+                    return message;
                 }
             }
         }
