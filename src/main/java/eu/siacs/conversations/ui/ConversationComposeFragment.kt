@@ -174,6 +174,10 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     override fun onResume() {
         super.onResume()
         markRead()
+        // Match status bar color to the top bar (surfaceContainer ≈ SURFACE_2 elevation).
+        val activity = activity ?: return
+        activity.window.statusBarColor =
+            com.google.android.material.elevation.SurfaceColors.SURFACE_2.getColor(activity)
     }
 
     override fun onStop() {

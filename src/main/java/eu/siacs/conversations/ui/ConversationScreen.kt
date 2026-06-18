@@ -382,9 +382,11 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             )
         },
         containerColor = MaterialTheme.colorScheme.surface,
+        // The activity is not edge-to-edge: the system already insets the window for status/nav
+        // bars before Compose sees it. Letting Scaffold re-apply those insets doubles them,
+        // producing a gray gap above the top bar (especially visible when the keyboard opens).
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
     ) { padding ->
-        // No imePadding here: the activity uses adjustResize, so the window itself shrinks for
-        // the keyboard. Adding ime insets on top of that doubled the offset.
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             val pinned = state.pinnedMessages.value
             val bannerVisible = state.pinnedBannerVisible.value
