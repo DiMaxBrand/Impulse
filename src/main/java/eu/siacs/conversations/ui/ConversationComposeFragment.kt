@@ -345,13 +345,14 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
         val reply = state.replyingTo.value
         if (reply != null) {
-            // XEP-0461: prefer the archive stanza-id; for received messages fall back to the
-            // sender's own message id (remoteMsgId) so THEIR client can resolve the reference —
-            // our local uuid is meaningless outside this device.
-            val replyId =
-                reply.serverMsgId
-                    ?: (if (reply.status == Message.STATUS_RECEIVED) reply.remoteMsgId else null)
-                    ?: reply.getUuid()
+            // XEP-0461: for received messages, use remoteMsgId (the sender's original stanza id)
+            // — both sides know it. Our server's archive id (serverMsgId) is meaningless to the
+            // sender's client. For own sent messages, use serverMsgId ?? uuid (uuid = stanza id).
+            val replyId = if (reply.status == Message.STATUS_RECEIVED) {
+                reply.remoteMsgId ?: reply.serverMsgId ?: reply.getUuid()
+            } else {
+                reply.serverMsgId ?: reply.getUuid()
+            }
             message.setRepliedTo(replyId)
         }
         service.sendMessage(message)
@@ -1019,9 +1020,12 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             packet.setTo(c.getAddress().asBareJid())
         }
         val editing = eu.siacs.conversations.xml.Element("editing", eu.siacs.conversations.xml.Namespace.IMPULSE_EDITING)
-        // Use remoteMsgId (the XMPP stanza id) so the receiver can look up the message by its
-        // own remoteMsgId rather than the sender's local UUID, which the receiver never stores.
-        editing.setAttribute("id", message.remoteMsgId ?: message.getUuid())
+        // For already-edited messages, the current UUID is a replacement UUID — the receiver
+        // stored the original UUID as remoteMsgId. Use editedIdWireFormat (= original UUID before
+        // any edits) to stay in sync with what the Replace stanza also references.
+        val indicatorId = if (message.edited()) message.editedIdWireFormat
+                          else message.remoteMsgId ?: message.getUuid()
+        editing.setAttribute("id", indicatorId)
         editing.setAttribute("action", action)
         packet.addChild(editing)
         service.sendMessagePacket(c.getAccount(), packet)
