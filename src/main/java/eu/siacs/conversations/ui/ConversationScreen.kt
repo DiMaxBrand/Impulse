@@ -2300,39 +2300,25 @@ private fun DeleteMessageSheet(
             val everyoneInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val myselfInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val cancelInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            // alpha21: use the overload with overflowIndicator (old overload deprecated + clips).
-            // alpha21: animateWidth requires compressionLimit or it can zero-out button widths.
+            // alpha21: overflowIndicator overload required; old one clips.
+            // ButtonShapes, animateWidth, and ButtonDefaults.ContentPadding are @Composable in
+            // alpha21 — they must live inside buttonGroupContent, not the outer ButtonGroup block.
             androidx.compose.material3.ButtonGroup(
                 overflowIndicator = {},
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                val leadingShapes =
-                    androidx.compose.material3.ButtonShapes(
-                        shape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShape,
-                        pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonPressShape,
-                    )
-                val middleShapes =
-                    androidx.compose.material3.ButtonShapes(
-                        shape = RoundedCornerShape(CORNER_SMALL),
-                        pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonPressShape,
-                    )
-                val trailingShapes =
-                    androidx.compose.material3.ButtonShapes(
-                        shape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShape,
-                        pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonPressShape,
-                    )
-                val everyoneModifier = Modifier.animateWidth(everyoneInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding)
-                val myselfModifier = Modifier.animateWidth(myselfInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding)
-                val cancelModifier = Modifier.animateWidth(cancelInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding)
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
                             onClick = onDeleteForEveryone,
-                            shapes = leadingShapes,
+                            shapes = androidx.compose.material3.ButtonShapes(
+                                shape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShape,
+                                pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonPressShape,
+                            ),
                             enabled = canRetract,
                             interactionSource = everyoneInteractionSource,
-                            modifier = everyoneModifier,
+                            modifier = Modifier.animateWidth(everyoneInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding),
                         ) { Text(text = everyoneLabel, maxLines = 1) }
                     },
                     menuContent = {},
@@ -2341,9 +2327,12 @@ private fun DeleteMessageSheet(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
                             onClick = onDeleteForMyself,
-                            shapes = middleShapes,
+                            shapes = androidx.compose.material3.ButtonShapes(
+                                shape = RoundedCornerShape(CORNER_SMALL),
+                                pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonPressShape,
+                            ),
                             interactionSource = myselfInteractionSource,
-                            modifier = myselfModifier,
+                            modifier = Modifier.animateWidth(myselfInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding),
                         ) { Text(text = myselfLabel, maxLines = 1) }
                     },
                     menuContent = {},
@@ -2352,9 +2341,12 @@ private fun DeleteMessageSheet(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
                             onClick = onDismiss,
-                            shapes = trailingShapes,
+                            shapes = androidx.compose.material3.ButtonShapes(
+                                shape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShape,
+                                pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonPressShape,
+                            ),
                             interactionSource = cancelInteractionSource,
-                            modifier = cancelModifier,
+                            modifier = Modifier.animateWidth(cancelInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding),
                         ) { Text(text = cancelLabel, maxLines = 1) }
                     },
                     menuContent = {},
