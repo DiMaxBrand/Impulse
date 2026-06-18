@@ -1070,21 +1070,43 @@ private fun TypingBubble(modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun formatDatePill(context: android.content.Context, timestamp: Long): String {
+    val now = java.util.Calendar.getInstance()
+    val then = java.util.Calendar.getInstance().also { it.timeInMillis = timestamp }
+    val todayStart = now.clone() as java.util.Calendar
+    todayStart.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    todayStart.set(java.util.Calendar.MINUTE, 0)
+    todayStart.set(java.util.Calendar.SECOND, 0)
+    todayStart.set(java.util.Calendar.MILLISECOND, 0)
+    val sevenDaysAgoStart = (todayStart.clone() as java.util.Calendar).also { it.add(java.util.Calendar.DAY_OF_YEAR, -6) }
+    return when {
+        timestamp >= todayStart.timeInMillis ->
+            context.getString(R.string.today)
+        timestamp >= todayStart.timeInMillis - DateUtils.DAY_IN_MILLIS ->
+            context.getString(R.string.yesterday)
+        timestamp >= sevenDaysAgoStart.timeInMillis ->
+            // Within the last 7 days — show weekday name
+            DateUtils.formatDateTime(context, timestamp, DateUtils.FORMAT_SHOW_WEEKDAY)
+        then.get(java.util.Calendar.YEAR) == now.get(java.util.Calendar.YEAR) ->
+            // Same year — full date without year
+            DateUtils.formatDateTime(context, timestamp, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_NO_YEAR)
+        else ->
+            // Different year — full date with year
+            DateUtils.formatDateTime(context, timestamp, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_YEAR)
+    }
+}
+
+@Composable
 private fun DatePill(timestamp: Long, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val label = formatDatePill(context, timestamp)
     Box(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             Text(
-                text =
-                    DateUtils.getRelativeTimeSpanString(
-                            timestamp,
-                            System.currentTimeMillis(),
-                            DateUtils.DAY_IN_MILLIS,
-                            DateUtils.FORMAT_SHOW_WEEKDAY,
-                        )
-                        .toString(),
+                text = label,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
