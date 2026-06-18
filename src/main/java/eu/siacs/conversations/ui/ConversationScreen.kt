@@ -2300,7 +2300,10 @@ private fun DeleteMessageSheet(
             val everyoneInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val myselfInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val cancelInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            // alpha21: use the overload with overflowIndicator (old overload deprecated + clips).
+            // alpha21: animateWidth requires compressionLimit or it can zero-out button widths.
             androidx.compose.material3.ButtonGroup(
+                overflowIndicator = {},
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
@@ -2319,11 +2322,9 @@ private fun DeleteMessageSheet(
                         shape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShape,
                         pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonPressShape,
                     )
-                // weight() is a RowScope modifier — invalid inside ButtonGroupScope and causes
-                // zero-width buttons that get clipped. ButtonGroup handles sizing itself.
-                val everyoneModifier = Modifier.animateWidth(everyoneInteractionSource)
-                val myselfModifier = Modifier.animateWidth(myselfInteractionSource)
-                val cancelModifier = Modifier.animateWidth(cancelInteractionSource)
+                val everyoneModifier = Modifier.animateWidth(everyoneInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding)
+                val myselfModifier = Modifier.animateWidth(myselfInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding)
+                val cancelModifier = Modifier.animateWidth(cancelInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding)
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
