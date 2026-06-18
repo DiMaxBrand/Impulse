@@ -1326,7 +1326,9 @@ private fun ReactionChips(
 ) {
     val aggregated = remember(revision) { message.getAggregatedReactions() }
     val canAdd = !outgoing && Restrictions.reactionsPerUserRemaining(message)
-    if (aggregated.reactions.isEmpty() && !canAdd) return
+    // Only render the row when there are actual reactions. The + button is shown inline when
+    // reactions exist; for messages with no reactions the long-press sheet has "Add reaction".
+    if (aggregated.reactions.isEmpty()) return
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp, if (outgoing) Alignment.End else Alignment.Start),
