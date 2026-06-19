@@ -58,6 +58,9 @@ object AudioPlaybackController {
         mp.setOnCompletionListener {
             isPlaying = false
             positions[uuid] = 0
+            // Clear activeUuid so positionFor() reads positions[uuid]=0 instead of
+            // player.currentPosition (which sits at the end of the file after completion).
+            activeUuid = null
             onCompletion?.invoke(uuid)
         }
         val savedPosition = positions[uuid] ?: 0

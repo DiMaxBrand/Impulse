@@ -871,13 +871,13 @@ private fun MessageList(
                         (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
                             .playSoundEffect(android.media.AudioManager.FX_KEY_CLICK)
                         AudioPlaybackController.play(next.message.getUuid()!!, file)
-                        // Scroll so the newly active bubble sits near the upper-center of the
-                        // viewport. scrollOffset pushes the item down from the top edge; using
-                        // ~60 % of the viewport height leaves it in the upper third.
-                        // LazyColumn clamps this automatically if there isn't enough content below.
                         if (nextIdx >= 0) {
+                            // reverseLayout=true: scrollOffset=0 puts item at the BOTTOM.
+                            // To land at upper-center, read viewport height after the delay
+                            // (so layout has measured) and offset by ~70% of height.
                             val viewportHeight = listState.layoutInfo.viewportSize.height
-                            val offset = (viewportHeight * 0.60f).toInt()
+                            val offset = if (viewportHeight > 0) (viewportHeight * 0.70f).toInt()
+                                         else 800 // fallback if layout not yet measured
                             listState.animateScrollToItem(nextIdx, scrollOffset = offset)
                         }
                     }
