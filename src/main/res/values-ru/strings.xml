@@ -1257,6 +1257,7 @@
     <string name="start_group_chat">Создать групповой чат</string>
     <string name="pin_message">Закрепить сообщение</string>
     <string name="unpin_message">Открепить сообщение</string>
+    <string name="hide">Скрыть</string>
     <string name="pinned_message">Закреплённое сообщение</string>
     <string name="attachment_choice_camera">Камера</string>
     <string name="attachment_choice_file">Файл</string>

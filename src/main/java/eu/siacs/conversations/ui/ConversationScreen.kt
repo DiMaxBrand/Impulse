@@ -394,6 +394,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 PinnedBanner(
                     pinnedMessages = pinned,
                     onDismiss = { state.pinnedBannerVisible.value = false },
+                    onUnpin = { listener.onUnpinMessage(it) },
                     onScrollTo = { listener.onScrollToMessage(it) },
                 )
             }
@@ -469,6 +470,7 @@ private fun ExpressiveMenuItem(iconRes: Int, label: String, onClick: () -> Unit)
 private fun PinnedBanner(
     pinnedMessages: List<Message>,
     onDismiss: () -> Unit,
+    onUnpin: (Message) -> Unit,
     onScrollTo: (Message) -> Unit,
 ) {
     var currentIndex by remember(pinnedMessages) { mutableIntStateOf(0) }
@@ -512,10 +514,20 @@ private fun PinnedBanner(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            // Hide banner temporarily
             IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_close_24dp),
-                    contentDescription = null,
+                    painter = painterResource(R.drawable.ic_visibility_off),
+                    contentDescription = stringResource(R.string.hide),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            // Unpin the current message
+            IconButton(onClick = { onUnpin(message) }, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_push_pin_24dp),
+                    contentDescription = stringResource(R.string.unpin_message),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp),
                 )

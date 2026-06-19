@@ -977,6 +977,7 @@
     <string name="remove_from_favorites">Unpin from top</string>
     <string name="pin_message">Pin message</string>
     <string name="unpin_message">Unpin message</string>
+    <string name="hide">Hide</string>
     <string name="pinned_message">Pinned message</string>
     <string name="gpx_track">GPX track</string>
     <string name="could_not_correct_message">Could not edit message</string>
