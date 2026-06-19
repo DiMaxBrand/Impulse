@@ -14,6 +14,8 @@
 
 ## General
 
+- [ ] **Voice message transcription** — on-demand, on-device via ML Kit Speech Recognition (`com.google.mlkit:speech-recognition`). Tap a "transcribe" button on the audio bubble → POST the downloaded `.ogg`/`.m4a` to the on-device model → store result in a new `transcript TEXT` column on the message → display below the waveform. Model (~80 MB) is downloaded on demand, no API key needed. Same ML Kit family as subject segmentation already used for 3D avatars.
+
 ## reimagine-conversation-screen: context sheet backlog
 
 Items missing from the long-press sheet vs the old XML screen.
