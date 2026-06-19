@@ -782,6 +782,9 @@ private fun ConversationTopBar(
             TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
+        // fitsSystemWindows on the host FrameLayout already consumed the status bar inset.
+        // TopAppBar adds it again by default — zero it out to prevent the double-height gap.
+        windowInsets = androidx.compose.foundation.layout.WindowInsets(0),
     )
 }
 

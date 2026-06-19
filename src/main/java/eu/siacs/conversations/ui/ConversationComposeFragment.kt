@@ -174,10 +174,23 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     override fun onResume() {
         super.onResume()
         markRead()
-        // Match status bar color to the top bar (surfaceContainer ≈ SURFACE_2 elevation).
+        applyStatusBarColor()
+    }
+
+    private fun applyStatusBarColor() {
         val activity = activity ?: return
-        activity.window.statusBarColor =
-            com.google.android.material.elevation.SurfaceColors.SURFACE_2.getColor(activity)
+        val color = com.google.android.material.elevation.SurfaceColors.SURFACE_2.getColor(activity)
+        // Pre-Android 15: statusBarColor works directly.
+        activity.window.statusBarColor = color
+        // Android 15+ enforces a transparent status bar; the window background shows through.
+        // Set the decor view background so the status bar area matches the top bar.
+        activity.window.decorView.setBackgroundColor(color)
+        // Restore correct light/dark icon tint.
+        val isLight = (resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) !=
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView)
+            .isAppearanceLightStatusBars = isLight
     }
 
     override fun onStop() {
@@ -187,6 +200,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             state.recordingState.value = RecordingUiState.Idle
         }
         AudioPlaybackController.pauseForBackground()
+        // Restore window background so other screens (conversation list) are unaffected.
+        activity?.window?.decorView?.background = null
     }
 
     fun reInit(conversation: Conversation, extras: Bundle) {
