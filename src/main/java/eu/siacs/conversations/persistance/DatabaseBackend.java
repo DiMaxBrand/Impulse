@@ -74,7 +74,7 @@ import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 public class DatabaseBackend extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "history";
-    private static final int DATABASE_VERSION = 60;
+    private static final int DATABASE_VERSION = 61;
 
     private static boolean requiresMessageIndexRebuild = false;
     private static DatabaseBackend instance = null;
@@ -501,7 +501,9 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + Message.REMOTE_MSG_ID
                         + " TEXT,"
                         + Message.REPLIED_TO
-                        + " TEXT, FOREIGN KEY("
+                        + " TEXT,"
+                        + Message.REMOTE_EDITING
+                        + " INTEGER DEFAULT 0, FOREIGN KEY("
                         + Message.CONVERSATION
                         + ") REFERENCES "
                         + Conversation.TABLENAME
@@ -1156,6 +1158,18 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                                 + " TEXT");
             } catch (final Exception e) {
                 // column already exists — added by v59 migration on clean upgrade paths
+            }
+        }
+        if (oldVersion < 61 && newVersion >= 61) {
+            try {
+                db.execSQL(
+                        "ALTER TABLE "
+                                + Message.TABLENAME
+                                + " ADD COLUMN "
+                                + Message.REMOTE_EDITING
+                                + " INTEGER DEFAULT 0");
+            } catch (final Exception e) {
+                // column already exists
             }
         }
     }
@@ -1903,6 +1917,13 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         final int rows =
                 db.update(Message.TABLENAME, message.getContentValues(), Message.UUID + "=?", args);
         return rows == 1;
+    }
+
+    public void updateMessageEditingState(final String uuid, final boolean editing) {
+        final var db = this.getWritableDatabase();
+        final var values = new android.content.ContentValues();
+        values.put(Message.REMOTE_EDITING, editing ? 1 : 0);
+        db.update(Message.TABLENAME, values, Message.UUID + "=?", new String[]{uuid});
     }
 
     public boolean deleteMessage(String uuid) {

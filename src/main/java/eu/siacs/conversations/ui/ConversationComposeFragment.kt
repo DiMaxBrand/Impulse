@@ -298,14 +298,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val list = ArrayList<Message>()
         c.populateWithMessages(list)
         state.update(c, list)
-        // Sync remote-editing indicators from service into Compose state
+        // Sync remote-editing indicators: in-memory map (live) OR persisted DB flag (survives navigation)
         val service = getXmppConnectionService()
-        if (service != null) {
-            val indicators = service.remoteEditingIndicators
-            for (uuid in list.mapNotNull { it.getUuid() }) {
-                val active = indicators[uuid] == true
-                state.setRemoteEditing(uuid, active)
-            }
+        val indicators = service?.remoteEditingIndicators
+        for (msg in list) {
+            val uuid = msg.getUuid() ?: continue
+            val active = indicators?.get(uuid) == true || msg.isRemoteEditing()
+            state.setRemoteEditing(uuid, active)
         }
         refreshPinned()
     }

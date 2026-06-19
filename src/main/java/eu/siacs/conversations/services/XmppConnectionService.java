@@ -3431,6 +3431,7 @@ public class XmppConnectionService extends Service {
         } else {
             remoteEditingIndicators.remove(messageId);
         }
+        databaseBackend.updateMessageEditingState(messageId, active);
         updateConversationUi();
     }
 

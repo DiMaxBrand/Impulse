@@ -92,6 +92,7 @@ public class Message extends AbstractEntity
     public static final String REACTIONS = "reactions";
     public static final String PINNED = "pinned";
     public static final String REPLIED_TO = "repliedTo";
+    public static final String REMOTE_EDITING = "remoteEditing";
     public static final String ME_COMMAND = "/me ";
 
     public static final String ERROR_MESSAGE_CANCELLED = "eu.siacs.conversations.cancelled";
@@ -126,6 +127,7 @@ public class Message extends AbstractEntity
     private Collection<Reaction> reactions = Collections.emptyList();
     private boolean pinned = false;
     private String repliedTo = null;
+    private boolean remoteEditing = false;
 
     private Boolean isGeoUri = null;
     private Boolean isEmojisOnly = null;
@@ -293,6 +295,10 @@ public class Message extends AbstractEntity
         if (repliedToIndex >= 0) {
             message.repliedTo = cursor.getString(repliedToIndex);
         }
+        final int remoteEditingIndex = cursor.getColumnIndex(REMOTE_EDITING);
+        if (remoteEditingIndex >= 0) {
+            message.remoteEditing = cursor.getInt(remoteEditingIndex) > 0;
+        }
         return message;
     }
 
@@ -386,6 +392,7 @@ public class Message extends AbstractEntity
         values.put(REACTIONS, Reaction.toString(this.reactions));
         values.put(PINNED, pinned ? 1 : 0);
         values.put(REPLIED_TO, repliedTo);
+        values.put(REMOTE_EDITING, remoteEditing ? 1 : 0);
         return values;
     }
 
@@ -509,6 +516,14 @@ public class Message extends AbstractEntity
 
     public void setRepliedTo(final String id) {
         this.repliedTo = id;
+    }
+
+    public boolean isRemoteEditing() {
+        return remoteEditing;
+    }
+
+    public void setRemoteEditing(final boolean active) {
+        this.remoteEditing = active;
     }
 
     public boolean isRead() {

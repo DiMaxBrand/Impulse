@@ -602,6 +602,8 @@ public class MessageParser extends AbstractParser
                                 replacedMessage.markUnread();
                             }
                             getManager(ChatStateManager.class).process(packet);
+                            replacedMessage.setRemoteEditing(false);
+                            mXmppConnectionService.remoteEditingIndicators.remove(uuid);
                             mXmppConnectionService.updateMessage(replacedMessage, uuid);
                             if (replacedMessage.getStatus() == Message.STATUS_RECEIVED
                                     && (replacedMessage.trusted()
