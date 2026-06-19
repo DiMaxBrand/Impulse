@@ -3428,6 +3428,14 @@ public class XmppConnectionService extends Service {
     public void updateRemoteEditingIndicator(final String messageId, final boolean active) {
         if (active) {
             remoteEditingIndicators.put(messageId, true);
+            // Dismiss the notification for this message — content is about to change
+            for (final Conversation conversation : getConversations()) {
+                final Message message = conversation.findMessageWithUuid(messageId);
+                if (message != null) {
+                    getNotificationService().clear(message);
+                    break;
+                }
+            }
         } else {
             remoteEditingIndicators.remove(messageId);
         }
