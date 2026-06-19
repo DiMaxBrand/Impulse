@@ -526,7 +526,7 @@ private fun PinnedBanner(
             // Unpin the current message
             IconButton(onClick = { onUnpin(message) }, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_push_pin_24dp),
+                    painter = painterResource(R.drawable.ic_push_pin_off_24dp),
                     contentDescription = stringResource(R.string.unpin_message),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp),
