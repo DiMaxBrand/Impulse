@@ -385,8 +385,11 @@ public class NotificationService {
                         id,
                         context.getString(R.string.incoming_calls_channel_name),
                         NotificationManager.IMPORTANCE_HIGH);
+        final Uri resolvedRingtone = ringtoneUri != null
+                ? ringtoneUri
+                : RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
         incomingCallsChannel.setSound(
-                ringtoneUri,
+                resolvedRingtone,
                 new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
