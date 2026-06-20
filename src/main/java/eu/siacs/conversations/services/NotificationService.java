@@ -112,7 +112,6 @@ public class NotificationService {
             NOTIFICATION_ID_MULTIPLIER * 14;
     private final XmppConnectionService mXmppConnectionService;
     private final LinkedHashMap<String, ArrayList<Message>> notifications = new LinkedHashMap<>();
-    private android.media.MediaPlayer mRingtonePlayer = null;
     private final HashMap<Conversation, AtomicInteger> mBacklogMessageCounter = new HashMap<>();
     private final LinkedHashMap<Conversational, MissedCallsInfo> mMissedCalls =
             new LinkedHashMap<>();
@@ -164,7 +163,6 @@ public class NotificationService {
         notificationManager.deleteNotificationChannel("export");
         notificationManager.deleteNotificationChannel("incoming_calls");
         notificationManager.deleteNotificationChannel(INCOMING_CALLS_NOTIFICATION_CHANNEL);
-        notificationManager.deleteNotificationChannel("missed_calls_v2");
 
         notificationManager.createNotificationChannelGroup(
                 new NotificationChannelGroup(
@@ -568,57 +566,9 @@ public class NotificationService {
         }
     }
 
-    // HyperOS 3 on Redmi Note 14+ silences notification channels it doesn't control.
-    // Work around by playing the ringtone ourselves on STREAM_NOTIFICATION, but only
-    // if the active incoming call channel actually has no sound (avoids double-ringing
-    // on global ROMs where the channel works correctly).
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private boolean needsRingtoneWorkaround() {
-        if (!"xiaomi".equalsIgnoreCase(android.os.Build.MANUFACTURER)) return false;
-        final String model = android.os.Build.MODEL.toLowerCase(java.util.Locale.ROOT);
-        if (!model.contains("redmi note")) return false;
-        final java.util.regex.Matcher m =
-                java.util.regex.Pattern.compile("redmi note (\\d+)").matcher(model);
-        if (!m.find() || Integer.parseInt(m.group(1)) < 14) return false;
-        // Only activate if the channel's sound is actually null/silent
-        final var channel = getCurrentIncomingCallChannel(mXmppConnectionService);
-        return channel.isPresent() && channel.get().getSound() == null;
-    }
-
-    private void startRingtoneWorkaround(final Uri ringtoneUri) {
-        stopRingtoneWorkaround();
-        if (ringtoneUri == null) return;
-        try {
-            mRingtonePlayer = new android.media.MediaPlayer();
-            mRingtonePlayer.setAudioStreamType(AudioManager.STREAM_NOTIFICATION);
-            mRingtonePlayer.setDataSource(mXmppConnectionService, ringtoneUri);
-            mRingtonePlayer.setLooping(true);
-            mRingtonePlayer.prepare();
-            mRingtonePlayer.start();
-        } catch (Exception e) {
-            Log.w(Config.LOGTAG, "ringtone workaround failed: " + e.getMessage());
-            stopRingtoneWorkaround();
-        }
-    }
-
-    private void stopRingtoneWorkaround() {
-        if (mRingtonePlayer != null) {
-            try {
-                mRingtonePlayer.stop();
-                mRingtonePlayer.release();
-            } catch (Exception ignored) {}
-            mRingtonePlayer = null;
-        }
-    }
-
     public synchronized void startRinging(
             final AbstractJingleConnection.Id id, final Set<Media> media) {
         showIncomingCallNotification(id, media, false);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
-                && needsRingtoneWorkaround()) {
-            final Uri ringtone = new AppSettings(mXmppConnectionService).getRingtone();
-            startRingtoneWorkaround(ringtone);
-        }
     }
 
     private void showIncomingCallNotification(
@@ -769,12 +719,10 @@ public class NotificationService {
     }
 
     public void cancelIncomingCallNotification() {
-        stopRingtoneWorkaround();
         cancel(INCOMING_CALL_NOTIFICATION_ID);
     }
 
     public boolean stopSoundAndVibration() {
-        stopRingtoneWorkaround();
         final var jingleRtpConnection = mXmppConnectionService.getOngoingRtpConnection();
         if (jingleRtpConnection == null) {
             return false;
