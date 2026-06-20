@@ -163,6 +163,7 @@ public class NotificationService {
         notificationManager.deleteNotificationChannel("export");
         notificationManager.deleteNotificationChannel("incoming_calls");
         notificationManager.deleteNotificationChannel(INCOMING_CALLS_NOTIFICATION_CHANNEL);
+        notificationManager.deleteNotificationChannel("missed_calls");
 
         notificationManager.createNotificationChannelGroup(
                 new NotificationChannelGroup(
@@ -226,11 +227,16 @@ public class NotificationService {
 
         final NotificationChannel missedCallsChannel =
                 new NotificationChannel(
-                        "missed_calls",
+                        "missed_calls_v2",
                         c.getString(R.string.missed_calls_channel_name),
                         NotificationManager.IMPORTANCE_HIGH);
         missedCallsChannel.setShowBadge(true);
-        missedCallsChannel.setSound(null, null);
+        missedCallsChannel.setSound(
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                new AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .build());
         missedCallsChannel.setLightColor(LED_COLOR);
         missedCallsChannel.enableLights(true);
         missedCallsChannel.setGroup("calls");
@@ -1077,7 +1083,7 @@ public class NotificationService {
 
     private Builder buildMissedCallsSummary(boolean publicVersion) {
         final Builder builder =
-                new NotificationCompat.Builder(mXmppConnectionService, "missed_calls");
+                new NotificationCompat.Builder(mXmppConnectionService, "missed_calls_v2");
         int totalCalls = 0;
         final List<String> names = new ArrayList<>();
         long lastTime = 0;
@@ -1133,7 +1139,7 @@ public class NotificationService {
     private Builder buildMissedCall(
             final Conversational conversation, final MissedCallsInfo info, boolean publicVersion) {
         final Builder builder =
-                new NotificationCompat.Builder(mXmppConnectionService, "missed_calls");
+                new NotificationCompat.Builder(mXmppConnectionService, "missed_calls_v2");
         final String title =
                 (info.getNumberOfCalls() == 1)
                         ? mXmppConnectionService.getString(R.string.missed_call)
