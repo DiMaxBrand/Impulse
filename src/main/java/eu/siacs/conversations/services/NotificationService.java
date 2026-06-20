@@ -381,11 +381,8 @@ public class NotificationService {
                         id,
                         context.getString(R.string.incoming_calls_channel_name),
                         NotificationManager.IMPORTANCE_HIGH);
-        final Uri resolvedRingtone = ringtoneUri != null
-                ? ringtoneUri
-                : RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
         incomingCallsChannel.setSound(
-                resolvedRingtone,
+                ringtoneUri,
                 new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -590,13 +587,11 @@ public class NotificationService {
 
     private void startRingtoneWorkaround(final Uri ringtoneUri) {
         stopRingtoneWorkaround();
-        final Uri uri = ringtoneUri != null
-                ? ringtoneUri
-                : RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+        if (ringtoneUri == null) return;
         try {
             mRingtonePlayer = new android.media.MediaPlayer();
             mRingtonePlayer.setAudioStreamType(AudioManager.STREAM_NOTIFICATION);
-            mRingtonePlayer.setDataSource(mXmppConnectionService, uri);
+            mRingtonePlayer.setDataSource(mXmppConnectionService, ringtoneUri);
             mRingtonePlayer.setLooping(true);
             mRingtonePlayer.prepare();
             mRingtonePlayer.start();
