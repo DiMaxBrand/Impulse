@@ -164,7 +164,7 @@ public class NotificationService {
         notificationManager.deleteNotificationChannel("export");
         notificationManager.deleteNotificationChannel("incoming_calls");
         notificationManager.deleteNotificationChannel(INCOMING_CALLS_NOTIFICATION_CHANNEL);
-        notificationManager.deleteNotificationChannel("missed_calls");
+        notificationManager.deleteNotificationChannel("missed_calls_v2");
 
         notificationManager.createNotificationChannelGroup(
                 new NotificationChannelGroup(
@@ -228,16 +228,11 @@ public class NotificationService {
 
         final NotificationChannel missedCallsChannel =
                 new NotificationChannel(
-                        "missed_calls_v2",
+                        "missed_calls",
                         c.getString(R.string.missed_calls_channel_name),
                         NotificationManager.IMPORTANCE_HIGH);
         missedCallsChannel.setShowBadge(true);
-        missedCallsChannel.setSound(
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-                new AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                        .build());
+        missedCallsChannel.setSound(null, null);
         missedCallsChannel.setLightColor(LED_COLOR);
         missedCallsChannel.enableLights(true);
         missedCallsChannel.setGroup("calls");
@@ -577,15 +572,20 @@ public class NotificationService {
     }
 
     // HyperOS 3 on Redmi Note 14+ silences notification channels it doesn't control.
-    // Work around by playing the ringtone ourselves on STREAM_NOTIFICATION.
-    private static boolean needsRingtoneWorkaround() {
+    // Work around by playing the ringtone ourselves on STREAM_NOTIFICATION, but only
+    // if the active incoming call channel actually has no sound (avoids double-ringing
+    // on global ROMs where the channel works correctly).
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private boolean needsRingtoneWorkaround() {
         if (!"xiaomi".equalsIgnoreCase(android.os.Build.MANUFACTURER)) return false;
         final String model = android.os.Build.MODEL.toLowerCase(java.util.Locale.ROOT);
         if (!model.contains("redmi note")) return false;
-        // Match "redmi note 14", "redmi note 15", etc. — generation ≥ 14
         final java.util.regex.Matcher m =
                 java.util.regex.Pattern.compile("redmi note (\\d+)").matcher(model);
-        return m.find() && Integer.parseInt(m.group(1)) >= 14;
+        if (!m.find() || Integer.parseInt(m.group(1)) < 14) return false;
+        // Only activate if the channel's sound is actually null/silent
+        final var channel = getCurrentIncomingCallChannel(mXmppConnectionService);
+        return channel.isPresent() && channel.get().getSound() == null;
     }
 
     private void startRingtoneWorkaround(final Uri ringtoneUri) {
@@ -619,7 +619,8 @@ public class NotificationService {
     public synchronized void startRinging(
             final AbstractJingleConnection.Id id, final Set<Media> media) {
         showIncomingCallNotification(id, media, false);
-        if (needsRingtoneWorkaround()) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+                && needsRingtoneWorkaround()) {
             final Uri ringtone = new AppSettings(mXmppConnectionService).getRingtone();
             startRingtoneWorkaround(ringtone);
         }
@@ -1133,7 +1134,7 @@ public class NotificationService {
 
     private Builder buildMissedCallsSummary(boolean publicVersion) {
         final Builder builder =
-                new NotificationCompat.Builder(mXmppConnectionService, "missed_calls_v2");
+                new NotificationCompat.Builder(mXmppConnectionService, "missed_calls");
         int totalCalls = 0;
         final List<String> names = new ArrayList<>();
         long lastTime = 0;
@@ -1189,7 +1190,7 @@ public class NotificationService {
     private Builder buildMissedCall(
             final Conversational conversation, final MissedCallsInfo info, boolean publicVersion) {
         final Builder builder =
-                new NotificationCompat.Builder(mXmppConnectionService, "missed_calls_v2");
+                new NotificationCompat.Builder(mXmppConnectionService, "missed_calls");
         final String title =
                 (info.getNumberOfCalls() == 1)
                         ? mXmppConnectionService.getString(R.string.missed_call)
