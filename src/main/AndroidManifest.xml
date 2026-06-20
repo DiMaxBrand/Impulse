@@ -339,6 +339,10 @@
             android:name=".ui.PublishGroupChatProfilePictureActivity"
             android:label="@string/group_chat_avatar" />
         <activity
+            android:name=".ui.NotificationSetupActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Conversations3" />
+        <activity
             android:name=".ui.ShareWithActivity"
             android:exported="true"
             android:launchMode="singleTop">

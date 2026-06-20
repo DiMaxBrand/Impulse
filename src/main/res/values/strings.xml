@@ -1249,4 +1249,18 @@
     <string name="update_channel_beta_description">New features in active testing. Some rough edges expected.</string>
     <string name="update_channel_alpha_description">Highly unstable. Crashes and broken features are expected. Only if you\'re willing to reinstall.</string>
     <string name="update_channel_info_title">About this channel</string>
+
+    <!-- Notification setup screen -->
+    <string name="notification_setup_title">Welcome to Impulse</string>
+    <string name="notification_setup_description">Choose your notification sounds below or hit Done right now to keep the current defaults.</string>
+    <string name="notification_setup_description_workaround">Your notification sounds were cleared by your device. Pick them below or hit Done right now to leave them as-is.</string>
+    <string name="notification_setup_call_ringtone_title">Incoming call ringtone</string>
+    <string name="notification_setup_call_ringtone_description">Played when someone calls you. Loops until you answer or dismiss the call.</string>
+    <string name="notification_setup_message_sound_title">Message sound</string>
+    <string name="notification_setup_message_sound_description">Played when you receive a new message.</string>
+    <string name="notification_setup_choose_ringtone">Choose ringtone</string>
+    <string name="notification_setup_choose_sound">Choose sound</string>
+    <string name="notification_setup_open_settings">Notification settings</string>
+    <string name="notification_setup_done">Done</string>
+    <string name="notification_setup_sound_set">Sound set</string>
 </resources>

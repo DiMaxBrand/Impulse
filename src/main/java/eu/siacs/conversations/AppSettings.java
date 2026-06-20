@@ -79,6 +79,9 @@ public class AppSettings {
     public static final String AUTO_SEND_RECORDING = "auto_send_recording";
     public static final String USE_SHARED_STORAGE = "use_shared_storage";
     public static final String QUICK_ACTION = "quick_action";
+    public static final String WORKAROUND_CALL_SOUND = "workaround_call_sound";
+    public static final String WORKAROUND_MESSAGE_SOUND = "workaround_message_sound";
+    public static final String NOTIFICATION_SETUP_DONE = "notification_setup_done";
 
     private static final String LEGACY_AUTO_ACCEPT_FILE_SIZE = "524288";
     private static final String DEFAULT_AUTO_ACCEPT_FILE_SIZE = "5242880";
@@ -491,5 +494,37 @@ public class AppSettings {
             }
             editor.putBoolean("pref_migrated_picture_compression", true).apply();
         }
+    }
+
+    public Uri getWorkaroundCallSound() {
+        final var s = PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(WORKAROUND_CALL_SOUND, null);
+        return s == null ? null : android.net.Uri.parse(s);
+    }
+
+    public void setWorkaroundCallSound(final Uri uri) {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putString(WORKAROUND_CALL_SOUND, uri == null ? null : uri.toString()).apply();
+    }
+
+    public Uri getWorkaroundMessageSound() {
+        final var s = PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(WORKAROUND_MESSAGE_SOUND, null);
+        return s == null ? null : android.net.Uri.parse(s);
+    }
+
+    public void setWorkaroundMessageSound(final Uri uri) {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putString(WORKAROUND_MESSAGE_SOUND, uri == null ? null : uri.toString()).apply();
+    }
+
+    public boolean isNotificationSetupDone() {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean(NOTIFICATION_SETUP_DONE, false);
+    }
+
+    public void setNotificationSetupDone() {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putBoolean(NOTIFICATION_SETUP_DONE, true).apply();
     }
 }

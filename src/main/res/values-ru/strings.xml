@@ -1309,4 +1309,18 @@
     <string name="update_channel_beta_description">Новые функции на стадии тестирования. Возможны ошибки и нестабильная работа.</string>
     <string name="update_channel_alpha_description">Крайне нестабильная. Сбои и неработающие функции — норма. Только если готовы к переустановке.</string>
     <string name="update_channel_info_title">О канале</string>
+
+    <!-- Экран настройки уведомлений -->
+    <string name="notification_setup_title">Добро пожаловать в Impulse</string>
+    <string name="notification_setup_description">Выберите звуки уведомлений ниже или нажмите «Готово» прямо сейчас, чтобы оставить текущие настройки.</string>
+    <string name="notification_setup_description_workaround">Звуки уведомлений были сброшены вашим устройством. Выберите их ниже или нажмите «Готово» прямо сейчас, чтобы оставить всё как есть.</string>
+    <string name="notification_setup_call_ringtone_title">Рингтон входящего звонка</string>
+    <string name="notification_setup_call_ringtone_description">Воспроизводится при входящем звонке. Повторяется, пока вы не ответите или не отклоните вызов.</string>
+    <string name="notification_setup_message_sound_title">Звук сообщения</string>
+    <string name="notification_setup_message_sound_description">Воспроизводится при получении нового сообщения.</string>
+    <string name="notification_setup_choose_ringtone">Выбрать рингтон</string>
+    <string name="notification_setup_choose_sound">Выбрать звук</string>
+    <string name="notification_setup_open_settings">Настройки уведомлений</string>
+    <string name="notification_setup_done">Готово</string>
+    <string name="notification_setup_sound_set">Звук выбран</string>
 </resources>
