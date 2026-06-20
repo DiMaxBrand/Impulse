@@ -566,9 +566,67 @@ public class NotificationService {
         }
     }
 
+    private boolean needsRingtoneWorkaround() {
+        return new AppSettings(mXmppConnectionService).isWorkaroundCallsEnabled();
+    }
+
+    private boolean needsMessageSoundWorkaround() {
+        return new AppSettings(mXmppConnectionService).isWorkaroundMessagesEnabled();
+    }
+
+    private void playMessageSoundWorkaround() {
+        final var appSettings = new AppSettings(mXmppConnectionService);
+        final Uri uri = appSettings.getWorkaroundMessageSound();
+        if (uri == null) return;
+        try {
+            final android.media.MediaPlayer player = new android.media.MediaPlayer();
+            player.setAudioStreamType(AudioManager.STREAM_NOTIFICATION);
+            player.setDataSource(mXmppConnectionService, uri);
+            player.setLooping(false);
+            player.setOnCompletionListener(mp -> {
+                mp.release();
+            });
+            player.prepare();
+            player.start();
+        } catch (Exception e) {
+            Log.w(Config.LOGTAG, "message sound workaround failed: " + e.getMessage());
+        }
+    }
+
+    private void startRingtoneWorkaround(final Uri ringtoneUri) {
+        stopRingtoneWorkaround();
+        if (ringtoneUri == null) return;
+        try {
+            mRingtonePlayer = new android.media.MediaPlayer();
+            mRingtonePlayer.setAudioStreamType(AudioManager.STREAM_NOTIFICATION);
+            mRingtonePlayer.setDataSource(mXmppConnectionService, ringtoneUri);
+            mRingtonePlayer.setLooping(true);
+            mRingtonePlayer.prepare();
+            mRingtonePlayer.start();
+        } catch (Exception e) {
+            Log.w(Config.LOGTAG, "ringtone workaround failed: " + e.getMessage());
+            stopRingtoneWorkaround();
+        }
+    }
+
+    private void stopRingtoneWorkaround() {
+        if (mRingtonePlayer != null) {
+            try {
+                mRingtonePlayer.stop();
+                mRingtonePlayer.release();
+            } catch (Exception ignored) {}
+            mRingtonePlayer = null;
+        }
+    }
+
     public synchronized void startRinging(
             final AbstractJingleConnection.Id id, final Set<Media> media) {
         showIncomingCallNotification(id, media, false);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+                && needsRingtoneWorkaround()) {
+            final Uri ringtone = new AppSettings(mXmppConnectionService).getWorkaroundCallSound();
+            startRingtoneWorkaround(ringtone);
+        }
     }
 
     private void showIncomingCallNotification(
@@ -952,6 +1010,7 @@ public class NotificationService {
                         buildSingleConversations(notifications.values().iterator().next(), notify);
                 modifyForSoundVibrationAndLight(mBuilder, notify, preferences);
                 notify(NOTIFICATION_ID, mBuilder.build());
+                if (notify && needsMessageSoundWorkaround()) playMessageSoundWorkaround();
             } else {
                 mBuilder = buildMultipleConversation(notify);
                 if (notifyOnlyOneChild) {
@@ -976,6 +1035,7 @@ public class NotificationService {
                     }
                 }
                 notify(NOTIFICATION_ID, mBuilder.build());
+                if (notify && needsMessageSoundWorkaround()) playMessageSoundWorkaround();
             }
         }
     }
