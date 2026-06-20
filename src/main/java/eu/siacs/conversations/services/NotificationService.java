@@ -112,6 +112,7 @@ public class NotificationService {
             NOTIFICATION_ID_MULTIPLIER * 14;
     private final XmppConnectionService mXmppConnectionService;
     private final LinkedHashMap<String, ArrayList<Message>> notifications = new LinkedHashMap<>();
+    private android.media.MediaPlayer mRingtonePlayer = null;
     private final HashMap<Conversation, AtomicInteger> mBacklogMessageCounter = new HashMap<>();
     private final LinkedHashMap<Conversational, MissedCallsInfo> mMissedCalls =
             new LinkedHashMap<>();
@@ -575,9 +576,53 @@ public class NotificationService {
         }
     }
 
+    // HyperOS 3 on Redmi Note 14+ silences notification channels it doesn't control.
+    // Work around by playing the ringtone ourselves on STREAM_NOTIFICATION.
+    private static boolean needsRingtoneWorkaround() {
+        if (!"xiaomi".equalsIgnoreCase(android.os.Build.MANUFACTURER)) return false;
+        final String model = android.os.Build.MODEL.toLowerCase(java.util.Locale.ROOT);
+        if (!model.contains("redmi note")) return false;
+        // Match "redmi note 14", "redmi note 15", etc. — generation ≥ 14
+        final java.util.regex.Matcher m =
+                java.util.regex.Pattern.compile("redmi note (\\d+)").matcher(model);
+        return m.find() && Integer.parseInt(m.group(1)) >= 14;
+    }
+
+    private void startRingtoneWorkaround(final Uri ringtoneUri) {
+        stopRingtoneWorkaround();
+        final Uri uri = ringtoneUri != null
+                ? ringtoneUri
+                : RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+        try {
+            mRingtonePlayer = new android.media.MediaPlayer();
+            mRingtonePlayer.setAudioStreamType(AudioManager.STREAM_NOTIFICATION);
+            mRingtonePlayer.setDataSource(mXmppConnectionService, uri);
+            mRingtonePlayer.setLooping(true);
+            mRingtonePlayer.prepare();
+            mRingtonePlayer.start();
+        } catch (Exception e) {
+            Log.w(Config.LOGTAG, "ringtone workaround failed: " + e.getMessage());
+            stopRingtoneWorkaround();
+        }
+    }
+
+    private void stopRingtoneWorkaround() {
+        if (mRingtonePlayer != null) {
+            try {
+                mRingtonePlayer.stop();
+                mRingtonePlayer.release();
+            } catch (Exception ignored) {}
+            mRingtonePlayer = null;
+        }
+    }
+
     public synchronized void startRinging(
             final AbstractJingleConnection.Id id, final Set<Media> media) {
         showIncomingCallNotification(id, media, false);
+        if (needsRingtoneWorkaround()) {
+            final Uri ringtone = new AppSettings(mXmppConnectionService).getRingtone();
+            startRingtoneWorkaround(ringtone);
+        }
     }
 
     private void showIncomingCallNotification(
@@ -728,10 +773,12 @@ public class NotificationService {
     }
 
     public void cancelIncomingCallNotification() {
+        stopRingtoneWorkaround();
         cancel(INCOMING_CALL_NOTIFICATION_ID);
     }
 
     public boolean stopSoundAndVibration() {
+        stopRingtoneWorkaround();
         final var jingleRtpConnection = mXmppConnectionService.getOngoingRtpConnection();
         if (jingleRtpConnection == null) {
             return false;
