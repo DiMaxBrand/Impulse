@@ -176,6 +176,7 @@ dependencies {
     // Override BOM's stable material3:1.4.0 with the latest alpha to get full M3 Expressive APIs
     implementation("androidx.compose.material3:material3:1.5.0-alpha21")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.ui:ui-text-google-fonts")
     debugImplementation("androidx.compose.ui:ui-tooling")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

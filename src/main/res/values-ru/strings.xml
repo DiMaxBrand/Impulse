@@ -1438,4 +1438,18 @@
     <string name="invite_install_samsung_steps">Нажмите «Открыть» на плашке загрузки или ⋮ (внизу справа) → Загрузки → файл сверху списка, затем «Установить».</string>
     <string name="invite_install_permission_heads_up">Android может попросить разрешить установку из вашего браузера в первый раз — это ожидаемо, просто нажмите «Разрешить». На некоторых телефонах (особенно на Xiaomi) кнопка подтверждения будет неактивна около 10 секунд — это встроенная задержка безопасности, а не баг, так что просто подождите.</string>
     <string name="invite_install_unknown_sources">Если Android всё же блокирует установку, разрешите её для браузера в Настройки → Приложения → Особый доступ → Установка неизвестных приложений, затем попробуйте снова.</string>
+
+    <!-- Экран настройки уведомлений -->
+    <string name="notification_setup_title">Добро пожаловать в Impulse</string>
+    <string name="notification_setup_description">Выберите звуки уведомлений ниже или нажмите «Готово» прямо сейчас, чтобы оставить текущие настройки.</string>
+    <string name="notification_setup_description_workaround">Звуки уведомлений были сброшены вашим устройством. Выберите их ниже или нажмите «Готово» прямо сейчас, чтобы оставить всё как есть.</string>
+    <string name="notification_setup_call_ringtone_title">Рингтон входящего звонка</string>
+    <string name="notification_setup_call_ringtone_description">Воспроизводится при входящем звонке. Повторяется, пока вы не ответите или не отклоните вызов.</string>
+    <string name="notification_setup_message_sound_title">Звук сообщения</string>
+    <string name="notification_setup_message_sound_description">Воспроизводится при получении нового сообщения.</string>
+    <string name="notification_setup_choose_ringtone">Выбрать рингтон</string>
+    <string name="notification_setup_choose_sound">Выбрать звук</string>
+    <string name="notification_setup_open_settings">Настройки уведомлений</string>
+    <string name="notification_setup_done">Готово</string>
+    <string name="notification_setup_sound_set">Звук выбран</string>
 </resources>

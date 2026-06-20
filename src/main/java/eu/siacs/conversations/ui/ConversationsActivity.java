@@ -181,7 +181,28 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                 return;
             }
             requestNotificationPermissionIfNeeded();
+            scheduleNotificationSetupIfNeeded();
         }
+    }
+
+    private void scheduleNotificationSetupIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
+        final eu.siacs.conversations.AppSettings appSettings =
+                new eu.siacs.conversations.AppSettings(this);
+        if (appSettings.isNotificationSetupDone()) return;
+        binding.getRoot().postDelayed(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            final android.app.NotificationManager nm =
+                    getSystemService(android.app.NotificationManager.class);
+            if (nm == null) return;
+            final android.app.NotificationChannel ch =
+                    nm.getNotificationChannel(
+                            eu.siacs.conversations.services.NotificationService
+                                    .MESSAGES_NOTIFICATION_CHANNEL);
+            if (ch != null && ch.getSound() == null) {
+                startActivity(new Intent(this, NotificationSetupActivity.class));
+            }
+        }, 2000);
     }
 
     private String getBatteryOptimizationPreferenceKey() {
