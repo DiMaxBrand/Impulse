@@ -906,16 +906,15 @@ private fun MessageList(
                         kotlinx.coroutines.delay(300)
                         (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
                             .playSoundEffect(android.media.AudioManager.FX_KEY_CLICK)
-                        AudioPlaybackController.play(next.message.getUuid()!!, file)
                         if (nextIdx >= 0) {
-                            // reverseLayout=true: scrollOffset=0 puts item at the BOTTOM.
-                            // To land at upper-center, read viewport height after the delay
-                            // (so layout has measured) and offset by ~70% of height.
                             val viewportHeight = listState.layoutInfo.viewportSize.height
                             val offset = if (viewportHeight > 0) (viewportHeight * 0.70f).toInt()
-                                         else 800 // fallback if layout not yet measured
+                                         else 800
                             listState.animateScrollToItem(nextIdx, scrollOffset = offset)
                         }
+                        // Start playback after scroll settles to avoid recomposition racing the animation
+                        kotlinx.coroutines.delay(400)
+                        AudioPlaybackController.play(next.message.getUuid()!!, file)
                     }
                 }
             }
