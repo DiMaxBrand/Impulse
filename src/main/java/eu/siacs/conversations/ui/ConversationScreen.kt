@@ -1631,12 +1631,14 @@ private fun MessageList(
                         kotlinx.coroutines.delay(300)
                         (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
                             .playSoundEffect(android.media.AudioManager.FX_KEY_CLICK)
-                        AudioPlaybackController.play(next.message.getUuid()!!, file)
                         if (nextIdx >= 0) {
                             // Upper-center, not bottom — goes through the single scroll executor
                             // above so it can't race the pin-to-bottom effect.
                             requestScroll(nextIdx, 0.70f)
                         }
+                        // Start playback after scroll settles to avoid recomposition racing the animation
+                        kotlinx.coroutines.delay(400)
+                        AudioPlaybackController.play(next.message.getUuid()!!, file)
                     }
                 }
             }
