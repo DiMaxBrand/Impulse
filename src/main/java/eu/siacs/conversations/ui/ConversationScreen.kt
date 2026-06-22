@@ -867,8 +867,9 @@ private fun MessageList(
     // Auto-advance to the next audio message when one finishes playing naturally.
     val context = LocalContext.current
     androidx.compose.runtime.DisposableEffect(Unit) {
-        AudioPlaybackController.onCompletion = { completedUuid ->
+        AudioPlaybackController.onCompletion = onCompletion@{ completedUuid ->
             val completedIdx = items.indexOfFirst { it is ChatItem.Msg && it.message.getUuid() == completedUuid }
+            if (completedIdx < 0) return@onCompletion
             // reverseLayout=true: index 0 is the bottom (newest). Lower index = newer = below.
             val next = items.take(completedIdx)
                 .filterIsInstance<ChatItem.Msg>()
