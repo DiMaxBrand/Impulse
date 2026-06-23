@@ -81,7 +81,9 @@ public class AppSettings {
     public static final String QUICK_ACTION = "quick_action";
     public static final String WORKAROUND_CALL_SOUND = "workaround_call_sound";
     public static final String WORKAROUND_MESSAGE_SOUND = "workaround_message_sound";
-    public static final String NOTIFICATION_SETUP_DONE = "notification_setup_done";
+    public static final String NOTIFICATION_SETUP_VERSION = "notification_setup_version";
+    // Bump this to force the setup screen to re-run on existing installs.
+    public static final int CURRENT_NOTIFICATION_SETUP_VERSION = 2;
 
     private static final String LEGACY_AUTO_ACCEPT_FILE_SIZE = "524288";
     private static final String DEFAULT_AUTO_ACCEPT_FILE_SIZE = "5242880";
@@ -520,11 +522,11 @@ public class AppSettings {
 
     public boolean isNotificationSetupDone() {
         return PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(NOTIFICATION_SETUP_DONE, false);
+                .getInt(NOTIFICATION_SETUP_VERSION, 0) >= CURRENT_NOTIFICATION_SETUP_VERSION;
     }
 
     public void setNotificationSetupDone() {
         PreferenceManager.getDefaultSharedPreferences(context).edit()
-                .putBoolean(NOTIFICATION_SETUP_DONE, true).apply();
+                .putInt(NOTIFICATION_SETUP_VERSION, CURRENT_NOTIFICATION_SETUP_VERSION).apply();
     }
 }
