@@ -1,7 +1,9 @@
 package eu.siacs.conversations.ui
 
+import android.app.NotificationManager
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Spring
@@ -52,8 +54,27 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
     val context = LocalContext.current
     val appSettings = remember { AppSettings(context) }
 
-    var callSoundUri by remember { mutableStateOf<Uri?>(appSettings.getWorkaroundCallSound()) }
-    var messageSoundUri by remember { mutableStateOf<Uri?>(appSettings.getWorkaroundMessageSound()) }
+    fun channelSound(channelId: String): Uri? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return null
+        return nm.getNotificationChannel(channelId)?.sound
+    }
+
+    fun ringtoneTitle(uri: Uri?): String? {
+        uri ?: return null
+        return try {
+            RingtoneManager.getRingtone(context, uri)?.getTitle(context)
+        } catch (_: Exception) { null }
+    }
+
+    var callSoundUri by remember {
+        mutableStateOf(appSettings.getWorkaroundCallSound()
+            ?: channelSound("incoming_calls_channel#0"))
+    }
+    var messageSoundUri by remember {
+        mutableStateOf(appSettings.getWorkaroundMessageSound()
+            ?: channelSound("messages"))
+    }
 
     val callRingtoneLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -122,6 +143,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                     stringResource(R.string.notification_setup_sound_set)
                 else
                     stringResource(R.string.notification_setup_choose_ringtone),
+                soundName = ringtoneTitle(callSoundUri),
                 isSet = callSoundUri != null,
                 isFirst = true,
                 isLast = false,
@@ -145,6 +167,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                     stringResource(R.string.notification_setup_sound_set)
                 else
                     stringResource(R.string.notification_setup_choose_sound),
+                soundName = ringtoneTitle(messageSoundUri),
                 isSet = messageSoundUri != null,
                 isFirst = false,
                 isLast = true,
@@ -182,6 +205,7 @@ private fun NotificationSetupCard(
     title: String,
     description: String,
     buttonLabel: String,
+    soundName: String?,
     isSet: Boolean,
     isFirst: Boolean,
     isLast: Boolean,
@@ -241,11 +265,26 @@ private fun NotificationSetupCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(16.dp))
-            FilledTonalButton(
-                onClick = onClick,
-                modifier = Modifier.align(Alignment.End)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(buttonLabel)
+                if (soundName != null) {
+                    Text(
+                        text = soundName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+                FilledTonalButton(onClick = onClick) {
+                    Text(buttonLabel)
+                }
             }
         }
     }
