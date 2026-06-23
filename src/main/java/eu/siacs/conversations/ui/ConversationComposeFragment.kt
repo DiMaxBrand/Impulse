@@ -984,8 +984,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         if (storageLocation.sharedStorage()) return
         val future = requireXmppActivity().xmppConnectionService.fileBackend
             .saveInternalToExternal(storageLocation)
-        Futures.addCallback(future, object : FutureCallback<Void> {
-            override fun onSuccess(result: Void) {
+        Futures.addCallback(future, object : FutureCallback<Void?> {
+            override fun onSuccess(result: Void?) {
                 Toast.makeText(ctx,
                     resources.getQuantityString(R.plurals.attachments_saved, 1, 1),
                     Toast.LENGTH_LONG).show()
