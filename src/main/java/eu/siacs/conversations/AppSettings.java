@@ -473,6 +473,14 @@ public class AppSettings {
                     .apply();
         }
 
+        if (version < 2) {
+            // Migration 2: enable auto save to gallery for existing users.
+            prefs.edit()
+                    .putBoolean(USE_SHARED_STORAGE, true)
+                    .putInt("pref_migration_version", 2)
+                    .apply();
+        }
+
         if (!prefs.getBoolean("pref_migrated_auto_accept_filesize", false)) {
             final SharedPreferences.Editor editor = prefs.edit();
             if (LEGACY_AUTO_ACCEPT_FILE_SIZE.equals(prefs.getString(AUTO_ACCEPT_FILE_SIZE, null))) {
