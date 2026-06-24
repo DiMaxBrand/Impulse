@@ -43,8 +43,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.R
 
@@ -102,19 +100,9 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
         }
     }
 
-    val provider = GoogleFont.Provider(
-        providerAuthority = "com.google.android.gms.fonts",
-        providerPackage = "com.google.android.gms",
-        certificates = R.array.com_google_android_gms_fonts_certs
-    )
-    val googleSansFlex = GoogleFont("Google Sans Flex")
-    val expressiveFontFamily = FontFamily(
-        Font(
-            googleFont = googleSansFlex,
-            fontProvider = provider,
-            weight = FontWeight.Bold
-        )
-    )
+    val expressiveFontFamily = remember {
+        FontFamily(Font(R.font.google_sans_flex_bold, weight = FontWeight.Bold))
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
