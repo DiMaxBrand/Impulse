@@ -185,6 +185,13 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         }
     }
 
+    private static boolean channelHasNoSound(final android.app.NotificationChannel ch) {
+        if (ch == null) return false;
+        final android.net.Uri sound = ch.getSound();
+        return sound == null || sound.equals(android.net.Uri.EMPTY)
+                || sound.toString().isEmpty();
+    }
+
     private void scheduleNotificationSetupIfNeeded() {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
         final eu.siacs.conversations.AppSettings appSettings =
@@ -198,10 +205,9 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                     nm != null ? nm.getNotificationChannel("messages") : null;
             final android.app.NotificationChannel calls =
                     nm != null ? nm.getNotificationChannel("incoming_calls_channel#0") : null;
-            final String msg = "messages: "
-                    + (messages == null ? "missing" : messages.getSound() == null ? "none" : "set")
-                    + " | calls: "
-                    + (calls == null ? "missing" : calls.getSound() == null ? "none" : "set");
+            final android.net.Uri mSound = messages != null ? messages.getSound() : null;
+            final android.net.Uri cSound = calls != null ? calls.getSound() : null;
+            final String msg = "messages: " + mSound + " | calls: " + cSound;
             Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
             startActivity(new Intent(this, NotificationSetupActivity.class));
         }, 2000);
