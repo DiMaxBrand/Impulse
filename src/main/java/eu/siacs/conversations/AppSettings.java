@@ -81,6 +81,8 @@ public class AppSettings {
     public static final String QUICK_ACTION = "quick_action";
     public static final String WORKAROUND_CALL_SOUND = "workaround_call_sound";
     public static final String WORKAROUND_MESSAGE_SOUND = "workaround_message_sound";
+    public static final String WORKAROUND_CALLS_ENABLED = "workaround_calls_enabled";
+    public static final String WORKAROUND_MESSAGES_ENABLED = "workaround_messages_enabled";
     public static final String NOTIFICATION_SETUP_VERSION = "notification_setup_version";
     // Bump this to force the setup screen to re-run on existing installs.
     public static final int CURRENT_NOTIFICATION_SETUP_VERSION = 2;
@@ -504,6 +506,26 @@ public class AppSettings {
             }
             editor.putBoolean("pref_migrated_picture_compression", true).apply();
         }
+    }
+
+    public boolean isWorkaroundCallsEnabled() {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean(WORKAROUND_CALLS_ENABLED, false);
+    }
+
+    public void setWorkaroundCallsEnabled(final boolean enabled) {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putBoolean(WORKAROUND_CALLS_ENABLED, enabled).apply();
+    }
+
+    public boolean isWorkaroundMessagesEnabled() {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean(WORKAROUND_MESSAGES_ENABLED, false);
+    }
+
+    public void setWorkaroundMessagesEnabled(final boolean enabled) {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+                .putBoolean(WORKAROUND_MESSAGES_ENABLED, enabled).apply();
     }
 
     public Uri getWorkaroundCallSound() {
