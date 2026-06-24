@@ -34,7 +34,12 @@ public class NotificationsSettingsFragment extends XmppPreferenceFragment {
                             return;
                         }
                         final Uri uri = PickRingtone.noneToNull(result);
-                        appSettings().setNotificationTone(uri);
+                        final AppSettings settings = appSettings();
+                        if (settings.isWorkaroundMessagesEnabled()) {
+                            settings.setWorkaroundMessageSound(uri);
+                        } else {
+                            settings.setNotificationTone(uri);
+                        }
                         Log.i(Config.LOGTAG, "User set notification tone to " + uri);
                     });
     private final ActivityResultLauncher<Uri> pickRingtoneLauncher =
@@ -46,11 +51,17 @@ public class NotificationsSettingsFragment extends XmppPreferenceFragment {
                             return;
                         }
                         final Uri uri = PickRingtone.noneToNull(result);
-                        appSettings().setRingtone(uri);
-                        Log.i(Config.LOGTAG, "User set ringtone to " + uri);
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            NotificationService.recreateIncomingCallChannel(requireContext(), uri);
+                        final AppSettings settings = appSettings();
+                        if (settings.isWorkaroundCallsEnabled()) {
+                            settings.setWorkaroundCallSound(uri);
+                        } else {
+                            settings.setRingtone(uri);
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                NotificationService.recreateIncomingCallChannel(
+                                        requireContext(), uri);
+                            }
                         }
+                        Log.i(Config.LOGTAG, "User set ringtone to " + uri);
                     });
 
     @Override
