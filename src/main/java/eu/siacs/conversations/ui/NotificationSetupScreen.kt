@@ -54,11 +54,11 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
     val context = LocalContext.current
     val appSettings = remember { AppSettings(context) }
 
-    fun channelSound(channelId: String): Uri? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
-        val nm = context.getSystemService(NotificationManager::class.java) ?: return null
-        val sound = nm.getNotificationChannel(channelId)?.sound ?: return null
-        return if (sound == Uri.EMPTY || sound.toString().isEmpty()) null else sound
+    fun channelHasNoSound(channelId: String): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return false
+        val sound = nm.getNotificationChannel(channelId)?.sound ?: return true
+        return sound == Uri.EMPTY || sound.toString().isEmpty()
     }
 
     fun ringtoneTitle(uri: Uri?): String? {
@@ -68,43 +68,38 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
         } catch (_: Exception) { null }
     }
 
-    val callChannelSound = remember { channelSound("incoming_calls_channel#0") }
-    val messageChannelSound = remember { channelSound("messages") }
-
-    // A channel needs workaround if the system stripped its sound.
-    val callNeedsWorkaround = callChannelSound == null
-    val messageNeedsWorkaround = messageChannelSound == null
-    val anyWorkaround = callNeedsWorkaround || messageNeedsWorkaround
+    // Determine workaround need once and store it persistently.
+    val callNeedsWorkaround = remember {
+        if (appSettings.isWorkaroundCallsEnabled()) true
+        else channelHasNoSound("incoming_calls_channel#0").also { needed ->
+            if (needed) appSettings.setWorkaroundCallsEnabled(true)
+        }
+    }
+    val anyWorkaround = callNeedsWorkaround
 
     var callSoundUri by remember {
         mutableStateOf(
             appSettings.getWorkaroundCallSound()
-                ?: callChannelSound
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        )
-    }
-    var messageSoundUri by remember {
-        mutableStateOf(
-            appSettings.getWorkaroundMessageSound()
-                ?: messageChannelSound
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         )
     }
 
     val callRingtoneLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-        callSoundUri = uri ?: callSoundUri
-        if (callNeedsWorkaround) appSettings.setWorkaroundCallSound(uri)
-    }
-
-    val messageRingtoneLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-        messageSoundUri = uri ?: messageSoundUri
-        if (messageNeedsWorkaround) appSettings.setWorkaroundMessageSound(uri)
+        val picked = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            callSoundUri = picked ?: callSoundUri
+            if (callNeedsWorkaround) {
+                appSettings.setWorkaroundCallSound(picked)
+            } else {
+                appSettings.setRingtone(picked)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    eu.siacs.conversations.services.NotificationService
+                        .recreateIncomingCallChannel(context, picked)
+                }
+            }
+        }
     }
 
     val provider = GoogleFont.Provider(
@@ -157,60 +152,36 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
             NotificationSetupCard(
                 title = stringResource(R.string.notification_setup_call_ringtone_title),
                 description = stringResource(R.string.notification_setup_call_ringtone_description),
-                buttonLabel = if (callNeedsWorkaround)
-                    stringResource(R.string.notification_setup_choose_ringtone)
-                else
-                    stringResource(R.string.notification_setup_open_settings),
-                soundName = if (callNeedsWorkaround) ringtoneTitle(callSoundUri) else null,
-                isSet = callNeedsWorkaround && callSoundUri != null,
+                buttonLabel = stringResource(R.string.notification_setup_choose_ringtone),
+                soundName = ringtoneTitle(callSoundUri),
+                isSet = callSoundUri != null,
                 isFirst = true,
                 isLast = false,
                 onClick = {
-                    if (callNeedsWorkaround) {
-                        val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                            callSoundUri?.let { putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, it) }
-                        }
-                        callRingtoneLauncher.launch(intent)
-                    } else {
-                        val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
-                            putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
-                            putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, "incoming_calls_channel#0")
-                        }
-                        context.startActivity(intent)
+                    val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                        callSoundUri?.let { putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, it) }
                     }
+                    callRingtoneLauncher.launch(intent)
                 }
             )
 
             NotificationSetupCard(
                 title = stringResource(R.string.notification_setup_message_sound_title),
                 description = stringResource(R.string.notification_setup_message_sound_description),
-                buttonLabel = if (messageNeedsWorkaround)
-                    stringResource(R.string.notification_setup_choose_sound)
-                else
-                    stringResource(R.string.notification_setup_open_settings),
-                soundName = if (messageNeedsWorkaround) ringtoneTitle(messageSoundUri) else null,
-                isSet = messageNeedsWorkaround && messageSoundUri != null,
+                buttonLabel = stringResource(R.string.notification_setup_open_settings),
+                soundName = null,
+                isSet = false,
                 isFirst = false,
                 isLast = true,
                 onClick = {
-                    if (messageNeedsWorkaround) {
-                        val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                            messageSoundUri?.let { putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, it) }
-                        }
-                        messageRingtoneLauncher.launch(intent)
-                    } else {
-                        val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
-                            putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
-                            putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, "messages")
-                        }
-                        context.startActivity(intent)
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, "messages")
                     }
+                    context.startActivity(intent)
                 }
             )
 
