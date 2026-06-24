@@ -57,7 +57,8 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
     fun channelSound(channelId: String): Uri? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
         val nm = context.getSystemService(NotificationManager::class.java) ?: return null
-        return nm.getNotificationChannel(channelId)?.sound
+        val sound = nm.getNotificationChannel(channelId)?.sound ?: return null
+        return if (sound == Uri.EMPTY || sound.toString().isEmpty()) null else sound
     }
 
     fun ringtoneTitle(uri: Uri?): String? {
