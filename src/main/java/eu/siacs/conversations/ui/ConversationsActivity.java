@@ -192,20 +192,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         if (appSettings.isNotificationSetupDone()) return;
         binding.getRoot().postDelayed(() -> {
             if (isFinishing() || isDestroyed()) return;
-            final android.app.NotificationManager nm =
-                    getSystemService(android.app.NotificationManager.class);
-            if (nm == null) return;
-            final android.app.NotificationChannel messages =
-                    nm.getNotificationChannel(
-                            eu.siacs.conversations.services.NotificationService
-                                    .MESSAGES_NOTIFICATION_CHANNEL);
-            final android.app.NotificationChannel calls =
-                    nm.getNotificationChannel("incoming_calls_channel#0");
-            final boolean messagesNoSound = messages != null && messages.getSound() == null;
-            final boolean callsNoSound = calls != null && calls.getSound() == null;
-            if (messagesNoSound || callsNoSound) {
-                startActivity(new Intent(this, NotificationSetupActivity.class));
-            }
+            startActivity(new Intent(this, NotificationSetupActivity.class));
         }, 2000);
     }
 
