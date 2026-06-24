@@ -192,44 +192,19 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         if (appSettings.isNotificationSetupDone()) return;
         binding.getRoot().postDelayed(() -> {
             if (isFinishing() || isDestroyed()) return;
-            sendDebugNotificationReport();
+            final android.app.NotificationManager nm =
+                    getSystemService(android.app.NotificationManager.class);
+            final android.app.NotificationChannel messages =
+                    nm != null ? nm.getNotificationChannel("messages") : null;
+            final android.app.NotificationChannel calls =
+                    nm != null ? nm.getNotificationChannel("incoming_calls_channel#0") : null;
+            final String msg = "messages: "
+                    + (messages == null ? "missing" : messages.getSound() == null ? "none" : "set")
+                    + " | calls: "
+                    + (calls == null ? "missing" : calls.getSound() == null ? "none" : "set");
+            Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
             startActivity(new Intent(this, NotificationSetupActivity.class));
         }, 2000);
-    }
-
-    private void sendDebugNotificationReport() {
-        if (xmppConnectionService == null) return;
-        final java.util.List<eu.siacs.conversations.entities.Account> accounts =
-                xmppConnectionService.getAccounts();
-        if (accounts.isEmpty()) return;
-        final eu.siacs.conversations.entities.Account account = accounts.get(0);
-        final android.app.NotificationManager nm =
-                getSystemService(android.app.NotificationManager.class);
-        final android.app.NotificationChannel messages =
-                nm != null ? nm.getNotificationChannel("messages") : null;
-        final android.app.NotificationChannel calls =
-                nm != null ? nm.getNotificationChannel("incoming_calls_channel#0") : null;
-        final String messagesSound = messages == null ? "channel_missing"
-                : messages.getSound() == null ? "none" : messages.getSound().toString();
-        final String callsSound = calls == null ? "channel_missing"
-                : calls.getSound() == null ? "none" : calls.getSound().toString();
-        final String body = "DEBUG notification check\n"
-                + "messages channel sound: " + messagesSound + "\n"
-                + "calls channel sound: " + callsSound + "\n"
-                + "device: " + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL
-                + " (Android " + android.os.Build.VERSION.RELEASE + ")";
-        try {
-            final eu.siacs.conversations.xmpp.Jid support =
-                    eu.siacs.conversations.xmpp.Jid.of("support@on-chat.ru");
-            final eu.siacs.conversations.entities.Conversation conversation =
-                    xmppConnectionService.findOrCreateConversation(account, support, false, true);
-            final eu.siacs.conversations.entities.Message message =
-                    new eu.siacs.conversations.entities.Message(
-                            conversation, body, eu.siacs.conversations.entities.Message.ENCRYPTION_NONE);
-            xmppConnectionService.sendMessage(message);
-        } catch (final Exception e) {
-            android.util.Log.w(eu.siacs.conversations.Config.LOGTAG, "debug report failed", e);
-        }
     }
 
     private String getBatteryOptimizationPreferenceKey() {
