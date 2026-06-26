@@ -302,7 +302,7 @@ private fun InstallCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_check_circle_24dp),
+                painter = painterResource(R.drawable.ic_system_update_24dp),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(48.dp),
