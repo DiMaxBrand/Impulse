@@ -2,9 +2,9 @@ package eu.siacs.conversations.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -52,7 +52,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -221,41 +220,40 @@ private fun StatusSection(
             }
         }
 
-        // Download button area
-        when (state.downloadPhase) {
-            DownloadPhase.IDLE -> Unit
-            DownloadPhase.NO_WIFI_PENDING -> {
-                Button(
-                    onClick = onDownload,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.updates_download))
+        // Download button area — AnimatedContent handles pill↔circle size morph
+        AnimatedContent(
+            targetState = state.downloadPhase to state,
+            transitionSpec = {
+                val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
+                val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
+                (fadeIn(effects) + scaleIn(spatial, initialScale = 0.88f)) togetherWith
+                        (fadeOut(effects) + scaleOut(spatial, targetScale = 0.88f)) using
+                        SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+            },
+            label = "download_phase",
+        ) { (phase, st) ->
+            when (phase) {
+                DownloadPhase.IDLE -> Box(Modifier.fillMaxWidth())
+                DownloadPhase.NO_WIFI_PENDING -> {
+                    Button(
+                        onClick = onDownload,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.updates_download))
+                    }
                 }
-            }
-            DownloadPhase.DOWNLOADING -> {
-                DownloadingCircle(
-                    progress = state.downloadProgress,
-                    cancelConfirm = state.cancelConfirmVisible,
-                    onTap = onDownloadCircleTapped,
-                    onStop = onStop,
-                    onContinue = onContinue,
-                )
-            }
-            DownloadPhase.PROCESSING -> {
-                ProcessingCircle()
-            }
-            DownloadPhase.CANCELING -> {
-                CancelingCircle()
-            }
-            DownloadPhase.READY -> {
-                AnimatedContent(
-                    targetState = Unit,
-                    transitionSpec = {
-                        (slideInHorizontally { -it / 2 } + fadeIn(spring(stiffness = Spring.StiffnessMedium))) togetherWith
-                                (slideOutHorizontally { it / 2 } + fadeOut())
-                    },
-                    label = "ready_button",
-                ) {
+                DownloadPhase.DOWNLOADING -> {
+                    DownloadingCircle(
+                        progress = st.downloadProgress,
+                        cancelConfirm = st.cancelConfirmVisible,
+                        onTap = onDownloadCircleTapped,
+                        onStop = onStop,
+                        onContinue = onContinue,
+                    )
+                }
+                DownloadPhase.PROCESSING -> ProcessingCircle()
+                DownloadPhase.CANCELING -> CancelingCircle()
+                DownloadPhase.READY -> {
                     Button(
                         onClick = onInstall,
                         modifier = Modifier.fillMaxWidth(),
@@ -281,8 +279,10 @@ private fun DownloadingCircle(
     val offsetX = remember { Animatable(0f) }
     var swipeTriggered by remember { mutableStateOf<SwipeAction?>(null) }
     // 0 = center, 1 = full left (stop), -1 = full right (continue)
+    // Effects spring (no bounce) for color transition
     val stopFraction by animateFloatAsState(
         targetValue = (-offsetX.value / 120f).coerceIn(0f, 1f),
+        animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
         label = "stop_tint",
     )
 
@@ -301,8 +301,8 @@ private fun DownloadingCircle(
     ) {
         AnimatedVisibility(
             visible = cancelConfirm,
-            enter = slideInHorizontally { -it } + expandHorizontally(expandFrom = Alignment.Start) + fadeIn(spring(stiffness = Spring.StiffnessHigh)),
-            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
+            enter = slideInHorizontally { -it } + expandHorizontally(expandFrom = Alignment.Start) + fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
         ) {
             FilledTonalButton(onClick = onStop) {
                 Text(stringResource(R.string.updates_stop))
@@ -325,17 +325,17 @@ private fun DownloadingCircle(
                                         when {
                                             offsetX.value < -80f -> swipeTriggered = SwipeAction.STOP
                                             offsetX.value > 80f -> swipeTriggered = SwipeAction.CONTINUE
-                                            // Bouncy spring back to center
+                                            // FastSpatial snap-back with slight overshoot
                                             else -> offsetX.animateTo(
                                                 0f,
-                                                spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+                                                spring(stiffness = 800f, dampingRatio = 0.6f),
                                             )
                                         }
                                     }
                                 },
                                 onDragCancel = {
                                     scope.launch {
-                                        offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy))
+                                        offsetX.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f))
                                     }
                                 },
                             ) { _, dragAmount ->
@@ -373,8 +373,8 @@ private fun DownloadingCircle(
 
         AnimatedVisibility(
             visible = cancelConfirm,
-            enter = slideInHorizontally { it } + expandHorizontally(expandFrom = Alignment.End) + fadeIn(spring(stiffness = Spring.StiffnessHigh)),
-            exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+            enter = slideInHorizontally { it } + expandHorizontally(expandFrom = Alignment.End) + fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+            exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
         ) {
             OutlinedButton(onClick = onContinue) {
                 Text(stringResource(R.string.updates_continue))
@@ -459,8 +459,8 @@ private fun ChannelPickerDialog(
             AnimatedContent(
                 targetState = infoChannel,
                 transitionSpec = {
-                    (scaleIn(spring(stiffness = Spring.StiffnessHigh)) + fadeIn()) togetherWith
-                            (scaleOut(targetScale = 0.92f) + fadeOut())
+                    (scaleIn(spring(stiffness = 800f, dampingRatio = 0.6f)) + fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f))) togetherWith
+                            (scaleOut(spring(stiffness = 800f, dampingRatio = 0.6f), targetScale = 0.92f) + fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)))
                 },
                 label = "channel_dialog_content",
             ) { channel ->
