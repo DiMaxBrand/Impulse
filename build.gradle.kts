@@ -39,13 +39,13 @@ android {
         minSdk = 33
         targetSdk = 36
         versionCode = baseVersionCode
-        versionName = "1.11.0-alpha.15+2.20.0"
+        versionName = "1.11.0-alpha.23+2.20.0"
         applicationId = "com.dimax.impulse"
         resValue("string", "applicationId", applicationId!!)
         val appName = "Impulse"
         buildConfigField("String", "APP_NAME", "\"$appName\"")
         base {
-            archivesName.set("com.dimax.impulse_1.11.0-alpha.15" +
+            archivesName.set("com.dimax.impulse_1.11.0-alpha.23" +
                     "+2.20.0")
         }
     }
