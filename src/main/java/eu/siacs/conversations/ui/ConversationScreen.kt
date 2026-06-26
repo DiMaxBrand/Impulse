@@ -1668,13 +1668,22 @@ private fun MessageContent(
             }
         }
         transferable != null && transferable.getStatus() == Transferable.STATUS_UPLOADING -> {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.sending_file, transferableProgress ?: 0),
-                    style = MaterialTheme.typography.bodyMedium,
+            val fp = message.fileParams
+            if (fp.width > 0 && fp.height > 0) {
+                UploadingMediaThumbnail(
+                    message = message,
+                    progress = (transferableProgress ?: 0) / 100f,
+                    aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
                 )
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.sending_file, transferableProgress ?: 0),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         }
         message.isFileOrImage &&
@@ -1978,6 +1987,67 @@ private fun DownloadingMediaPlaceholder(progress: Float, aspectRatio: Float) {
             color = primary,
             trackColor = primary.copy(alpha = 0.20f),
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun UploadingMediaThumbnail(message: Message, progress: Float, aspectRatio: Float) {
+    val context = LocalContext.current
+    val activity = context as? XmppActivity
+    val fileBackend = activity?.xmppConnectionService?.fileBackend
+    val primary = MaterialTheme.colorScheme.primary
+    val thumb = remember(message.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+    val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
+    LaunchedEffect(message.getUuid()) {
+        val bm = withContext(Dispatchers.IO) {
+            try { fileBackend?.getThumbnail(message, sizePx, false) } catch (_: Exception) { null }
+        }
+        if (bm != null) thumb.value = bm.asImageBitmap()
+    }
+    Box(
+        modifier = Modifier
+            .widthIn(max = 280.dp)
+            .aspectRatio(aspectRatio.coerceIn(0.25f, 4f))
+            .clip(RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        val bitmap = thumb.value
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularWavyProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(56.dp),
+                    color = Color.White,
+                    trackColor = Color.White.copy(alpha = 0.30f),
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularWavyProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(56.dp),
+                    color = primary,
+                    trackColor = primary.copy(alpha = 0.20f),
+                )
+            }
+        }
     }
 }
 
