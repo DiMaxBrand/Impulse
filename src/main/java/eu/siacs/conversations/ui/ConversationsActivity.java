@@ -532,8 +532,6 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     }
 
     private void maybeShowUpdateSheet() {
-        final Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.main_fragment);
-        if (!(fragment instanceof ConversationsOverviewFragment)) return;
         if (!UpdateSheetFragment.hasPendingUpdate(this)) return;
         if (getSupportFragmentManager().findFragmentByTag(UpdateSheetFragment.TAG) != null) return;
         new UpdateSheetFragment().show(getSupportFragmentManager(), UpdateSheetFragment.TAG);
