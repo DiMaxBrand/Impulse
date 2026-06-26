@@ -85,7 +85,7 @@ public class AppSettings {
     public static final String WORKAROUND_MESSAGES_ENABLED = "workaround_messages_enabled";
     public static final String NOTIFICATION_SETUP_VERSION = "notification_setup_version";
     // Bump this to force the setup screen to re-run on existing installs.
-    public static final int CURRENT_NOTIFICATION_SETUP_VERSION = 2;
+    public static final int CURRENT_NOTIFICATION_SETUP_VERSION = 3;
 
     private static final String LEGACY_AUTO_ACCEPT_FILE_SIZE = "524288";
     private static final String DEFAULT_AUTO_ACCEPT_FILE_SIZE = "5242880";
