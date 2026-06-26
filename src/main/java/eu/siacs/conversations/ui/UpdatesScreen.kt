@@ -50,7 +50,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.WavyCircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -341,7 +341,7 @@ private fun DownloadingCircle(
                     onClick = onTap,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        WavyCircularProgressIndicator(
+                        CircularWavyProgressIndicator(
                             progress = { progress },
                             modifier = Modifier.size(36.dp),
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -375,7 +375,7 @@ private fun ProcessingCircle() {
             onClick = { showAlmostDone = true },
         ) {
             Box(contentAlignment = Alignment.Center) {
-                WavyCircularProgressIndicator(
+                CircularWavyProgressIndicator(
                     modifier = Modifier.size(36.dp),
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )

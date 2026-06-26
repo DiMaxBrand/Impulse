@@ -12,6 +12,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
@@ -62,9 +65,7 @@ class UpdatesActivity : ActionBarActivity() {
                         )
                     },
                 ) { padding ->
-                    androidx.compose.foundation.layout.Box(
-                        modifier = androidx.compose.ui.Modifier.padding(padding)
-                    ) {
+                    Box(modifier = Modifier.padding(padding)) {
                         UpdatesScreen(
                             state = uiState,
                             onChannelSelected = { channel ->
