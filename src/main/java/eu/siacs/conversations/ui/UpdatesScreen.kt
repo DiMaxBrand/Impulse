@@ -6,12 +6,12 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -20,20 +20,23 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -49,7 +52,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,13 +67,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import eu.siacs.conversations.R
 import eu.siacs.conversations.update.UpdateChannel
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -98,7 +98,6 @@ fun UpdatesScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // Group 1 — Current version
         ExpressiveGroupRow(GroupPosition.SINGLE) {
             ListItem(
                 headlineContent = { Text(stringResource(R.string.updates_current_version_label)) },
@@ -115,7 +114,6 @@ fun UpdatesScreen(
 
         Spacer(Modifier.height(6.dp))
 
-        // Group 2 — Channel selector
         ExpressiveGroupRow(GroupPosition.SINGLE) {
             ListItem(
                 headlineContent = { Text(stringResource(R.string.updates_channel_label)) },
@@ -139,7 +137,6 @@ fun UpdatesScreen(
 
         Spacer(Modifier.height(6.dp))
 
-        // Group 3 — Actions
         ExpressiveGroupRow(GroupPosition.TOP) {
             ListItem(
                 headlineContent = { Text(stringResource(R.string.updates_auto_check_label)) },
@@ -162,7 +159,7 @@ fun UpdatesScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        // Inline status for idle states (checking / up-to-date / new version found)
+        // Idle status: checking / up-to-date / new version found
         val mainText = mainStatusText(state)
         AnimatedContent(
             targetState = mainText,
@@ -187,9 +184,10 @@ fun UpdatesScreen(
 
         Spacer(Modifier.height(4.dp))
 
-        // Debug: trigger the update bottom sheet with a fake pending update
+        // Debug: show the update bottom sheet with a fake pending update
         FilledTonalButton(
             onClick = onShowUpdateSheet,
+            shapes = ButtonDefaults.shapes(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Show update bottom sheet")
@@ -207,7 +205,6 @@ fun UpdatesScreen(
         )
     }
 
-    // Update flow bottom sheet
     if (state.showUpdateSheet) {
         ModalBottomSheet(onDismissRequest = onHideUpdateSheet) {
             Column(
@@ -222,7 +219,9 @@ fun UpdatesScreen(
                         text = stringResource(R.string.updates_new_version_available, state.pendingVersion),
                         style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
                     )
                 }
                 StatusSection(
@@ -239,7 +238,7 @@ fun UpdatesScreen(
     }
 }
 
-// ─── Status + Download button ─────────────────────────────────────────────────
+// ─── Status + Download flow ───────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -257,7 +256,6 @@ private fun StatusSection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        // Status text for download phases — slides on change
         AnimatedContent(
             targetState = sheetStatusText(state),
             transitionSpec = {
@@ -291,13 +289,32 @@ private fun StatusSection(
         ) { phase ->
             when (phase) {
                 DownloadPhase.IDLE -> Box(Modifier.fillMaxWidth())
+
                 DownloadPhase.NO_WIFI_PENDING -> {
-                    Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.updates_download))
+                    // Same pill shape/height as the downloading state — smooth morph on phase change
+                    Button(
+                        onClick = onDownload,
+                        shapes = ButtonDefaults.shapes(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(64.dp),
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_download_24dp),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            stringResource(R.string.updates_download),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                     }
                 }
+
                 DownloadPhase.DOWNLOADING -> {
-                    DownloadingCircle(
+                    DownloadingPill(
                         progress = state.downloadProgress,
                         cancelConfirm = state.cancelConfirmVisible,
                         onTap = onDownloadCircleTapped,
@@ -305,10 +322,11 @@ private fun StatusSection(
                         onContinue = onContinue,
                     )
                 }
-                DownloadPhase.PROCESSING -> ProcessingCircle()
-                DownloadPhase.CANCELING -> CancelingCircle()
+
+                DownloadPhase.PROCESSING -> ProcessingPill()
+                DownloadPhase.CANCELING -> CancelingPill()
+
                 DownloadPhase.READY -> {
-                    // Inner AnimatedContent handles pill → install card expansion
                     AnimatedContent(
                         targetState = state.showInstallCard,
                         transitionSpec = {
@@ -327,8 +345,18 @@ private fun StatusSection(
                                 onConfirm = onConfirmInstall,
                             )
                         } else {
-                            Button(onClick = onInstall, modifier = Modifier.fillMaxWidth()) {
-                                Text(stringResource(R.string.updates_proceed_to_install))
+                            Button(
+                                onClick = onInstall,
+                                shapes = ButtonDefaults.shapes(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(64.dp),
+                                contentPadding = PaddingValues(horizontal = 24.dp),
+                            ) {
+                                Text(
+                                    stringResource(R.string.updates_proceed_to_install),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
                             }
                         }
                     }
@@ -337,6 +365,189 @@ private fun StatusSection(
         }
     }
 }
+
+// ─── Download/processing/canceling pills ─────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun DownloadingPill(
+    progress: Float,
+    cancelConfirm: Boolean,
+    onTap: () -> Unit,
+    onStop: () -> Unit,
+    onContinue: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    // Track horizontal drag just for the color-shift hint — no physical movement on a full-width pill
+    val swipeDelta = remember { Animatable(0f) }
+    var swipeTriggered by remember { mutableStateOf<SwipeAction?>(null) }
+
+    // Smooth progress — drifts instead of jumping
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = spring(stiffness = 80f, dampingRatio = 1.0f),
+        label = "download_progress",
+    )
+
+    // 0 = center (primary), 1 = full left (error = stop warning)
+    val stopFraction by animateFloatAsState(
+        targetValue = (-swipeDelta.value / 80f).coerceIn(0f, 1f),
+        animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+        label = "stop_tint",
+    )
+
+    LaunchedEffect(swipeTriggered) {
+        when (swipeTriggered) {
+            SwipeAction.STOP -> { onStop(); swipeTriggered = null }
+            SwipeAction.CONTINUE -> { onContinue(); swipeTriggered = null }
+            null -> Unit
+        }
+    }
+
+    val pillColor = lerp(
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.errorContainer,
+        stopFraction,
+    )
+    val contentColor = lerp(
+        MaterialTheme.colorScheme.onPrimaryContainer,
+        MaterialTheme.colorScheme.onErrorContainer,
+        stopFraction,
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Full-width pill — same height as the Download button for a seamless phase morph
+        Surface(
+            shape = CircleShape,
+            color = pillColor,
+            onClick = onTap,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .pointerInput(cancelConfirm) {
+                    if (!cancelConfirm) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                scope.launch {
+                                    when {
+                                        swipeDelta.value < -50f -> swipeTriggered = SwipeAction.STOP
+                                        swipeDelta.value > 50f -> swipeTriggered = SwipeAction.CONTINUE
+                                        else -> swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f))
+                                    }
+                                }
+                            },
+                            onDragCancel = {
+                                scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f)) }
+                            },
+                        ) { _, dragAmount ->
+                            scope.launch {
+                                val resistance = (1f - (kotlin.math.abs(swipeDelta.value) / 120f)).coerceAtLeast(0.3f)
+                                swipeDelta.snapTo((swipeDelta.value + dragAmount * resistance).coerceIn(-80f, 80f))
+                            }
+                        }
+                    }
+                },
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                CircularWavyProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier.size(40.dp),
+                    color = contentColor,
+                    trackColor = contentColor.copy(alpha = 0.22f),
+                )
+            }
+        }
+
+        // Stop / Continue appear BELOW the pill, not beside it
+        AnimatedVisibility(
+            visible = cancelConfirm,
+            enter = expandVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) +
+                    fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+            exit = shrinkVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) +
+                    fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                FilledTonalButton(
+                    onClick = onStop,
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.updates_stop))
+                }
+                OutlinedButton(
+                    onClick = onContinue,
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.updates_continue))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun ProcessingPill() {
+    var showAlmostDone by remember { mutableStateOf(false) }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            onClick = { showAlmostDone = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                CircularWavyProgressIndicator(
+                    modifier = Modifier.size(40.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.22f),
+                )
+            }
+        }
+        AnimatedVisibility(visible = showAlmostDone) {
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(2000)
+                showAlmostDone = false
+            }
+            Text(
+                text = stringResource(R.string.updates_almost_done),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CancelingPill() {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            LoadingIndicator(
+                modifier = Modifier.size(40.dp),
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
+    }
+}
+
+// ─── Install card ─────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -379,172 +590,13 @@ private fun InstallCard(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(4.dp))
-            Button(onClick = onConfirm, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onConfirm,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Text(stringResource(R.string.updates_install_now))
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun DownloadingCircle(
-    progress: Float,
-    cancelConfirm: Boolean,
-    onTap: () -> Unit,
-    onStop: () -> Unit,
-    onContinue: () -> Unit,
-) {
-    val scope = rememberCoroutineScope()
-    val offsetX = remember { Animatable(0f) }
-    var swipeTriggered by remember { mutableStateOf<SwipeAction?>(null) }
-    val stopFraction by animateFloatAsState(
-        targetValue = (-offsetX.value / 120f).coerceIn(0f, 1f),
-        animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
-        label = "stop_tint",
-    )
-
-    LaunchedEffect(swipeTriggered) {
-        when (swipeTriggered) {
-            SwipeAction.STOP -> { onStop(); swipeTriggered = null }
-            SwipeAction.CONTINUE -> { onContinue(); swipeTriggered = null }
-            null -> Unit
-        }
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        AnimatedVisibility(
-            visible = cancelConfirm,
-            enter = slideInHorizontally { -it } + expandHorizontally(expandFrom = Alignment.Start) + fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
-            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
-        ) {
-            FilledTonalButton(onClick = onStop) {
-                Text(stringResource(R.string.updates_stop))
-            }
-        }
-
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                    .pointerInput(cancelConfirm) {
-                        if (!cancelConfirm) {
-                            detectHorizontalDragGestures(
-                                onDragEnd = {
-                                    scope.launch {
-                                        when {
-                                            offsetX.value < -80f -> swipeTriggered = SwipeAction.STOP
-                                            offsetX.value > 80f -> swipeTriggered = SwipeAction.CONTINUE
-                                            else -> offsetX.animateTo(
-                                                0f,
-                                                spring(stiffness = 800f, dampingRatio = 0.6f),
-                                            )
-                                        }
-                                    }
-                                },
-                                onDragCancel = {
-                                    scope.launch {
-                                        offsetX.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f))
-                                    }
-                                },
-                            ) { _, dragAmount ->
-                                scope.launch {
-                                    val resistance = (1f - (kotlin.math.abs(offsetX.value) / 200f)).coerceAtLeast(0.3f)
-                                    offsetX.snapTo((offsetX.value + dragAmount * resistance).coerceIn(-120f, 120f))
-                                }
-                            }
-                        }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                val circleColor = lerp(
-                    MaterialTheme.colorScheme.primaryContainer,
-                    MaterialTheme.colorScheme.errorContainer,
-                    stopFraction,
-                )
-                Surface(
-                    shape = CircleShape,
-                    color = circleColor,
-                    modifier = Modifier.size(56.dp),
-                    onClick = onTap,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        CircularWavyProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier.size(36.dp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
-                }
-            }
-        }
-
-        AnimatedVisibility(
-            visible = cancelConfirm,
-            enter = slideInHorizontally { it } + expandHorizontally(expandFrom = Alignment.End) + fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
-            exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
-        ) {
-            OutlinedButton(onClick = onContinue) {
-                Text(stringResource(R.string.updates_continue))
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ProcessingCircle() {
-    var showAlmostDone by remember { mutableStateOf(false) }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(56.dp),
-            onClick = { showAlmostDone = true },
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                CircularWavyProgressIndicator(
-                    modifier = Modifier.size(36.dp),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-        }
-        AnimatedVisibility(visible = showAlmostDone) {
-            LaunchedEffect(Unit) {
-                kotlinx.coroutines.delay(2000)
-                showAlmostDone = false
-            }
-            Text(
-                text = stringResource(R.string.updates_almost_done),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun CancelingCircle() {
-    Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.errorContainer,
-        modifier = Modifier.size(56.dp),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            LoadingIndicator(
-                modifier = Modifier.size(36.dp),
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
         }
     }
 }
@@ -576,7 +628,7 @@ private fun ChannelPickerDialog(
                 targetState = infoChannel,
                 transitionSpec = {
                     if (targetState != null) {
-                        // List → InfoPage: info scales in, list fades out (no scale — avoids all-rows zoom)
+                        // List → InfoPage: info scales in, list fades out only (avoids all-rows scale)
                         (scaleIn(spring(stiffness = 800f, dampingRatio = 0.6f), initialScale = 0.88f) +
                                 fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f))) togetherWith
                                 fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f))
@@ -614,7 +666,6 @@ private fun ChannelList(
     onInfoClicked: (UpdateChannel) -> Unit,
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        // Hero icon + centered title
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -675,6 +726,7 @@ private fun ChannelList(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ChannelInfoPage(
     channel: UpdateChannel,
@@ -704,7 +756,11 @@ private fun ChannelInfoPage(
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(16.dp))
-        FilledTonalButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+        FilledTonalButton(
+            onClick = onBack,
+            shapes = ButtonDefaults.shapes(),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Text(stringResource(android.R.string.ok))
         }
     }
@@ -752,7 +808,6 @@ private fun channelDescription(channel: UpdateChannel): Int = when (channel) {
     UpdateChannel.ALPHA -> R.string.update_channel_alpha_description
 }
 
-// Status text shown in the main screen (idle/checking states only)
 @Composable
 private fun mainStatusText(state: UpdatesUiState): String? = when {
     state.checkStatus == CheckStatus.CHECKING -> stringResource(R.string.updates_status_checking)
@@ -762,7 +817,6 @@ private fun mainStatusText(state: UpdatesUiState): String? = when {
     else -> null
 }
 
-// Status text shown inside the update bottom sheet (download phase states)
 @Composable
 private fun sheetStatusText(state: UpdatesUiState): String? = when {
     state.downloadPhase == DownloadPhase.CANCELING -> stringResource(R.string.updates_canceling)
