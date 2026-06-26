@@ -13,15 +13,14 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -682,71 +681,79 @@ private fun DownloadingPill(
         stopFraction,
     )
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = pillColor,
-            onClick = onTap,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .pointerInput(cancelConfirm) {
-                    if (!cancelConfirm) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {
-                                scope.launch {
-                                    when {
-                                        swipeDelta.value < -50f -> swipeTriggered = SwipeAction.STOP
-                                        swipeDelta.value > 50f -> swipeTriggered = SwipeAction.CONTINUE
-                                        else -> swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f))
-                                    }
-                                }
-                            },
-                            onDragCancel = {
-                                scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f)) }
-                            },
-                        ) { _, dragAmount ->
+    Surface(
+        shape = CircleShape,
+        color = pillColor,
+        onClick = onTap,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .pointerInput(cancelConfirm) {
+                if (!cancelConfirm) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
                             scope.launch {
-                                val r = (1f - (kotlin.math.abs(swipeDelta.value) / 120f)).coerceAtLeast(0.3f)
-                                swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
+                                when {
+                                    swipeDelta.value < -50f -> swipeTriggered = SwipeAction.STOP
+                                    swipeDelta.value > 50f -> swipeTriggered = SwipeAction.CONTINUE
+                                    else -> swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f))
+                                }
                             }
+                        },
+                        onDragCancel = {
+                            scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f)) }
+                        },
+                    ) { _, dragAmount ->
+                        scope.launch {
+                            val r = (1f - (kotlin.math.abs(swipeDelta.value) / 120f)).coerceAtLeast(0.3f)
+                            swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
                         }
                     }
-                },
+                }
+            },
+    ) {
+        val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
+        val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                CircularWavyProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier.size(40.dp),
-                    color = contentColor,
-                    trackColor = contentColor.copy(alpha = 0.22f),
-                )
-            }
-        }
-
-        AnimatedVisibility(
-            visible = cancelConfirm,
-            enter = expandVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) +
-                    fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
-            exit = shrinkVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) +
-                    fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
+            CircularWavyProgressIndicator(
+                progress = { animatedProgress },
+                modifier = Modifier.size(40.dp),
+                color = contentColor,
+                trackColor = contentColor.copy(alpha = 0.22f),
+            )
+            AnimatedVisibility(
+                visible = cancelConfirm,
+                modifier = Modifier.align(Alignment.CenterStart),
+                enter = fadeIn(effects) + scaleIn(spatial, initialScale = 0.72f),
+                exit = fadeOut(effects) + scaleOut(spatial, targetScale = 0.72f),
             ) {
                 FilledTonalButton(
                     onClick = onStop,
                     shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = contentColor.copy(alpha = 0.15f),
+                        contentColor = contentColor,
+                    ),
                 ) { Text(stringResource(R.string.updates_stop)) }
+            }
+            AnimatedVisibility(
+                visible = cancelConfirm,
+                modifier = Modifier.align(Alignment.CenterEnd),
+                enter = fadeIn(effects) + scaleIn(spatial, initialScale = 0.72f),
+                exit = fadeOut(effects) + scaleOut(spatial, targetScale = 0.72f),
+            ) {
                 OutlinedButton(
                     onClick = onContinue,
                     shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    border = BorderStroke(1.dp, contentColor.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = contentColor),
                 ) { Text(stringResource(R.string.updates_continue)) }
             }
         }
