@@ -1269,4 +1269,39 @@
     <string name="delete_for_everyone">У всех</string>
     <string name="delete_for_myself">У себя</string>
     <string name="editing">редактирует…</string>
+
+    <!-- Updates screen -->
+    <string name="pref_title_updates">Обновления</string>
+    <string name="pref_summary_updates">Канал обновлений и версия приложения</string>
+    <string name="updates_screen_title">Обновления</string>
+    <string name="updates_current_version_label">Текущая версия</string>
+    <string name="updates_channel_label">Канал</string>
+    <string name="updates_auto_check_label">Автопроверка обновлений</string>
+    <string name="updates_check_now">Проверить сейчас</string>
+    <string name="updates_download">Загрузить</string>
+    <string name="updates_proceed_to_install">Перейти к установке</string>
+    <string name="updates_stop">Остановить</string>
+    <string name="updates_continue">Продолжить</string>
+    <string name="updates_status_checking">Проверка…</string>
+    <string name="updates_status_up_to_date">Актуальная версия</string>
+    <string name="updates_status_downloading">Загрузка обновления…</string>
+    <string name="updates_status_processing">Подготовка…</string>
+    <string name="updates_status_ready">Готово к установке</string>
+    <string name="updates_status_no_wifi">Нет Wi-Fi — обновление загрузится при подключении</string>
+    <string name="updates_status_no_wifi_detected">При обнаружении обновления не было Wi-Fi — вы можете загрузить сейчас</string>
+    <string name="updates_stop_download_question">Остановить загрузку?</string>
+    <string name="updates_canceling">Отмена…</string>
+    <string name="updates_almost_done">Почти готово…</string>
+    <string name="updates_new_version_available">Доступна версия %s</string>
+    <!-- Update channels -->
+    <string name="update_channel_stable">Стабильная</string>
+    <string name="update_channel_rc">Финальный предпросмотр</string>
+    <string name="update_channel_beta">Бета</string>
+    <string name="update_channel_alpha">Альфа · Нестабильная</string>
+    <!-- Channel descriptions -->
+    <string name="update_channel_stable_description">Рекомендуется всем. Полностью протестированная версия без критических проблем.</string>
+    <string name="update_channel_rc_description">Почти готова к выпуску. Устраняются последние ошибки — очень близко к стабильной.</string>
+    <string name="update_channel_beta_description">Новые функции на стадии тестирования. Возможны ошибки и нестабильная работа.</string>
+    <string name="update_channel_alpha_description">Крайне нестабильная. Сбои и неработающие функции — норма. Только если готовы к переустановке.</string>
+    <string name="update_channel_info_title">О канале</string>
 </resources>

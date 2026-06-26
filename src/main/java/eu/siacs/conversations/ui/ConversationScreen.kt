@@ -272,7 +272,7 @@ object ConversationScreenHelper {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
+internal fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val isDark = isSystemInDarkTheme()
     val colorScheme = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

@@ -11,6 +11,7 @@ import eu.siacs.conversations.persistance.DatabaseBackend
 import eu.siacs.conversations.services.EmojiInitializationService
 import eu.siacs.conversations.ui.util.SettingsUtils
 import eu.siacs.conversations.utils.ExceptionHelper
+import eu.siacs.conversations.worker.UpdateCheckWorker
 import java.security.Security
 import org.conscrypt.Conscrypt
 
@@ -36,6 +37,7 @@ class Conversations : Application() {
         EmojiInitializationService.execute(applicationContext)
         ExceptionHelper.init(applicationContext)
         SettingsUtils.applyThemeSettings(this)
+        UpdateCheckWorker.schedule(this)
     }
 
     fun resetAccounts() {

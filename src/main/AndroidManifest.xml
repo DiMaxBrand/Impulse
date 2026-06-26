@@ -369,6 +369,9 @@
             android:name=".ui.TrustKeysActivity"
             android:label="@string/trust_omemo_fingerprints" />
         <activity
+            android:name=".ui.activity.UpdatesActivity"
+            android:parentActivityName=".ui.activity.SettingsActivity" />
+        <activity
             android:name=".ui.AboutActivity"
             android:parentActivityName=".ui.activity.SettingsActivity">
             <meta-data
