@@ -52,6 +52,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -278,6 +280,11 @@ private fun DownloadingCircle(
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
     var swipeTriggered by remember { mutableStateOf<SwipeAction?>(null) }
+    // 0 = center, 1 = full left (stop), -1 = full right (continue)
+    val stopFraction by animateFloatAsState(
+        targetValue = (-offsetX.value / 120f).coerceIn(0f, 1f),
+        label = "stop_tint",
+    )
 
     LaunchedEffect(swipeTriggered) {
         when (swipeTriggered) {
@@ -316,27 +323,40 @@ private fun DownloadingCircle(
                                 onDragEnd = {
                                     scope.launch {
                                         when {
-                                            offsetX.value < -80f -> { swipeTriggered = SwipeAction.STOP }
-                                            offsetX.value > 80f -> { swipeTriggered = SwipeAction.CONTINUE }
-                                            else -> offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy))
+                                            offsetX.value < -80f -> swipeTriggered = SwipeAction.STOP
+                                            offsetX.value > 80f -> swipeTriggered = SwipeAction.CONTINUE
+                                            // Bouncy spring back to center
+                                            else -> offsetX.animateTo(
+                                                0f,
+                                                spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+                                            )
                                         }
                                     }
                                 },
                                 onDragCancel = {
-                                    scope.launch { offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow)) }
+                                    scope.launch {
+                                        offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy))
+                                    }
                                 },
                             ) { _, dragAmount ->
                                 scope.launch {
-                                    offsetX.snapTo((offsetX.value + dragAmount).coerceIn(-120f, 120f))
+                                    // Rubber-band: resistance increases toward edges
+                                    val resistance = (1f - (kotlin.math.abs(offsetX.value) / 200f)).coerceAtLeast(0.3f)
+                                    offsetX.snapTo((offsetX.value + dragAmount * resistance).coerceIn(-120f, 120f))
                                 }
                             }
                         }
                     },
                 contentAlignment = Alignment.Center,
             ) {
+                val circleColor = lerp(
+                    MaterialTheme.colorScheme.primaryContainer,
+                    MaterialTheme.colorScheme.errorContainer,
+                    stopFraction,
+                )
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = circleColor,
                     modifier = Modifier.size(56.dp),
                     onClick = onTap,
                 ) {
