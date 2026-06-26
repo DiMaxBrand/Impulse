@@ -52,8 +52,20 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
     val context = LocalContext.current
     val appSettings = remember { AppSettings(context) }
 
+    fun isHyperOs(): Boolean {
+        return try {
+            val c = Class.forName("android.os.SystemProperties")
+            val get = c.getMethod("get", String::class.java, String::class.java)
+            val v = get.invoke(null, "ro.mi.os.version.name", "") as String
+            v.isNotEmpty()
+        } catch (_: Exception) { false }
+    }
+
     fun channelHasNoSound(channelId: String): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        // HyperOS lies: reports a non-empty URI even when the user has set None.
+        // Trust the channel on non-HyperOS devices only.
+        if (isHyperOs()) return true
         val nm = context.getSystemService(NotificationManager::class.java) ?: return false
         val sound = nm.getNotificationChannel(channelId)?.sound ?: return true
         return sound == Uri.EMPTY || sound.toString().isEmpty()
