@@ -28,6 +28,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -49,6 +50,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -1646,15 +1648,23 @@ private fun MessageContent(
             )
         }
         transferable != null && transferable.getStatus() == Transferable.STATUS_DOWNLOADING -> {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.receiving_x_file,
-                        UIHelper.getFileDescriptionString(context, message),
-                        transferableProgress ?: 0),
-                    style = MaterialTheme.typography.bodyMedium,
+            val fp = message.fileParams
+            if (fp.width > 0 && fp.height > 0) {
+                DownloadingMediaPlaceholder(
+                    progress = (transferableProgress ?: 0) / 100f,
+                    aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
                 )
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.receiving_x_file,
+                            UIHelper.getFileDescriptionString(context, message),
+                            transferableProgress ?: 0),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         }
         transferable != null && transferable.getStatus() == Transferable.STATUS_UPLOADING -> {
@@ -1947,6 +1957,27 @@ private fun FileRow(iconRes: Int, label: String) {
         )
         Spacer(Modifier.width(10.dp))
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DownloadingMediaPlaceholder(progress: Float, aspectRatio: Float) {
+    val primary = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier
+            .widthIn(max = 280.dp)
+            .aspectRatio(aspectRatio.coerceIn(0.25f, 4f))
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularWavyProgressIndicator(
+            progress = { progress },
+            modifier = Modifier.size(56.dp),
+            color = primary,
+            trackColor = primary.copy(alpha = 0.20f),
+        )
     }
 }
 

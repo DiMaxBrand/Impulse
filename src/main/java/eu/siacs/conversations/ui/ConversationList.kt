@@ -1,8 +1,13 @@
 package eu.siacs.conversations.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +27,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +38,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
@@ -90,6 +98,7 @@ import kotlinx.coroutines.withContext
 class ConversationListState {
     internal val list: SnapshotStateList<Conversation> = mutableStateListOf()
     internal val revision = mutableIntStateOf(0)
+    val isConnecting: MutableState<Boolean> = mutableStateOf(false)
 
     fun update(source: List<Conversation>) {
         list.clear()
@@ -156,14 +165,17 @@ object ConversationListHelper {
         )
         composeView.setContent {
             ImpulseTheme {
-                ConversationList(
-                    conversations = state.list,
-                    revision = state.revision.intValue,
-                    onConversationClick = { onConversationClick.onClick(it) },
-                    onFirstVisibleIndexChanged = { index ->
-                        composeView.post { if (index > 0) fab.shrink() else fab.extend() }
-                    },
-                )
+                Column {
+                    ConnectingStrip(isConnecting = state.isConnecting.value)
+                    ConversationList(
+                        conversations = state.list,
+                        revision = state.revision.intValue,
+                        onConversationClick = { onConversationClick.onClick(it) },
+                        onFirstVisibleIndexChanged = { index ->
+                            composeView.post { if (index > 0) fab.shrink() else fab.extend() }
+                        },
+                    )
+                }
             }
         }
     }
@@ -176,6 +188,18 @@ private fun ImpulseTheme(content: @Composable () -> Unit) {
         if (isSystemInDarkTheme()) dynamicDarkColorScheme(context)
         else dynamicLightColorScheme(context)
     MaterialTheme(colorScheme = colorScheme, content = content)
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ConnectingStrip(isConnecting: Boolean) {
+    AnimatedVisibility(
+        visible = isConnecting,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
+    }
 }
 
 @Composable
