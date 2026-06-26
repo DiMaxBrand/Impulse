@@ -28,14 +28,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -45,6 +43,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -87,6 +86,8 @@ fun UpdatesScreen(
     onInstall: () -> Unit,
     onConfirmInstall: () -> Unit,
     onDownloadCircleTapped: () -> Unit = {},
+    onShowUpdateSheet: () -> Unit = {},
+    onHideUpdateSheet: () -> Unit = {},
 ) {
     var channelPickerVisible by remember { mutableStateOf(false) }
 
@@ -159,18 +160,40 @@ fun UpdatesScreen(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
-        // Status + download button
-        StatusSection(
-            state = state,
-            onDownload = onDownload,
-            onStop = onStop,
-            onContinue = onContinue,
-            onInstall = onInstall,
-            onConfirmInstall = onConfirmInstall,
-            onDownloadCircleTapped = onDownloadCircleTapped,
-        )
+        // Inline status for idle states (checking / up-to-date / new version found)
+        val mainText = mainStatusText(state)
+        AnimatedContent(
+            targetState = mainText,
+            transitionSpec = {
+                (slideInHorizontally { -it / 3 } + fadeIn()) togetherWith
+                        (slideOutHorizontally { it / 3 } + fadeOut())
+            },
+            label = "main_status_text",
+        ) { text ->
+            if (text != null) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                Box(Modifier.fillMaxWidth())
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        // Debug: trigger the update bottom sheet with a fake pending update
+        FilledTonalButton(
+            onClick = onShowUpdateSheet,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Show update bottom sheet")
+        }
     }
 
     if (channelPickerVisible) {
@@ -182,6 +205,37 @@ fun UpdatesScreen(
             },
             onDismiss = { channelPickerVisible = false },
         )
+    }
+
+    // Update flow bottom sheet
+    if (state.showUpdateSheet) {
+        ModalBottomSheet(onDismissRequest = onHideUpdateSheet) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 40.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (state.pendingVersion != null) {
+                    Text(
+                        text = stringResource(R.string.updates_new_version_available, state.pendingVersion),
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    )
+                }
+                StatusSection(
+                    state = state,
+                    onDownload = onDownload,
+                    onStop = onStop,
+                    onContinue = onContinue,
+                    onInstall = onInstall,
+                    onConfirmInstall = onConfirmInstall,
+                    onDownloadCircleTapped = onDownloadCircleTapped,
+                )
+            }
+        }
     }
 }
 
@@ -203,14 +257,14 @@ private fun StatusSection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        // Status text — slides on change
+        // Status text for download phases — slides on change
         AnimatedContent(
-            targetState = statusText(state),
+            targetState = sheetStatusText(state),
             transitionSpec = {
                 (slideInHorizontally { -it / 3 } + fadeIn()) togetherWith
                         (slideOutHorizontally { it / 3 } + fadeOut())
             },
-            label = "status_text",
+            label = "sheet_status_text",
         ) { text ->
             if (text != null) {
                 Text(
@@ -344,8 +398,6 @@ private fun DownloadingCircle(
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
     var swipeTriggered by remember { mutableStateOf<SwipeAction?>(null) }
-    // 0 = center, 1 = full left (stop), -1 = full right (continue)
-    // Effects spring (no bounce) for color transition
     val stopFraction by animateFloatAsState(
         targetValue = (-offsetX.value / 120f).coerceIn(0f, 1f),
         animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
@@ -391,7 +443,6 @@ private fun DownloadingCircle(
                                         when {
                                             offsetX.value < -80f -> swipeTriggered = SwipeAction.STOP
                                             offsetX.value > 80f -> swipeTriggered = SwipeAction.CONTINUE
-                                            // FastSpatial snap-back with slight overshoot
                                             else -> offsetX.animateTo(
                                                 0f,
                                                 spring(stiffness = 800f, dampingRatio = 0.6f),
@@ -406,7 +457,6 @@ private fun DownloadingCircle(
                                 },
                             ) { _, dragAmount ->
                                 scope.launch {
-                                    // Rubber-band: resistance increases toward edges
                                     val resistance = (1f - (kotlin.math.abs(offsetX.value) / 200f)).coerceAtLeast(0.3f)
                                     offsetX.snapTo((offsetX.value + dragAmount * resistance).coerceIn(-120f, 120f))
                                 }
@@ -525,8 +575,17 @@ private fun ChannelPickerDialog(
             AnimatedContent(
                 targetState = infoChannel,
                 transitionSpec = {
-                    (scaleIn(spring(stiffness = 800f, dampingRatio = 0.6f)) + fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f))) togetherWith
-                            (scaleOut(spring(stiffness = 800f, dampingRatio = 0.6f), targetScale = 0.92f) + fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)))
+                    if (targetState != null) {
+                        // List → InfoPage: info scales in, list fades out (no scale — avoids all-rows zoom)
+                        (scaleIn(spring(stiffness = 800f, dampingRatio = 0.6f), initialScale = 0.88f) +
+                                fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f))) togetherWith
+                                fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f))
+                    } else {
+                        // InfoPage → List: list fades in, info scales out
+                        fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)) togetherWith
+                                (scaleOut(spring(stiffness = 800f, dampingRatio = 0.6f), targetScale = 0.88f) +
+                                        fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)))
+                    }
                 },
                 label = "channel_dialog_content",
             ) { channel ->
@@ -555,11 +614,28 @@ private fun ChannelList(
     onInfoClicked: (UpdateChannel) -> Unit,
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(
-            text = stringResource(R.string.updates_channel_label),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-        )
+        // Hero icon + centered title
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(top = 20.dp, bottom = 4.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_filter_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.updates_channel_label),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         val channels = UpdateChannel.entries
         channels.forEachIndexed { index, channel ->
             val position = when {
@@ -653,7 +729,7 @@ fun ExpressiveGroupRow(
     }
     Surface(
         shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
         modifier = modifier.fillMaxWidth(),
     ) {
         content()
@@ -676,8 +752,19 @@ private fun channelDescription(channel: UpdateChannel): Int = when (channel) {
     UpdateChannel.ALPHA -> R.string.update_channel_alpha_description
 }
 
+// Status text shown in the main screen (idle/checking states only)
 @Composable
-private fun statusText(state: UpdatesUiState): String? = when {
+private fun mainStatusText(state: UpdatesUiState): String? = when {
+    state.checkStatus == CheckStatus.CHECKING -> stringResource(R.string.updates_status_checking)
+    state.checkStatus == CheckStatus.UP_TO_DATE -> stringResource(R.string.updates_status_up_to_date)
+    state.pendingVersion != null && state.downloadPhase == DownloadPhase.IDLE ->
+        stringResource(R.string.updates_new_version_available, state.pendingVersion)
+    else -> null
+}
+
+// Status text shown inside the update bottom sheet (download phase states)
+@Composable
+private fun sheetStatusText(state: UpdatesUiState): String? = when {
     state.downloadPhase == DownloadPhase.CANCELING -> stringResource(R.string.updates_canceling)
     state.cancelConfirmVisible -> stringResource(R.string.updates_stop_download_question)
     state.downloadPhase == DownloadPhase.NO_WIFI_PENDING ->
@@ -688,10 +775,6 @@ private fun statusText(state: UpdatesUiState): String? = when {
         stringResource(R.string.updates_status_processing)
     state.downloadPhase == DownloadPhase.READY ->
         stringResource(R.string.updates_status_ready)
-    state.checkStatus == CheckStatus.CHECKING -> stringResource(R.string.updates_status_checking)
-    state.checkStatus == CheckStatus.UP_TO_DATE -> stringResource(R.string.updates_status_up_to_date)
-    state.pendingVersion != null && state.downloadPhase == DownloadPhase.IDLE ->
-        stringResource(R.string.updates_new_version_available, state.pendingVersion)
     else -> null
 }
 
@@ -712,4 +795,5 @@ data class UpdatesUiState(
     val showInstallCard: Boolean = false,
     val canInstallDirectly: Boolean = true,
     val isFirstUpdate: Boolean = false,
+    val showUpdateSheet: Boolean = false,
 )

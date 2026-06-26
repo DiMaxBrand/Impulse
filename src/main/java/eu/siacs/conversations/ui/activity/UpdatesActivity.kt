@@ -90,6 +90,10 @@ class UpdatesActivity : ActionBarActivity() {
                                 prefs.hasInstalledUpdate = true
                                 UpdateDownloader.installApk(this@UpdatesActivity, path)
                             },
+                            onShowUpdateSheet = { showUpdateSheet() },
+                            onHideUpdateSheet = {
+                                uiState = uiState.copy(showUpdateSheet = false)
+                            },
                         )
                     }
                 }
@@ -97,6 +101,21 @@ class UpdatesActivity : ActionBarActivity() {
         }
 
         resumeActiveDownload()
+    }
+
+    private fun showUpdateSheet() {
+        // If no pending update is known yet, inject a fake one for debugging
+        if (uiState.pendingVersion == null) {
+            prefs.pendingUpdateVersion = "1.11.0-alpha.16"
+            prefs.pendingUpdateUrl = "https://example.com/fake.apk"
+            prefs.pendingNoWifi = true
+        }
+        val currentPhase = uiState.downloadPhase
+        uiState = uiState.copy(
+            pendingVersion = uiState.pendingVersion ?: "1.11.0-alpha.16",
+            downloadPhase = if (currentPhase == DownloadPhase.IDLE) DownloadPhase.NO_WIFI_PENDING else currentPhase,
+            showUpdateSheet = true,
+        )
     }
 
     private fun initState() {
@@ -108,25 +127,27 @@ class UpdatesActivity : ActionBarActivity() {
             packageManager.canRequestPackageInstalls()
         } else true
 
+        val restoredPhase = when {
+            downloadedPath != null -> DownloadPhase.READY
+            prefs.pendingNoWifi && pendingVersion != null -> DownloadPhase.NO_WIFI_PENDING
+            else -> DownloadPhase.IDLE
+        }
         uiState = uiState.copy(
             currentVersion = currentVersion,
             selectedChannel = prefs.selectedChannel,
             autoCheck = prefs.autoCheck,
-            downloadPhase = when {
-                downloadedPath != null -> DownloadPhase.READY
-                prefs.pendingNoWifi && pendingVersion != null -> DownloadPhase.NO_WIFI_PENDING
-                else -> DownloadPhase.IDLE
-            },
+            downloadPhase = restoredPhase,
             pendingVersion = pendingVersion,
             canInstallDirectly = canInstallDirectly,
             isFirstUpdate = !prefs.hasInstalledUpdate,
+            showUpdateSheet = restoredPhase != DownloadPhase.IDLE,
         )
     }
 
     private fun resumeActiveDownload() {
         val id = prefs.activeDownloadId
         if (id == -1L || uiState.downloadPhase == DownloadPhase.READY) return
-        uiState = uiState.copy(downloadPhase = DownloadPhase.DOWNLOADING)
+        uiState = uiState.copy(downloadPhase = DownloadPhase.DOWNLOADING, showUpdateSheet = true)
         pollDownload(id)
     }
 
@@ -149,6 +170,7 @@ class UpdatesActivity : ActionBarActivity() {
                 uiState = uiState.copy(
                     checkStatus = CheckStatus.UPDATE_AVAILABLE,
                     pendingVersion = info.versionName,
+                    showUpdateSheet = true,
                 )
                 startUserDownload()
             } else {
@@ -157,6 +179,7 @@ class UpdatesActivity : ActionBarActivity() {
                     checkStatus = CheckStatus.UPDATE_AVAILABLE,
                     downloadPhase = DownloadPhase.NO_WIFI_PENDING,
                     pendingVersion = info.versionName,
+                    showUpdateSheet = true,
                 )
             }
         }
@@ -179,6 +202,7 @@ class UpdatesActivity : ActionBarActivity() {
         uiState = uiState.copy(
             downloadPhase = DownloadPhase.DOWNLOADING,
             downloadProgress = 0f,
+            showUpdateSheet = true,
         )
         pollDownload(id)
     }
