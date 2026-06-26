@@ -1,7 +1,14 @@
 package eu.siacs.conversations.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -15,8 +22,10 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +42,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -68,12 +76,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import eu.siacs.conversations.R
 import eu.siacs.conversations.update.UpdateChannel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalSharedTransitionApi::class,
+)
 @Composable
 fun UpdatesScreen(
     state: UpdatesUiState,
@@ -90,121 +101,233 @@ fun UpdatesScreen(
     onHideUpdateSheet: () -> Unit = {},
 ) {
     var channelPickerVisible by remember { mutableStateOf(false) }
+    var infoChannel by remember { mutableStateOf<UpdateChannel?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        ExpressiveGroupRow(GroupPosition.SINGLE) {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.updates_current_version_label)) },
-                trailingContent = {
-                    Text(
-                        text = state.currentVersion,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    // Reset info page whenever the picker closes
+    LaunchedEffect(channelPickerVisible) {
+        if (!channelPickerVisible) infoChannel = null
+    }
+
+    // Scrim animates independently of the shared-element transition
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (channelPickerVisible) 0.32f else 0f,
+        animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+        label = "scrim_alpha",
+    )
+
+    // Outer SharedTransitionLayout: settings channel row ↔ picker dialog
+    SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            // ── Settings column ───────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                ExpressiveGroupRow(GroupPosition.SINGLE) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.updates_current_version_label)) },
+                        trailingContent = {
+                            Text(
+                                text = state.currentVersion,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            )
-        }
+                }
 
-        Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(6.dp))
 
-        ExpressiveGroupRow(GroupPosition.SINGLE) {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.updates_channel_label)) },
-                supportingContent = {
-                    Text(
-                        text = stringResource(channelDisplayName(state.selectedChannel)),
-                        color = MaterialTheme.colorScheme.primary,
+                // Channel row — source of the settings→picker container transform
+                AnimatedVisibility(
+                    visible = !channelPickerVisible,
+                    enter = EnterTransition.None,
+                    exit = ExitTransition.None,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sharedBounds(
+                                rememberSharedContentState("channel_picker"),
+                                animatedVisibilityScope = this@AnimatedVisibility,
+                                enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                boundsTransform = BoundsTransform { _, _ ->
+                                    spring(stiffness = 380f, dampingRatio = 0.8f)
+                                },
+                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                            )
+                            .clickable { channelPickerVisible = true },
+                    ) {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.updates_channel_label)) },
+                            supportingContent = {
+                                Text(
+                                    text = stringResource(channelDisplayName(state.selectedChannel)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_expand_more_24dp),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                ExpressiveGroupRow(GroupPosition.TOP) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.updates_auto_check_label)) },
+                        trailingContent = {
+                            Switch(
+                                checked = state.autoCheck,
+                                onCheckedChange = onAutoCheckToggled,
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
-                },
-                trailingContent = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_expand_more_24dp),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                }
+                ExpressiveGroupRow(GroupPosition.BOTTOM) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.updates_check_now)) },
+                        modifier = Modifier.clickableRow(onClick = onCheckNow),
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
-                },
-                modifier = Modifier.clickableRow { channelPickerVisible = true },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            )
-        }
+                }
 
-        Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(12.dp))
 
-        ExpressiveGroupRow(GroupPosition.TOP) {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.updates_auto_check_label)) },
-                trailingContent = {
-                    Switch(
-                        checked = state.autoCheck,
-                        onCheckedChange = onAutoCheckToggled,
-                    )
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            )
-        }
-        ExpressiveGroupRow(GroupPosition.BOTTOM) {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.updates_check_now)) },
-                modifier = Modifier.clickableRow(onClick = onCheckNow),
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            )
-        }
+                val mainText = mainStatusText(state)
+                AnimatedContent(
+                    targetState = mainText,
+                    transitionSpec = {
+                        (slideInHorizontally { -it / 3 } + fadeIn()) togetherWith
+                                (slideOutHorizontally { it / 3 } + fadeOut())
+                    },
+                    label = "main_status_text",
+                ) { text ->
+                    if (text != null) {
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        Box(Modifier.fillMaxWidth())
+                    }
+                }
 
-        Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(4.dp))
 
-        // Idle status: checking / up-to-date / new version found
-        val mainText = mainStatusText(state)
-        AnimatedContent(
-            targetState = mainText,
-            transitionSpec = {
-                (slideInHorizontally { -it / 3 } + fadeIn()) togetherWith
-                        (slideOutHorizontally { it / 3 } + fadeOut())
-            },
-            label = "main_status_text",
-        ) { text ->
-            if (text != null) {
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
+                FilledTonalButton(
+                    onClick = onShowUpdateSheet,
+                    shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Show update bottom sheet")
+                }
+            }
+
+            // ── Scrim (animated independently) ───────────────────────────
+            if (scrimAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = scrimAlpha)),
                 )
-            } else {
-                Box(Modifier.fillMaxWidth())
+            }
+
+            // ── Channel picker overlay — destination of container transform ─
+            AnimatedVisibility(
+                visible = channelPickerVisible,
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) { channelPickerVisible = false },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp,
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp)
+                            .fillMaxWidth()
+                            .sharedBounds(
+                                rememberSharedContentState("channel_picker"),
+                                animatedVisibilityScope = this@AnimatedVisibility,
+                                enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                boundsTransform = BoundsTransform { _, _ ->
+                                    spring(stiffness = 380f, dampingRatio = 0.8f)
+                                },
+                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                            )
+                            // Consume touches so tapping inside the picker doesn't dismiss it
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() },
+                            ) {},
+                    ) {
+                        // Inner SharedTransitionLayout: channel list row ↔ info page
+                        SharedTransitionLayout {
+                            AnimatedContent(
+                                targetState = infoChannel,
+                                transitionSpec = {
+                                    EnterTransition.None togetherWith ExitTransition.None using
+                                            SizeTransform(clip = false) { _, _ ->
+                                                spring(stiffness = 380f, dampingRatio = 0.8f)
+                                            }
+                                },
+                                label = "channel_picker_content",
+                            ) { channel ->
+                                if (channel == null) {
+                                    ChannelList(
+                                        selectedChannel = state.selectedChannel,
+                                        onChannelSelected = { ch ->
+                                            onChannelSelected(ch)
+                                            channelPickerVisible = false
+                                        },
+                                        onInfoClicked = { infoChannel = it },
+                                        animatedContentScope = this,
+                                    )
+                                } else {
+                                    ChannelInfoPage(
+                                        channel = channel,
+                                        onBack = { infoChannel = null },
+                                        animatedContentScope = this,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-
-        Spacer(Modifier.height(4.dp))
-
-        // Debug: show the update bottom sheet with a fake pending update
-        FilledTonalButton(
-            onClick = onShowUpdateSheet,
-            shapes = ButtonDefaults.shapes(),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Show update bottom sheet")
-        }
     }
 
-    if (channelPickerVisible) {
-        ChannelPickerDialog(
-            selectedChannel = state.selectedChannel,
-            onChannelSelected = { channel ->
-                onChannelSelected(channel)
-                channelPickerVisible = false
-            },
-            onDismiss = { channelPickerVisible = false },
-        )
-    }
-
+    // ── Update flow bottom sheet ──────────────────────────────────────────
     if (state.showUpdateSheet) {
         ModalBottomSheet(onDismissRequest = onHideUpdateSheet) {
             Column(
@@ -233,6 +356,160 @@ fun UpdatesScreen(
                     onConfirmInstall = onConfirmInstall,
                     onDownloadCircleTapped = onDownloadCircleTapped,
                 )
+            }
+        }
+    }
+}
+
+// ─── Channel picker: list ────────────────────────────────────────────────────
+
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SharedTransitionScope.ChannelList(
+    selectedChannel: UpdateChannel,
+    onChannelSelected: (UpdateChannel) -> Unit,
+    onInfoClicked: (UpdateChannel) -> Unit,
+    animatedContentScope: AnimatedContentScope,
+) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(top = 20.dp, bottom = 4.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_filter_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.updates_channel_label),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+
+        val channels = UpdateChannel.entries
+        channels.forEachIndexed { index, channel ->
+            val position = when {
+                channels.size == 1 -> GroupPosition.SINGLE
+                index == 0 -> GroupPosition.TOP
+                index == channels.lastIndex -> GroupPosition.BOTTOM
+                else -> GroupPosition.MIDDLE
+            }
+            val rowShape = when (position) {
+                GroupPosition.TOP -> RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp)
+                GroupPosition.MIDDLE -> RoundedCornerShape(8.dp)
+                GroupPosition.BOTTOM -> RoundedCornerShape(8.dp, 8.dp, 28.dp, 28.dp)
+                GroupPosition.SINGLE -> RoundedCornerShape(28.dp)
+            }
+            // Each row's Surface is the source of its own row→info container transform
+            Surface(
+                shape = rowShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .fillMaxWidth()
+                    .sharedBounds(
+                        rememberSharedContentState("channel_info_$channel"),
+                        animatedVisibilityScope = animatedContentScope,
+                        enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        boundsTransform = BoundsTransform { _, _ ->
+                            spring(stiffness = 380f, dampingRatio = 0.8f)
+                        },
+                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    ),
+            ) {
+                ListItem(
+                    headlineContent = { Text(stringResource(channelDisplayName(channel))) },
+                    leadingContent = {
+                        RadioButton(
+                            selected = channel == selectedChannel,
+                            onClick = { onChannelSelected(channel) },
+                        )
+                    },
+                    trailingContent = {
+                        IconButton(onClick = { onInfoClicked(channel) }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_info_outline_24dp),
+                                contentDescription = stringResource(R.string.update_channel_info_title),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    modifier = Modifier.clickableRow { onChannelSelected(channel) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+            if (index < channels.lastIndex) Spacer(Modifier.height(2.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+// ─── Channel picker: info page ────────────────────────────────────────────────
+
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SharedTransitionScope.ChannelInfoPage(
+    channel: UpdateChannel,
+    onBack: () -> Unit,
+    animatedContentScope: AnimatedContentScope,
+) {
+    // Surface matches the source row surface (same color/shape) so the container transform
+    // morphs the row surface into the full-width info card
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        modifier = Modifier
+            .fillMaxWidth()
+            .sharedBounds(
+                rememberSharedContentState("channel_info_$channel"),
+                animatedVisibilityScope = animatedContentScope,
+                enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                boundsTransform = BoundsTransform { _, _ ->
+                    spring(stiffness = 380f, dampingRatio = 0.8f)
+                },
+                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+            ),
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_info_outline_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(channelDisplayName(channel)),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(channelDescription(channel)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(16.dp))
+            FilledTonalButton(
+                onClick = onBack,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(android.R.string.ok))
             }
         }
     }
@@ -275,7 +552,6 @@ private fun StatusSection(
             }
         }
 
-        // Outer AnimatedContent keys only on phase — progress updates won't retrigger animation
         AnimatedContent(
             targetState = state.downloadPhase,
             transitionSpec = {
@@ -291,13 +567,10 @@ private fun StatusSection(
                 DownloadPhase.IDLE -> Box(Modifier.fillMaxWidth())
 
                 DownloadPhase.NO_WIFI_PENDING -> {
-                    // Same pill shape/height as the downloading state — smooth morph on phase change
                     Button(
                         onClick = onDownload,
                         shapes = ButtonDefaults.shapes(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp),
+                        modifier = Modifier.fillMaxWidth().height(64.dp),
                         contentPadding = PaddingValues(horizontal = 24.dp),
                     ) {
                         Icon(
@@ -348,9 +621,7 @@ private fun StatusSection(
                             Button(
                                 onClick = onInstall,
                                 shapes = ButtonDefaults.shapes(),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(64.dp),
+                                modifier = Modifier.fillMaxWidth().height(64.dp),
                                 contentPadding = PaddingValues(horizontal = 24.dp),
                             ) {
                                 Text(
@@ -378,18 +649,14 @@ private fun DownloadingPill(
     onContinue: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    // Track horizontal drag just for the color-shift hint — no physical movement on a full-width pill
     val swipeDelta = remember { Animatable(0f) }
     var swipeTriggered by remember { mutableStateOf<SwipeAction?>(null) }
 
-    // Smooth progress — drifts instead of jumping
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = spring(stiffness = 80f, dampingRatio = 1.0f),
         label = "download_progress",
     )
-
-    // 0 = center (primary), 1 = full left (error = stop warning)
     val stopFraction by animateFloatAsState(
         targetValue = (-swipeDelta.value / 80f).coerceIn(0f, 1f),
         animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
@@ -419,7 +686,6 @@ private fun DownloadingPill(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Full-width pill — same height as the Download button for a seamless phase morph
         Surface(
             shape = CircleShape,
             color = pillColor,
@@ -444,8 +710,8 @@ private fun DownloadingPill(
                             },
                         ) { _, dragAmount ->
                             scope.launch {
-                                val resistance = (1f - (kotlin.math.abs(swipeDelta.value) / 120f)).coerceAtLeast(0.3f)
-                                swipeDelta.snapTo((swipeDelta.value + dragAmount * resistance).coerceIn(-80f, 80f))
+                                val r = (1f - (kotlin.math.abs(swipeDelta.value) / 120f)).coerceAtLeast(0.3f)
+                                swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
                             }
                         }
                     }
@@ -461,7 +727,6 @@ private fun DownloadingPill(
             }
         }
 
-        // Stop / Continue appear BELOW the pill, not beside it
         AnimatedVisibility(
             visible = cancelConfirm,
             enter = expandVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) +
@@ -477,16 +742,12 @@ private fun DownloadingPill(
                     onClick = onStop,
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.updates_stop))
-                }
+                ) { Text(stringResource(R.string.updates_stop)) }
                 OutlinedButton(
                     onClick = onContinue,
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.updates_continue))
-                }
+                ) { Text(stringResource(R.string.updates_continue)) }
             }
         }
     }
@@ -501,9 +762,7 @@ private fun ProcessingPill() {
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer,
             onClick = { showAlmostDone = true },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
+            modifier = Modifier.fillMaxWidth().height(64.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 CircularWavyProgressIndicator(
@@ -534,9 +793,7 @@ private fun CancelingPill() {
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.errorContainer,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp),
+        modifier = Modifier.fillMaxWidth().height(64.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
             LoadingIndicator(
@@ -601,171 +858,6 @@ private fun InstallCard(
     }
 }
 
-// ─── Channel picker dialog ────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ChannelPickerDialog(
-    selectedChannel: UpdateChannel,
-    onChannelSelected: (UpdateChannel) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var infoChannel by remember { mutableStateOf<UpdateChannel?>(null) }
-
-    BasicAlertDialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            tonalElevation = 6.dp,
-            shadowElevation = 8.dp,
-            modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .fillMaxWidth(),
-        ) {
-            AnimatedContent(
-                targetState = infoChannel,
-                transitionSpec = {
-                    if (targetState != null) {
-                        // List → InfoPage: info scales in, list fades out only (avoids all-rows scale)
-                        (scaleIn(spring(stiffness = 800f, dampingRatio = 0.6f), initialScale = 0.88f) +
-                                fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f))) togetherWith
-                                fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f))
-                    } else {
-                        // InfoPage → List: list fades in, info scales out
-                        fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)) togetherWith
-                                (scaleOut(spring(stiffness = 800f, dampingRatio = 0.6f), targetScale = 0.88f) +
-                                        fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)))
-                    }
-                },
-                label = "channel_dialog_content",
-            ) { channel ->
-                if (channel == null) {
-                    ChannelList(
-                        selectedChannel = selectedChannel,
-                        onChannelSelected = onChannelSelected,
-                        onInfoClicked = { infoChannel = it },
-                    )
-                } else {
-                    ChannelInfoPage(
-                        channel = channel,
-                        onBack = { infoChannel = null },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ChannelList(
-    selectedChannel: UpdateChannel,
-    onChannelSelected: (UpdateChannel) -> Unit,
-    onInfoClicked: (UpdateChannel) -> Unit,
-) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(top = 20.dp, bottom = 4.dp),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_filter_24dp),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp),
-            )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = stringResource(R.string.updates_channel_label),
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        val channels = UpdateChannel.entries
-        channels.forEachIndexed { index, channel ->
-            val position = when {
-                channels.size == 1 -> GroupPosition.SINGLE
-                index == 0 -> GroupPosition.TOP
-                index == channels.lastIndex -> GroupPosition.BOTTOM
-                else -> GroupPosition.MIDDLE
-            }
-            ExpressiveGroupRow(
-                position = position,
-                modifier = Modifier.padding(horizontal = 12.dp),
-            ) {
-                ListItem(
-                    headlineContent = { Text(stringResource(channelDisplayName(channel))) },
-                    leadingContent = {
-                        RadioButton(
-                            selected = channel == selectedChannel,
-                            onClick = { onChannelSelected(channel) },
-                        )
-                    },
-                    trailingContent = {
-                        IconButton(onClick = { onInfoClicked(channel) }) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_info_outline_24dp),
-                                contentDescription = stringResource(R.string.update_channel_info_title),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    modifier = Modifier.clickableRow { onChannelSelected(channel) },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                )
-            }
-            if (index < channels.lastIndex) Spacer(Modifier.height(2.dp))
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ChannelInfoPage(
-    channel: UpdateChannel,
-    onBack: () -> Unit,
-) {
-    Column(
-        modifier = Modifier.padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_info_outline_24dp),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(48.dp),
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = stringResource(channelDisplayName(channel)),
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(channelDescription(channel)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(16.dp))
-        FilledTonalButton(
-            onClick = onBack,
-            shapes = ButtonDefaults.shapes(),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(android.R.string.ok))
-        }
-    }
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 enum class GroupPosition { TOP, MIDDLE, BOTTOM, SINGLE }
@@ -778,9 +870,9 @@ fun ExpressiveGroupRow(
     content: @Composable () -> Unit,
 ) {
     val shape = when (position) {
-        GroupPosition.TOP -> RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 8.dp, bottomEnd = 8.dp)
+        GroupPosition.TOP -> RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp)
         GroupPosition.MIDDLE -> RoundedCornerShape(8.dp)
-        GroupPosition.BOTTOM -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 28.dp, bottomEnd = 28.dp)
+        GroupPosition.BOTTOM -> RoundedCornerShape(8.dp, 8.dp, 28.dp, 28.dp)
         GroupPosition.SINGLE -> RoundedCornerShape(28.dp)
     }
     Surface(
