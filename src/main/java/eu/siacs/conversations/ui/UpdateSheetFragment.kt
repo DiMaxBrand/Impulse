@@ -1,6 +1,7 @@
 package eu.siacs.conversations.ui
 
 import android.content.Context
+import android.content.DialogInterface
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -25,6 +26,7 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
 
     private val prefs by lazy { UpdatePreferences(requireContext()) }
     private var uiState by mutableStateOf(UpdatesUiState())
+    private var installInitiated = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,6 +44,7 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
                     onInstall = { uiState = uiState.copy(showInstallCard = true) },
                     onConfirmInstall = {
                         val path = prefs.downloadedApkPath ?: return@UpdateSheetContent
+                        installInitiated = true
                         prefs.hasInstalledUpdate = true
                         UpdateDownloader.installApk(requireActivity(), path)
                     },
@@ -59,6 +62,13 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         resumeActiveDownload()
     }
 
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        if (!installInitiated) {
+            prefs.sheetDismissedUntil = System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000
+        }
+    }
+
     private fun initState() {
         val downloadedPath = prefs.downloadedApkPath
         val pendingVersion = prefs.pendingUpdateVersion
@@ -72,7 +82,7 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
             else -> DownloadPhase.IDLE
         }
         uiState = uiState.copy(
-            pendingVersion = pendingVersion,
+            pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
             downloadPhase = restoredPhase,
             canInstallDirectly = canInstallDirectly,
             isFirstUpdate = !prefs.hasInstalledUpdate,
@@ -119,6 +129,7 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
                         )
                     is UpdateDownloader.DownloadProgress.Complete -> {
                         uiState = uiState.copy(downloadPhase = DownloadPhase.PROCESSING)
+                        prefs.downloadedVersion = prefs.pendingUpdateVersion
                         prefs.downloadedApkPath = progress.localUri
                         prefs.activeDownloadId = -1L
                         prefs.clearPending()
@@ -161,9 +172,10 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         const val TAG = "update_sheet"
 
         @JvmStatic
-        fun hasPendingUpdate(context: Context): Boolean {
+        fun shouldShow(context: Context): Boolean {
             val prefs = UpdatePreferences(context)
-            return prefs.pendingUpdateVersion != null || prefs.downloadedApkPath != null
+            if (prefs.pendingUpdateVersion == null && prefs.downloadedApkPath == null) return false
+            return System.currentTimeMillis() > prefs.sheetDismissedUntil
         }
     }
 }

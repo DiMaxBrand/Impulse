@@ -222,6 +222,7 @@ class UpdatesActivity : ActionBarActivity() {
                     }
                     is UpdateDownloader.DownloadProgress.Complete -> {
                         uiState = uiState.copy(downloadPhase = DownloadPhase.PROCESSING)
+                        prefs.downloadedVersion = prefs.pendingUpdateVersion
                         prefs.downloadedApkPath = progress.localUri
                         prefs.activeDownloadId = -1L
                         prefs.clearPending()

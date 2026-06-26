@@ -623,34 +623,49 @@ internal fun StatusSection(
                 DownloadPhase.CANCELING -> CancelingPill()
 
                 DownloadPhase.READY -> {
-                    AnimatedContent(
-                        targetState = state.showInstallCard,
-                        transitionSpec = {
-                            val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
-                            val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
-                            (fadeIn(effects) + scaleIn(spatial, initialScale = 0.92f)) togetherWith
-                                    (fadeOut(effects) + scaleOut(spatial, targetScale = 0.92f)) using
-                                    SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
-                        },
-                        label = "install_card",
-                    ) { showCard ->
-                        if (showCard) {
-                            InstallCard(
-                                isFirstTime = state.isFirstUpdate,
-                                canInstallDirectly = state.canInstallDirectly,
-                                onConfirm = onConfirmInstall,
-                            )
-                        } else {
-                            Button(
-                                onClick = onInstall,
-                                shapes = ButtonDefaults.shapes(),
-                                modifier = Modifier.fillMaxWidth().height(64.dp),
-                                contentPadding = PaddingValues(horizontal = 24.dp),
-                            ) {
-                                Text(
-                                    stringResource(R.string.updates_proceed_to_install),
-                                    style = MaterialTheme.typography.bodyLarge,
+                    SharedTransitionLayout {
+                        AnimatedContent(
+                            targetState = state.showInstallCard,
+                            transitionSpec = {
+                                EnterTransition.None togetherWith ExitTransition.None using
+                                        SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+                            },
+                            label = "install_card",
+                        ) { showCard ->
+                            if (showCard) {
+                                InstallCard(
+                                    isFirstTime = state.isFirstUpdate,
+                                    canInstallDirectly = state.canInstallDirectly,
+                                    onConfirm = onConfirmInstall,
+                                    modifier = Modifier.sharedBounds(
+                                        rememberSharedContentState("install_surface"),
+                                        animatedVisibilityScope = this@AnimatedContent,
+                                        boundsTransform = BoundsTransform { _, _ ->
+                                            spring(stiffness = 380f, dampingRatio = 0.8f)
+                                        },
+                                    ),
                                 )
+                            } else {
+                                Button(
+                                    onClick = onInstall,
+                                    shapes = ButtonDefaults.shapes(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(64.dp)
+                                        .sharedBounds(
+                                            rememberSharedContentState("install_surface"),
+                                            animatedVisibilityScope = this@AnimatedContent,
+                                            boundsTransform = BoundsTransform { _, _ ->
+                                                spring(stiffness = 380f, dampingRatio = 0.8f)
+                                            },
+                                        ),
+                                    contentPadding = PaddingValues(horizontal = 24.dp),
+                                ) {
+                                    Text(
+                                        stringResource(R.string.updates_proceed_to_install),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
+                                }
                             }
                         }
                     }
@@ -674,6 +689,7 @@ private fun DownloadingPill(
     val scope = rememberCoroutineScope()
     val swipeDelta = remember { Animatable(0f) }
     var swipeTriggered by remember { mutableStateOf<SwipeAction?>(null) }
+    val amplitudePx = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
 
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -749,6 +765,7 @@ private fun DownloadingPill(
                 modifier = Modifier.size(40.dp),
                 color = contentColor,
                 trackColor = contentColor.copy(alpha = 0.22f),
+                amplitude = { amplitudePx },
             )
             AnimatedVisibility(
                 visible = cancelConfirm,
@@ -796,10 +813,12 @@ private fun ProcessingPill() {
             modifier = Modifier.fillMaxWidth().height(64.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
+                val amplitudePx = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
                 CircularWavyProgressIndicator(
                     modifier = Modifier.size(40.dp),
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.22f),
+                    amplitude = amplitudePx,
                 )
             }
         }
@@ -843,11 +862,12 @@ private fun InstallCard(
     isFirstTime: Boolean,
     canInstallDirectly: Boolean,
     onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier.padding(24.dp),

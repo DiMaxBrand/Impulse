@@ -532,7 +532,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     }
 
     private void maybeShowUpdateSheet() {
-        if (!UpdateSheetFragment.hasPendingUpdate(this)) return;
+        if (!UpdateSheetFragment.shouldShow(this)) return;
         if (getSupportFragmentManager().findFragmentByTag(UpdateSheetFragment.TAG) != null) return;
         new UpdateSheetFragment().show(getSupportFragmentManager(), UpdateSheetFragment.TAG);
     }

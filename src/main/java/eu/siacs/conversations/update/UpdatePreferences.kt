@@ -41,6 +41,14 @@ class UpdatePreferences(context: Context) {
         get() = prefs.getBoolean(KEY_HAS_INSTALLED, false)
         set(value) = prefs.edit { putBoolean(KEY_HAS_INSTALLED, value) }
 
+    var downloadedVersion: String?
+        get() = prefs.getString(KEY_DOWNLOADED_VERSION, null)
+        set(value) = prefs.edit { putString(KEY_DOWNLOADED_VERSION, value) }
+
+    var sheetDismissedUntil: Long
+        get() = prefs.getLong(KEY_SHEET_DISMISSED_UNTIL, 0L)
+        set(value) = prefs.edit { putLong(KEY_SHEET_DISMISSED_UNTIL, value) }
+
     fun clearPending() {
         prefs.edit {
             remove(KEY_PENDING_VERSION)
@@ -50,7 +58,10 @@ class UpdatePreferences(context: Context) {
     }
 
     fun clearDownload() {
-        prefs.edit { remove(KEY_DOWNLOADED_APK) }
+        prefs.edit {
+            remove(KEY_DOWNLOADED_APK)
+            remove(KEY_DOWNLOADED_VERSION)
+        }
     }
 
     companion object {
@@ -62,5 +73,7 @@ class UpdatePreferences(context: Context) {
         private const val KEY_DOWNLOAD_ID = "download_id"
         private const val KEY_DOWNLOADED_APK = "downloaded_apk"
         private const val KEY_HAS_INSTALLED = "has_installed_update"
+        private const val KEY_DOWNLOADED_VERSION = "downloaded_version"
+        private const val KEY_SHEET_DISMISSED_UNTIL = "sheet_dismissed_until"
     }
 }
