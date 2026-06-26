@@ -1293,6 +1293,11 @@
     <string name="updates_canceling">Отмена…</string>
     <string name="updates_almost_done">Почти готово…</string>
     <string name="updates_new_version_available">Доступна версия %s</string>
+    <string name="updates_install_first_time_title">Impulse обновляется впервые. Спасибо, что пользуетесь!</string>
+    <string name="updates_install_title">Impulse готов к обновлению</string>
+    <string name="updates_install_grant_permission">Система попросит разрешить Impulse устанавливать обновления. Нажмите «Разрешить», затем «Установить».</string>
+    <string name="updates_install_ready">Приложение ненадолго закроется и перезапустится при установке.</string>
+    <string name="updates_install_now">Установить</string>
     <!-- Update channels -->
     <string name="update_channel_stable">Стабильная</string>
     <string name="update_channel_rc">Финальный предпросмотр</string>

@@ -1,5 +1,6 @@
 package eu.siacs.conversations.ui.activity
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -82,7 +83,11 @@ class UpdatesActivity : ActionBarActivity() {
                             onContinue = { uiState = uiState.copy(cancelConfirmVisible = false) },
                             onDownloadCircleTapped = { uiState = uiState.copy(cancelConfirmVisible = true) },
                             onInstall = {
+                                uiState = uiState.copy(showInstallCard = true)
+                            },
+                            onConfirmInstall = {
                                 val path = prefs.downloadedApkPath ?: return@UpdatesScreen
+                                prefs.hasInstalledUpdate = true
                                 UpdateDownloader.installApk(this@UpdatesActivity, path)
                             },
                         )
@@ -99,6 +104,9 @@ class UpdatesActivity : ActionBarActivity() {
         val currentVersion = UpdateChecker.stripBuildMeta(rawVersion)
         val downloadedPath = prefs.downloadedApkPath
         val pendingVersion = prefs.pendingUpdateVersion
+        val canInstallDirectly = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            packageManager.canRequestPackageInstalls()
+        } else true
 
         uiState = uiState.copy(
             currentVersion = currentVersion,
@@ -110,6 +118,8 @@ class UpdatesActivity : ActionBarActivity() {
                 else -> DownloadPhase.IDLE
             },
             pendingVersion = pendingVersion,
+            canInstallDirectly = canInstallDirectly,
+            isFirstUpdate = !prefs.hasInstalledUpdate,
         )
     }
 

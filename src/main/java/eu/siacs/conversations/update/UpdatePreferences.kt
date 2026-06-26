@@ -37,6 +37,10 @@ class UpdatePreferences(context: Context) {
         get() = prefs.getString(KEY_DOWNLOADED_APK, null)
         set(value) = prefs.edit { putString(KEY_DOWNLOADED_APK, value) }
 
+    var hasInstalledUpdate: Boolean
+        get() = prefs.getBoolean(KEY_HAS_INSTALLED, false)
+        set(value) = prefs.edit { putBoolean(KEY_HAS_INSTALLED, value) }
+
     fun clearPending() {
         prefs.edit {
             remove(KEY_PENDING_VERSION)
@@ -57,5 +61,6 @@ class UpdatePreferences(context: Context) {
         private const val KEY_PENDING_NO_WIFI = "pending_no_wifi"
         private const val KEY_DOWNLOAD_ID = "download_id"
         private const val KEY_DOWNLOADED_APK = "downloaded_apk"
+        private const val KEY_HAS_INSTALLED = "has_installed_update"
     }
 }

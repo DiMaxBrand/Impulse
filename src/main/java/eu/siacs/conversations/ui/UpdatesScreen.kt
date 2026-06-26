@@ -85,6 +85,7 @@ fun UpdatesScreen(
     onStop: () -> Unit,
     onContinue: () -> Unit,
     onInstall: () -> Unit,
+    onConfirmInstall: () -> Unit,
     onDownloadCircleTapped: () -> Unit = {},
 ) {
     var channelPickerVisible by remember { mutableStateOf(false) }
@@ -167,6 +168,7 @@ fun UpdatesScreen(
             onStop = onStop,
             onContinue = onContinue,
             onInstall = onInstall,
+            onConfirmInstall = onConfirmInstall,
             onDownloadCircleTapped = onDownloadCircleTapped,
         )
     }
@@ -193,6 +195,7 @@ private fun StatusSection(
     onStop: () -> Unit,
     onContinue: () -> Unit,
     onInstall: () -> Unit,
+    onConfirmInstall: () -> Unit,
     onDownloadCircleTapped: () -> Unit = {},
 ) {
     Column(
@@ -200,7 +203,7 @@ private fun StatusSection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        // Status text (animated content — slides right on change)
+        // Status text — slides on change
         AnimatedContent(
             targetState = statusText(state),
             transitionSpec = {
@@ -220,9 +223,9 @@ private fun StatusSection(
             }
         }
 
-        // Download button area — AnimatedContent handles pill↔circle size morph
+        // Outer AnimatedContent keys only on phase — progress updates won't retrigger animation
         AnimatedContent(
-            targetState = state.downloadPhase to state,
+            targetState = state.downloadPhase,
             transitionSpec = {
                 val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
                 val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
@@ -231,21 +234,18 @@ private fun StatusSection(
                         SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
             },
             label = "download_phase",
-        ) { (phase, st) ->
+        ) { phase ->
             when (phase) {
                 DownloadPhase.IDLE -> Box(Modifier.fillMaxWidth())
                 DownloadPhase.NO_WIFI_PENDING -> {
-                    Button(
-                        onClick = onDownload,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
+                    Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.updates_download))
                     }
                 }
                 DownloadPhase.DOWNLOADING -> {
                     DownloadingCircle(
-                        progress = st.downloadProgress,
-                        cancelConfirm = st.cancelConfirmVisible,
+                        progress = state.downloadProgress,
+                        cancelConfirm = state.cancelConfirmVisible,
                         onTap = onDownloadCircleTapped,
                         onStop = onStop,
                         onContinue = onContinue,
@@ -254,13 +254,79 @@ private fun StatusSection(
                 DownloadPhase.PROCESSING -> ProcessingCircle()
                 DownloadPhase.CANCELING -> CancelingCircle()
                 DownloadPhase.READY -> {
-                    Button(
-                        onClick = onInstall,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.updates_proceed_to_install))
+                    // Inner AnimatedContent handles pill → install card expansion
+                    AnimatedContent(
+                        targetState = state.showInstallCard,
+                        transitionSpec = {
+                            val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
+                            val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
+                            (fadeIn(effects) + scaleIn(spatial, initialScale = 0.92f)) togetherWith
+                                    (fadeOut(effects) + scaleOut(spatial, targetScale = 0.92f)) using
+                                    SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+                        },
+                        label = "install_card",
+                    ) { showCard ->
+                        if (showCard) {
+                            InstallCard(
+                                isFirstTime = state.isFirstUpdate,
+                                canInstallDirectly = state.canInstallDirectly,
+                                onConfirm = onConfirmInstall,
+                            )
+                        } else {
+                            Button(onClick = onInstall, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.updates_proceed_to_install))
+                            }
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun InstallCard(
+    isFirstTime: Boolean,
+    canInstallDirectly: Boolean,
+    onConfirm: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_check_circle_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Text(
+                text = stringResource(
+                    if (isFirstTime) R.string.updates_install_first_time_title
+                    else R.string.updates_install_title
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(
+                    if (!canInstallDirectly) R.string.updates_install_grant_permission
+                    else R.string.updates_install_ready
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
+            Button(onClick = onConfirm, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.updates_install_now))
             }
         }
     }
@@ -421,13 +487,13 @@ private fun ProcessingCircle() {
 private fun CancelingCircle() {
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.primaryContainer,
+        color = MaterialTheme.colorScheme.errorContainer,
         modifier = Modifier.size(56.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
             LoadingIndicator(
                 modifier = Modifier.size(36.dp),
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.onErrorContainer,
             )
         }
     }
@@ -643,4 +709,7 @@ data class UpdatesUiState(
     val downloadProgress: Float = 0f,
     val cancelConfirmVisible: Boolean = false,
     val pendingVersion: String? = null,
+    val showInstallCard: Boolean = false,
+    val canInstallDirectly: Boolean = true,
+    val isFirstUpdate: Boolean = false,
 )
