@@ -73,6 +73,7 @@ import eu.siacs.conversations.ui.util.ActivityResult;
 import eu.siacs.conversations.ui.util.ConversationMenuConfigurator;
 import eu.siacs.conversations.ui.util.PendingItem;
 import eu.siacs.conversations.utils.ExceptionHelper;
+import eu.siacs.conversations.ui.UpdateSheetFragment;
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist;
 import java.util.Arrays;
 import java.util.List;
@@ -527,6 +528,15 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     public void onResume() {
         super.onResume();
         this.mActivityPaused = false;
+        maybeShowUpdateSheet();
+    }
+
+    private void maybeShowUpdateSheet() {
+        final Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.main_fragment);
+        if (!(fragment instanceof ConversationsOverviewFragment)) return;
+        if (!UpdateSheetFragment.hasPendingUpdate(this)) return;
+        if (getSupportFragmentManager().findFragmentByTag(UpdateSheetFragment.TAG) != null) return;
+        new UpdateSheetFragment().show(getSupportFragmentManager(), UpdateSheetFragment.TAG);
     }
 
     private void initializeFragments() {

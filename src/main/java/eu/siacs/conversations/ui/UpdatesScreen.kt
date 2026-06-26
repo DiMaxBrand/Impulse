@@ -329,33 +329,15 @@ fun UpdatesScreen(
     // ── Update flow bottom sheet ──────────────────────────────────────────
     if (state.showUpdateSheet) {
         ModalBottomSheet(onDismissRequest = onHideUpdateSheet) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 40.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (state.pendingVersion != null) {
-                    Text(
-                        text = stringResource(R.string.updates_new_version_available, state.pendingVersion),
-                        style = MaterialTheme.typography.titleMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                    )
-                }
-                StatusSection(
-                    state = state,
-                    onDownload = onDownload,
-                    onStop = onStop,
-                    onContinue = onContinue,
-                    onInstall = onInstall,
-                    onConfirmInstall = onConfirmInstall,
-                    onDownloadCircleTapped = onDownloadCircleTapped,
-                )
-            }
+            UpdateSheetContent(
+                state = state,
+                onDownload = onDownload,
+                onStop = onStop,
+                onContinue = onContinue,
+                onInstall = onInstall,
+                onConfirmInstall = onConfirmInstall,
+                onDownloadCircleTapped = onDownloadCircleTapped,
+            )
         }
     }
 }
@@ -514,11 +496,53 @@ private fun SharedTransitionScope.ChannelInfoPage(
     }
 }
 
+// ─── Sheet content (reused by both UpdatesActivity and UpdateSheetFragment) ───
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun UpdateSheetContent(
+    state: UpdatesUiState,
+    onDownload: () -> Unit,
+    onStop: () -> Unit,
+    onContinue: () -> Unit,
+    onInstall: () -> Unit,
+    onConfirmInstall: () -> Unit,
+    onDownloadCircleTapped: () -> Unit = {},
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (state.pendingVersion != null) {
+            Text(
+                text = stringResource(R.string.updates_new_version_available, state.pendingVersion),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            )
+        }
+        StatusSection(
+            state = state,
+            onDownload = onDownload,
+            onStop = onStop,
+            onContinue = onContinue,
+            onInstall = onInstall,
+            onConfirmInstall = onConfirmInstall,
+            onDownloadCircleTapped = onDownloadCircleTapped,
+        )
+    }
+}
+
 // ─── Status + Download flow ───────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun StatusSection(
+internal fun StatusSection(
     state: UpdatesUiState,
     onDownload: () -> Unit,
     onStop: () -> Unit,
