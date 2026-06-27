@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: 'Version name without build meta (e.g. 1.11.0-alpha.16) — leave blank to use version from build.gradle.kts'
+        description: 'Version name (optional)'
         required: false
         type: string
       prerelease:
