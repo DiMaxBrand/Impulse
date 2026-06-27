@@ -658,7 +658,7 @@ internal fun StatusSection(
                     DownloadPhase.CANCELING -> CancelingCircle()
 
                     DownloadPhase.READY -> {
-                        val needsCard = state.isFirstUpdate || !state.canInstallDirectly
+                        val needsCard = !state.canInstallDirectly
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
