@@ -3,6 +3,10 @@ name: Draft Release
 on:
   workflow_dispatch:
     inputs:
+      version_name:
+        description: 'Version name without build meta (e.g. 1.11.0-alpha.16) — leave blank to use version from build.gradle.kts'
+        required: false
+        type: string
       prerelease:
         description: 'Mark as pre-release'
         required: false
@@ -21,7 +25,11 @@ jobs:
 
       - name: Extract version name
         run: |
-          VERSION=$(grep 'val appVersion' build.gradle.kts | sed 's/.*"\(.*\)".*/\1/' | cut -d'+' -f1)
+          if [ -n "${{ inputs.version_name }}" ]; then
+            VERSION="${{ inputs.version_name }}"
+          else
+            VERSION=$(grep 'val appVersion' build.gradle.kts | sed 's/.*"\(.*\)".*/\1/' | cut -d'+' -f1)
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Set up JDK 21
