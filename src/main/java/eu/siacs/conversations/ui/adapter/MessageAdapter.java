@@ -717,7 +717,6 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         viewHolder.downloadButton().setOnClickListener(null);
         final RelativeLayout audioPlayer = viewHolder.audioPlayer();
         audioPlayer.setVisibility(View.VISIBLE);
-        audioPlayer.setClickable(true);
         AudioPlayer.ViewHolder.get(audioPlayer).setBubbleColor(bubbleColor);
         this.audioPlayer.init(audioPlayer, message);
     }
