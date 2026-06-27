@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: 'Version name without build meta (e.g. 1.11.0-alpha.16)'
-        required: true
+        description: 'Version name (optional)'
+        required: false
         type: string
       prerelease:
         description: 'Mark as pre-release'
@@ -22,6 +22,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Extract version name
+        run: |
+          if [ -n "${{ inputs.version_name }}" ]; then
+            VERSION="${{ inputs.version_name }}"
+          else
+            VERSION=$(grep 'val appVersion' build.gradle.kts | sed 's/.*"\(.*\)".*/\1/' | cut -d'+' -f1)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -47,8 +56,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "${{ inputs.version_name }}"
-          git push origin "${{ inputs.version_name }}"
+          git tag "${{ env.VERSION }}"
+          git push origin "${{ env.VERSION }}"
 
       - name: Create draft GitHub release
         env:
@@ -58,9 +67,9 @@ jobs:
           if [ "${{ inputs.prerelease }}" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          gh release create "${{ inputs.version_name }}" \
+          gh release create "${{ env.VERSION }}" \
             --draft \
             $PRERELEASE_FLAG \
-            --title "Impulse ${{ inputs.version_name }}" \
+            --title "Impulse ${{ env.VERSION }}" \
             --generate-notes \
             "build/outputs/apk/conversationsFree/release/"*arm64-v8a*.apk
