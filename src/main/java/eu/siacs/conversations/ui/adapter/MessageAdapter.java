@@ -712,9 +712,12 @@ public class MessageAdapter extends ArrayAdapter<Message> {
             final BubbleColor bubbleColor) {
         toggleWhisperInfo(viewHolder, message, bubbleColor);
         viewHolder.image().setVisibility(View.GONE);
+        viewHolder.image().setOnClickListener(null);
         viewHolder.downloadButton().setVisibility(View.GONE);
+        viewHolder.downloadButton().setOnClickListener(null);
         final RelativeLayout audioPlayer = viewHolder.audioPlayer();
         audioPlayer.setVisibility(View.VISIBLE);
+        audioPlayer.setClickable(true);
         AudioPlayer.ViewHolder.get(audioPlayer).setBubbleColor(bubbleColor);
         this.audioPlayer.init(audioPlayer, message);
     }
