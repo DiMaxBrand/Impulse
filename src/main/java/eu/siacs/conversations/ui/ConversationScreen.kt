@@ -1644,14 +1644,15 @@ private fun MessageContent(
     val transferable = message.transferable
     // transferable.getProgress() mutates in place; reading `revision` re-triggers this read.
     val transferableProgress = remember(revision) { transferable?.getProgress() }
-    val animatedProgress by animateFloatAsState(
+    val animatedProgressRaw by animateFloatAsState(
         targetValue = (transferableProgress ?: 0) / 100f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
+            dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessMediumLow,
         ),
         label = "transferProgress",
     )
+    val animatedProgress = animatedProgressRaw.coerceIn(0f, 1f)
 
     when {
         message.isDeleted -> {
