@@ -27,6 +27,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -34,6 +35,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -74,7 +76,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp as lerpDp
 import eu.siacs.conversations.R
 import eu.siacs.conversations.update.UpdateChannel
 import kotlinx.coroutines.launch
@@ -745,6 +749,11 @@ private fun DownloadingCircle(
         animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
         label = "stop_tint",
     )
+    val expansionFraction by animateFloatAsState(
+        targetValue = if (cancelConfirm) 1f else (kotlin.math.abs(swipeDelta.value) / 80f).coerceIn(0f, 1f),
+        animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
+        label = "pill_expansion",
+    )
 
     LaunchedEffect(swipeTriggered) {
         when (swipeTriggered) {
@@ -765,17 +774,20 @@ private fun DownloadingCircle(
         stopFraction,
     )
     val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
-    val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
+    val spatialSlide = spring<IntOffset>(stiffness = 380f, dampingRatio = 0.8f)
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
-            shape = CircleShape,
-            color = circleColor,
-            onClick = onTap,
-            modifier = modifier
-                .size(64.dp)
-                .pointerInput(cancelConfirm) {
-                    if (!cancelConfirm) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val pillWidth = lerpDp(64.dp, maxWidth, expansionFraction)
+
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Surface(
+                shape = RoundedCornerShape(32.dp),
+                color = circleColor,
+                onClick = onTap,
+                modifier = modifier
+                    .width(pillWidth)
+                    .height(64.dp)
+                    .pointerInput(Unit) {
                         detectHorizontalDragGestures(
                             onDragEnd = {
                                 scope.launch {
@@ -795,38 +807,53 @@ private fun DownloadingCircle(
                                 swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
                             }
                         }
-                    }
-                },
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                CircularWavyProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier.size(40.dp),
-                    color = contentColor,
-                    trackColor = contentColor.copy(alpha = 0.22f),
-                    amplitude = { amplitudePx },
-                )
-            }
-        }
-        AnimatedVisibility(
-            visible = cancelConfirm,
-            enter = fadeIn(effects) + scaleIn(spatial, initialScale = 0.72f),
-            exit = fadeOut(effects) + scaleOut(spatial, targetScale = 0.72f),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 8.dp),
+                    },
             ) {
-                FilledTonalButton(
-                    onClick = onStop,
-                    shapes = ButtonDefaults.shapes(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                ) { Text(stringResource(R.string.updates_stop)) }
-                OutlinedButton(
-                    onClick = onContinue,
-                    shapes = ButtonDefaults.shapes(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                ) { Text(stringResource(R.string.updates_continue)) }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Stop button — revealed on the left as pill expands
+                    AnimatedVisibility(
+                        visible = cancelConfirm || swipeDelta.value < -10f,
+                        enter = fadeIn(effects) + slideInHorizontally(spatialSlide) { -it / 2 },
+                        exit = fadeOut(effects) + slideOutHorizontally(spatialSlide) { -it / 2 },
+                        modifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
+                    ) {
+                        FilledTonalButton(
+                            onClick = onStop,
+                            shapes = ButtonDefaults.shapes(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        ) { Text(stringResource(R.string.updates_stop)) }
+                    }
+
+                    // Progress indicator — physically follows the drag
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset { IntOffset(swipeDelta.value.toInt(), 0) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularWavyProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier.size(40.dp),
+                            color = contentColor,
+                            trackColor = contentColor.copy(alpha = 0.22f),
+                            amplitude = { amplitudePx },
+                        )
+                    }
+
+                    // Continue button — revealed on the right as pill expands
+                    AnimatedVisibility(
+                        visible = cancelConfirm || swipeDelta.value > 10f,
+                        enter = fadeIn(effects) + slideInHorizontally(spatialSlide) { it / 2 },
+                        exit = fadeOut(effects) + slideOutHorizontally(spatialSlide) { it / 2 },
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = onContinue,
+                            shapes = ButtonDefaults.shapes(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        ) { Text(stringResource(R.string.updates_continue)) }
+                    }
+                }
             }
         }
     }
