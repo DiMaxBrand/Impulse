@@ -21,7 +21,9 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : Worker(con
         if (!prefs.autoCheck) return Result.success()
 
         val checker = UpdateChecker(OkHttpClient())
-        val info = checker.checkForUpdate(prefs.selectedChannel) ?: return Result.success()
+        val result = checker.checkForUpdate(prefs.selectedChannel)
+        if (result !is UpdateChecker.CheckResult.UpdateAvailable) return Result.success()
+        val info = result.info
 
         prefs.pendingUpdateVersion = info.versionName
         prefs.pendingUpdateUrl = info.downloadUrl

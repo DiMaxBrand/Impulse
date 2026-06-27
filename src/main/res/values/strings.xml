@@ -1234,6 +1234,7 @@
     <string name="updates_install_grant_permission">The system will ask you to allow Impulse to install updates. Tap Allow, then hit Install to proceed.</string>
     <string name="updates_install_ready">The app will briefly close and restart during installation.</string>
     <string name="updates_install_now">Install</string>
+    <string name="updates_status_channel_behind">Your build is ahead of this channel</string>
     <!-- Update channels -->
     <string name="update_channel_stable">Stable</string>
     <string name="update_channel_rc">Release Preview</string>

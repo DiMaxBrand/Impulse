@@ -8,9 +8,9 @@ import org.json.JSONObject
 
 class UpdateChecker(private val client: OkHttpClient) {
 
-    fun checkForUpdate(channel: UpdateChannel): UpdateInfo? {
-        val releases = fetchReleases() ?: return null
-        val current = parseVersion(stripBuildMeta(BuildConfig.VERSION_NAME)) ?: return null
+    fun checkForUpdate(channel: UpdateChannel): CheckResult {
+        val releases = fetchReleases() ?: return CheckResult.UpToDate
+        val current = parseVersion(stripBuildMeta(BuildConfig.VERSION_NAME)) ?: return CheckResult.UpToDate
 
         val best = releases
             .filter { releaseMatchesChannel(it.optString("tag_name"), channel) }
@@ -21,16 +21,29 @@ class UpdateChecker(private val client: OkHttpClient) {
                 Triple(version, apkUrl, tag)
             }
             .maxWithOrNull { a, b -> compareSemver(a.first, b.first) }
-            ?: return null
+            ?: return CheckResult.UpToDate
 
-        if (compareSemver(best.first, current) <= 0) return null
+        val cmp = compareSemver(best.first, current)
+        return when {
+            cmp > 0 -> CheckResult.UpdateAvailable(
+                UpdateInfo(
+                    versionName = best.third,
+                    channel = channel,
+                    downloadUrl = best.second,
+                    releaseNotes = "",
+                )
+            )
+            cmp < 0 -> CheckResult.ChannelBehind
+            else -> CheckResult.UpToDate
+        }
+    }
 
-        return UpdateInfo(
-            versionName = best.third,
-            channel = channel,
-            downloadUrl = best.second,
-            releaseNotes = "",
-        )
+    sealed class CheckResult {
+        data class UpdateAvailable(val info: UpdateInfo) : CheckResult()
+        object UpToDate : CheckResult()
+        // The best release on this channel is older than what is currently installed.
+        // Shown when the user switches to a less-cutting-edge channel mid-cycle.
+        object ChannelBehind : CheckResult()
     }
 
     private fun fetchReleases(): List<JSONObject>? {
@@ -64,11 +77,15 @@ class UpdateChecker(private val client: OkHttpClient) {
 
     private fun releaseMatchesChannel(tag: String, channel: UpdateChannel): Boolean {
         val base = stripBuildMeta(tag)
+        val isStable = !base.contains('-')
+        // Each channel is inclusive of all tiers at or above it in stability, so that
+        // e.g. a beta subscriber automatically receives an RC or stable release when it
+        // drops — without having to manually switch channels.
         return when (channel) {
-            UpdateChannel.STABLE -> !base.contains('-')
-            UpdateChannel.RC -> base.contains("-rc.")
-            UpdateChannel.BETA -> base.contains("-beta.")
-            UpdateChannel.ALPHA -> base.contains("-alpha.")
+            UpdateChannel.STABLE -> isStable
+            UpdateChannel.RC    -> isStable || base.contains("-rc.")
+            UpdateChannel.BETA  -> isStable || base.contains("-rc.") || base.contains("-beta.")
+            UpdateChannel.ALPHA -> isStable || base.contains("-rc.") || base.contains("-beta.") || base.contains("-alpha.")
         }
     }
 

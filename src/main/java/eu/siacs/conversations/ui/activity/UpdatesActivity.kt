@@ -155,32 +155,37 @@ class UpdatesActivity : ActionBarActivity() {
         if (uiState.checkStatus == CheckStatus.CHECKING) return
         uiState = uiState.copy(checkStatus = CheckStatus.CHECKING)
         lifecycleScope.launch {
-            val info = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 UpdateChecker(OkHttpClient()).checkForUpdate(uiState.selectedChannel)
             }
-            if (info == null) {
-                uiState = uiState.copy(checkStatus = CheckStatus.UP_TO_DATE)
-                return@launch
-            }
-            pendingInfo = info
-            prefs.pendingUpdateVersion = info.versionName
-            prefs.pendingUpdateUrl = info.downloadUrl
-            if (UpdateDownloader.isWifiConnected(this@UpdatesActivity)) {
-                prefs.pendingNoWifi = false
-                uiState = uiState.copy(
-                    checkStatus = CheckStatus.UPDATE_AVAILABLE,
-                    pendingVersion = info.versionName,
-                    showUpdateSheet = true,
-                )
-                startUserDownload()
-            } else {
-                prefs.pendingNoWifi = true
-                uiState = uiState.copy(
-                    checkStatus = CheckStatus.UPDATE_AVAILABLE,
-                    downloadPhase = DownloadPhase.NO_WIFI_PENDING,
-                    pendingVersion = info.versionName,
-                    showUpdateSheet = true,
-                )
+            when (result) {
+                is UpdateChecker.CheckResult.UpToDate ->
+                    uiState = uiState.copy(checkStatus = CheckStatus.UP_TO_DATE)
+                is UpdateChecker.CheckResult.ChannelBehind ->
+                    uiState = uiState.copy(checkStatus = CheckStatus.CHANNEL_BEHIND)
+                is UpdateChecker.CheckResult.UpdateAvailable -> {
+                    val info = result.info
+                    pendingInfo = info
+                    prefs.pendingUpdateVersion = info.versionName
+                    prefs.pendingUpdateUrl = info.downloadUrl
+                    if (UpdateDownloader.isWifiConnected(this@UpdatesActivity)) {
+                        prefs.pendingNoWifi = false
+                        uiState = uiState.copy(
+                            checkStatus = CheckStatus.UPDATE_AVAILABLE,
+                            pendingVersion = info.versionName,
+                            showUpdateSheet = true,
+                        )
+                        startUserDownload()
+                    } else {
+                        prefs.pendingNoWifi = true
+                        uiState = uiState.copy(
+                            checkStatus = CheckStatus.UPDATE_AVAILABLE,
+                            downloadPhase = DownloadPhase.NO_WIFI_PENDING,
+                            pendingVersion = info.versionName,
+                            showUpdateSheet = true,
+                        )
+                    }
+                }
             }
         }
     }
