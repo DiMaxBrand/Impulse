@@ -518,18 +518,33 @@ fun UpdateSheetContent(
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
             .padding(bottom = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // Hero section
+        Spacer(Modifier.height(8.dp))
+        Icon(
+            painter = painterResource(R.drawable.ic_system_update_24dp),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(64.dp),
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+        )
         if (state.pendingVersion != null) {
             Text(
                 text = stringResource(R.string.updates_new_version_available, state.pendingVersion),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
             )
         }
+        Spacer(Modifier.height(8.dp))
+
         StatusSection(
             state = state,
             onDownload = onDownload,
@@ -794,16 +809,22 @@ private fun DownloadingCircle(
                                     when {
                                         swipeDelta.value < -50f -> swipeTriggered = SwipeAction.STOP
                                         swipeDelta.value > 50f -> swipeTriggered = SwipeAction.CONTINUE
-                                        else -> swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f))
+                                        kotlin.math.abs(swipeDelta.value) > 10f -> {
+                                            // Buttons were revealed — lock pill open and return indicator to center
+                                            onTap()
+                                            swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f))
+                                        }
+                                        else -> swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f))
                                     }
                                 }
                             },
                             onDragCancel = {
-                                scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f)) }
+                                scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f)) }
                             },
                         ) { _, dragAmount ->
                             scope.launch {
-                                val r = (1f - (kotlin.math.abs(swipeDelta.value) / 120f)).coerceAtLeast(0.3f)
+                                // Progressive resistance: drag feels heavier the further you pull
+                                val r = (1f - (kotlin.math.abs(swipeDelta.value) / 100f)).coerceAtLeast(0.15f)
                                 swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
                             }
                         }
