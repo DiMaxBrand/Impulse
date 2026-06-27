@@ -751,7 +751,8 @@ private fun DownloadingCircle(
 ) {
     val scope = rememberCoroutineScope()
     val swipeDelta = remember { Animatable(0f) }
-    var swipeTriggered by remember { mutableStateOf<SwipeAction?>(null) }
+    // Which side is collapsing during the end animation — hides the opposite button
+    var collapsingToward by remember { mutableStateOf<SwipeAction?>(null) }
     val amplitudePx = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
 
     val animatedProgress by animateFloatAsState(
@@ -764,19 +765,12 @@ private fun DownloadingCircle(
         animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
         label = "stop_tint",
     )
+    // Pill expansion is driven entirely by cancelConfirm — no expansion on drag alone
     val expansionFraction by animateFloatAsState(
-        targetValue = if (cancelConfirm) 1f else (kotlin.math.abs(swipeDelta.value) / 80f).coerceIn(0f, 1f),
+        targetValue = if (cancelConfirm) 1f else 0f,
         animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
         label = "pill_expansion",
     )
-
-    LaunchedEffect(swipeTriggered) {
-        when (swipeTriggered) {
-            SwipeAction.STOP -> { onStop(); swipeTriggered = null }
-            SwipeAction.CONTINUE -> { onContinue(); swipeTriggered = null }
-            null -> Unit
-        }
-    }
 
     val circleColor = lerp(
         MaterialTheme.colorScheme.primaryContainer,
@@ -802,38 +796,50 @@ private fun DownloadingCircle(
                 modifier = modifier
                     .width(pillWidth)
                     .height(64.dp)
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {
-                                scope.launch {
-                                    when {
-                                        swipeDelta.value < -50f -> swipeTriggered = SwipeAction.STOP
-                                        swipeDelta.value > 50f -> swipeTriggered = SwipeAction.CONTINUE
-                                        kotlin.math.abs(swipeDelta.value) > 10f -> {
-                                            // Buttons were revealed — lock pill open and return indicator to center
-                                            onTap()
-                                            swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f))
+                    // Drag is only active after the pill is revealed (cancelConfirm = true)
+                    .pointerInput(cancelConfirm) {
+                        if (cancelConfirm) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    scope.launch {
+                                        when {
+                                            swipeDelta.value < -50f -> {
+                                                // Snap indicator to left edge (collapse right side), then stop
+                                                collapsingToward = SwipeAction.STOP
+                                                swipeDelta.animateTo(-120f, spring(stiffness = 1200f, dampingRatio = 1.0f))
+                                                onStop()
+                                                collapsingToward = null
+                                                swipeDelta.snapTo(0f)
+                                            }
+                                            swipeDelta.value > 50f -> {
+                                                // Snap indicator to right edge (collapse left side), then continue
+                                                collapsingToward = SwipeAction.CONTINUE
+                                                swipeDelta.animateTo(120f, spring(stiffness = 1200f, dampingRatio = 1.0f))
+                                                onContinue()
+                                                collapsingToward = null
+                                                swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f))
+                                            }
+                                            else -> swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f))
                                         }
-                                        else -> swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f))
                                     }
+                                },
+                                onDragCancel = {
+                                    scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f)) }
+                                },
+                            ) { _, dragAmount ->
+                                scope.launch {
+                                    // Progressive resistance: gets heavier the further you pull
+                                    val r = (1f - (kotlin.math.abs(swipeDelta.value) / 100f)).coerceAtLeast(0.15f)
+                                    swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
                                 }
-                            },
-                            onDragCancel = {
-                                scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f)) }
-                            },
-                        ) { _, dragAmount ->
-                            scope.launch {
-                                // Progressive resistance: drag feels heavier the further you pull
-                                val r = (1f - (kotlin.math.abs(swipeDelta.value) / 100f)).coerceAtLeast(0.15f)
-                                swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
                             }
                         }
                     },
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    // Stop button — revealed on the left as pill expands
+                    // Stop button — left; hidden while collapsing toward Continue
                     AnimatedVisibility(
-                        visible = cancelConfirm || swipeDelta.value < -10f,
+                        visible = cancelConfirm && collapsingToward != SwipeAction.CONTINUE,
                         enter = fadeIn(effects) + slideInHorizontally(spatialSlide) { -it / 2 },
                         exit = fadeOut(effects) + slideOutHorizontally(spatialSlide) { -it / 2 },
                         modifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
@@ -861,9 +867,9 @@ private fun DownloadingCircle(
                         )
                     }
 
-                    // Continue button — revealed on the right as pill expands
+                    // Continue button — right; hidden while collapsing toward Stop
                     AnimatedVisibility(
-                        visible = cancelConfirm || swipeDelta.value > 10f,
+                        visible = cancelConfirm && collapsingToward != SwipeAction.STOP,
                         enter = fadeIn(effects) + slideInHorizontally(spatialSlide) { it / 2 },
                         exit = fadeOut(effects) + slideOutHorizontally(spatialSlide) { it / 2 },
                         modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
