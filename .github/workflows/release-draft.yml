@@ -41,9 +41,7 @@ jobs:
           EOF
 
       - name: Build signed release APK
-        run: >
-          ./gradlew assembleConversationsFreeRelease
-          -PversionName="${{ inputs.version_name }}+2.20.0"
+        run: ./gradlew assembleConversationsFreeRelease
 
       - name: Create and push git tag
         run: |
