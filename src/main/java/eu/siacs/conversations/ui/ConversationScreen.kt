@@ -10,6 +10,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -51,6 +52,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -1642,6 +1644,14 @@ private fun MessageContent(
     val transferable = message.transferable
     // transferable.getProgress() mutates in place; reading `revision` re-triggers this read.
     val transferableProgress = remember(revision) { transferable?.getProgress() }
+    val animatedProgress by animateFloatAsState(
+        targetValue = (transferableProgress ?: 0) / 100f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "transferProgress",
+    )
 
     when {
         message.isDeleted -> {
@@ -1655,18 +1665,23 @@ private fun MessageContent(
             val fp = message.fileParams
             if (fp.width > 0 && fp.height > 0) {
                 DownloadingMediaPlaceholder(
-                    progress = (transferableProgress ?: 0) / 100f,
+                    progress = animatedProgress,
                     aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
                 )
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
                     Text(
-                        text = stringResource(R.string.receiving_x_file,
+                        text = stringResource(
+                            R.string.receiving_x_file,
                             UIHelper.getFileDescriptionString(context, message),
-                            transferableProgress ?: 0),
+                            transferableProgress ?: 0,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
                     )
                 }
             }
@@ -1676,16 +1691,19 @@ private fun MessageContent(
             if (fp.width > 0 && fp.height > 0) {
                 UploadingMediaThumbnail(
                     message = message,
-                    progress = (transferableProgress ?: 0) / 100f,
+                    progress = animatedProgress,
                     aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
                 )
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
                     Text(
                         text = stringResource(R.string.sending_file, transferableProgress ?: 0),
                         style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
                     )
                 }
             }
