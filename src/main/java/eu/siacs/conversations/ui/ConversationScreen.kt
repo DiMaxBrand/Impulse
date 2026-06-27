@@ -1486,7 +1486,11 @@ private fun MessageBubble(
             Column(
                 modifier =
                     Modifier.combinedClickable(
-                            onClick = { listener.onOpenMessage(message) },
+                            onClick = {
+                                if (message.mimeType?.startsWith("audio/") != true) {
+                                    listener.onOpenMessage(message)
+                                }
+                            },
                             onLongClick = { onLongPress(message) },
                         )
                         .padding(
