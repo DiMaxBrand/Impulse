@@ -950,7 +950,7 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         setAvatarDistance(viewHolder.messageBox(), viewHolder.getClass(), showAvatar);
         viewHolder.messageBox().setClipToOutline(true);
 
-        resetClickListener(viewHolder.messageBox(), viewHolder.messageBody(), viewHolder.image(), viewHolder.downloadButton());
+        resetClickListener(viewHolder.messageBox(), viewHolder.messageBody());
 
         viewHolder
                 .contactPicture()
