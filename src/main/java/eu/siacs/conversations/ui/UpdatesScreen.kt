@@ -540,7 +540,7 @@ fun UpdateSheetContent(
 
 // ─── Status + Download flow ───────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 internal fun StatusSection(
     state: UpdatesUiState,
@@ -575,96 +575,139 @@ internal fun StatusSection(
             }
         }
 
-        AnimatedContent(
-            targetState = state.downloadPhase,
-            transitionSpec = {
-                val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
-                val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
-                (fadeIn(effects) + scaleIn(spatial, initialScale = 0.88f)) togetherWith
-                        (fadeOut(effects) + scaleOut(spatial, targetScale = 0.88f)) using
-                        SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
-            },
-            label = "download_phase",
-        ) { phase ->
-            when (phase) {
-                DownloadPhase.IDLE -> Box(Modifier.fillMaxWidth())
+        SharedTransitionLayout {
+            AnimatedContent(
+                targetState = state.downloadPhase,
+                transitionSpec = {
+                    when {
+                        // instant swap between identical circles — no animation needed
+                        initialState == DownloadPhase.DOWNLOADING && targetState == DownloadPhase.PROCESSING ->
+                            EnterTransition.None togetherWith ExitTransition.None
+                        // sharedBounds drives these transitions
+                        (initialState == DownloadPhase.NO_WIFI_PENDING && targetState == DownloadPhase.DOWNLOADING) ||
+                        (initialState == DownloadPhase.PROCESSING && targetState == DownloadPhase.READY) ->
+                            EnterTransition.None togetherWith ExitTransition.None using
+                                SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+                        else -> {
+                            val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
+                            val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
+                            (fadeIn(effects) + scaleIn(spatial, initialScale = 0.88f)) togetherWith
+                                (fadeOut(effects) + scaleOut(spatial, targetScale = 0.88f)) using
+                                SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+                        }
+                    }
+                },
+                label = "download_phase",
+            ) outerAC@{ phase ->
+                val sharedSpring = BoundsTransform { _, _ -> spring<androidx.compose.ui.geometry.Rect>(stiffness = 380f, dampingRatio = 0.8f) }
+                when (phase) {
+                    DownloadPhase.IDLE -> Box(Modifier.fillMaxWidth())
 
-                DownloadPhase.NO_WIFI_PENDING -> {
-                    Button(
-                        onClick = onDownload,
-                        shapes = ButtonDefaults.shapes(),
-                        modifier = Modifier.fillMaxWidth().height(64.dp),
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_download_24dp),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            stringResource(R.string.updates_download),
-                            style = MaterialTheme.typography.bodyLarge,
+                    DownloadPhase.NO_WIFI_PENDING -> {
+                        Button(
+                            onClick = onDownload,
+                            shapes = ButtonDefaults.shapes(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .sharedBounds(
+                                    rememberSharedContentState("download_circle"),
+                                    animatedVisibilityScope = this@outerAC,
+                                    boundsTransform = sharedSpring,
+                                ),
+                            contentPadding = PaddingValues(horizontal = 24.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_download_24dp),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                stringResource(R.string.updates_download),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    }
+
+                    DownloadPhase.DOWNLOADING -> {
+                        DownloadingCircle(
+                            progress = state.downloadProgress,
+                            cancelConfirm = state.cancelConfirmVisible,
+                            onTap = onDownloadCircleTapped,
+                            onStop = onStop,
+                            onContinue = onContinue,
+                            modifier = Modifier.sharedBounds(
+                                rememberSharedContentState("download_circle"),
+                                animatedVisibilityScope = this@outerAC,
+                                boundsTransform = sharedSpring,
+                            ),
                         )
                     }
-                }
 
-                DownloadPhase.DOWNLOADING -> {
-                    DownloadingPill(
-                        progress = state.downloadProgress,
-                        cancelConfirm = state.cancelConfirmVisible,
-                        onTap = onDownloadCircleTapped,
-                        onStop = onStop,
-                        onContinue = onContinue,
-                    )
-                }
+                    DownloadPhase.PROCESSING -> {
+                        ProcessingCircle(
+                            modifier = Modifier.sharedBounds(
+                                rememberSharedContentState("ready_expand"),
+                                animatedVisibilityScope = this@outerAC,
+                                boundsTransform = sharedSpring,
+                            ),
+                        )
+                    }
 
-                DownloadPhase.PROCESSING -> ProcessingPill()
-                DownloadPhase.CANCELING -> CancelingPill()
+                    DownloadPhase.CANCELING -> CancelingCircle()
 
-                DownloadPhase.READY -> {
-                    SharedTransitionLayout {
-                        AnimatedContent(
-                            targetState = state.showInstallCard,
-                            transitionSpec = {
-                                EnterTransition.None togetherWith ExitTransition.None using
-                                        SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
-                            },
-                            label = "install_card",
-                        ) { showCard ->
-                            if (showCard) {
-                                InstallCard(
-                                    isFirstTime = state.isFirstUpdate,
-                                    canInstallDirectly = state.canInstallDirectly,
-                                    onConfirm = onConfirmInstall,
-                                    modifier = Modifier.sharedBounds(
-                                        rememberSharedContentState("install_surface"),
-                                        animatedVisibilityScope = this@AnimatedContent,
-                                        boundsTransform = BoundsTransform { _, _ ->
-                                            spring(stiffness = 380f, dampingRatio = 0.8f)
-                                        },
-                                    ),
-                                )
-                            } else {
-                                Button(
-                                    onClick = onInstall,
-                                    shapes = ButtonDefaults.shapes(),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(64.dp)
-                                        .sharedBounds(
-                                            rememberSharedContentState("install_surface"),
-                                            animatedVisibilityScope = this@AnimatedContent,
-                                            boundsTransform = BoundsTransform { _, _ ->
-                                                spring(stiffness = 380f, dampingRatio = 0.8f)
-                                            },
-                                        ),
-                                    contentPadding = PaddingValues(horizontal = 24.dp),
-                                ) {
-                                    Text(
-                                        stringResource(R.string.updates_proceed_to_install),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
+                    DownloadPhase.READY -> {
+                        val needsCard = state.isFirstUpdate || !state.canInstallDirectly
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .sharedBounds(
+                                    rememberSharedContentState("ready_expand"),
+                                    animatedVisibilityScope = this@outerAC,
+                                    boundsTransform = sharedSpring,
+                                ),
+                        ) {
+                            SharedTransitionLayout {
+                                AnimatedContent(
+                                    targetState = state.showInstallCard && needsCard,
+                                    transitionSpec = {
+                                        EnterTransition.None togetherWith ExitTransition.None using
+                                            SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+                                    },
+                                    label = "install_card",
+                                ) { showCard ->
+                                    if (showCard) {
+                                        InstallCard(
+                                            isFirstTime = state.isFirstUpdate,
+                                            canInstallDirectly = state.canInstallDirectly,
+                                            onConfirm = onConfirmInstall,
+                                            modifier = Modifier.sharedBounds(
+                                                rememberSharedContentState("install_surface"),
+                                                animatedVisibilityScope = this@AnimatedContent,
+                                                boundsTransform = sharedSpring,
+                                            ),
+                                        )
+                                    } else {
+                                        Button(
+                                            onClick = if (needsCard) onInstall else onConfirmInstall,
+                                            shapes = ButtonDefaults.shapes(),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(64.dp)
+                                                .sharedBounds(
+                                                    rememberSharedContentState("install_surface"),
+                                                    animatedVisibilityScope = this@AnimatedContent,
+                                                    boundsTransform = sharedSpring,
+                                                ),
+                                            contentPadding = PaddingValues(horizontal = 24.dp),
+                                        ) {
+                                            Text(
+                                                stringResource(R.string.updates_proceed_to_install),
+                                                style = MaterialTheme.typography.bodyLarge,
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -675,16 +718,17 @@ internal fun StatusSection(
     }
 }
 
-// ─── Download/processing/canceling pills ─────────────────────────────────────
+// ─── Download/processing/canceling circles ────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun DownloadingPill(
+private fun DownloadingCircle(
     progress: Float,
     cancelConfirm: Boolean,
     onTap: () -> Unit,
     onStop: () -> Unit,
     onContinue: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     val swipeDelta = remember { Animatable(0f) }
@@ -710,7 +754,7 @@ private fun DownloadingPill(
         }
     }
 
-    val pillColor = lerp(
+    val circleColor = lerp(
         MaterialTheme.colorScheme.primaryContainer,
         MaterialTheme.colorScheme.errorContainer,
         stopFraction,
@@ -720,81 +764,68 @@ private fun DownloadingPill(
         MaterialTheme.colorScheme.onErrorContainer,
         stopFraction,
     )
+    val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
+    val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
 
-    Surface(
-        shape = CircleShape,
-        color = pillColor,
-        onClick = onTap,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .pointerInput(cancelConfirm) {
-                if (!cancelConfirm) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            scope.launch {
-                                when {
-                                    swipeDelta.value < -50f -> swipeTriggered = SwipeAction.STOP
-                                    swipeDelta.value > 50f -> swipeTriggered = SwipeAction.CONTINUE
-                                    else -> swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f))
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = CircleShape,
+            color = circleColor,
+            onClick = onTap,
+            modifier = modifier
+                .size(64.dp)
+                .pointerInput(cancelConfirm) {
+                    if (!cancelConfirm) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                scope.launch {
+                                    when {
+                                        swipeDelta.value < -50f -> swipeTriggered = SwipeAction.STOP
+                                        swipeDelta.value > 50f -> swipeTriggered = SwipeAction.CONTINUE
+                                        else -> swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f))
+                                    }
                                 }
+                            },
+                            onDragCancel = {
+                                scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f)) }
+                            },
+                        ) { _, dragAmount ->
+                            scope.launch {
+                                val r = (1f - (kotlin.math.abs(swipeDelta.value) / 120f)).coerceAtLeast(0.3f)
+                                swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
                             }
-                        },
-                        onDragCancel = {
-                            scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 800f, dampingRatio = 0.6f)) }
-                        },
-                    ) { _, dragAmount ->
-                        scope.launch {
-                            val r = (1f - (kotlin.math.abs(swipeDelta.value) / 120f)).coerceAtLeast(0.3f)
-                            swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
                         }
                     }
-                }
-            },
-    ) {
-        val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
-        val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
-            contentAlignment = Alignment.Center,
+                },
         ) {
-            CircularWavyProgressIndicator(
-                progress = { animatedProgress },
-                modifier = Modifier.size(40.dp),
-                color = contentColor,
-                trackColor = contentColor.copy(alpha = 0.22f),
-                amplitude = { amplitudePx },
-            )
-            AnimatedVisibility(
-                visible = cancelConfirm,
-                modifier = Modifier.align(Alignment.CenterStart),
-                enter = fadeIn(effects) + scaleIn(spatial, initialScale = 0.72f),
-                exit = fadeOut(effects) + scaleOut(spatial, targetScale = 0.72f),
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                CircularWavyProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier.size(40.dp),
+                    color = contentColor,
+                    trackColor = contentColor.copy(alpha = 0.22f),
+                    amplitude = { amplitudePx },
+                )
+            }
+        }
+        AnimatedVisibility(
+            visible = cancelConfirm,
+            enter = fadeIn(effects) + scaleIn(spatial, initialScale = 0.72f),
+            exit = fadeOut(effects) + scaleOut(spatial, targetScale = 0.72f),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 8.dp),
             ) {
                 FilledTonalButton(
                     onClick = onStop,
                     shapes = ButtonDefaults.shapes(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = contentColor.copy(alpha = 0.15f),
-                        contentColor = contentColor,
-                    ),
                 ) { Text(stringResource(R.string.updates_stop)) }
-            }
-            AnimatedVisibility(
-                visible = cancelConfirm,
-                modifier = Modifier.align(Alignment.CenterEnd),
-                enter = fadeIn(effects) + scaleIn(spatial, initialScale = 0.72f),
-                exit = fadeOut(effects) + scaleOut(spatial, targetScale = 0.72f),
-            ) {
                 OutlinedButton(
                     onClick = onContinue,
                     shapes = ButtonDefaults.shapes(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    border = BorderStroke(1.dp, contentColor.copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = contentColor),
                 ) { Text(stringResource(R.string.updates_continue)) }
             }
         }
@@ -803,14 +834,14 @@ private fun DownloadingPill(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun ProcessingPill() {
+private fun ProcessingCircle(modifier: Modifier = Modifier) {
     var showAlmostDone by remember { mutableStateOf(false) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer,
             onClick = { showAlmostDone = true },
-            modifier = Modifier.fillMaxWidth().height(64.dp),
+            modifier = modifier.size(64.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 val amplitudePx = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
@@ -839,11 +870,11 @@ private fun ProcessingPill() {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun CancelingPill() {
+private fun CancelingCircle() {
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.errorContainer,
-        modifier = Modifier.fillMaxWidth().height(64.dp),
+        modifier = Modifier.size(64.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
             LoadingIndicator(
