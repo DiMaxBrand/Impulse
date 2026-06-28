@@ -208,24 +208,12 @@ class ConversationsOverviewFragment : XmppFragment() {
                     ?: Log.w(TAG, "Activity does not implement OnConversationSelected")
             },
             binding.fab,
+            onDownloadComplete = { (activity as? ConversationsActivity)?.openUpdateSheet() },
         )
 
         searchSuggestionAdapter = SearchSuggestionAdapter()
         binding.searchSuggestionList.adapter = searchSuggestionAdapter
         searchSuggestionAdapter!!.setOnSearchSuggestionClicked(::executeSuggestion)
-
-        binding.updateProgressBar.setViewCompositionStrategy(
-            androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
-        )
-        binding.updateProgressBar.setContent {
-            ImpulseExpressiveTheme {
-                DownloadProgressBar(
-                    onComplete = {
-                        (activity as? ConversationsActivity)?.openUpdateSheet()
-                    },
-                )
-            }
-        }
 
         return binding.root
     }

@@ -159,21 +159,28 @@ object ConversationListHelper {
         state: ConversationListState,
         onConversationClick: ConversationClickListener,
         fab: ExtendedFloatingActionButton,
+        onDownloadComplete: () -> Unit = {},
     ) {
         composeView.setViewCompositionStrategy(
             ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
         )
         composeView.setContent {
             ImpulseTheme {
-                Column {
-                    ConnectingStrip(isConnecting = state.isConnecting.value)
-                    ConversationList(
-                        conversations = state.list,
-                        revision = state.revision.intValue,
-                        onConversationClick = { onConversationClick.onClick(it) },
-                        onFirstVisibleIndexChanged = { index ->
-                            composeView.post { if (index > 0) fab.shrink() else fab.extend() }
-                        },
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column {
+                        ConnectingStrip(isConnecting = state.isConnecting.value)
+                        ConversationList(
+                            conversations = state.list,
+                            revision = state.revision.intValue,
+                            onConversationClick = { onConversationClick.onClick(it) },
+                            onFirstVisibleIndexChanged = { index ->
+                                composeView.post { if (index > 0) fab.shrink() else fab.extend() }
+                            },
+                        )
+                    }
+                    DownloadProgressBar(
+                        onComplete = onDownloadComplete,
+                        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
                     )
                 }
             }
