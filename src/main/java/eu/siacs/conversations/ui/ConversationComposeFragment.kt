@@ -25,6 +25,7 @@ import eu.siacs.conversations.utils.Compatibility
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
+import eu.siacs.conversations.entities.Transferable
 import eu.siacs.conversations.utils.Emoticons
 import eu.siacs.conversations.services.CallIntegrationConnectionService
 import eu.siacs.conversations.services.XmppConnectionService
@@ -795,6 +796,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onDownloadMessage(message: Message) {
         val service = getXmppConnectionService() ?: return
+        val transferable = message.transferable
+        if (transferable != null &&
+            (transferable.getStatus() == Transferable.STATUS_OFFER ||
+                transferable.getStatus() == Transferable.STATUS_OFFER_CHECK_FILESIZE)) {
+            transferable.start()
+            return
+        }
         service.httpConnectionManager.createNewDownloadConnection(message, true)
     }
 
