@@ -1,5 +1,6 @@
 package eu.siacs.conversations.ui
 
+import android.os.Build
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -281,7 +282,13 @@ object ConversationScreenHelper {
 internal fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val isDark = isSystemInDarkTheme()
-    val colorScheme = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val isSamsung = remember { Build.MANUFACTURER.equals("samsung", ignoreCase = true) }
+    val rawColorScheme = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    // Samsung One UI 8.5 injects primary chroma into surfaceContainerHigh, making incoming
+    // chat bubbles appear dark and blue-tinted. Remap to the neutral lower tier in light mode.
+    val colorScheme = if (isSamsung && !isDark) {
+        rawColorScheme.copy(surfaceContainerHigh = rawColorScheme.surfaceContainerLow)
+    } else rawColorScheme
     // Material3 has no built-in "success" role. We pick a green seed and harmonize its hue
     // toward the dynamic primary (same algorithm M3 itself uses), so it still feels designed
     // together with the wallpaper-derived palette instead of clashing as a flat, static green.
