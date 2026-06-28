@@ -1,6 +1,7 @@
 package eu.siacs.conversations.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -59,6 +60,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private var pauseStartMs = 0L
     private var timerJob: kotlinx.coroutines.Job? = null
     private val pendingTakePhotoUri = eu.siacs.conversations.ui.util.PendingItem<Uri>()
+    private var pendingSharedUris: List<Uri> = emptyList()
+    private var pendingSharedMimeType: String? = null
 
     private val takePhotoLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -149,6 +152,17 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
         }
 
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        if (pendingSharedUris.isNotEmpty()) {
+            val uris = pendingSharedUris
+            val mimeType = pendingSharedMimeType
+            pendingSharedUris = emptyList()
+            pendingSharedMimeType = null
+            stageUris(uris, if (mimeType?.startsWith("image/") == true) Attachment.Type.IMAGE else Attachment.Type.FILE)
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -220,11 +234,12 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
         if (sharedUris.isNotEmpty()) {
             val mimeType = extras.getString(ConversationsActivity.EXTRA_TYPE)
-            stageUris(
-                sharedUris,
-                if (mimeType?.startsWith("image/") == true) Attachment.Type.IMAGE
-                else Attachment.Type.FILE,
-            )
+            if (context != null) {
+                stageUris(sharedUris, if (mimeType?.startsWith("image/") == true) Attachment.Type.IMAGE else Attachment.Type.FILE)
+            } else {
+                pendingSharedUris = sharedUris
+                pendingSharedMimeType = mimeType
+            }
         }
         val nick = extras.getString(ConversationsActivity.EXTRA_NICK)
         if (!nick.isNullOrEmpty()) {
