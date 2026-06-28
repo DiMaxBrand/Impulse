@@ -1649,10 +1649,7 @@ private fun MessageContent(
     val transferableProgress = remember(revision) { transferable?.getProgress() }
     val animatedProgressRaw by animateFloatAsState(
         targetValue = (transferableProgress ?: 0) / 100f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
+        animationSpec = tween(durationMillis = 300),
         label = "transferProgress",
     )
     val animatedProgress = animatedProgressRaw.coerceIn(0f, 1f)
@@ -1683,10 +1680,16 @@ private fun MessageContent(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
-                    )
+                    if ((transferableProgress ?: 0) > 0) {
+                        LinearProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
+                        )
+                    }
                 }
             }
         }
