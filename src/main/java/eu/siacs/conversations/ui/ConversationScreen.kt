@@ -284,8 +284,9 @@ internal fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
     val isDark = isSystemInDarkTheme()
     val isSamsung = remember { Build.MANUFACTURER.equals("samsung", ignoreCase = true) }
     val rawColorScheme = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    // Samsung One UI 8.5 injects primary chroma into surfaceContainerHigh, making incoming
-    // chat bubbles appear dark and blue-tinted. Remap to the neutral lower tier in light mode.
+    // Samsung One UI 8.5 generates a much darker tone for surfaceContainerHigh than the M3
+    // spec expects (~tone 70 vs. the standard ~92), making incoming chat bubbles appear as a
+    // dark gray in light mode. Remap to the lighter surfaceContainerLow tier on Samsung.
     val colorScheme = if (isSamsung && !isDark) {
         rawColorScheme.copy(surfaceContainerHigh = rawColorScheme.surfaceContainerLow)
     } else rawColorScheme
