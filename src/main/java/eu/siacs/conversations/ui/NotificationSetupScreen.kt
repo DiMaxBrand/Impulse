@@ -113,7 +113,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
     }
 
     val expressiveFontFamily = remember {
-        FontFamily(Font(R.font.google_sans_flex_bold, weight = FontWeight.Bold))
+        FontFamily(Font(R.font.comfortaa_bold, weight = FontWeight.Bold))
     }
 
     Surface(
