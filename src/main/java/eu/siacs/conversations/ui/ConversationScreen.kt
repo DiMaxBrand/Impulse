@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -53,6 +54,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -1704,25 +1706,51 @@ private fun MessageContent(
                 )
             }
         }
-        transferable != null && transferable.getStatus() == Transferable.STATUS_UPLOADING -> {
-            val fp = message.fileParams
-            if (fp.width > 0 && fp.height > 0) {
-                UploadingMediaThumbnail(
-                    message = message,
-                    progress = animatedProgress,
-                    aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
-                )
-            } else {
-                Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
-                    Text(
-                        text = stringResource(R.string.sending_file, transferableProgress ?: 0),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
-                    )
+        transferable != null && (
+            transferable.getStatus() == Transferable.STATUS_COMPRESSING ||
+            transferable.getStatus() == Transferable.STATUS_UPLOADING
+        ) -> {
+            val currentStatus = transferable.getStatus()
+            AnimatedContent(
+                targetState = currentStatus,
+                transitionSpec = {
+                    if (initialState == Transferable.STATUS_COMPRESSING) {
+                        (fadeIn(animationSpec = tween(350)) + scaleIn(
+                            initialScale = 0.88f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                        )) togetherWith fadeOut(animationSpec = tween(200))
+                    } else {
+                        fadeIn(tween(200)) togetherWith fadeOut(tween(150))
+                    }
+                },
+                label = "videoSendState",
+            ) { status ->
+                if (status == Transferable.STATUS_COMPRESSING) {
+                    CompressingVideoPlaceholder(progress = animatedProgress)
+                } else {
+                    val fp = message.fileParams
+                    if (fp.width > 0 && fp.height > 0) {
+                        UploadingMediaThumbnail(
+                            message = message,
+                            progress = animatedProgress,
+                            aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
+                        )
+                    } else {
+                        Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
+                            Text(
+                                text = stringResource(R.string.sending_file, transferableProgress ?: 0),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            LinearProgressIndicator(
+                                progress = { animatedProgress },
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -2006,6 +2034,53 @@ private fun FileRow(iconRes: Int, label: String) {
         )
         Spacer(Modifier.width(10.dp))
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CompressingVideoPlaceholder(progress: Float) {
+    val primary = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier
+            .widthIn(max = 280.dp)
+            .aspectRatio(16f / 9f)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 24.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_videocam_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                modifier = Modifier.size(40.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.transcoding_video),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+            Spacer(Modifier.height(8.dp))
+            if (progress > 0f) {
+                LinearWavyProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = primary,
+                    trackColor = primary.copy(alpha = 0.20f),
+                )
+            } else {
+                LinearWavyProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = primary,
+                    trackColor = primary.copy(alpha = 0.20f),
+                )
+            }
+        }
     }
 }
 

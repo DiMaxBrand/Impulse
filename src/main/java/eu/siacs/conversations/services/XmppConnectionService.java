@@ -380,7 +380,33 @@ public class XmppConnectionService extends Service {
             message.setType(Message.TYPE_FILE);
         }
         if (replyId != null) message.setRepliedTo(replyId);
-        final var future = submitAttachToConversation(uri, type, message);
+        final AttachFileToConversationRunnable runnable =
+                new AttachFileToConversationRunnable(this, uri, type, message);
+        if (runnable.isVideoMessage()) {
+            final VideoCompressionConnection compressionConn = new VideoCompressionConnection();
+            runnable.setVideoCompressionConnection(compressionConn);
+            message.setStatus(Message.STATUS_WAITING);
+            conversation.add(message);
+            message.setTransferable(compressionConn);
+            updateConversationUi();
+            final ListenableFuture<Void> dbFuture =
+                    Futures.submit(
+                            () -> {
+                                databaseBackend.createMessage(message);
+                                return null;
+                            },
+                            mDatabaseWriterExecutor);
+            final ListenableFuture<Void> compressionFuture =
+                    Futures.transformAsync(
+                            dbFuture,
+                            v -> Futures.submit(runnable, VIDEO_COMPRESSION_EXECUTOR),
+                            MoreExecutors.directExecutor());
+            return Futures.transformAsync(
+                    compressionFuture,
+                    v -> encryptIfNeededAndResend(message),
+                    MoreExecutors.directExecutor());
+        }
+        final var future = Futures.submit(runnable, FILE_ATTACHMENT_EXECUTOR);
         return Futures.transformAsync(
                 future, v -> encryptIfNeededAndSend(message), MoreExecutors.directExecutor());
     }
@@ -1590,6 +1616,16 @@ public class XmppConnectionService extends Service {
                 PgpEngine.encryptIfNeeded(getPgpEngine(), message),
                 v -> {
                     sendMessage(message);
+                    return null;
+                },
+                MoreExecutors.directExecutor());
+    }
+
+    private ListenableFuture<Void> encryptIfNeededAndResend(final Message message) {
+        return Futures.transform(
+                PgpEngine.encryptIfNeeded(getPgpEngine(), message),
+                v -> {
+                    resendMessage(message, false);
                     return null;
                 },
                 MoreExecutors.directExecutor());

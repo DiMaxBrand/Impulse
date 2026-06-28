@@ -33,6 +33,8 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
     private final boolean isVideoMessage;
     private final long originalFileSize;
     private int currentProgress = -1;
+    private VideoCompressionConnection videoCompressionConnection;
+    private final DebouncedInterfaceUpdater debouncedInterfaceUpdater;
 
     AttachFileToConversationRunnable(
             final XmppConnectionService xmppConnectionService,
@@ -43,6 +45,7 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
         this.type = type;
         this.mXmppConnectionService = xmppConnectionService;
         this.appSettings = new AppSettings(xmppConnectionService.getApplicationContext());
+        this.debouncedInterfaceUpdater = new DebouncedInterfaceUpdater(xmppConnectionService);
         this.message = message;
         final String mimeType =
                 MimeUtils.guessMimeTypeFromUriAndMime(mXmppConnectionService, uri, type);
@@ -57,6 +60,10 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
 
     boolean isVideoMessage() {
         return this.isVideoMessage;
+    }
+
+    void setVideoCompressionConnection(final VideoCompressionConnection conn) {
+        this.videoCompressionConnection = conn;
     }
 
     private void processAsFile() {
@@ -147,6 +154,11 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
             mXmppConnectionService
                     .getNotificationService()
                     .updateFileAddingNotification(p, message);
+            final VideoCompressionConnection conn = videoCompressionConnection;
+            if (conn != null) {
+                conn.setProgress(p);
+                debouncedInterfaceUpdater.run();
+            }
         }
     }
 
