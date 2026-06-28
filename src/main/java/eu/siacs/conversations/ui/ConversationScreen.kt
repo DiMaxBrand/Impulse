@@ -1690,6 +1690,17 @@ private fun MessageContent(
                 }
             }
         }
+        transferable != null && transferable.getStatus() == Transferable.STATUS_CHECKING -> {
+            val fileDescription = UIHelper.getFileDescriptionString(context, message)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.checking_x, fileDescription),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
         transferable != null && transferable.getStatus() == Transferable.STATUS_UPLOADING -> {
             val fp = message.fileParams
             if (fp.width > 0 && fp.height > 0) {
