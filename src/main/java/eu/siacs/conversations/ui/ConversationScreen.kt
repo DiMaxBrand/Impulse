@@ -2058,7 +2058,7 @@ private fun CompressingVideoPlaceholder(progress: Float) {
     val primary = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
-            .widthIn(max = 200.dp)
+            .widthIn(max = 280.dp)
             .aspectRatio(16f / 9f)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
@@ -2134,7 +2134,7 @@ private fun UploadingMediaThumbnail(message: Message, progress: Float, aspectRat
     }
 
     val thumb = remember(message.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
-    val sizePx = with(LocalDensity.current) { 200.dp.toPx() }.toInt()
+    val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
     LaunchedEffect(message.getUuid()) {
         val bm = withContext(Dispatchers.IO) {
             try { fileBackend?.getThumbnail(message, sizePx, false) } catch (_: Exception) { null }
@@ -2153,7 +2153,8 @@ private fun UploadingMediaThumbnail(message: Message, progress: Float, aspectRat
 
     Box(
         modifier = Modifier
-            .widthIn(max = 200.dp)
+            .widthIn(max = 280.dp)
+            .heightIn(max = 310.dp)
             .aspectRatio(aspectRatio.coerceIn(0.25f, 4f))
             .clip(RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center,
