@@ -76,8 +76,11 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
             requireActivity().packageManager.canRequestPackageInstalls()
         } else true
 
+        val apkExists = prefs.downloadedApkExists()
+        if (downloadedPath != null && !apkExists) prefs.downloadedApkPath = null
+
         val restoredPhase = when {
-            downloadedPath != null -> DownloadPhase.READY
+            apkExists -> DownloadPhase.READY
             prefs.pendingNoWifi && pendingVersion != null -> DownloadPhase.NO_WIFI_PENDING
             else -> DownloadPhase.IDLE
         }

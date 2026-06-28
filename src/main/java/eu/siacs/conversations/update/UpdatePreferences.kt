@@ -57,6 +57,12 @@ class UpdatePreferences(context: Context) {
         }
     }
 
+    fun downloadedApkExists(): Boolean {
+        val path = downloadedApkPath ?: return false
+        val file = java.io.File(android.net.Uri.parse(path).path ?: path)
+        return file.exists()
+    }
+
     fun clearDownload() {
         prefs.edit {
             remove(KEY_DOWNLOADED_APK)

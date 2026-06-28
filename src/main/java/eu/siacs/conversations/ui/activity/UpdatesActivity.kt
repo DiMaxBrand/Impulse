@@ -104,15 +104,8 @@ class UpdatesActivity : ActionBarActivity() {
     }
 
     private fun showUpdateSheet() {
-        // If no pending update is known yet, inject a fake one for debugging
-        if (uiState.pendingVersion == null) {
-            prefs.pendingUpdateVersion = "1.11.0-alpha.16"
-            prefs.pendingUpdateUrl = "https://example.com/fake.apk"
-            prefs.pendingNoWifi = true
-        }
         val currentPhase = uiState.downloadPhase
         uiState = uiState.copy(
-            pendingVersion = uiState.pendingVersion ?: "1.11.0-alpha.16",
             downloadPhase = if (currentPhase == DownloadPhase.IDLE) DownloadPhase.NO_WIFI_PENDING else currentPhase,
             showUpdateSheet = true,
         )
@@ -127,8 +120,11 @@ class UpdatesActivity : ActionBarActivity() {
             packageManager.canRequestPackageInstalls()
         } else true
 
+        val apkExists = prefs.downloadedApkExists()
+        if (downloadedPath != null && !apkExists) prefs.downloadedApkPath = null
+
         val restoredPhase = when {
-            downloadedPath != null -> DownloadPhase.READY
+            apkExists -> DownloadPhase.READY
             prefs.pendingNoWifi && pendingVersion != null -> DownloadPhase.NO_WIFI_PENDING
             else -> DownloadPhase.IDLE
         }
@@ -137,7 +133,7 @@ class UpdatesActivity : ActionBarActivity() {
             selectedChannel = prefs.selectedChannel,
             autoCheck = prefs.autoCheck,
             downloadPhase = restoredPhase,
-            pendingVersion = pendingVersion,
+            pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
             canInstallDirectly = canInstallDirectly,
             isFirstUpdate = !prefs.hasInstalledUpdate,
             showUpdateSheet = restoredPhase != DownloadPhase.IDLE,
