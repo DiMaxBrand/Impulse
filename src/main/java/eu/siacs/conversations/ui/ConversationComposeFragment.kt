@@ -784,7 +784,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
             message.isFileOrImage && !message.isDeleted -> {
                 val file = service.fileBackend.getFile(message)
-                ViewUtil.view(context, file, message.getUuid() ?: "")
+                if (file.exists()) {
+                    ViewUtil.view(context, file, message.getUuid() ?: "")
+                } else {
+                    onDownloadMessage(message)
+                }
             }
             message.treatAsDownloadable() -> onDownloadMessage(message)
         }
