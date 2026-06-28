@@ -361,6 +361,14 @@ public class XmppConnectionService extends Service {
 
     public ListenableFuture<Void> attachFileToConversation(
             final Conversation conversation, final Uri uri, final String type) {
+        return attachFileToConversation(conversation, uri, type, null);
+    }
+
+    public ListenableFuture<Void> attachFileToConversation(
+            final Conversation conversation,
+            final Uri uri,
+            final String type,
+            final String replyId) {
         final Message message;
         if (conversation.getNextEncryption() == Message.ENCRYPTION_PGP) {
             message = new Message(conversation, "", Message.ENCRYPTION_DECRYPTED);
@@ -371,6 +379,7 @@ public class XmppConnectionService extends Service {
             message.setCounterpart(conversation.getNextCounterpart());
             message.setType(Message.TYPE_FILE);
         }
+        if (replyId != null) message.setRepliedTo(replyId);
         final var future = submitAttachToConversation(uri, type, message);
         return Futures.transformAsync(
                 future, v -> encryptIfNeededAndSend(message), MoreExecutors.directExecutor());
@@ -389,9 +398,17 @@ public class XmppConnectionService extends Service {
 
     public ListenableFuture<Void> attachImageToConversation(
             final Conversation conversation, final Uri uri, final String type) {
+        return attachImageToConversation(conversation, uri, type, null);
+    }
+
+    public ListenableFuture<Void> attachImageToConversation(
+            final Conversation conversation,
+            final Uri uri,
+            final String type,
+            final String replyId) {
         final var messageUuid = FileBackend.getMessageUuid(this, uri);
         if (messageUuid.isPresent()) {
-            return attachFileToConversation(conversation, uri, type);
+            return attachFileToConversation(conversation, uri, type, replyId);
         }
         final String mimeType = MimeUtils.guessMimeTypeFromUriAndMime(this, uri, type);
         final String compressPictures = getCompressPicturesPreference();
@@ -403,7 +420,7 @@ public class XmppConnectionService extends Service {
                     Config.LOGTAG,
                     conversation.getAccount().getJid().asBareJid()
                             + ": not compressing picture. sending as file");
-            return attachFileToConversation(conversation, uri, mimeType);
+            return attachFileToConversation(conversation, uri, mimeType, replyId);
         }
         final Message message;
         if (conversation.getNextEncryption() == Message.ENCRYPTION_PGP) {
@@ -415,6 +432,7 @@ public class XmppConnectionService extends Service {
             message.setCounterpart(conversation.getNextCounterpart());
             message.setType(Message.TYPE_IMAGE);
         }
+        if (replyId != null) message.setRepliedTo(replyId);
         Log.d(Config.LOGTAG, "attachImage: type=" + message.getType());
         final var imageCopyFuture =
                 Futures.submit(

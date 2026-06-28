@@ -542,11 +542,20 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val c = conversation ?: return
         val service = getXmppConnectionService() ?: return
         val context = context ?: return
+        val reply = state.replyingTo.value
+        val replyId = if (reply != null) {
+            if (reply.status == Message.STATUS_RECEIVED) {
+                reply.remoteMsgId ?: reply.serverMsgId ?: reply.getUuid()
+            } else {
+                reply.serverMsgId ?: reply.getUuid()
+            }
+        } else null
+        state.replyingTo.value = null
         for (attachment in attachments) {
             val future =
                 if (attachment.type == Attachment.Type.IMAGE)
-                    service.attachImageToConversation(c, attachment.uri, attachment.mime)
-                else service.attachFileToConversation(c, attachment.uri, attachment.mime)
+                    service.attachImageToConversation(c, attachment.uri, attachment.mime, replyId)
+                else service.attachFileToConversation(c, attachment.uri, attachment.mime, replyId)
             Futures.addCallback(
                 future,
                 object : FutureCallback<Void?> {
