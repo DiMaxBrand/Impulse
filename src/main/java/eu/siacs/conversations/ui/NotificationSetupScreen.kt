@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontFamily
@@ -113,7 +114,16 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
     }
 
     val expressiveFontFamily = remember {
-        FontFamily(Font(R.font.comfortaa_bold, weight = FontWeight.Bold))
+        FontFamily(
+            Font(
+                R.font.google_sans_flex,
+                weight = FontWeight.Bold,
+                variationSettings = FontVariation.Settings(
+                    FontVariation.weight(700),
+                    FontVariation.Setting("ROND", 100f)
+                )
+            )
+        )
     }
 
     Surface(
