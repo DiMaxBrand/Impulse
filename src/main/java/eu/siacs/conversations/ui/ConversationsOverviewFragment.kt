@@ -214,6 +214,19 @@ class ConversationsOverviewFragment : XmppFragment() {
         binding.searchSuggestionList.adapter = searchSuggestionAdapter
         searchSuggestionAdapter!!.setOnSearchSuggestionClicked(::executeSuggestion)
 
+        binding.updateProgressBar.setViewCompositionStrategy(
+            androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+        )
+        binding.updateProgressBar.setContent {
+            ImpulseExpressiveTheme {
+                DownloadProgressBar(
+                    onComplete = {
+                        (activity as? ConversationsActivity)?.openUpdateSheet()
+                    },
+                )
+            }
+        }
+
         return binding.root
     }
 

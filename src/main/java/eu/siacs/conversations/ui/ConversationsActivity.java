@@ -356,7 +356,6 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         OmemoSetting.load(this);
         this.binding = DataBindingUtil.setContentView(this, R.layout.activity_conversations);
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
-        UpdateProgressBarSetup.setup(binding.updateProgressBar, this::openUpdateSheet);
         ;
         this.getSupportFragmentManager()
                 .addOnBackStackChangedListener(this::showDialogsIfMainIsOverview);
@@ -538,7 +537,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         new UpdateSheetFragment().show(getSupportFragmentManager(), UpdateSheetFragment.TAG);
     }
 
-    private void openUpdateSheet() {
+    void openUpdateSheet() {
         if (getSupportFragmentManager().findFragmentByTag(UpdateSheetFragment.TAG) != null) return;
         new UpdateSheetFragment().show(getSupportFragmentManager(), UpdateSheetFragment.TAG);
     }
