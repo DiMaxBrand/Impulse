@@ -1594,7 +1594,10 @@ private fun ReplyCard(original: Message, onClick: () -> Unit, modifier: Modifier
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (original.type == Message.TYPE_IMAGE && !original.isDeleted) {
+            val isVisualMedia = original.type == Message.TYPE_IMAGE ||
+                ((original.type == Message.TYPE_FILE || original.type == Message.TYPE_PRIVATE_FILE) &&
+                    original.getMimeType()?.startsWith("video/") == true)
+            if (isVisualMedia && !original.isDeleted) {
                 val activity = context as? XmppActivity
                 val fileBackend = activity?.xmppConnectionService?.fileBackend
                 if (fileBackend != null) {

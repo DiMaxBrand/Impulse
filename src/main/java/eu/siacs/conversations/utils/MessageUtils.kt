@@ -95,9 +95,16 @@ object MessageUtils {
         return when (message.type) {
             Message.TYPE_IMAGE -> "📷 Photo"
             Message.TYPE_FILE, Message.TYPE_PRIVATE_FILE -> {
-                val url = message.fileParams?.url
-                val name = url?.substringAfterLast('/')?.substringBefore('?')?.ifEmpty { null }
-                if (name != null) "📎 $name" else "📎 File"
+                val mime = message.getMimeType()
+                when {
+                    mime?.startsWith("video/") == true -> "🎬 Video"
+                    mime?.startsWith("audio/") == true -> "🎤 Voice message"
+                    else -> {
+                        val url = message.fileParams?.url
+                        val name = url?.substringAfterLast('/')?.substringBefore('?')?.ifEmpty { null }
+                        if (name != null) "📎 $name" else "📎 File"
+                    }
+                }
             }
             Message.TYPE_RTP_SESSION -> "📞 Call"
             else -> message.body.trim().let {
