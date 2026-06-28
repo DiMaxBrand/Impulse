@@ -2573,6 +2573,7 @@ private fun ComposerBanner(state: ConversationScreenState, listener: Conversatio
     val replyingTo = state.replyingTo.value
     val correcting = state.correcting.value
     if (replyingTo == null && correcting == null) return
+    val context = LocalContext.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
@@ -2604,6 +2605,37 @@ private fun ComposerBanner(state: ConversationScreenState, listener: Conversatio
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+        if (replyingTo != null && !replyingTo.isDeleted) {
+            val isVisualMedia = replyingTo.type == Message.TYPE_IMAGE ||
+                ((replyingTo.type == Message.TYPE_FILE || replyingTo.type == Message.TYPE_PRIVATE_FILE) &&
+                    replyingTo.getMimeType()?.startsWith("video/") == true)
+            if (isVisualMedia) {
+                val fileBackend = (context as? XmppActivity)?.xmppConnectionService?.fileBackend
+                if (fileBackend != null) {
+                    val thumb = remember(replyingTo.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+                    val sizePx = with(LocalDensity.current) { 36.dp.toPx() }.toInt()
+                    LaunchedEffect(replyingTo.getUuid()) {
+                        val bm = withContext(Dispatchers.IO) {
+                            try { fileBackend.getThumbnail(replyingTo, sizePx, false) }
+                            catch (_: Exception) { null }
+                        }
+                        if (bm != null) thumb.value = bm.asImageBitmap()
+                    }
+                    val bitmap = thumb.value
+                    if (bitmap != null) {
+                        Spacer(Modifier.width(8.dp))
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(6.dp)),
+                        )
+                    }
+                }
+            }
         }
         IconButton(
             onClick = {
