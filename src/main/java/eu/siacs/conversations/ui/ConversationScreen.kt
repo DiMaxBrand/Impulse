@@ -132,6 +132,13 @@ import eu.siacs.conversations.xmpp.manager.ChatStateManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import android.graphics.SurfaceTexture
+import android.media.MediaPlayer
+import android.net.Uri
+import android.view.Surface
+import android.view.TextureView
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.withContext
 
 sealed class RecordingUiState {
@@ -2051,7 +2058,7 @@ private fun CompressingVideoPlaceholder(progress: Float) {
     val primary = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
-            .widthIn(max = 280.dp)
+            .widthIn(max = 200.dp)
             .aspectRatio(16f / 9f)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
@@ -2119,57 +2126,100 @@ private fun UploadingMediaThumbnail(message: Message, progress: Float, aspectRat
     val context = LocalContext.current
     val activity = context as? XmppActivity
     val fileBackend = activity?.xmppConnectionService?.fileBackend
-    val primary = MaterialTheme.colorScheme.primary
+
+    val isVideo = message.mimeType?.startsWith("video/") == true
+    val videoFile = remember(message.getUuid()) {
+        if (!isVideo) return@remember null
+        try { fileBackend?.getFile(message) } catch (_: Exception) { null }
+    }
+
     val thumb = remember(message.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
-    val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
+    val sizePx = with(LocalDensity.current) { 200.dp.toPx() }.toInt()
     LaunchedEffect(message.getUuid()) {
         val bm = withContext(Dispatchers.IO) {
             try { fileBackend?.getThumbnail(message, sizePx, false) } catch (_: Exception) { null }
         }
         if (bm != null) thumb.value = bm.asImageBitmap()
     }
+
+    val playerRef = remember(message.getUuid()) { mutableStateOf<MediaPlayer?>(null) }
+    DisposableEffect(message.getUuid()) {
+        onDispose {
+            val mp = playerRef.value
+            playerRef.value = null
+            mp?.release()
+        }
+    }
+
     Box(
         modifier = Modifier
-            .widthIn(max = 280.dp)
+            .widthIn(max = 200.dp)
             .aspectRatio(aspectRatio.coerceIn(0.25f, 4f))
             .clip(RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        val bitmap = thumb.value
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
+        if (videoFile != null) {
+            AndroidView(
+                factory = { ctx ->
+                    TextureView(ctx).apply {
+                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                            override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+                                val mp = MediaPlayer()
+                                try {
+                                    mp.setDataSource(videoFile.absolutePath)
+                                    mp.setSurface(Surface(st))
+                                    mp.setVolume(0f, 0f)
+                                    mp.isLooping = true
+                                    mp.prepareAsync()
+                                    mp.setOnPreparedListener { it.start() }
+                                    playerRef.value = mp
+                                } catch (_: Exception) {
+                                    mp.release()
+                                }
+                            }
+                            override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {}
+                            override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                                val mp = playerRef.value
+                                playerRef.value = null
+                                mp?.release()
+                                return true
+                            }
+                            override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxSize(),
             )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularWavyProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.size(56.dp),
-                    color = Color.White,
-                    trackColor = Color.White.copy(alpha = 0.30f),
-                )
-            }
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularWavyProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.size(56.dp),
-                    color = primary,
-                    trackColor = primary.copy(alpha = 0.20f),
+            val bitmap = thumb.value
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 )
             }
+        }
+        // Scrim + progress indicator always on top, regardless of background content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularWavyProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.size(56.dp),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.30f),
+            )
         }
     }
 }
