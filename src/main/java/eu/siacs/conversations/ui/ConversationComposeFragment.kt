@@ -786,9 +786,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 val file = service.fileBackend.getFile(message)
                 if (file.exists()) {
                     ViewUtil.view(context, file, message.getUuid() ?: "")
-                } else {
-                    onDownloadMessage(message)
                 }
+                // else: download is in progress or pending — the bubble UI handles it
             }
             message.treatAsDownloadable() -> onDownloadMessage(message)
         }
