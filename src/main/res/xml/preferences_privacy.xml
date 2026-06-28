@@ -57,12 +57,6 @@
             android:key="send_crash_reports"
             android:summary="@string/pref_never_send_crash_summary"
             android:title="@string/pref_send_crash_reports" />
-        <SwitchPreferenceCompat
-            android:defaultValue="@bool/share_diagnostics"
-            android:icon="@drawable/ic_report_24dp"
-            android:key="share_diagnostics"
-            android:summary="@string/pref_share_diagnostics_summary"
-            android:title="@string/pref_share_diagnostics" />
 
     </PreferenceCategory>
 

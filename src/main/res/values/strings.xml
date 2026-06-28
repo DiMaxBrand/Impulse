@@ -1196,8 +1196,6 @@
     <string name="attachment_choice_camera">Camera</string>
     <string name="attachment_choice_video">Video</string>
     <string name="attachment_choice_recording">Recording</string>
-    <string name="pref_share_diagnostics">Share anonymous diagnostics</string>
-    <string name="pref_share_diagnostics_summary">Sends anonymous app settings to the developer once per version to help improve the app</string>
     <string name="delete_message_title">Delete message?</string>
     <string name="delete_for_everyone">Everyone</string>
     <string name="delete_for_myself">Myself</string>

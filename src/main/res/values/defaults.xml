@@ -51,5 +51,4 @@
     <bool name="auto_send_recording">true</bool>
     <bool name="align_start">false</bool>
     <bool name="use_shared_storage">true</bool>
-    <bool name="share_diagnostics">true</bool>
 </resources>
