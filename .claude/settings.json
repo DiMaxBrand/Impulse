@@ -42,16 +42,6 @@
           }
         ]
       }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/version-bump-reminder.sh"
-          }
-        ]
-      }
     ]
   }
 }
