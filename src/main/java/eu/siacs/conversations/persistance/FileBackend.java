@@ -1278,19 +1278,10 @@ public class FileBackend {
     public static Bitmap cropCenterSquare(final Bitmap input, final int sizeIn) {
         final int w = input.getWidth();
         final int h = input.getHeight();
-        final int size;
-        final float outWidth;
-        final float outHeight;
-        if (w < sizeIn || h < sizeIn) {
-            size = Math.min(w, h);
-            outWidth = w;
-            outHeight = h;
-        } else {
-            size = sizeIn;
-            final float scale = Math.max((float) sizeIn / h, (float) sizeIn / w);
-            outWidth = scale * w;
-            outHeight = scale * h;
-        }
+        final int size = sizeIn;
+        final float scale = Math.max((float) sizeIn / h, (float) sizeIn / w);
+        final float outWidth = scale * w;
+        final float outHeight = scale * h;
         float left = (size - outWidth) / 2;
         float top = (size - outHeight) / 2;
         final var target = new RectF(left, top, left + outWidth, top + outHeight);

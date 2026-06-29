@@ -592,10 +592,10 @@ public class AvatarManager extends AbstractManager {
         final var uploadManager = getManager(HttpUploadManager.class);
 
         final var uploadService = uploadManager.getService();
-        if (uploadService == null || !uploadService.supportsPurpose(Profile.class)) {
+        if (uploadService == null) {
             Log.d(
                     Config.LOGTAG,
-                    getAccount().getJid() + ": 'profile' upload purpose not supported");
+                    getAccount().getJid() + ": no HTTP upload service available for avatar");
             return Futures.transform(
                     avatarThumbnailFuture, ImmutableList::of, MoreExecutors.directExecutor());
         }
