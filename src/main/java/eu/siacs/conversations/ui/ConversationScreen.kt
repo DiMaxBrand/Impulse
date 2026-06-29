@@ -1480,7 +1480,7 @@ private fun MessageBubble(
     val contentColor =
         when {
             failed -> MaterialTheme.colorScheme.onErrorContainer
-            outgoing -> MaterialTheme.colorScheme.onPrimaryContainer
+            outgoing -> if (isSystemInDarkTheme()) Color.White else Color.Black
             else -> MaterialTheme.colorScheme.onSurface
         }
 
