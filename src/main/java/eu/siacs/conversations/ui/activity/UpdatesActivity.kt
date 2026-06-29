@@ -164,7 +164,7 @@ class UpdatesActivity : ActionBarActivity() {
                     pendingInfo = info
                     prefs.pendingUpdateVersion = info.versionName
                     prefs.pendingUpdateUrl = info.downloadUrl
-                    if (UpdateDownloader.isUnmeteredNetworkAvailable(this@UpdatesActivity)) {
+                    if (UpdateDownloader.isWifiConnected(this@UpdatesActivity)) {
                         prefs.pendingNoWifi = false
                         uiState = uiState.copy(
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,
@@ -197,7 +197,7 @@ class UpdatesActivity : ActionBarActivity() {
                 releaseNotes = "",
             )
         }
-        val id = UpdateDownloader.startDownload(this, info, allowOverMetered = true)
+        val id = UpdateDownloader.startDownload(this, info)
         prefs.activeDownloadId = id
         prefs.pendingNoWifi = false
         uiState = uiState.copy(
