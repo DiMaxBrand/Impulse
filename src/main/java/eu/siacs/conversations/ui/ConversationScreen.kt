@@ -52,6 +52,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -3342,6 +3344,9 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             androidx.compose.ui.graphics.SolidColor(
                                 MaterialTheme.colorScheme.primary
                             ),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                        ),
                         maxLines = 6,
                         modifier = Modifier.fillMaxWidth(),
                     )
