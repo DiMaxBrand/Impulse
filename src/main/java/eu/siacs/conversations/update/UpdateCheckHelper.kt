@@ -29,8 +29,8 @@ object UpdateCheckHelper {
             if (result is UpdateChecker.CheckResult.UpdateAvailable) {
                 prefs.pendingUpdateVersion = result.info.versionName
                 prefs.pendingUpdateUrl = result.info.downloadUrl
-                if (!activity.isFinishing && UpdateSheetFragment.shouldShow(activity)) {
-                    val fm = activity.supportFragmentManager
+                val fm = activity.supportFragmentManager
+                if (!activity.isFinishing && !fm.isStateSaved && UpdateSheetFragment.shouldShow(activity)) {
                     if (fm.findFragmentByTag(UpdateSheetFragment.TAG) == null) {
                         UpdateSheetFragment().show(fm, UpdateSheetFragment.TAG)
                     }

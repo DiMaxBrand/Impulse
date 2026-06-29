@@ -540,8 +540,10 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     }
 
     void openUpdateSheet() {
-        if (getSupportFragmentManager().findFragmentByTag(UpdateSheetFragment.TAG) != null) return;
-        new UpdateSheetFragment().show(getSupportFragmentManager(), UpdateSheetFragment.TAG);
+        final var fm = getSupportFragmentManager();
+        if (fm.isStateSaved()) return;
+        if (fm.findFragmentByTag(UpdateSheetFragment.TAG) != null) return;
+        new UpdateSheetFragment().show(fm, UpdateSheetFragment.TAG);
     }
 
     private void initializeFragments() {
