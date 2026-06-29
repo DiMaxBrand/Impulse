@@ -2,6 +2,10 @@
 
 cd "${CLAUDE_PROJECT_DIR:-/home/user/Impulse}"
 
+# Read all stdin at once (Stop hook sends JSON with transcript_path)
+HOOK_INPUT=$(cat)
+TRANSCRIPT_PATH=$(printf '%s' "$HOOK_INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
+
 # Find last commit that changed baseVersionCode
 LAST_BUMP=$(git log --oneline -G 'baseVersionCode\s*=' -- build.gradle.kts 2>/dev/null | head -1 | awk '{print $1}')
 [ -z "$LAST_BUMP" ] && exit 0
@@ -10,19 +14,26 @@ LAST_BUMP=$(git log --oneline -G 'baseVersionCode\s*=' -- build.gradle.kts 2>/de
 COMMITS_SINCE=$(git log "${LAST_BUMP}..HEAD" --oneline 2>/dev/null | wc -l | tr -d ' ')
 [ "$COMMITS_SINCE" -lt 3 ] && exit 0
 
-# Only fire when new commits were made since the last time this hook ran
+# Only fire when new commits were made since last time this hook ran
 LAST_HEAD_FILE="/tmp/version-bump-last-head"
 CURRENT_HEAD=$(git rev-parse HEAD 2>/dev/null)
 LAST_HEAD=$(cat "$LAST_HEAD_FILE" 2>/dev/null || echo "")
 echo "$CURRENT_HEAD" > "$LAST_HEAD_FILE"
 [ "$CURRENT_HEAD" = "$LAST_HEAD" ] && exit 0
 
+# Extract last ~5 assistant text messages from the conversation transcript
+LAST_MESSAGES=""
+if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+    LAST_MESSAGES=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' \
+        "$TRANSCRIPT_PATH" 2>/dev/null | grep -v '^$' | tail -5 | cut -c1-300 || true)
+fi
+
 CURRENT_VERSION=$(grep 'val appVersion' build.gradle.kts | grep -o '"[^"]*"' | tr -d '"')
 SUMMARY=$(git log "${LAST_BUMP}..HEAD" --oneline 2>/dev/null | head -8 || true)
 
-# AI gate: skip if this looks like a mid-work pause rather than a chapter end
-VERDICT=$(printf 'These are recent commits in an Android app since the last version bump:\n%s\n\nDoes this look like a completed chapter of work (feature or fix set) worth bumping the version for? Answer only YES or NO.' \
-    "$SUMMARY" | claude -p --model claude-haiku-4-5-20251001 2>/dev/null | tr -d '[:space:]')
+# AI gate: use both commit history AND last conversation messages to judge
+VERDICT=$(printf 'Recent commits since last version bump:\n%s\n\nLast Claude messages in this conversation:\n%s\n\nBased on both: did Claude just finish a meaningful chapter of work, or is this a mid-task pause or question? Answer only YES (chapter done) or NO (still in progress / just a pause).' \
+    "$SUMMARY" "$LAST_MESSAGES" | claude -p --model claude-haiku-4-5-20251001 2>/dev/null | tr -d '[:space:]')
 
 [ "$VERDICT" != "YES" ] && exit 0
 
