@@ -1,4 +1,4 @@
-name: Draft Release
+name: Release
 
 on:
   workflow_dispatch:
@@ -59,7 +59,7 @@ jobs:
           git tag "${{ env.VERSION }}"
           git push origin "${{ env.VERSION }}"
 
-      - name: Create draft GitHub release
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -68,7 +68,6 @@ jobs:
             PRERELEASE_FLAG="--prerelease"
           fi
           gh release create "${{ env.VERSION }}" \
-            --draft \
             $PRERELEASE_FLAG \
             --title "Impulse ${{ env.VERSION }}" \
             --generate-notes \
