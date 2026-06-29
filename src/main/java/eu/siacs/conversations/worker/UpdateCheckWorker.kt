@@ -28,7 +28,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : Worker(con
         prefs.pendingUpdateVersion = info.versionName
         prefs.pendingUpdateUrl = info.downloadUrl
 
-        if (UpdateDownloader.isWifiConnected(applicationContext)) {
+        if (UpdateDownloader.isUnmeteredNetworkAvailable(applicationContext)) {
             prefs.pendingNoWifi = false
             val id = UpdateDownloader.startDownload(applicationContext, info)
             prefs.activeDownloadId = id

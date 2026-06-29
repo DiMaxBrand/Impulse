@@ -12,14 +12,15 @@ import java.io.File
 
 object UpdateDownloader {
 
-    fun isWifiConnected(context: Context): Boolean {
+    fun isUnmeteredNetworkAvailable(context: Context): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(network) ?: return false
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
     }
 
-    fun startDownload(context: Context, info: UpdateInfo): Long {
+    fun startDownload(context: Context, info: UpdateInfo, allowOverMetered: Boolean = false): Long {
         val fileName = "impulse-update-${info.versionName}.apk"
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.downloadUrl))
@@ -27,7 +28,7 @@ object UpdateDownloader {
             .setDescription("Downloading update…")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)
-            .setAllowedOverMetered(false)
+            .setAllowedOverMetered(allowOverMetered)
             .setAllowedOverRoaming(false)
         return dm.enqueue(request)
     }
