@@ -18,7 +18,6 @@ COMMITS_SINCE=$(git log "${LAST_BUMP}..HEAD" --oneline 2>/dev/null | wc -l | tr 
 LAST_HEAD_FILE="/tmp/version-bump-last-head"
 CURRENT_HEAD=$(git rev-parse HEAD 2>/dev/null)
 LAST_HEAD=$(cat "$LAST_HEAD_FILE" 2>/dev/null || echo "")
-echo "$CURRENT_HEAD" > "$LAST_HEAD_FILE"
 [ "$CURRENT_HEAD" = "$LAST_HEAD" ] && exit 0
 
 # Extract last ~5 assistant text messages from the conversation transcript
@@ -36,6 +35,9 @@ VERDICT=$(printf 'Recent commits since last version bump:\n%s\n\nLast Claude mes
     "$SUMMARY" "$LAST_MESSAGES" | claude -p --model claude-haiku-4-5-20251001 2>/dev/null | grep -oi '^yes\|^no' | head -1 | tr '[:lower:]' '[:upper:]')
 
 [ "$VERDICT" != "YES" ] && exit 0
+
+# Only update sentinel after a real successful reminder, not during silent exits or tests
+echo "$CURRENT_HEAD" > "$LAST_HEAD_FILE"
 
 jq -n --arg v "$CURRENT_VERSION" --arg n "$COMMITS_SINCE" --arg s "$SUMMARY" \
     '{"systemMessage": ("⚠ " + $n + " commits since last version bump (current: " + $v + "). Consider bumping before the next release.\n\n" + $s)}'
