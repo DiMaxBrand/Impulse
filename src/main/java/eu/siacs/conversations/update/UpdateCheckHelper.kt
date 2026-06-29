@@ -21,7 +21,7 @@ object UpdateCheckHelper {
         activity.lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 try {
-                    UpdateChecker(OkHttpClient()).checkForUpdate(prefs.selectedChannel)
+                    UpdateChecker(OkHttpClient()).checkForUpdate(UpdateChannel.STABLE)
                 } catch (_: Exception) {
                     null
                 }
