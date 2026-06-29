@@ -1054,7 +1054,8 @@ public class ConversationFragment extends XmppFragment
         }
         final Message reply = pendingReplyMessage;
         if (reply != null) {
-            final String replyId = reply.getServerMsgId() != null ? reply.getServerMsgId() : reply.getUuid();
+            final String replyId =
+                    reply.getServerMsgId() != null ? reply.getServerMsgId() : reply.getUuid();
             message.setRepliedTo(replyId);
             clearPendingReply();
         }
@@ -1392,10 +1393,11 @@ public class ConversationFragment extends XmppFragment
 
         binding.scrollToBottomButton.setOnClickListener(this.mScrollButtonListener);
         binding.pinnedMessageBanner.setOnClickListener(v -> scrollToPinnedMessage());
-        binding.pinnedMessageClose.setOnClickListener(v -> {
-            pinnedBannerDismissed = true;
-            binding.pinnedMessageBanner.setVisibility(View.GONE);
-        });
+        binding.pinnedMessageClose.setOnClickListener(
+                v -> {
+                    pinnedBannerDismissed = true;
+                    binding.pinnedMessageBanner.setVisibility(View.GONE);
+                });
         binding.messagesView.setOnScrollListener(mOnScrollListener);
         binding.messagesView.setTranscriptMode(ListView.TRANSCRIPT_MODE_NORMAL);
         binding.mediaPreview.setAdapter(mediaPreviewAdapter);
@@ -1459,9 +1461,11 @@ public class ConversationFragment extends XmppFragment
         binding.textInput.requestFocus();
         final android.view.inputmethod.InputMethodManager imm =
                 (android.view.inputmethod.InputMethodManager)
-                        requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                        requireContext()
+                                .getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
         if (imm != null) {
-            imm.showSoftInput(binding.textInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+            imm.showSoftInput(
+                    binding.textInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
         }
     }
 
@@ -1697,7 +1701,9 @@ public class ConversationFragment extends XmppFragment
             if (showError) {
                 showErrorMessage.setVisible(true);
             }
-            if (m.getType() != Message.TYPE_STATUS && m.getType() != Message.TYPE_RTP_SESSION && !m.isDeleted()) {
+            if (m.getType() != Message.TYPE_STATUS
+                    && m.getType() != Message.TYPE_RTP_SESSION
+                    && !m.isDeleted()) {
                 if (m.isPinned()) {
                     unpinMessage.setVisible(true);
                 } else {
@@ -1859,7 +1865,10 @@ public class ConversationFragment extends XmppFragment
             return;
         }
         final List<Message> loaded =
-                requireXmppActivity().xmppConnectionService.databaseBackend.getPinnedMessages(conversation);
+                requireXmppActivity()
+                        .xmppConnectionService
+                        .databaseBackend
+                        .getPinnedMessages(conversation);
         pinnedMessages.clear();
         pinnedMessages.addAll(loaded);
         currentPinnedIndex = 0;
@@ -1880,13 +1889,18 @@ public class ConversationFragment extends XmppFragment
         final int total = pinnedMessages.size();
         if (total > 1) {
             binding.pinnedMessageLabel.setText(
-                    getString(R.string.pinned_message) + " " + (currentPinnedIndex + 1) + "/" + total);
+                    getString(R.string.pinned_message)
+                            + " "
+                            + (currentPinnedIndex + 1)
+                            + "/"
+                            + total);
         } else {
             binding.pinnedMessageLabel.setText(R.string.pinned_message);
         }
-        final String preview = pinned.isFileOrImage()
-                ? UIHelper.getFileDescriptionString(requireContext(), pinned)
-                : pinned.getBody();
+        final String preview =
+                pinned.isFileOrImage()
+                        ? UIHelper.getFileDescriptionString(requireContext(), pinned)
+                        : pinned.getBody();
         binding.pinnedMessagePreview.setText(preview);
         binding.pinnedMessageBanner.setVisibility(View.VISIBLE);
     }
@@ -2547,16 +2561,17 @@ public class ConversationFragment extends XmppFragment
 
     private void showDeleteMessageSheet(final Message message) {
         new DeleteMessageBottomSheet(
-                        message,
-                        () -> retractMessage(message),
-                        () -> deleteMessageLocally(message))
+                        message, () -> retractMessage(message), () -> deleteMessageLocally(message))
                 .show(getChildFragmentManager(), "delete_message");
     }
 
     private void deleteMessageLocally(final Message message) {
         final Conversation conversation = (Conversation) message.getConversation();
         conversation.remove(message);
-        requireXmppActivity().xmppConnectionService.databaseBackend.deleteMessage(message.getUuid());
+        requireXmppActivity()
+                .xmppConnectionService
+                .databaseBackend
+                .deleteMessage(message.getUuid());
         requireXmppActivity().xmppConnectionService.getNotificationService().clear(message);
         messageListAdapter.notifyDataSetChanged();
     }
@@ -2565,7 +2580,10 @@ public class ConversationFragment extends XmppFragment
         final Conversation conversation = (Conversation) message.getConversation();
         final Account account = conversation.getAccount();
         final var packet =
-                requireXmppActivity().xmppConnectionService.getMessageGenerator().generateRetraction(message);
+                requireXmppActivity()
+                        .xmppConnectionService
+                        .getMessageGenerator()
+                        .generateRetraction(message);
         requireXmppActivity().xmppConnectionService.sendMessagePacket(account, packet);
         deleteMessageLocally(message);
     }

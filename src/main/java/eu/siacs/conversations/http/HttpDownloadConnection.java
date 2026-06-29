@@ -135,7 +135,9 @@ public class HttpDownloadConnection implements Transferable {
             // TODO create a folder for partial downloads (because camera and recorder will also
             // write to sub directories)
             this.file = new File(mXmppConnectionService.getCacheDir(), message.getUuid());
-            this.transportSecurity = TransportSecurity.ofAnchor(CryptoHelper.hexToBytes(AesGcmURL.keyPart(reference)));
+            this.transportSecurity =
+                    TransportSecurity.ofAnchor(
+                            CryptoHelper.hexToBytes(AesGcmURL.keyPart(reference)));
             Log.d(
                     Config.LOGTAG,
                     "create temporary OMEMO encrypted file: "

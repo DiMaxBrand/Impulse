@@ -25,7 +25,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
-import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.android.Device;
@@ -932,9 +931,7 @@ public class AvatarManager extends AbstractManager {
                     public void onSuccess(final Void result) {
                         Log.d(
                                 Config.LOGTAG,
-                                "refreshed PEP avatar for "
-                                        + address
-                                        + " after vCard change");
+                                "refreshed PEP avatar for " + address + " after vCard change");
                     }
 
                     @Override

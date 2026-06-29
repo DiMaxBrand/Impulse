@@ -512,11 +512,14 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         } else {
             thumbnail.setVisibility(View.GONE);
         }
-        viewHolder.replyCard().setOnClickListener(v -> {
-            if (mOnReplyCardClickedListener != null) {
-                mOnReplyCardClickedListener.onReplyCardClicked(repliedTo);
-            }
-        });
+        viewHolder
+                .replyCard()
+                .setOnClickListener(
+                        v -> {
+                            if (mOnReplyCardClickedListener != null) {
+                                mOnReplyCardClickedListener.onReplyCardClicked(repliedTo);
+                            }
+                        });
     }
 
     @Nullable
@@ -528,8 +531,8 @@ public class MessageAdapter extends ArrayAdapter<Message> {
             }
         }
         if (context.getConversation() instanceof Conversation conversation) {
-            return activity.xmppConnectionService.databaseBackend
-                    .getMessageWithServerMsgId(conversation, repliedToId);
+            return activity.xmppConnectionService.databaseBackend.getMessageWithServerMsgId(
+                    conversation, repliedToId);
         }
         return null;
     }
@@ -930,10 +933,14 @@ public class MessageAdapter extends ArrayAdapter<Message> {
         setBubblePadding(viewHolder.root(), mergeIntoTop, mergeIntoBottom);
         final boolean highlighted = message.getUuid().equals(highlightedMessageUuid);
         if (highlighted) {
-            viewHolder.messageBox().setBackgroundTintList(
-                    ColorStateList.valueOf(
-                            MaterialColors.getColor(viewHolder.messageBox(),
-                                    com.google.android.material.R.attr.colorTertiaryFixed)));
+            viewHolder
+                    .messageBox()
+                    .setBackgroundTintList(
+                            ColorStateList.valueOf(
+                                    MaterialColors.getColor(
+                                            viewHolder.messageBox(),
+                                            com.google.android.material.R.attr
+                                                    .colorTertiaryFixed)));
         } else {
             setBackgroundTint(viewHolder.messageBox(), bubbleColor);
         }
@@ -1513,12 +1520,15 @@ public class MessageAdapter extends ArrayAdapter<Message> {
     }
 
     private void notifyItemHighlightExpiry(final String uuid) {
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-            if (uuid.equals(this.highlightedMessageUuid)) {
-                this.highlightedMessageUuid = null;
-                notifyDataSetChanged();
-            }
-        }, 1500);
+        new android.os.Handler(android.os.Looper.getMainLooper())
+                .postDelayed(
+                        () -> {
+                            if (uuid.equals(this.highlightedMessageUuid)) {
+                                this.highlightedMessageUuid = null;
+                                notifyDataSetChanged();
+                            }
+                        },
+                        1500);
     }
 
     public static void setBackgroundTint(final ViewGroup view, final BubbleColor bubbleColor) {

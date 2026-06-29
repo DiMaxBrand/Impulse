@@ -451,9 +451,9 @@ public class AppSettings {
     }
 
     /**
-     * One-time preference migrations keyed by an integer version stored in SharedPreferences.
-     * Call once from Application.onCreate() so it runs on every app start but each migration
-     * block executes only once.
+     * One-time preference migrations keyed by an integer version stored in SharedPreferences. Call
+     * once from Application.onCreate() so it runs on every app start but each migration block
+     * executes only once.
      */
     public static void migratePreferences(final Context context) {
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);

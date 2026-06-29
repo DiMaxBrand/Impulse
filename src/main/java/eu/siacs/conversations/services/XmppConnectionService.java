@@ -260,7 +260,8 @@ public class XmppConnectionService extends Service {
 
     // Ui callback listeners
     // messageId → true while a remote peer is actively editing that message
-    public final ConcurrentHashMap<String, Boolean> remoteEditingIndicators = new ConcurrentHashMap<>();
+    public final ConcurrentHashMap<String, Boolean> remoteEditingIndicators =
+            new ConcurrentHashMap<>();
 
     private final Set<OnConversationUpdate> mOnConversationUpdates =
             Collections.newSetFromMap(new WeakHashMap<OnConversationUpdate, Boolean>());

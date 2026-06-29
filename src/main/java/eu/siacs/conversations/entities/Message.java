@@ -260,33 +260,36 @@ public class Message extends AbstractEntity
 
     public static Message fromCursor(
             final Context context, final Cursor cursor, final Conversation conversation) {
-        final Message message = new Message(
-                conversation,
-                cursor.getString(cursor.getColumnIndexOrThrow(UUID)),
-                cursor.getString(cursor.getColumnIndexOrThrow(CONVERSATION)),
-                fromString(cursor.getString(cursor.getColumnIndexOrThrow(COUNTERPART))),
-                fromString(cursor.getString(cursor.getColumnIndexOrThrow(TRUE_COUNTERPART))),
-                cursor.getString(cursor.getColumnIndexOrThrow(BODY)),
-                cursor.getLong(cursor.getColumnIndexOrThrow(TIME_SENT)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(ENCRYPTION)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(STATUS)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(TYPE)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(CARBON)) > 0,
-                cursor.getString(cursor.getColumnIndexOrThrow(REMOTE_MSG_ID)),
-                storageLocationFromCursor(context, cursor),
-                cursor.getString(cursor.getColumnIndexOrThrow(SERVER_MSG_ID)),
-                cursor.getString(cursor.getColumnIndexOrThrow(FINGERPRINT)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(READ)) > 0,
-                cursor.getString(cursor.getColumnIndexOrThrow(EDITED)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(OOB)) > 0,
-                cursor.getString(cursor.getColumnIndexOrThrow(ERROR_MESSAGE)),
-                ReadByMarker.fromJsonString(
-                        cursor.getString(cursor.getColumnIndexOrThrow(READ_BY_MARKERS))),
-                cursor.getInt(cursor.getColumnIndexOrThrow(MARKABLE)) > 0,
-                cursor.getInt(cursor.getColumnIndexOrThrow(DELETED)) > 0,
-                cursor.getString(cursor.getColumnIndexOrThrow(BODY_LANGUAGE)),
-                cursor.getString(cursor.getColumnIndexOrThrow(OCCUPANT_ID)),
-                Reaction.fromString(cursor.getString(cursor.getColumnIndexOrThrow(REACTIONS))));
+        final Message message =
+                new Message(
+                        conversation,
+                        cursor.getString(cursor.getColumnIndexOrThrow(UUID)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(CONVERSATION)),
+                        fromString(cursor.getString(cursor.getColumnIndexOrThrow(COUNTERPART))),
+                        fromString(
+                                cursor.getString(cursor.getColumnIndexOrThrow(TRUE_COUNTERPART))),
+                        cursor.getString(cursor.getColumnIndexOrThrow(BODY)),
+                        cursor.getLong(cursor.getColumnIndexOrThrow(TIME_SENT)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(ENCRYPTION)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(STATUS)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(TYPE)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(CARBON)) > 0,
+                        cursor.getString(cursor.getColumnIndexOrThrow(REMOTE_MSG_ID)),
+                        storageLocationFromCursor(context, cursor),
+                        cursor.getString(cursor.getColumnIndexOrThrow(SERVER_MSG_ID)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(FINGERPRINT)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(READ)) > 0,
+                        cursor.getString(cursor.getColumnIndexOrThrow(EDITED)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(OOB)) > 0,
+                        cursor.getString(cursor.getColumnIndexOrThrow(ERROR_MESSAGE)),
+                        ReadByMarker.fromJsonString(
+                                cursor.getString(cursor.getColumnIndexOrThrow(READ_BY_MARKERS))),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(MARKABLE)) > 0,
+                        cursor.getInt(cursor.getColumnIndexOrThrow(DELETED)) > 0,
+                        cursor.getString(cursor.getColumnIndexOrThrow(BODY_LANGUAGE)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(OCCUPANT_ID)),
+                        Reaction.fromString(
+                                cursor.getString(cursor.getColumnIndexOrThrow(REACTIONS))));
         final int pinnedIndex = cursor.getColumnIndex(PINNED);
         if (pinnedIndex >= 0) {
             message.pinned = cursor.getInt(pinnedIndex) > 0;
@@ -831,8 +834,10 @@ public class Message extends AbstractEntity
         this.uuid = uuid;
     }
 
-    /** Same as {@link #setUuid} but callable from Kotlin, where the name {@code setUuid}
-     * collides with the protected {@code uuid} property of the Kotlin base entity. */
+    /**
+     * Same as {@link #setUuid} but callable from Kotlin, where the name {@code setUuid} collides
+     * with the protected {@code uuid} property of the Kotlin base entity.
+     */
     public void replaceUuid(final String uuid) {
         this.uuid = uuid;
     }

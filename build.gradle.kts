@@ -20,7 +20,7 @@ val signingPropsFile = rootProject.file("signing.properties")
 if (signingPropsFile.exists()) signingProps.load(signingPropsFile.inputStream())
 
 spotless {
-    ratchetFrom("2.17.4")
+    ratchetFrom("2.21.0")
     java {
         target("**/*.java")
         googleJavaFormat().aosp().reflowLongStrings()

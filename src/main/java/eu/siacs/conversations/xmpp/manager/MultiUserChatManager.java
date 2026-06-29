@@ -1603,8 +1603,10 @@ public class MultiUserChatManager extends AbstractManager {
         final var configured =
                 Futures.transformAsync(
                         join,
-                        v -> pushConfiguration(
-                                conversation, configWithName(defaultPublicGroupConfiguration(), name)),
+                        v ->
+                                pushConfiguration(
+                                        conversation,
+                                        configWithName(defaultPublicGroupConfiguration(), name)),
                         MoreExecutors.directExecutor());
         return Futures.transform(
                 configured,

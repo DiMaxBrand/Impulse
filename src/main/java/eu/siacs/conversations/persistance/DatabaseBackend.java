@@ -1136,8 +1136,18 @@ public class DatabaseBackend extends SQLiteOpenHelper {
             }
         }
         if (oldVersion < 58 && newVersion >= 58) {
-            db.execSQL("ALTER TABLE " + Contact.TABLENAME + " ADD COLUMN " + Contact.AVATAR_VCARD + " TEXT");
-            db.execSQL("ALTER TABLE " + Account.TABLENAME + " ADD COLUMN " + Account.AVATAR_VCARD + " TEXT");
+            db.execSQL(
+                    "ALTER TABLE "
+                            + Contact.TABLENAME
+                            + " ADD COLUMN "
+                            + Contact.AVATAR_VCARD
+                            + " TEXT");
+            db.execSQL(
+                    "ALTER TABLE "
+                            + Account.TABLENAME
+                            + " ADD COLUMN "
+                            + Account.AVATAR_VCARD
+                            + " TEXT");
         }
         if (oldVersion < 59 && newVersion >= 59) {
             db.execSQL(
@@ -1923,7 +1933,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         final var db = this.getWritableDatabase();
         final var values = new android.content.ContentValues();
         values.put(Message.REMOTE_EDITING, editing ? 1 : 0);
-        db.update(Message.TABLENAME, values, Message.UUID + "=?", new String[]{uuid});
+        db.update(Message.TABLENAME, values, Message.UUID + "=?", new String[] {uuid});
     }
 
     public boolean deleteMessage(String uuid) {
@@ -1946,7 +1956,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + "=1 ORDER BY "
                         + Message.TIME_SENT
                         + " DESC";
-        try (final Cursor cursor = db.rawQuery(sql, new String[]{conversation.getUuid()})) {
+        try (final Cursor cursor = db.rawQuery(sql, new String[] {conversation.getUuid()})) {
             while (cursor.moveToNext()) {
                 try {
                     list.add(Message.fromCursor(context, cursor, conversation));

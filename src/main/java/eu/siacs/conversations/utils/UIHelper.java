@@ -155,8 +155,7 @@ public class UIHelper {
             if (status == Transferable.STATUS_CHECKING) {
                 return new Pair<>(
                         context.getString(
-                                R.string.checking_x,
-                                getFileDescriptionString(context, message)),
+                                R.string.checking_x, getFileDescriptionString(context, message)),
                         true);
             } else if (status == Transferable.STATUS_DOWNLOADING) {
                 return new Pair<>(
@@ -175,8 +174,7 @@ public class UIHelper {
             } else if (status == Transferable.STATUS_FAILED) {
                 return new Pair<>(context.getString(R.string.file_transmission_failed), true);
             } else if (status == Transferable.STATUS_CANCELLED) {
-                return new Pair<>(
-                        context.getString(R.string.file_transmission_cancelled), true);
+                return new Pair<>(context.getString(R.string.file_transmission_cancelled), true);
             } else if (status == Transferable.STATUS_UPLOADING) {
                 if (message.getStatus() == Message.STATUS_OFFERED) {
                     return new Pair<>(
