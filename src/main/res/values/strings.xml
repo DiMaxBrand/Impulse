@@ -1205,4 +1205,45 @@
     <string name="delete_message_title">Delete message?</string>
     <string name="delete_for_everyone">Everyone</string>
     <string name="delete_for_myself">Myself</string>
+
+    <!-- Updates screen -->
+    <string name="pref_title_updates">Updates</string>
+    <string name="pref_summary_updates">App update channel and version</string>
+    <string name="updates_screen_title">Updates</string>
+    <string name="updates_current_version_label">Current version</string>
+    <string name="updates_channel_label">Channel</string>
+    <string name="updates_auto_check_label">Auto-check for updates</string>
+    <string name="updates_check_now">Check now</string>
+    <string name="updates_download">Download</string>
+    <string name="updates_proceed_to_install">Proceed to install</string>
+    <string name="updates_stop">Stop</string>
+    <string name="updates_continue">Continue</string>
+    <string name="updates_status_checking">Checking…</string>
+    <string name="updates_status_up_to_date">Up to date</string>
+    <string name="updates_status_downloading">Downloading update…</string>
+    <string name="updates_status_processing">Preparing…</string>
+    <string name="updates_status_ready">Ready to install</string>
+    <string name="updates_status_no_wifi">No Wi-Fi — update will download when connected</string>
+    <string name="updates_status_no_wifi_detected">No Wi-Fi when the update was detected — you can download now</string>
+    <string name="updates_stop_download_question">Stop downloading?</string>
+    <string name="updates_canceling">Canceling…</string>
+    <string name="updates_almost_done">Almost done…</string>
+    <string name="updates_new_version_available">Version %s is available</string>
+    <string name="updates_install_first_time_title">Impulse is being updated for the first time. Thank you for using it!</string>
+    <string name="updates_install_title">Impulse is ready to update</string>
+    <string name="updates_install_grant_permission">The system will ask you to allow Impulse to install updates. Tap Allow, then hit Install to proceed.</string>
+    <string name="updates_install_ready">The app will briefly close and restart during installation.</string>
+    <string name="updates_install_now">Install</string>
+    <string name="updates_status_channel_behind">Your build is ahead of this channel</string>
+    <!-- Update channels -->
+    <string name="update_channel_stable">Stable</string>
+    <string name="update_channel_rc">Release Preview</string>
+    <string name="update_channel_beta">Beta</string>
+    <string name="update_channel_alpha">Alpha · Unstable</string>
+    <!-- Channel descriptions -->
+    <string name="update_channel_stable_description">Recommended for everyone. Fully tested, no known critical issues.</string>
+    <string name="update_channel_rc_description">Almost ready for release. The final bugs are being ironed out — very close to stable.</string>
+    <string name="update_channel_beta_description">New features in active testing. Some rough edges expected.</string>
+    <string name="update_channel_alpha_description">Highly unstable. Crashes and broken features are expected. Only if you\'re willing to reinstall.</string>
+    <string name="update_channel_info_title">About this channel</string>
 </resources>

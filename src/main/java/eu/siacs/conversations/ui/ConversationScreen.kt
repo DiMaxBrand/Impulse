@@ -1,15 +1,18 @@
 package eu.siacs.conversations.ui
 
+import android.os.Build
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -28,6 +31,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -48,7 +52,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -125,6 +134,13 @@ import eu.siacs.conversations.xmpp.manager.ChatStateManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import android.graphics.SurfaceTexture
+import android.media.MediaPlayer
+import android.net.Uri
+import android.view.Surface
+import android.view.TextureView
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.withContext
 
 sealed class RecordingUiState {
@@ -272,10 +288,17 @@ object ConversationScreenHelper {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
+internal fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val isDark = isSystemInDarkTheme()
-    val colorScheme = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val isSamsung = remember { Build.MANUFACTURER.equals("samsung", ignoreCase = true) }
+    val rawColorScheme = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    // Samsung One UI 8.5 generates a much darker tone for surfaceContainerHigh than the M3
+    // spec expects (~tone 70 vs. the standard ~92), making incoming chat bubbles appear as a
+    // dark gray in light mode. Remap to the lighter surfaceContainerLow tier on Samsung.
+    val colorScheme = if (isSamsung && !isDark) {
+        rawColorScheme.copy(surfaceContainerHigh = rawColorScheme.surfaceContainerLow)
+    } else rawColorScheme
     // Material3 has no built-in "success" role. We pick a green seed and harmonize its hue
     // toward the dynamic primary (same algorithm M3 itself uses), so it still feels designed
     // together with the wallpaper-derived palette instead of clashing as a flat, static green.
@@ -1457,7 +1480,7 @@ private fun MessageBubble(
     val contentColor =
         when {
             failed -> MaterialTheme.colorScheme.onErrorContainer
-            outgoing -> MaterialTheme.colorScheme.onPrimaryContainer
+            outgoing -> if (isSystemInDarkTheme()) Color.White else Color.Black
             else -> MaterialTheme.colorScheme.onSurface
         }
 
@@ -1484,7 +1507,11 @@ private fun MessageBubble(
             Column(
                 modifier =
                     Modifier.combinedClickable(
-                            onClick = { listener.onOpenMessage(message) },
+                            onClick = {
+                                if (message.mimeType?.startsWith("audio/") != true) {
+                                    listener.onOpenMessage(message)
+                                }
+                            },
                             onLongClick = { onLongPress(message) },
                         )
                         .padding(
@@ -1586,7 +1613,10 @@ private fun ReplyCard(original: Message, onClick: () -> Unit, modifier: Modifier
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (original.type == Message.TYPE_IMAGE && !original.isDeleted) {
+            val isVisualMedia = original.type == Message.TYPE_IMAGE ||
+                ((original.type == Message.TYPE_FILE || original.type == Message.TYPE_PRIVATE_FILE) &&
+                    original.getMimeType()?.startsWith("video/") == true)
+            if (isVisualMedia && !original.isDeleted) {
                 val activity = context as? XmppActivity
                 val fileBackend = activity?.xmppConnectionService?.fileBackend
                 if (fileBackend != null) {
@@ -1636,6 +1666,12 @@ private fun MessageContent(
     val transferable = message.transferable
     // transferable.getProgress() mutates in place; reading `revision` re-triggers this read.
     val transferableProgress = remember(revision) { transferable?.getProgress() }
+    val animatedProgressRaw by animateFloatAsState(
+        targetValue = (transferableProgress ?: 0) / 100f,
+        animationSpec = tween(durationMillis = 300),
+        label = "transferProgress",
+    )
+    val animatedProgress = animatedProgressRaw.coerceIn(0f, 1f)
 
     when {
         message.isDeleted -> {
@@ -1646,25 +1682,93 @@ private fun MessageContent(
             )
         }
         transferable != null && transferable.getStatus() == Transferable.STATUS_DOWNLOADING -> {
+            val fp = message.fileParams
+            if (fp.width > 0 && fp.height > 0) {
+                DownloadingMediaPlaceholder(
+                    progress = animatedProgress,
+                    aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
+                )
+            } else {
+                Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
+                    Text(
+                        text = stringResource(
+                            R.string.receiving_x_file,
+                            UIHelper.getFileDescriptionString(context, message),
+                            transferableProgress ?: 0,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    if ((transferableProgress ?: 0) > 0) {
+                        LinearProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
+                        )
+                    }
+                }
+            }
+        }
+        transferable != null && transferable.getStatus() == Transferable.STATUS_CHECKING -> {
+            val fileDescription = UIHelper.getFileDescriptionString(context, message)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    text = stringResource(R.string.receiving_x_file,
-                        UIHelper.getFileDescriptionString(context, message),
-                        transferableProgress ?: 0),
+                    text = stringResource(R.string.checking_x, fileDescription),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
-        transferable != null && transferable.getStatus() == Transferable.STATUS_UPLOADING -> {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.sending_file, transferableProgress ?: 0),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+        transferable != null && (
+            transferable.getStatus() == Transferable.STATUS_COMPRESSING ||
+            transferable.getStatus() == Transferable.STATUS_UPLOADING
+        ) -> {
+            val currentStatus = transferable.getStatus()
+            AnimatedContent(
+                targetState = currentStatus,
+                transitionSpec = {
+                    if (initialState == Transferable.STATUS_COMPRESSING) {
+                        (fadeIn(animationSpec = tween(350)) + scaleIn(
+                            initialScale = 0.88f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                        )) togetherWith fadeOut(animationSpec = tween(200))
+                    } else {
+                        fadeIn(tween(200)) togetherWith fadeOut(tween(150))
+                    }
+                },
+                label = "videoSendState",
+            ) { status ->
+                if (status == Transferable.STATUS_COMPRESSING) {
+                    CompressingVideoPlaceholder(progress = animatedProgress)
+                } else {
+                    val fp = message.fileParams
+                    if (fp.width > 0 && fp.height > 0) {
+                        UploadingMediaThumbnail(
+                            message = message,
+                            progress = animatedProgress,
+                            aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
+                        )
+                    } else {
+                        Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
+                            Text(
+                                text = stringResource(R.string.sending_file, transferableProgress ?: 0),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            LinearProgressIndicator(
+                                progress = { animatedProgress },
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
+                            )
+                        }
+                    }
+                }
             }
         }
         message.isFileOrImage &&
@@ -1947,6 +2051,179 @@ private fun FileRow(iconRes: Int, label: String) {
         )
         Spacer(Modifier.width(10.dp))
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CompressingVideoPlaceholder(progress: Float) {
+    val primary = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier
+            .widthIn(max = 280.dp)
+            .aspectRatio(16f / 9f)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 24.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_videocam_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                modifier = Modifier.size(40.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.transcoding_video),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+            Spacer(Modifier.height(8.dp))
+            if (progress > 0f) {
+                LinearWavyProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = primary,
+                    trackColor = primary.copy(alpha = 0.20f),
+                )
+            } else {
+                LinearWavyProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = primary,
+                    trackColor = primary.copy(alpha = 0.20f),
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DownloadingMediaPlaceholder(progress: Float, aspectRatio: Float) {
+    val primary = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier
+            .widthIn(max = 280.dp)
+            .aspectRatio(aspectRatio.coerceIn(0.25f, 4f))
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularWavyProgressIndicator(
+            progress = { progress },
+            modifier = Modifier.size(56.dp),
+            color = primary,
+            trackColor = primary.copy(alpha = 0.20f),
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun UploadingMediaThumbnail(message: Message, progress: Float, aspectRatio: Float) {
+    val context = LocalContext.current
+    val activity = context as? XmppActivity
+    val fileBackend = activity?.xmppConnectionService?.fileBackend
+
+    val isVideo = message.mimeType?.startsWith("video/") == true
+    val videoFile = remember(message.getUuid()) {
+        if (!isVideo) return@remember null
+        try { fileBackend?.getFile(message) } catch (_: Exception) { null }
+    }
+
+    val thumb = remember(message.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+    val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
+    LaunchedEffect(message.getUuid()) {
+        val bm = withContext(Dispatchers.IO) {
+            try { fileBackend?.getThumbnail(message, sizePx, false) } catch (_: Exception) { null }
+        }
+        if (bm != null) thumb.value = bm.asImageBitmap()
+    }
+
+    val playerRef = remember(message.getUuid()) { mutableStateOf<MediaPlayer?>(null) }
+    DisposableEffect(message.getUuid()) {
+        onDispose {
+            val mp = playerRef.value
+            playerRef.value = null
+            mp?.release()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .widthIn(max = 280.dp)
+            .heightIn(max = 310.dp)
+            .aspectRatio(aspectRatio.coerceIn(0.25f, 4f))
+            .clip(RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (videoFile != null) {
+            AndroidView(
+                factory = { ctx ->
+                    TextureView(ctx).apply {
+                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                            override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+                                val mp = MediaPlayer()
+                                try {
+                                    mp.setDataSource(videoFile.absolutePath)
+                                    mp.setSurface(Surface(st))
+                                    mp.setVolume(0f, 0f)
+                                    mp.isLooping = true
+                                    mp.prepareAsync()
+                                    mp.setOnPreparedListener { it.start() }
+                                    playerRef.value = mp
+                                } catch (_: Exception) {
+                                    mp.release()
+                                }
+                            }
+                            override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {}
+                            override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                                val mp = playerRef.value
+                                playerRef.value = null
+                                mp?.release()
+                                return true
+                            }
+                            override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            val bitmap = thumb.value
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                )
+            }
+        }
+        // Scrim + progress indicator always on top, regardless of background content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularWavyProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.size(56.dp),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.30f),
+            )
+        }
     }
 }
 
@@ -2446,6 +2723,7 @@ private fun ComposerBanner(state: ConversationScreenState, listener: Conversatio
     val replyingTo = state.replyingTo.value
     val correcting = state.correcting.value
     if (replyingTo == null && correcting == null) return
+    val context = LocalContext.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
@@ -2477,6 +2755,37 @@ private fun ComposerBanner(state: ConversationScreenState, listener: Conversatio
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+        if (replyingTo != null && !replyingTo.isDeleted) {
+            val isVisualMedia = replyingTo.type == Message.TYPE_IMAGE ||
+                ((replyingTo.type == Message.TYPE_FILE || replyingTo.type == Message.TYPE_PRIVATE_FILE) &&
+                    replyingTo.getMimeType()?.startsWith("video/") == true)
+            if (isVisualMedia) {
+                val fileBackend = (context as? XmppActivity)?.xmppConnectionService?.fileBackend
+                if (fileBackend != null) {
+                    val thumb = remember(replyingTo.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+                    val sizePx = with(LocalDensity.current) { 36.dp.toPx() }.toInt()
+                    LaunchedEffect(replyingTo.getUuid()) {
+                        val bm = withContext(Dispatchers.IO) {
+                            try { fileBackend.getThumbnail(replyingTo, sizePx, false) }
+                            catch (_: Exception) { null }
+                        }
+                        if (bm != null) thumb.value = bm.asImageBitmap()
+                    }
+                    val bitmap = thumb.value
+                    if (bitmap != null) {
+                        Spacer(Modifier.width(8.dp))
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(6.dp)),
+                        )
+                    }
+                }
+            }
         }
         IconButton(
             onClick = {
@@ -3035,6 +3344,9 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             androidx.compose.ui.graphics.SolidColor(
                                 MaterialTheme.colorScheme.primary
                             ),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                        ),
                         maxLines = 6,
                         modifier = Modifier.fillMaxWidth(),
                     )

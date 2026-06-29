@@ -1,0 +1,1082 @@
+package eu.siacs.conversations.ui
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp as lerpDp
+import eu.siacs.conversations.R
+import eu.siacs.conversations.update.UpdateChannel
+import kotlinx.coroutines.launch
+
+@OptIn(
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalSharedTransitionApi::class,
+)
+@Composable
+fun UpdatesScreen(
+    state: UpdatesUiState,
+    onChannelSelected: (UpdateChannel) -> Unit,
+    onAutoCheckToggled: (Boolean) -> Unit,
+    onCheckNow: () -> Unit,
+    onDownload: () -> Unit,
+    onStop: () -> Unit,
+    onContinue: () -> Unit,
+    onInstall: () -> Unit,
+    onConfirmInstall: () -> Unit,
+    onDownloadCircleTapped: () -> Unit = {},
+    onShowUpdateSheet: () -> Unit = {},
+    onHideUpdateSheet: () -> Unit = {},
+) {
+    var channelPickerVisible by remember { mutableStateOf(false) }
+    var infoChannel by remember { mutableStateOf<UpdateChannel?>(null) }
+
+    // Reset info page whenever the picker closes
+    LaunchedEffect(channelPickerVisible) {
+        if (!channelPickerVisible) infoChannel = null
+    }
+
+    // Scrim animates independently of the shared-element transition
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (channelPickerVisible) 0.32f else 0f,
+        animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+        label = "scrim_alpha",
+    )
+
+    // Outer SharedTransitionLayout: settings channel row ↔ picker dialog
+    SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            // ── Settings column ───────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                ExpressiveGroupRow(GroupPosition.SINGLE) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.updates_current_version_label)) },
+                        trailingContent = {
+                            Text(
+                                text = state.currentVersion,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                // Channel row — source of the settings→picker container transform
+                AnimatedVisibility(
+                    visible = !channelPickerVisible,
+                    enter = EnterTransition.None,
+                    exit = ExitTransition.None,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sharedBounds(
+                                rememberSharedContentState("channel_picker"),
+                                animatedVisibilityScope = this@AnimatedVisibility,
+                                enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                boundsTransform = BoundsTransform { _, _ ->
+                                    spring(stiffness = 380f, dampingRatio = 0.8f)
+                                },
+                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                            )
+                            .clickable { channelPickerVisible = true },
+                    ) {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.updates_channel_label)) },
+                            supportingContent = {
+                                Text(
+                                    text = stringResource(channelDisplayName(state.selectedChannel)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_expand_more_24dp),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                ExpressiveGroupRow(GroupPosition.TOP) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.updates_auto_check_label)) },
+                        trailingContent = {
+                            Switch(
+                                checked = state.autoCheck,
+                                onCheckedChange = onAutoCheckToggled,
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
+                }
+                ExpressiveGroupRow(GroupPosition.BOTTOM) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.updates_check_now)) },
+                        modifier = Modifier.clickableRow(onClick = onCheckNow),
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                val mainText = mainStatusText(state)
+                AnimatedContent(
+                    targetState = mainText,
+                    transitionSpec = {
+                        (slideInHorizontally { -it / 3 } + fadeIn()) togetherWith
+                                (slideOutHorizontally { it / 3 } + fadeOut())
+                    },
+                    label = "main_status_text",
+                ) { text ->
+                    if (text != null) {
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        Box(Modifier.fillMaxWidth())
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                FilledTonalButton(
+                    onClick = onShowUpdateSheet,
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Show update bottom sheet")
+                }
+            }
+
+            // ── Scrim (animated independently) ───────────────────────────
+            if (scrimAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = scrimAlpha)),
+                )
+            }
+
+            // ── Channel picker overlay — destination of container transform ─
+            AnimatedVisibility(
+                visible = channelPickerVisible,
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) { channelPickerVisible = false },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp,
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp)
+                            .fillMaxWidth()
+                            .sharedBounds(
+                                rememberSharedContentState("channel_picker"),
+                                animatedVisibilityScope = this@AnimatedVisibility,
+                                enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                boundsTransform = BoundsTransform { _, _ ->
+                                    spring(stiffness = 380f, dampingRatio = 0.8f)
+                                },
+                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                            )
+                            // Consume touches so tapping inside the picker doesn't dismiss it
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() },
+                            ) {},
+                    ) {
+                        // Inner SharedTransitionLayout: channel list row ↔ info page
+                        SharedTransitionLayout {
+                            AnimatedContent(
+                                targetState = infoChannel,
+                                transitionSpec = {
+                                    EnterTransition.None togetherWith ExitTransition.None using
+                                            SizeTransform(clip = false) { _, _ ->
+                                                spring(stiffness = 380f, dampingRatio = 0.8f)
+                                            }
+                                },
+                                label = "channel_picker_content",
+                            ) { channel ->
+                                if (channel == null) {
+                                    ChannelList(
+                                        selectedChannel = state.selectedChannel,
+                                        onChannelSelected = { ch ->
+                                            onChannelSelected(ch)
+                                            channelPickerVisible = false
+                                        },
+                                        onInfoClicked = { infoChannel = it },
+                                        animatedContentScope = this,
+                                    )
+                                } else {
+                                    ChannelInfoPage(
+                                        channel = channel,
+                                        onBack = { infoChannel = null },
+                                        animatedContentScope = this,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Update flow bottom sheet ──────────────────────────────────────────
+    if (state.showUpdateSheet) {
+        ModalBottomSheet(onDismissRequest = onHideUpdateSheet) {
+            UpdateSheetContent(
+                state = state,
+                onDownload = onDownload,
+                onStop = onStop,
+                onContinue = onContinue,
+                onInstall = onInstall,
+                onConfirmInstall = onConfirmInstall,
+                onDownloadCircleTapped = onDownloadCircleTapped,
+            )
+        }
+    }
+}
+
+// ─── Channel picker: list ────────────────────────────────────────────────────
+
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SharedTransitionScope.ChannelList(
+    selectedChannel: UpdateChannel,
+    onChannelSelected: (UpdateChannel) -> Unit,
+    onInfoClicked: (UpdateChannel) -> Unit,
+    animatedContentScope: AnimatedContentScope,
+) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(top = 20.dp, bottom = 4.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_filter_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.updates_channel_label),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+
+        val channels = UpdateChannel.entries
+        channels.forEachIndexed { index, channel ->
+            val position = when {
+                channels.size == 1 -> GroupPosition.SINGLE
+                index == 0 -> GroupPosition.TOP
+                index == channels.lastIndex -> GroupPosition.BOTTOM
+                else -> GroupPosition.MIDDLE
+            }
+            val rowShape = when (position) {
+                GroupPosition.TOP -> RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp)
+                GroupPosition.MIDDLE -> RoundedCornerShape(8.dp)
+                GroupPosition.BOTTOM -> RoundedCornerShape(8.dp, 8.dp, 28.dp, 28.dp)
+                GroupPosition.SINGLE -> RoundedCornerShape(28.dp)
+            }
+            // Each row's Surface is the source of its own row→info container transform
+            Surface(
+                shape = rowShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .fillMaxWidth()
+                    .sharedBounds(
+                        rememberSharedContentState("channel_info_$channel"),
+                        animatedVisibilityScope = animatedContentScope,
+                        enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        boundsTransform = BoundsTransform { _, _ ->
+                            spring(stiffness = 380f, dampingRatio = 0.8f)
+                        },
+                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    ),
+            ) {
+                ListItem(
+                    headlineContent = { Text(stringResource(channelDisplayName(channel))) },
+                    leadingContent = {
+                        RadioButton(
+                            selected = channel == selectedChannel,
+                            onClick = { onChannelSelected(channel) },
+                        )
+                    },
+                    trailingContent = {
+                        IconButton(onClick = { onInfoClicked(channel) }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_info_outline_24dp),
+                                contentDescription = stringResource(R.string.update_channel_info_title),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    modifier = Modifier.clickableRow { onChannelSelected(channel) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+            if (index < channels.lastIndex) Spacer(Modifier.height(2.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+// ─── Channel picker: info page ────────────────────────────────────────────────
+
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SharedTransitionScope.ChannelInfoPage(
+    channel: UpdateChannel,
+    onBack: () -> Unit,
+    animatedContentScope: AnimatedContentScope,
+) {
+    // Surface matches the source row surface (same color/shape) so the container transform
+    // morphs the row surface into the full-width info card
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        modifier = Modifier
+            .fillMaxWidth()
+            .sharedBounds(
+                rememberSharedContentState("channel_info_$channel"),
+                animatedVisibilityScope = animatedContentScope,
+                enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                boundsTransform = BoundsTransform { _, _ ->
+                    spring(stiffness = 380f, dampingRatio = 0.8f)
+                },
+                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+            ),
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_info_outline_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(channelDisplayName(channel)),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(channelDescription(channel)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(16.dp))
+            FilledTonalButton(
+                onClick = onBack,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(android.R.string.ok))
+            }
+        }
+    }
+}
+
+// ─── Sheet content (reused by both UpdatesActivity and UpdateSheetFragment) ───
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun UpdateSheetContent(
+    state: UpdatesUiState,
+    onDownload: () -> Unit,
+    onStop: () -> Unit,
+    onContinue: () -> Unit,
+    onInstall: () -> Unit,
+    onConfirmInstall: () -> Unit,
+    onDownloadCircleTapped: () -> Unit = {},
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Hero section
+        Spacer(Modifier.height(8.dp))
+        Icon(
+            painter = painterResource(R.drawable.ic_system_update_24dp),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(64.dp),
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+        )
+        if (state.pendingVersion != null) {
+            Text(
+                text = stringResource(R.string.updates_new_version_available, state.pendingVersion),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+
+        StatusSection(
+            state = state,
+            onDownload = onDownload,
+            onStop = onStop,
+            onContinue = onContinue,
+            onInstall = onInstall,
+            onConfirmInstall = onConfirmInstall,
+            onDownloadCircleTapped = onDownloadCircleTapped,
+        )
+    }
+}
+
+// ─── Status + Download flow ───────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
+@Composable
+internal fun StatusSection(
+    state: UpdatesUiState,
+    onDownload: () -> Unit,
+    onStop: () -> Unit,
+    onContinue: () -> Unit,
+    onInstall: () -> Unit,
+    onConfirmInstall: () -> Unit,
+    onDownloadCircleTapped: () -> Unit = {},
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        AnimatedContent(
+            targetState = sheetStatusText(state),
+            transitionSpec = {
+                (slideInHorizontally { -it / 3 } + fadeIn()) togetherWith
+                        (slideOutHorizontally { it / 3 } + fadeOut())
+            },
+            label = "sheet_status_text",
+        ) { text ->
+            if (text != null) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        SharedTransitionLayout {
+            AnimatedContent(
+                targetState = state.downloadPhase,
+                transitionSpec = {
+                    when {
+                        // instant swap between identical circles — no animation needed
+                        initialState == DownloadPhase.DOWNLOADING && targetState == DownloadPhase.PROCESSING ->
+                            EnterTransition.None togetherWith ExitTransition.None
+                        // sharedBounds drives these transitions
+                        (initialState == DownloadPhase.NO_WIFI_PENDING && targetState == DownloadPhase.DOWNLOADING) ||
+                        (initialState == DownloadPhase.PROCESSING && targetState == DownloadPhase.READY) ->
+                            EnterTransition.None togetherWith ExitTransition.None using
+                                SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+                        else -> {
+                            val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
+                            val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
+                            (fadeIn(effects) + scaleIn(spatial, initialScale = 0.88f)) togetherWith
+                                (fadeOut(effects) + scaleOut(spatial, targetScale = 0.88f)) using
+                                SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+                        }
+                    }
+                },
+                label = "download_phase",
+            ) outerAC@{ phase ->
+                val sharedSpring = BoundsTransform { _, _ -> spring<androidx.compose.ui.geometry.Rect>(stiffness = 380f, dampingRatio = 0.8f) }
+                when (phase) {
+                    DownloadPhase.IDLE -> Box(Modifier.fillMaxWidth())
+
+                    DownloadPhase.NO_WIFI_PENDING -> {
+                        Button(
+                            onClick = onDownload,
+                            shapes = ButtonDefaults.shapes(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .sharedBounds(
+                                    rememberSharedContentState("download_circle"),
+                                    animatedVisibilityScope = this@outerAC,
+                                    boundsTransform = sharedSpring,
+                                ),
+                            contentPadding = PaddingValues(horizontal = 24.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_download_24dp),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                stringResource(R.string.updates_download),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    }
+
+                    DownloadPhase.DOWNLOADING -> {
+                        DownloadingCircle(
+                            progress = state.downloadProgress,
+                            cancelConfirm = state.cancelConfirmVisible,
+                            onTap = onDownloadCircleTapped,
+                            onStop = onStop,
+                            onContinue = onContinue,
+                            modifier = Modifier.sharedBounds(
+                                rememberSharedContentState("download_circle"),
+                                animatedVisibilityScope = this@outerAC,
+                                boundsTransform = sharedSpring,
+                            ),
+                        )
+                    }
+
+                    DownloadPhase.PROCESSING -> {
+                        ProcessingCircle(
+                            modifier = Modifier.sharedBounds(
+                                rememberSharedContentState("ready_expand"),
+                                animatedVisibilityScope = this@outerAC,
+                                boundsTransform = sharedSpring,
+                            ),
+                        )
+                    }
+
+                    DownloadPhase.CANCELING -> CancelingCircle()
+
+                    DownloadPhase.READY -> {
+                        val needsCard = !state.canInstallDirectly
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .sharedBounds(
+                                    rememberSharedContentState("ready_expand"),
+                                    animatedVisibilityScope = this@outerAC,
+                                    boundsTransform = sharedSpring,
+                                ),
+                        ) {
+                            SharedTransitionLayout {
+                                AnimatedContent(
+                                    targetState = state.showInstallCard && needsCard,
+                                    transitionSpec = {
+                                        EnterTransition.None togetherWith ExitTransition.None using
+                                            SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+                                    },
+                                    label = "install_card",
+                                ) { showCard ->
+                                    if (showCard) {
+                                        InstallCard(
+                                            isFirstTime = state.isFirstUpdate,
+                                            canInstallDirectly = state.canInstallDirectly,
+                                            onConfirm = onConfirmInstall,
+                                            modifier = Modifier.sharedBounds(
+                                                rememberSharedContentState("install_surface"),
+                                                animatedVisibilityScope = this@AnimatedContent,
+                                                boundsTransform = sharedSpring,
+                                            ),
+                                        )
+                                    } else {
+                                        Button(
+                                            onClick = if (needsCard) onInstall else onConfirmInstall,
+                                            shapes = ButtonDefaults.shapes(),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(64.dp)
+                                                .sharedBounds(
+                                                    rememberSharedContentState("install_surface"),
+                                                    animatedVisibilityScope = this@AnimatedContent,
+                                                    boundsTransform = sharedSpring,
+                                                ),
+                                            contentPadding = PaddingValues(horizontal = 24.dp),
+                                        ) {
+                                            Text(
+                                                stringResource(R.string.updates_proceed_to_install),
+                                                style = MaterialTheme.typography.bodyLarge,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─── Download/processing/canceling circles ────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun DownloadingCircle(
+    progress: Float,
+    cancelConfirm: Boolean,
+    onTap: () -> Unit,
+    onStop: () -> Unit,
+    onContinue: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scope = rememberCoroutineScope()
+    val swipeDelta = remember { Animatable(0f) }
+    // Which side is collapsing during the end animation — hides the opposite button
+    var collapsingToward by remember { mutableStateOf<SwipeAction?>(null) }
+    val amplitudePx = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = spring(stiffness = 80f, dampingRatio = 1.0f),
+        label = "download_progress",
+    )
+    val stopFraction by animateFloatAsState(
+        targetValue = (-swipeDelta.value / 80f).coerceIn(0f, 1f),
+        animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+        label = "stop_tint",
+    )
+    // Pill expansion is driven entirely by cancelConfirm — no expansion on drag alone
+    val expansionFraction by animateFloatAsState(
+        targetValue = if (cancelConfirm) 1f else 0f,
+        animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
+        label = "pill_expansion",
+    )
+
+    val circleColor = lerp(
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.errorContainer,
+        stopFraction,
+    )
+    val contentColor = lerp(
+        MaterialTheme.colorScheme.onPrimaryContainer,
+        MaterialTheme.colorScheme.onErrorContainer,
+        stopFraction,
+    )
+    val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
+    val spatialSlide = spring<IntOffset>(stiffness = 380f, dampingRatio = 0.8f)
+
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val pillWidth = lerpDp(64.dp, maxWidth, expansionFraction)
+
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Surface(
+                shape = RoundedCornerShape(32.dp),
+                color = circleColor,
+                onClick = onTap,
+                modifier = modifier
+                    .width(pillWidth)
+                    .height(64.dp)
+                    // Drag is only active after the pill is revealed (cancelConfirm = true)
+                    .pointerInput(cancelConfirm) {
+                        if (cancelConfirm) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    scope.launch {
+                                        when {
+                                            swipeDelta.value < -50f -> {
+                                                // Snap indicator to left edge (collapse right side), then stop
+                                                collapsingToward = SwipeAction.STOP
+                                                swipeDelta.animateTo(-120f, spring(stiffness = 1200f, dampingRatio = 1.0f))
+                                                onStop()
+                                                collapsingToward = null
+                                                swipeDelta.snapTo(0f)
+                                            }
+                                            swipeDelta.value > 50f -> {
+                                                // Snap indicator to right edge (collapse left side), then continue
+                                                collapsingToward = SwipeAction.CONTINUE
+                                                swipeDelta.animateTo(120f, spring(stiffness = 1200f, dampingRatio = 1.0f))
+                                                onContinue()
+                                                collapsingToward = null
+                                                swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f))
+                                            }
+                                            else -> swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f))
+                                        }
+                                    }
+                                },
+                                onDragCancel = {
+                                    scope.launch { swipeDelta.animateTo(0f, spring(stiffness = 500f, dampingRatio = 1.0f)) }
+                                },
+                            ) { _, dragAmount ->
+                                scope.launch {
+                                    // Progressive resistance: gets heavier the further you pull
+                                    val r = (1f - (kotlin.math.abs(swipeDelta.value) / 100f)).coerceAtLeast(0.15f)
+                                    swipeDelta.snapTo((swipeDelta.value + dragAmount * r).coerceIn(-80f, 80f))
+                                }
+                            }
+                        }
+                    },
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Stop button — left; hidden while collapsing toward Continue
+                    AnimatedVisibility(
+                        visible = cancelConfirm && collapsingToward != SwipeAction.CONTINUE,
+                        enter = fadeIn(effects) + slideInHorizontally(spatialSlide) { -it / 2 },
+                        exit = fadeOut(effects) + slideOutHorizontally(spatialSlide) { -it / 2 },
+                        modifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
+                    ) {
+                        FilledTonalButton(
+                            onClick = onStop,
+                            shapes = ButtonDefaults.shapes(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        ) { Text(stringResource(R.string.updates_stop)) }
+                    }
+
+                    // Progress indicator — physically follows the drag
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset { IntOffset(swipeDelta.value.toInt(), 0) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularWavyProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier.size(40.dp),
+                            color = contentColor,
+                            trackColor = contentColor.copy(alpha = 0.22f),
+                            amplitude = { amplitudePx },
+                        )
+                    }
+
+                    // Continue button — right; hidden while collapsing toward Stop
+                    AnimatedVisibility(
+                        visible = cancelConfirm && collapsingToward != SwipeAction.STOP,
+                        enter = fadeIn(effects) + slideInHorizontally(spatialSlide) { it / 2 },
+                        exit = fadeOut(effects) + slideOutHorizontally(spatialSlide) { it / 2 },
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = onContinue,
+                            shapes = ButtonDefaults.shapes(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        ) { Text(stringResource(R.string.updates_continue)) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun ProcessingCircle(modifier: Modifier = Modifier) {
+    var showAlmostDone by remember { mutableStateOf(false) }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            onClick = { showAlmostDone = true },
+            modifier = modifier.size(64.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                val amplitudePx = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
+                CircularWavyProgressIndicator(
+                    modifier = Modifier.size(40.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.22f),
+                    amplitude = amplitudePx,
+                )
+            }
+        }
+        AnimatedVisibility(visible = showAlmostDone) {
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(2000)
+                showAlmostDone = false
+            }
+            Text(
+                text = stringResource(R.string.updates_almost_done),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CancelingCircle() {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.size(64.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            LoadingIndicator(
+                modifier = Modifier.size(40.dp),
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
+    }
+}
+
+// ─── Install card ─────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun InstallCard(
+    isFirstTime: Boolean,
+    canInstallDirectly: Boolean,
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_system_update_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Text(
+                text = stringResource(
+                    if (isFirstTime) R.string.updates_install_first_time_title
+                    else R.string.updates_install_title
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(
+                    if (!canInstallDirectly) R.string.updates_install_grant_permission
+                    else R.string.updates_install_ready
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
+            Button(
+                onClick = onConfirm,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.updates_install_now))
+            }
+        }
+    }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+enum class GroupPosition { TOP, MIDDLE, BOTTOM, SINGLE }
+private enum class SwipeAction { STOP, CONTINUE }
+
+@Composable
+fun ExpressiveGroupRow(
+    position: GroupPosition,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val shape = when (position) {
+        GroupPosition.TOP -> RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp)
+        GroupPosition.MIDDLE -> RoundedCornerShape(8.dp)
+        GroupPosition.BOTTOM -> RoundedCornerShape(8.dp, 8.dp, 28.dp, 28.dp)
+        GroupPosition.SINGLE -> RoundedCornerShape(28.dp)
+    }
+    Surface(
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        content()
+    }
+}
+
+private fun Modifier.clickableRow(onClick: () -> Unit) = this.clickable(onClick = onClick)
+
+fun channelDisplayName(channel: UpdateChannel): Int = when (channel) {
+    UpdateChannel.STABLE -> R.string.update_channel_stable
+    UpdateChannel.RC -> R.string.update_channel_rc
+    UpdateChannel.BETA -> R.string.update_channel_beta
+    UpdateChannel.ALPHA -> R.string.update_channel_alpha
+}
+
+private fun channelDescription(channel: UpdateChannel): Int = when (channel) {
+    UpdateChannel.STABLE -> R.string.update_channel_stable_description
+    UpdateChannel.RC -> R.string.update_channel_rc_description
+    UpdateChannel.BETA -> R.string.update_channel_beta_description
+    UpdateChannel.ALPHA -> R.string.update_channel_alpha_description
+}
+
+@Composable
+private fun mainStatusText(state: UpdatesUiState): String? = when {
+    state.checkStatus == CheckStatus.CHECKING -> stringResource(R.string.updates_status_checking)
+    state.checkStatus == CheckStatus.UP_TO_DATE -> stringResource(R.string.updates_status_up_to_date)
+    state.checkStatus == CheckStatus.CHANNEL_BEHIND -> stringResource(R.string.updates_status_channel_behind)
+    state.pendingVersion != null && state.downloadPhase == DownloadPhase.IDLE ->
+        stringResource(R.string.updates_new_version_available, state.pendingVersion)
+    else -> null
+}
+
+@Composable
+private fun sheetStatusText(state: UpdatesUiState): String? = when {
+    state.downloadPhase == DownloadPhase.CANCELING -> stringResource(R.string.updates_canceling)
+    state.cancelConfirmVisible -> stringResource(R.string.updates_stop_download_question)
+    state.downloadPhase == DownloadPhase.NO_WIFI_PENDING ->
+        stringResource(R.string.updates_status_no_wifi_detected)
+    state.downloadPhase == DownloadPhase.DOWNLOADING ->
+        stringResource(R.string.updates_status_downloading)
+    state.downloadPhase == DownloadPhase.PROCESSING ->
+        stringResource(R.string.updates_status_processing)
+    state.downloadPhase == DownloadPhase.READY ->
+        stringResource(R.string.updates_status_ready)
+    else -> null
+}
+
+// ─── State model ─────────────────────────────────────────────────────────────
+
+enum class CheckStatus { IDLE, CHECKING, UP_TO_DATE, UPDATE_AVAILABLE, CHANNEL_BEHIND }
+enum class DownloadPhase { IDLE, NO_WIFI_PENDING, DOWNLOADING, PROCESSING, READY, CANCELING }
+
+data class UpdatesUiState(
+    val currentVersion: String = "",
+    val selectedChannel: UpdateChannel = UpdateChannel.STABLE,
+    val autoCheck: Boolean = true,
+    val checkStatus: CheckStatus = CheckStatus.IDLE,
+    val downloadPhase: DownloadPhase = DownloadPhase.IDLE,
+    val downloadProgress: Float = 0f,
+    val cancelConfirmVisible: Boolean = false,
+    val pendingVersion: String? = null,
+    val showInstallCard: Boolean = false,
+    val canInstallDirectly: Boolean = true,
+    val isFirstUpdate: Boolean = false,
+    val showUpdateSheet: Boolean = false,
+)

@@ -1,6 +1,7 @@
 package eu.siacs.conversations.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -25,6 +26,7 @@ import eu.siacs.conversations.utils.Compatibility
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
+import eu.siacs.conversations.entities.Transferable
 import eu.siacs.conversations.utils.Emoticons
 import eu.siacs.conversations.services.CallIntegrationConnectionService
 import eu.siacs.conversations.services.XmppConnectionService
@@ -58,6 +60,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private var pauseStartMs = 0L
     private var timerJob: kotlinx.coroutines.Job? = null
     private val pendingTakePhotoUri = eu.siacs.conversations.ui.util.PendingItem<Uri>()
+    private var pendingSharedUris: List<Uri> = emptyList()
+    private var pendingSharedMimeType: String? = null
 
     private val takePhotoLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -148,6 +152,17 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
         }
 
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        if (pendingSharedUris.isNotEmpty()) {
+            val uris = pendingSharedUris
+            val mimeType = pendingSharedMimeType
+            pendingSharedUris = emptyList()
+            pendingSharedMimeType = null
+            stageUris(uris, if (mimeType?.startsWith("image/") == true) Attachment.Type.IMAGE else Attachment.Type.FILE)
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -219,11 +234,12 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
         if (sharedUris.isNotEmpty()) {
             val mimeType = extras.getString(ConversationsActivity.EXTRA_TYPE)
-            stageUris(
-                sharedUris,
-                if (mimeType?.startsWith("image/") == true) Attachment.Type.IMAGE
-                else Attachment.Type.FILE,
-            )
+            if (context != null) {
+                stageUris(sharedUris, if (mimeType?.startsWith("image/") == true) Attachment.Type.IMAGE else Attachment.Type.FILE)
+            } else {
+                pendingSharedUris = sharedUris
+                pendingSharedMimeType = mimeType
+            }
         }
         val nick = extras.getString(ConversationsActivity.EXTRA_NICK)
         if (!nick.isNullOrEmpty()) {
@@ -542,11 +558,20 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val c = conversation ?: return
         val service = getXmppConnectionService() ?: return
         val context = context ?: return
+        val reply = state.replyingTo.value
+        val replyId = if (reply != null) {
+            if (reply.status == Message.STATUS_RECEIVED) {
+                reply.remoteMsgId ?: reply.serverMsgId ?: reply.getUuid()
+            } else {
+                reply.serverMsgId ?: reply.getUuid()
+            }
+        } else null
+        state.replyingTo.value = null
         for (attachment in attachments) {
             val future =
                 if (attachment.type == Attachment.Type.IMAGE)
-                    service.attachImageToConversation(c, attachment.uri, attachment.mime)
-                else service.attachFileToConversation(c, attachment.uri, attachment.mime)
+                    service.attachImageToConversation(c, attachment.uri, attachment.mime, replyId)
+                else service.attachFileToConversation(c, attachment.uri, attachment.mime, replyId)
             Futures.addCallback(
                 future,
                 object : FutureCallback<Void?> {
@@ -775,7 +800,10 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
             message.isFileOrImage && !message.isDeleted -> {
                 val file = service.fileBackend.getFile(message)
-                ViewUtil.view(context, file, message.getUuid() ?: "")
+                if (file.exists()) {
+                    ViewUtil.view(context, file, message.getUuid() ?: "")
+                }
+                // else: download is in progress or pending — the bubble UI handles it
             }
             message.treatAsDownloadable() -> onDownloadMessage(message)
         }
@@ -783,6 +811,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onDownloadMessage(message: Message) {
         val service = getXmppConnectionService() ?: return
+        val transferable = message.transferable
+        if (transferable != null &&
+            (transferable.getStatus() == Transferable.STATUS_OFFER ||
+                transferable.getStatus() == Transferable.STATUS_OFFER_CHECK_FILESIZE)) {
+            transferable.start()
+            return
+        }
         service.httpConnectionManager.createNewDownloadConnection(message, true)
     }
 

@@ -53,6 +53,7 @@ import de.gultsch.common.MiniUri
 import de.gultsch.common.Patterns
 import eu.siacs.conversations.BuildConfig
 import eu.siacs.conversations.Config
+import eu.siacs.conversations.entities.Account
 import eu.siacs.conversations.R
 import eu.siacs.conversations.databinding.FragmentConversationsOverviewBinding
 import eu.siacs.conversations.entities.Conversation
@@ -207,6 +208,7 @@ class ConversationsOverviewFragment : XmppFragment() {
                     ?: Log.w(TAG, "Activity does not implement OnConversationSelected")
             },
             binding.fab,
+            onDownloadComplete = { (activity as? ConversationsActivity)?.openUpdateSheet() },
         )
 
         searchSuggestionAdapter = SearchSuggestionAdapter()
@@ -313,7 +315,9 @@ class ConversationsOverviewFragment : XmppFragment() {
             return
         }
         binding.searchBar.invalidateMenu()
-        requireXmppActivity().xmppConnectionService.populateWithOrderedConversations(conversations)
+        val service = requireXmppActivity().xmppConnectionService
+        service.populateWithOrderedConversations(conversations)
+        composeState.isConnecting.value = service.accounts.any { it.status == Account.State.CONNECTING }
         composeState.update(conversations)
     }
 
