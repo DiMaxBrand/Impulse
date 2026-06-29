@@ -1168,7 +1168,8 @@ public class StartConversationActivity extends XmppActivity
     }
 
     @Override
-    public void onCreateDialogPositiveClick(AutoCompleteTextView spinner, String name) {
+    public void onCreateDialogPositiveClick(
+            AutoCompleteTextView spinner, String name, boolean membersOnly) {
         if (!xmppConnectionServiceBound) {
             return;
         }
@@ -1176,14 +1177,24 @@ public class StartConversationActivity extends XmppActivity
         if (account == null) {
             return;
         }
-        Intent intent = new Intent(getApplicationContext(), ChooseContactActivity.class);
-        intent.putExtra(ChooseContactActivity.EXTRA_SHOW_ENTER_JID, false);
-        intent.putExtra(ChooseContactActivity.EXTRA_SELECT_MULTIPLE, true);
-        intent.putExtra(ChooseContactActivity.EXTRA_GROUP_CHAT_NAME, name.trim());
-        intent.putExtra(
-                ChooseContactActivity.EXTRA_ACCOUNT, account.getJid().asBareJid().toString());
-        intent.putExtra(ChooseContactActivity.EXTRA_TITLE_RES_ID, R.string.choose_participants);
-        startActivityForResult(intent, REQUEST_CREATE_CONFERENCE);
+        if (membersOnly) {
+            Intent intent = new Intent(getApplicationContext(), ChooseContactActivity.class);
+            intent.putExtra(ChooseContactActivity.EXTRA_SHOW_ENTER_JID, false);
+            intent.putExtra(ChooseContactActivity.EXTRA_SELECT_MULTIPLE, true);
+            intent.putExtra(ChooseContactActivity.EXTRA_GROUP_CHAT_NAME, name.trim());
+            intent.putExtra(
+                    ChooseContactActivity.EXTRA_ACCOUNT, account.getJid().asBareJid().toString());
+            intent.putExtra(ChooseContactActivity.EXTRA_TITLE_RES_ID, R.string.choose_participants);
+            startActivityForResult(intent, REQUEST_CREATE_CONFERENCE);
+        } else {
+            mToast = Toast.makeText(this, R.string.creating_group_chat, Toast.LENGTH_LONG);
+            mToast.show();
+            final var future =
+                    account.getXmppConnection()
+                            .getManager(MultiUserChatManager.class)
+                            .createPublicGroup(name.trim());
+            Futures.addCallback(future, adhocCallback, ContextCompat.getMainExecutor(this));
+        }
     }
 
     @Override

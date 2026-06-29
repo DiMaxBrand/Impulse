@@ -31,40 +31,60 @@ class MucConfiguration private constructor(
     companion object {
         @JvmStatic
         fun get(context: Context, mucOptions: MucOptions): MucConfiguration {
-            return if (mucOptions.isPrivateAndNonAnonymous) {
-                val names = arrayOf(
-                    context.getString(R.string.allow_participants_to_edit_subject),
-                    context.getString(R.string.allow_participants_to_invite_others)
-                )
-                val values = booleanArrayOf(
-                    mucOptions.participantsCanChangeSubject(),
-                    mucOptions.allowInvites()
-                )
-                val options = arrayOf(
-                    Option("muc#roomconfig_changesubject"),
-                    Option("muc#roomconfig_allowinvites")
-                )
-                MucConfiguration(R.string.conference_options, names, values, options)
-            } else {
-                val names = arrayOf(
-                    context.getString(R.string.non_anonymous),
-                    context.getString(R.string.allow_participants_to_edit_subject),
-                    context.getString(R.string.moderated),
-                    context.getString(R.string.allow_private_messages)
-                )
-                val values = booleanArrayOf(
-                    mucOptions.nonanonymous(),
-                    mucOptions.participantsCanChangeSubject(),
-                    mucOptions.moderated(),
-                    mucOptions.allowPmRaw()
-                )
-                val options = arrayOf(
-                    Option("muc#roomconfig_whois", "anyone", "moderators"),
-                    Option("muc#roomconfig_changesubject"),
-                    Option("muc#roomconfig_moderatedroom"),
-                    Option("muc#roomconfig_allowpm", "anyone", "moderators")
-                )
-                MucConfiguration(R.string.channel_options, names, values, options)
+            return when {
+                mucOptions.isPrivateAndNonAnonymous -> {
+                    val names = arrayOf(
+                        context.getString(R.string.allow_participants_to_edit_subject),
+                        context.getString(R.string.allow_participants_to_invite_others)
+                    )
+                    val values = booleanArrayOf(
+                        mucOptions.participantsCanChangeSubject(),
+                        mucOptions.allowInvites()
+                    )
+                    val options = arrayOf(
+                        Option("muc#roomconfig_changesubject"),
+                        Option("muc#roomconfig_allowinvites")
+                    )
+                    MucConfiguration(R.string.conference_options, names, values, options)
+                }
+                mucOptions.moderated() -> {
+                    // Channel: moderation is definitional, only expose admin-facing toggles
+                    val names = arrayOf(
+                        context.getString(R.string.non_anonymous),
+                        context.getString(R.string.allow_participants_to_edit_subject)
+                    )
+                    val values = booleanArrayOf(
+                        mucOptions.nonanonymous(),
+                        mucOptions.participantsCanChangeSubject()
+                    )
+                    val options = arrayOf(
+                        Option("muc#roomconfig_whois", "anyone", "moderators"),
+                        Option("muc#roomconfig_changesubject")
+                    )
+                    MucConfiguration(R.string.channel_options, names, values, options)
+                }
+                else -> {
+                    // Public group: everyone can send, show moderated toggle to allow conversion
+                    val names = arrayOf(
+                        context.getString(R.string.non_anonymous),
+                        context.getString(R.string.allow_participants_to_edit_subject),
+                        context.getString(R.string.moderated),
+                        context.getString(R.string.allow_private_messages)
+                    )
+                    val values = booleanArrayOf(
+                        mucOptions.nonanonymous(),
+                        mucOptions.participantsCanChangeSubject(),
+                        mucOptions.moderated(),
+                        mucOptions.allowPmRaw()
+                    )
+                    val options = arrayOf(
+                        Option("muc#roomconfig_whois", "anyone", "moderators"),
+                        Option("muc#roomconfig_changesubject"),
+                        Option("muc#roomconfig_moderatedroom"),
+                        Option("muc#roomconfig_allowpm", "anyone", "moderators")
+                    )
+                    MucConfiguration(R.string.channel_options, names, values, options)
+                }
             }
         }
 

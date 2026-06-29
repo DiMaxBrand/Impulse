@@ -3075,6 +3075,12 @@ public class XmppConnectionService extends Service {
         return manager.createPrivateGroupChat(name, addresses);
     }
 
+    public ListenableFuture<Conversation> createPublicGroup(
+            final Account account, final String name) {
+        final var manager = account.getXmppConnection().getManager(MultiUserChatManager.class);
+        return manager.createPublicGroup(name);
+    }
+
     public void pushNodeConfiguration(
             Account account,
             final String node,

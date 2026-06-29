@@ -1566,12 +1566,53 @@ public class MultiUserChatManager extends AbstractManager {
                 .put("muc#roomconfig_persistentroom", true)
                 .put("muc#roomconfig_membersonly", false)
                 .put("muc#roomconfig_publicroom", true)
+                .put("muc#roomconfig_moderatedroom", true) // channels = only admins can send
                 .put("muc#roomconfig_whois", "moderators")
                 .put("muc#roomconfig_changesubject", false)
                 .put("muc#roomconfig_enablearchiving", true) // prosody
                 .put("mam", true) // ejabberd community
                 .put("muc#roomconfig_mam", true) // ejabberd saas
                 .buildOrThrow();
+    }
+
+    public static Map<String, Object> defaultPublicGroupConfiguration() {
+        return new ImmutableMap.Builder<String, Object>()
+                .put("muc#roomconfig_persistentroom", true)
+                .put("muc#roomconfig_membersonly", false)
+                .put("muc#roomconfig_publicroom", true)
+                .put("muc#roomconfig_moderatedroom", false) // groups = everyone can send
+                .put("muc#roomconfig_whois", "anyone")
+                .put("muc#roomconfig_changesubject", false)
+                .put("muc#roomconfig_allowinvites", true)
+                .put("muc#roomconfig_enablearchiving", true) // prosody
+                .put("mam", true) // ejabberd community
+                .put("muc#roomconfig_mam", true) // ejabberd saas
+                .put("muc#roomconfig_enablelogging", false) // public logging
+                .buildOrThrow();
+    }
+
+    public ListenableFuture<Conversation> createPublicGroup(final String name) {
+        final var service = getService();
+        if (service == null) {
+            return Futures.immediateFailedFuture(new IllegalStateException("No MUC service found"));
+        }
+        final var address = Jid.ofLocalAndDomain(CryptoHelper.pronounceable(), service);
+        final var conversation =
+                this.service.findOrCreateConversation(getAccount(), address, true, false, true);
+        final var join = this.join(conversation, false);
+        final var configured =
+                Futures.transformAsync(
+                        join,
+                        v -> pushConfiguration(
+                                conversation, configWithName(defaultPublicGroupConfiguration(), name)),
+                        MoreExecutors.directExecutor());
+        return Futures.transform(
+                configured,
+                c -> {
+                    getManager(BookmarkManager.class).save(conversation, name);
+                    return conversation;
+                },
+                MoreExecutors.directExecutor());
     }
 
     public record Invite(Jid to, Jid by, String password) {}

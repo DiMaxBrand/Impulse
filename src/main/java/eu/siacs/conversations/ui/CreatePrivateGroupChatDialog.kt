@@ -2,6 +2,7 @@ package eu.siacs.conversations.ui
 
 import android.app.Dialog
 import android.content.Context
+import android.content.DialogInterface
 import android.os.Bundle
 import android.widget.AutoCompleteTextView
 import androidx.databinding.DataBindingUtil
@@ -36,25 +37,41 @@ class CreatePrivateGroupChatDialog : DialogFragment() {
             requireActivity(), mActivatedAccounts, binding.account
         )
         builder.setView(binding.root)
-        builder.setPositiveButton(R.string.choose_participants) { _, _ ->
-            mListener?.onCreateDialogPositiveClick(
-                binding.account,
-                binding.groupChatName.text.toString().trim()
-            )
-        }
+        builder.setPositiveButton(R.string.choose_participants, null)
         builder.setNegativeButton(R.string.cancel, null)
         DelayedHintHelper.setHint(R.string.providing_a_name_is_optional, binding.groupChatName)
-        binding.groupChatName.setOnEditorActionListener { _, _, _ ->
-            mListener?.onCreateDialogPositiveClick(
-                binding.account, binding.groupChatName.text.toString().trim()
+        val dialog = builder.create()
+        binding.everyoneCanJoin.setOnCheckedChangeListener { _, isChecked ->
+            dialog.getButton(DialogInterface.BUTTON_POSITIVE)?.setText(
+                if (isChecked) R.string.create else R.string.choose_participants
             )
+        }
+        dialog.setOnShowListener {
+            dialog.getButton(DialogInterface.BUTTON_POSITIVE)?.setOnClickListener {
+                val membersOnly = !binding.everyoneCanJoin.isChecked
+                mListener?.onCreateDialogPositiveClick(
+                    binding.account,
+                    binding.groupChatName.text.toString().trim(),
+                    membersOnly
+                )
+                dialog.dismiss()
+            }
+        }
+        binding.groupChatName.setOnEditorActionListener { _, _, _ ->
+            val membersOnly = !binding.everyoneCanJoin.isChecked
+            mListener?.onCreateDialogPositiveClick(
+                binding.account,
+                binding.groupChatName.text.toString().trim(),
+                membersOnly
+            )
+            dialog.dismiss()
             true
         }
-        return builder.create()
+        return dialog
     }
 
     interface CreateConferenceDialogListener {
-        fun onCreateDialogPositiveClick(spinner: AutoCompleteTextView, subject: String)
+        fun onCreateDialogPositiveClick(spinner: AutoCompleteTextView, subject: String, membersOnly: Boolean)
     }
 
     override fun onAttach(context: Context) {

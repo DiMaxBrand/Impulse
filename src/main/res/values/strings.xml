@@ -870,6 +870,8 @@
     <string name="please_enter_xmpp_address">Please provide an XMPP address</string>
     <string name="this_is_an_xmpp_address">This is an XMPP address. Please provide a name.</string>
     <string name="creating_channel">Creating public channel…</string>
+    <string name="creating_group_chat">Creating group…</string>
+    <string name="everyone_can_join">Everyone can join</string>
     <string name="channel_already_exists">This channel already exists</string>
     <string name="joined_an_existing_channel">You’ve joined an existing channel</string>
     <string name="unable_to_set_channel_configuration">Could not save channel configuration</string>
