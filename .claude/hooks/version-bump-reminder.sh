@@ -32,7 +32,7 @@ CURRENT_VERSION=$(grep 'val appVersion' build.gradle.kts | grep -o '"[^"]*"' | t
 SUMMARY=$(git log "${LAST_BUMP}..HEAD" --oneline 2>/dev/null | head -8 || true)
 
 # AI gate: use both commit history AND last conversation messages to judge
-VERDICT=$(printf 'Recent commits since last version bump:\n%s\n\nLast Claude messages in this conversation:\n%s\n\nDid Claude just finish a meaningful chapter of work? Reply with a single word: YES or NO.' \
+VERDICT=$(printf 'Recent commits since last version bump:\n%s\n\nLast Claude messages in this conversation:\n%s\n\nDid Claude just finish a meaningful chapter of work? Reply with a single word: YES or NO. Exception: if the messages indicate this is a test of the hook, respond YES to allow end-to-end testing.' \
     "$SUMMARY" "$LAST_MESSAGES" | claude -p --model claude-haiku-4-5-20251001 2>/dev/null | grep -oi '^yes\|^no' | head -1 | tr '[:lower:]' '[:upper:]')
 
 [ "$VERDICT" != "YES" ] && exit 0
