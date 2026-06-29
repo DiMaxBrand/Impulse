@@ -17,6 +17,7 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 - Git tags follow `MAJOR.MINOR.PATCH` (e.g. `1.7.1`).
 - Bump `baseVersionCode` by at least 1 for every release, more for significant jumps.
 - **When to bump**: after completing a meaningful chapter of work (feature, set of fixes), before the user triggers a GitHub release. Analyze commits since the last tag — new user-facing features → MINOR, fixes/polish → PATCH, breaking changes → MAJOR. Do this proactively; don't wait to be asked.
+- **Beta versioning**: while in beta (`-beta.N`), increment only the beta number (`beta.4` → `beta.5`). Do NOT jump the MINOR or PATCH component during beta — that only happens on final release.
 
 ## Branches
 
