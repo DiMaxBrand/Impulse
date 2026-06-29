@@ -41,12 +41,10 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
   tails; outgoing = primaryContainer, incoming = surfaceContainerHigh; morphing
   send button; newest-message spring pop; date pills; scroll-to-bottom FAB with
   unread badge; typing bubble + typing subtitle in the top bar.
-- XEP-0461 replies cherry-picked from `fix-avatar-quality` (b3ff462, c238afb,
-  4928632, dc27de6 — quotes only, avatar commits NOT picked). DB is at v59;
-  the v58 avatar_vcard migration was re-added later (db80410). **Caution:**
-  devices that installed an intermediate reimagine build (57→59 without the
-  avatar columns) skip that v58 block — add a v60 guard or reinstall before
-  landing code that reads avatar_vcard.
+- All `fix-avatar-quality` commits are now on `auto-updater` (avatar quality
+  caps, 1440 px chat list loading, vCard/PEP hash guard, DB v58 avatar_vcard
+  migration, DefaultEmojiCompatConfig, XEP-0461 replies). DB is at v61; all
+  migration guards through v61 are in place.
 - Ported into Compose: reply cards (tap scrolls + highlights), reply banner,
   message correction (edit banner + edited icon, `getLastEditableMessage()`
   rule), Expressive grouped-list context sheet (reply/copy/edit/open/download),
