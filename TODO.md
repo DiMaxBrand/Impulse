@@ -10,7 +10,7 @@
 
 ## Refactoring
 
-- [ ] Merge `java-to-kotlin` branch into `dev` (277 Java → Kotlin conversions).
+- [x] Merge `java-to-kotlin` branch into `dev` (277 Java → Kotlin conversions).
 
 ## General
 
