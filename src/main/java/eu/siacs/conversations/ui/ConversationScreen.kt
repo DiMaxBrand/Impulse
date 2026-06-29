@@ -3194,6 +3194,47 @@ private fun RecordingBar(
 private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
     val context = LocalContext.current
     val conversation = state.conversation.value
+    val revision = state.revision.intValue
+
+    val isReadOnlyChannel = remember(conversation, revision) {
+        try {
+            conversation != null &&
+                conversation.getMode() == Conversational.MODE_MULTI &&
+                !conversation.mucOptions.participating()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    if (isReadOnlyChannel) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_lock_24dp),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.read_only_channel),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        return
+    }
+
     var attachMenuOpen by remember { mutableStateOf(false) }
     val text = state.inputText.value
     val hasText = text.isNotBlank()

@@ -399,6 +399,7 @@
     <string name="non_anonymous">Make XMPP addresses visible to anyone</string>
     <string name="moderated">Make channel moderated</string>
     <string name="you_are_not_participating">You are not participating</string>
+    <string name="read_only_channel">Read-only channel — only admins can post</string>
     <string name="modified_conference_options">Modified group chat options!</string>
     <string name="could_not_modify_conference_options">Could not modify group chat options</string>
     <string name="never">Never</string>
