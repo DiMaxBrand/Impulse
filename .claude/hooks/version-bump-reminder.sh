@@ -32,8 +32,8 @@ CURRENT_VERSION=$(grep 'val appVersion' build.gradle.kts | grep -o '"[^"]*"' | t
 SUMMARY=$(git log "${LAST_BUMP}..HEAD" --oneline 2>/dev/null | head -8 || true)
 
 # AI gate: use both commit history AND last conversation messages to judge
-VERDICT=$(printf 'Recent commits since last version bump:\n%s\n\nLast Claude messages in this conversation:\n%s\n\nBased on both: did Claude just finish a meaningful chapter of work, or is this a mid-task pause or question? Answer only YES (chapter done) or NO (still in progress / just a pause).' \
-    "$SUMMARY" "$LAST_MESSAGES" | claude -p --model claude-haiku-4-5-20251001 2>/dev/null | tr -d '[:space:]')
+VERDICT=$(printf 'Recent commits since last version bump:\n%s\n\nLast Claude messages in this conversation:\n%s\n\nDid Claude just finish a meaningful chapter of work? Reply with a single word: YES or NO.' \
+    "$SUMMARY" "$LAST_MESSAGES" | claude -p --model claude-haiku-4-5-20251001 2>/dev/null | grep -oi '^yes\|^no' | head -1 | tr '[:lower:]' '[:upper:]')
 
 [ "$VERDICT" != "YES" ] && exit 0
 
