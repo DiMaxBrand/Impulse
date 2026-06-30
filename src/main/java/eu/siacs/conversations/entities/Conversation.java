@@ -56,6 +56,7 @@ public class Conversation extends AbstractEntity
 
     public static final String ATTRIBUTE_MUTED_TILL = "muted_till";
     public static final String ATTRIBUTE_ALWAYS_NOTIFY = "always_notify";
+    public static final String ATTRIBUTE_NOTIFICATION_SOUND = "notification_sound";
     public static final String ATTRIBUTE_LAST_CLEAR_HISTORY = "last_clear_history";
     public static final String ATTRIBUTE_FORMERLY_PRIVATE_NON_ANONYMOUS =
             "formerly_private_non_anonymous";
@@ -933,6 +934,19 @@ public class Conversation extends AbstractEntity
 
     public void setMutedTill(long value) {
         this.setAttribute(ATTRIBUTE_MUTED_TILL, String.valueOf(value));
+    }
+
+    public boolean hasCustomNotificationSound() {
+        return getAttribute(ATTRIBUTE_NOTIFICATION_SOUND) != null;
+    }
+
+    public android.net.Uri getNotificationSound() {
+        final String value = getAttribute(ATTRIBUTE_NOTIFICATION_SOUND);
+        return value == null ? null : android.net.Uri.parse(value);
+    }
+
+    public void setNotificationSound(final android.net.Uri soundUri) {
+        setAttribute(ATTRIBUTE_NOTIFICATION_SOUND, soundUri == null ? null : soundUri.toString());
     }
 
     public boolean isMuted() {
