@@ -88,6 +88,21 @@ public class ContactDetailsActivity extends OmemoActivity
     private MediaAdapter mMediaAdapter;
 
     private Contact contact;
+
+    private final androidx.activity.result.ActivityResultLauncher<android.net.Uri>
+            pickNotificationSoundLauncher =
+                    registerForActivityResult(
+                            new eu.siacs.conversations.ui.activity.result.PickRingtone(
+                                    android.media.RingtoneManager.TYPE_NOTIFICATION),
+                            result -> {
+                                if (result == null) {
+                                    return;
+                                }
+                                final android.net.Uri soundUri =
+                                        eu.siacs.conversations.ui.activity.result.PickRingtone
+                                                .noneToNull(result);
+                                applyNotificationSound(soundUri);
+                            });
     private final DialogInterface.OnClickListener removeFromRoster =
             new DialogInterface.OnClickListener() {
 
@@ -383,8 +398,56 @@ public class ContactDetailsActivity extends OmemoActivity
             case R.id.action_custom_notifications:
                 configureCustomNotifications(contact);
                 break;
+            case R.id.action_notification_sound:
+                pickNotificationSound();
+                break;
         }
         return super.onOptionsItemSelected(menuItem);
+    }
+
+    private void pickNotificationSound() {
+        final eu.siacs.conversations.entities.Conversation conversation =
+                xmppConnectionService == null ? null : xmppConnectionService.find(contact);
+        final android.net.Uri current =
+                conversation == null ? null : conversation.getNotificationSound();
+        final android.net.Uri existing =
+                eu.siacs.conversations.ui.activity.result.PickRingtone.nullToNone(current);
+        try {
+            pickNotificationSoundLauncher.launch(existing);
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.no_application_found, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void applyNotificationSound(final android.net.Uri soundUri) {
+        if (xmppConnectionService == null || contact == null) {
+            return;
+        }
+        eu.siacs.conversations.entities.Conversation conversation =
+                xmppConnectionService.find(contact);
+        if (conversation == null) {
+            conversation =
+                    xmppConnectionService.findOrCreateConversation(
+                            contact.getAccount(), contact.getAddress(), false, false);
+        }
+        conversation.setNotificationSound(soundUri);
+        xmppConnectionService.updateConversation(conversation);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            eu.siacs.conversations.services.NotificationService.updateConversationNotificationSound(
+                    this, conversation.getUuid(), soundUri);
+        }
+        final String label =
+                soundUri == null
+                        ? getString(R.string.notification_sound_default)
+                        : android.media.RingtoneManager.getRingtone(this, soundUri) != null
+                                ? android.media.RingtoneManager.getRingtone(this, soundUri)
+                                        .getTitle(this)
+                                : soundUri.getLastPathSegment();
+        Toast.makeText(
+                        this,
+                        getString(R.string.notification_sound) + ": " + label,
+                        Toast.LENGTH_SHORT)
+                .show();
     }
 
     private void configureCustomNotifications(final Contact contact) {

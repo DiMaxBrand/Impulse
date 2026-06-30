@@ -122,6 +122,7 @@ public class NotificationService {
     private static final String INCOMING_CALLS_NOTIFICATION_CHANNEL_PREFIX =
             "incoming_calls_channel#";
     public static final String MESSAGES_NOTIFICATION_CHANNEL = "messages";
+    private static final String CONVERSATION_SOUND_CHANNEL_PREFIX = "conv_sound_";
 
     NotificationService(final XmppConnectionService service) {
         this.mXmppConnectionService = service;
@@ -393,6 +394,81 @@ public class NotificationService {
         incomingCallsChannel.enableVibration(true);
         incomingCallsChannel.setVibrationPattern(CALL_PATTERN);
         notificationManager.createNotificationChannel(incomingCallsChannel);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static void updateConversationNotificationSound(
+            final Context context, final String conversationUuid, final Uri soundUri) {
+        final var nm = context.getSystemService(NotificationManager.class);
+        final String prefix = CONVERSATION_SOUND_CHANNEL_PREFIX + conversationUuid + "#";
+        int nextIteration = 0;
+        for (final NotificationChannel ch : nm.getNotificationChannels()) {
+            if (ch.getId().startsWith(prefix)) {
+                final var parts = Splitter.on('#').splitToList(ch.getId());
+                if (parts.size() == 2) {
+                    final var iter = Ints.tryParse(parts.get(1));
+                    if (iter != null) {
+                        nextIteration = iter + 1;
+                    }
+                }
+                nm.deleteNotificationChannel(ch.getId());
+                break;
+            }
+        }
+        if (soundUri != null) {
+            createConversationSoundChannel(context, conversationUuid, soundUri, nm, nextIteration);
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private static void createConversationSoundChannel(
+            final Context context,
+            final String conversationUuid,
+            final Uri soundUri,
+            final NotificationManager nm,
+            final int iteration) {
+        final String channelId =
+                CONVERSATION_SOUND_CHANNEL_PREFIX + conversationUuid + "#" + iteration;
+        final NotificationChannel channel =
+                new NotificationChannel(
+                        channelId,
+                        context.getString(R.string.messages_channel_name),
+                        NotificationManager.IMPORTANCE_HIGH);
+        channel.setShowBadge(true);
+        channel.setSound(
+                soundUri,
+                new AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .build());
+        channel.setLightColor(LED_COLOR);
+        final int dat = 70;
+        final long[] pattern = {0, 3 * dat, dat, dat};
+        channel.setVibrationPattern(pattern);
+        channel.enableVibration(true);
+        channel.enableLights(true);
+        channel.setGroup("chats");
+        nm.createNotificationChannel(channel);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private String getOrCreateConversationSoundChannel(final Conversation conversation) {
+        final String prefix =
+                CONVERSATION_SOUND_CHANNEL_PREFIX + conversation.getUuid() + "#";
+        final var nm =
+                mXmppConnectionService.getSystemService(NotificationManager.class);
+        for (final NotificationChannel ch : nm.getNotificationChannels()) {
+            if (ch.getId().startsWith(prefix)) {
+                return ch.getId();
+            }
+        }
+        createConversationSoundChannel(
+                mXmppConnectionService,
+                conversation.getUuid(),
+                conversation.getNotificationSound(),
+                nm,
+                0);
+        return prefix + "0";
     }
 
     private boolean notifyMessage(final Message message) {
@@ -948,9 +1024,14 @@ public class NotificationService {
         } else {
             final Builder mBuilder;
             if (notifications.size() == 1 && Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-                mBuilder =
-                        buildSingleConversations(notifications.values().iterator().next(), notify);
-                modifyForSoundVibrationAndLight(mBuilder, notify, preferences);
+                final ArrayList<Message> msgs = notifications.values().iterator().next();
+                mBuilder = buildSingleConversations(msgs, notify);
+                final Uri customSound =
+                        msgs.isEmpty()
+                                ? null
+                                : ((Conversation) msgs.get(0).getConversation())
+                                        .getNotificationSound();
+                modifyForSoundVibrationAndLight(mBuilder, notify, preferences, customSound);
                 notify(NOTIFICATION_ID, mBuilder.build());
             } else {
                 mBuilder = buildMultipleConversation(notify);
@@ -963,13 +1044,19 @@ public class NotificationService {
                         String uuid = entry.getKey();
                         final boolean notifyThis =
                                 notifyOnlyOneChild ? conversations.contains(uuid) : notify;
-                        Builder singleBuilder =
-                                buildSingleConversations(entry.getValue(), notifyThis);
+                        final ArrayList<Message> entryMsgs = entry.getValue();
+                        Builder singleBuilder = buildSingleConversations(entryMsgs, notifyThis);
                         if (!notifyOnlyOneChild) {
                             singleBuilder.setGroupAlertBehavior(
                                     NotificationCompat.GROUP_ALERT_SUMMARY);
                         }
-                        modifyForSoundVibrationAndLight(singleBuilder, notifyThis, preferences);
+                        final Uri entryCustomSound =
+                                entryMsgs.isEmpty()
+                                        ? null
+                                        : ((Conversation) entryMsgs.get(0).getConversation())
+                                                .getNotificationSound();
+                        modifyForSoundVibrationAndLight(
+                                singleBuilder, notifyThis, preferences, entryCustomSound);
                         singleBuilder.setGroup(MESSAGES_GROUP);
                         setNotificationColor(singleBuilder);
                         notify(entry.getKey(), NOTIFICATION_ID, singleBuilder.build());
@@ -1051,6 +1138,21 @@ public class NotificationService {
         mBuilder.setDefaults(0);
         if (led) {
             mBuilder.setLights(LED_COLOR, 2000, 3000);
+        }
+    }
+
+    private void modifyForSoundVibrationAndLight(
+            final Builder mBuilder,
+            final boolean notify,
+            final SharedPreferences preferences,
+            final Uri customSound) {
+        modifyForSoundVibrationAndLight(mBuilder, notify, preferences);
+        if (notify && customSound != null && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            try {
+                mBuilder.setSound(fixRingtoneUri(customSound));
+            } catch (SecurityException e) {
+                Log.d(Config.LOGTAG, "unable to use per-contact notification sound " + customSound);
+            }
         }
     }
 
@@ -1259,7 +1361,18 @@ public class NotificationService {
 
     private Builder buildSingleConversations(
             final ArrayList<Message> messages, final boolean notify) {
-        final var channel = notify ? MESSAGES_NOTIFICATION_CHANNEL : "silent_messages";
+        final String channel;
+        if (!notify) {
+            channel = "silent_messages";
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && !messages.isEmpty()
+                && ((Conversation) messages.get(0).getConversation()).hasCustomNotificationSound()) {
+            channel =
+                    getOrCreateConversationSoundChannel(
+                            (Conversation) messages.get(0).getConversation());
+        } else {
+            channel = MESSAGES_NOTIFICATION_CHANNEL;
+        }
         final Builder notificationBuilder =
                 new NotificationCompat.Builder(mXmppConnectionService, channel);
         if (messages.isEmpty()) {
