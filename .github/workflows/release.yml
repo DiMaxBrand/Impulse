@@ -71,4 +71,4 @@ jobs:
             $PRERELEASE_FLAG \
             --title "Impulse ${{ env.VERSION }}" \
             --generate-notes \
-            "build/outputs/apk/conversationsFree/release/"*arm64-v8a*.apk
+            "build/outputs/apk/conversationsFree/release/Impulse_arm64.apk"
