@@ -45,7 +45,7 @@ android {
         val appName = "Impulse"
         buildConfigField("String", "APP_NAME", "\"$appName\"")
         base {
-            archivesName.set("com.dimax.impulse-1.7.3+2.20.0")
+            archivesName.set("Impulse")
         }
     }
 
@@ -146,11 +146,22 @@ afterEvaluate {
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
-            val abiCode = output.filters
+            val abiFilter = output.filters
                 .find { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }
                 ?.identifier
-                ?.let { abiCodes[it] }
+            val abiCode = abiFilter?.let { abiCodes[it] }
             output.versionCode.set(100 * baseVersionCode + (abiCode ?: 0))
+
+            if (variant.buildType == "release") {
+                val abiTag = when (abiFilter) {
+                    "arm64-v8a"   -> "arm64"
+                    "armeabi-v7a" -> "arm32"
+                    "x86_64"      -> "x64"
+                    "x86"         -> "x86"
+                    else          -> "universal"
+                }
+                output.outputFileName.set("Impulse_$abiTag.apk")
+            }
         }
     }
 }
