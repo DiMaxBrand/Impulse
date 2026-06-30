@@ -1053,7 +1053,7 @@ private fun sheetStatusText(state: UpdatesUiState): String? = when {
     state.downloadPhase == DownloadPhase.NO_WIFI_PENDING ->
         stringResource(R.string.updates_status_no_wifi_detected)
     state.downloadPhase == DownloadPhase.DOWNLOADING ->
-        stringResource(R.string.updates_status_downloading)
+        state.downloadStatusText ?: stringResource(R.string.updates_status_downloading)
     state.downloadPhase == DownloadPhase.PROCESSING ->
         stringResource(R.string.updates_status_processing)
     state.downloadPhase == DownloadPhase.READY ->
@@ -1073,6 +1073,7 @@ data class UpdatesUiState(
     val checkStatus: CheckStatus = CheckStatus.IDLE,
     val downloadPhase: DownloadPhase = DownloadPhase.IDLE,
     val downloadProgress: Float = 0f,
+    val downloadStatusText: String? = null,
     val cancelConfirmVisible: Boolean = false,
     val pendingVersion: String? = null,
     val showInstallCard: Boolean = false,

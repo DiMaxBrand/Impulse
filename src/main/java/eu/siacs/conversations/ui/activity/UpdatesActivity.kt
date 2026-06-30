@@ -219,10 +219,11 @@ class UpdatesActivity : ActionBarActivity() {
                         uiState = uiState.copy(
                             downloadPhase = DownloadPhase.DOWNLOADING,
                             downloadProgress = progress.fraction,
+                            downloadStatusText = progress.statusText,
                         )
                     }
                     is UpdateDownloader.DownloadProgress.Complete -> {
-                        uiState = uiState.copy(downloadPhase = DownloadPhase.PROCESSING)
+                        uiState = uiState.copy(downloadPhase = DownloadPhase.PROCESSING, downloadStatusText = null)
                         prefs.downloadedVersion = prefs.pendingUpdateVersion
                         prefs.downloadedApkPath = progress.localUri
                         prefs.activeDownloadId = -1L
@@ -233,8 +234,13 @@ class UpdatesActivity : ActionBarActivity() {
                         break
                     }
                     is UpdateDownloader.DownloadProgress.Failed -> {
-                        uiState = uiState.copy(downloadPhase = DownloadPhase.IDLE)
+                        uiState = uiState.copy(
+                            downloadPhase = DownloadPhase.DOWNLOADING,
+                            downloadStatusText = progress.reasonText,
+                        )
                         prefs.activeDownloadId = -1L
+                        delay(4000)
+                        uiState = uiState.copy(downloadPhase = DownloadPhase.IDLE, downloadStatusText = null)
                         break
                     }
                     else -> Unit

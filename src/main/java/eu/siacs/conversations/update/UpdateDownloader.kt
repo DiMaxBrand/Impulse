@@ -43,20 +43,42 @@ object UpdateDownloader {
         dm.query(query).use { cursor ->
             if (!cursor.moveToFirst()) return DownloadProgress.Unknown
             val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
             val downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
             val total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+            val fraction = if (total > 0) downloaded.toFloat() / total.toFloat() else 0f
             return when (status) {
-                DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PAUSED ->
-                    if (total > 0) DownloadProgress.InProgress(downloaded.toFloat() / total.toFloat())
-                    else DownloadProgress.InProgress(0f)
+                DownloadManager.STATUS_RUNNING -> DownloadProgress.InProgress(fraction, statusText = null)
+                DownloadManager.STATUS_PENDING -> DownloadProgress.InProgress(fraction, statusText = "Queued…")
+                DownloadManager.STATUS_PAUSED ->
+                    DownloadProgress.InProgress(fraction, statusText = pausedReasonText(reason))
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     val localUri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI))
                     DownloadProgress.Complete(localUri)
                 }
-                DownloadManager.STATUS_FAILED -> DownloadProgress.Failed
+                DownloadManager.STATUS_FAILED -> DownloadProgress.Failed(failedReasonText(reason))
                 else -> DownloadProgress.Unknown
             }
         }
+    }
+
+    private fun pausedReasonText(reason: Int): String = when (reason) {
+        DownloadManager.PAUSED_WAITING_FOR_NETWORK -> "Waiting for network…"
+        DownloadManager.PAUSED_WAITING_TO_RETRY -> "Connection lost, retrying…"
+        DownloadManager.PAUSED_QUEUED_FOR_WIFI -> "Waiting for Wi-Fi…"
+        DownloadManager.PAUSED_UNKNOWN -> "Paused…"
+        else -> "Paused…"
+    }
+
+    private fun failedReasonText(reason: Int): String = when (reason) {
+        DownloadManager.ERROR_INSUFFICIENT_SPACE -> "Not enough storage space"
+        DownloadManager.ERROR_DEVICE_NOT_FOUND -> "Storage not available"
+        DownloadManager.ERROR_CANNOT_RESUME -> "Connection interrupted, couldn't resume"
+        DownloadManager.ERROR_HTTP_DATA_ERROR -> "Network error"
+        DownloadManager.ERROR_TOO_MANY_REDIRECTS -> "Server redirect error"
+        DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> "Server error"
+        DownloadManager.ERROR_FILE_ERROR -> "File error"
+        else -> "Download failed"
     }
 
     fun installApk(context: Context, filePath: String) {
@@ -71,9 +93,9 @@ object UpdateDownloader {
     }
 
     sealed class DownloadProgress {
-        data class InProgress(val fraction: Float) : DownloadProgress()
+        data class InProgress(val fraction: Float, val statusText: String? = null) : DownloadProgress()
         data class Complete(val localUri: String) : DownloadProgress()
-        object Failed : DownloadProgress()
+        data class Failed(val reasonText: String = "Download failed") : DownloadProgress()
         object Unknown : DownloadProgress()
     }
 }
