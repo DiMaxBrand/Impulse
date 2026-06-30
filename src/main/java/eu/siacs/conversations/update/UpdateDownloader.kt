@@ -48,15 +48,21 @@ object UpdateDownloader {
             val total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
             val fraction = if (total > 0) downloaded.toFloat() / total.toFloat() else 0f
             return when (status) {
-                DownloadManager.STATUS_RUNNING -> DownloadProgress.InProgress(fraction, statusText = null)
-                DownloadManager.STATUS_PENDING -> DownloadProgress.InProgress(fraction, statusText = "Queued…")
+                DownloadManager.STATUS_RUNNING ->
+                    DownloadProgress.InProgress(fraction, statusText = debugSuffix(status, reason))
+                DownloadManager.STATUS_PENDING ->
+                    DownloadProgress.InProgress(fraction, statusText = "Queued…" + debugSuffix(status, reason))
                 DownloadManager.STATUS_PAUSED ->
-                    DownloadProgress.InProgress(fraction, statusText = pausedReasonText(reason))
+                    DownloadProgress.InProgress(
+                        fraction,
+                        statusText = pausedReasonText(reason) + debugSuffix(status, reason),
+                    )
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     val localUri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI))
                     DownloadProgress.Complete(localUri)
                 }
-                DownloadManager.STATUS_FAILED -> DownloadProgress.Failed(failedReasonText(reason))
+                DownloadManager.STATUS_FAILED ->
+                    DownloadProgress.Failed(failedReasonText(reason) + debugSuffix(status, reason))
                 else -> DownloadProgress.Unknown
             }
         }
@@ -79,6 +85,37 @@ object UpdateDownloader {
         DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> "Server error"
         DownloadManager.ERROR_FILE_ERROR -> "File error"
         else -> "Download failed"
+    }
+
+    // TEMPORARY — debug instrumentation to see DownloadManager's raw status/reason codes
+    // while diagnosing the mobile-data stall. Safe to remove once the root cause is found.
+    private fun debugSuffix(status: Int, reason: Int): String {
+        val statusName = when (status) {
+            DownloadManager.STATUS_PENDING -> "STATUS_PENDING"
+            DownloadManager.STATUS_RUNNING -> "STATUS_RUNNING"
+            DownloadManager.STATUS_PAUSED -> "STATUS_PAUSED"
+            DownloadManager.STATUS_SUCCESSFUL -> "STATUS_SUCCESSFUL"
+            DownloadManager.STATUS_FAILED -> "STATUS_FAILED"
+            else -> "STATUS_UNKNOWN($status)"
+        }
+        val reasonName = when (reason) {
+            DownloadManager.PAUSED_WAITING_TO_RETRY -> "PAUSED_WAITING_TO_RETRY"
+            DownloadManager.PAUSED_WAITING_FOR_NETWORK -> "PAUSED_WAITING_FOR_NETWORK"
+            DownloadManager.PAUSED_QUEUED_FOR_WIFI -> "PAUSED_QUEUED_FOR_WIFI"
+            DownloadManager.PAUSED_UNKNOWN -> "PAUSED_UNKNOWN"
+            DownloadManager.ERROR_UNKNOWN -> "ERROR_UNKNOWN"
+            DownloadManager.ERROR_FILE_ERROR -> "ERROR_FILE_ERROR"
+            DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> "ERROR_UNHANDLED_HTTP_CODE"
+            DownloadManager.ERROR_HTTP_DATA_ERROR -> "ERROR_HTTP_DATA_ERROR"
+            DownloadManager.ERROR_TOO_MANY_REDIRECTS -> "ERROR_TOO_MANY_REDIRECTS"
+            DownloadManager.ERROR_INSUFFICIENT_SPACE -> "ERROR_INSUFFICIENT_SPACE"
+            DownloadManager.ERROR_DEVICE_NOT_FOUND -> "ERROR_DEVICE_NOT_FOUND"
+            DownloadManager.ERROR_CANNOT_RESUME -> "ERROR_CANNOT_RESUME"
+            DownloadManager.ERROR_FILE_ALREADY_EXISTS -> "ERROR_FILE_ALREADY_EXISTS"
+            0 -> null
+            else -> "reason=$reason"
+        }
+        return if (reasonName != null) " [$statusName/$reasonName]" else " [$statusName]"
     }
 
     fun installApk(context: Context, filePath: String) {
