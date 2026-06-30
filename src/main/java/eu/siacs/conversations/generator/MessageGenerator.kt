@@ -138,7 +138,7 @@ class MessageGenerator(service: XmppConnectionService) : AbstractGenerator(servi
         }
         val retract = Retract()
         val retractId = if (conversation.getMode() == Conversational.MODE_SINGLE && !message.isPrivateMessage)
-            message.getUuid()
+            if (message.edited()) message.editedIdWireFormat else message.getUuid()
         else
             message.serverMsgId ?: message.getUuid()
         retract.setAttribute("id", retractId)
