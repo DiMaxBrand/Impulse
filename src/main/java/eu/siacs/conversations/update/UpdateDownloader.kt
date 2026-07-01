@@ -19,30 +19,30 @@ object UpdateDownloader {
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 
+    // Update APKs live in their own subfolder, exclusive to this feature — never shared with
+    // received attachments or anything else — so it can be wiped wholesale without risk.
+    const val UPDATES_SUBDIR = "impulse_updates"
+
     fun startDownload(context: Context, info: UpdateInfo): Long {
-        deleteStaleDownload(context, info.versionName)
-        val fileName = "impulse-update-${info.versionName}.apk"
+        wipeUpdatesDir(context)
+        val subPath = "$UPDATES_SUBDIR/impulse-update-${info.versionName}.apk"
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.downloadUrl))
             .setTitle("Impulse ${info.versionName}")
             .setDescription("Downloading update…")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-            .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)
+            .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, subPath)
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(false)
         return dm.enqueue(request)
     }
 
-    // Deletes a previously-downloaded APK left over from an earlier version (or an earlier,
-    // superseded download of the same version) so files don't silently pile up on disk —
-    // DownloadManager renames rather than overwrites when the destination filename collides.
-    private fun deleteStaleDownload(context: Context, newVersionName: String) {
-        val prefs = UpdatePreferences(context)
-        val stalePath = prefs.downloadedApkPath ?: return
-        if (prefs.downloadedVersion == newVersionName) return
-        val file = File(Uri.parse(stalePath).path ?: stalePath)
-        if (file.exists()) file.delete()
-        prefs.clearDownload()
+    // Wipes every file in the dedicated updates subfolder before starting a new download — the
+    // folder holds nothing but our own APKs, so a full wipe is always safe.
+    private fun wipeUpdatesDir(context: Context) {
+        val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), UPDATES_SUBDIR)
+        dir.listFiles()?.forEach { it.delete() }
+        UpdatePreferences(context).clearDownload()
     }
 
     fun cancelDownload(context: Context, downloadId: Long) {
