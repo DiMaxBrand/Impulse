@@ -164,7 +164,15 @@ class UpdatesActivity : ActionBarActivity() {
                     pendingInfo = info
                     prefs.pendingUpdateVersion = info.versionName
                     prefs.pendingUpdateUrl = info.downloadUrl
-                    if (UpdateDownloader.isWifiConnected(this@UpdatesActivity)) {
+                    if (info.versionName == prefs.downloadedVersion && prefs.downloadedApkExists()) {
+                        // Already downloaded in full — go straight to install, don't refetch.
+                        uiState = uiState.copy(
+                            checkStatus = CheckStatus.UPDATE_AVAILABLE,
+                            downloadPhase = DownloadPhase.READY,
+                            pendingVersion = info.versionName,
+                            showUpdateSheet = true,
+                        )
+                    } else if (UpdateDownloader.isWifiConnected(this@UpdatesActivity)) {
                         prefs.pendingNoWifi = false
                         uiState = uiState.copy(
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,

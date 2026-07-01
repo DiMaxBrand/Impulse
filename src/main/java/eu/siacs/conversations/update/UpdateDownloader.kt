@@ -20,6 +20,7 @@ object UpdateDownloader {
     }
 
     fun startDownload(context: Context, info: UpdateInfo): Long {
+        deleteStaleDownload(context, info.versionName)
         val fileName = "impulse-update-${info.versionName}.apk"
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.downloadUrl))
@@ -30,6 +31,18 @@ object UpdateDownloader {
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(false)
         return dm.enqueue(request)
+    }
+
+    // Deletes a previously-downloaded APK left over from an earlier version (or an earlier,
+    // superseded download of the same version) so files don't silently pile up on disk —
+    // DownloadManager renames rather than overwrites when the destination filename collides.
+    private fun deleteStaleDownload(context: Context, newVersionName: String) {
+        val prefs = UpdatePreferences(context)
+        val stalePath = prefs.downloadedApkPath ?: return
+        if (prefs.downloadedVersion == newVersionName) return
+        val file = File(Uri.parse(stalePath).path ?: stalePath)
+        if (file.exists()) file.delete()
+        prefs.clearDownload()
     }
 
     fun cancelDownload(context: Context, downloadId: Long) {
