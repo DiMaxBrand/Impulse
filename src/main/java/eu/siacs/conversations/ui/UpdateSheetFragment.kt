@@ -65,7 +65,7 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
         if (!installInitiated) {
-            prefs.sheetDismissedUntil = System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000
+            prefs.sheetDismissedUntil = System.currentTimeMillis() + 24 * 60 * 60 * 1000
         }
     }
 
