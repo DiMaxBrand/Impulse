@@ -260,6 +260,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 highlightInConference(nick)
             }
         }
+        if (ConversationsActivity.POST_ACTION_RECORD_VOICE ==
+            extras.getString(ConversationsActivity.EXTRA_POST_INIT_ACTION)
+        ) {
+            onStartRecording()
+        }
         refreshMessages()
         markRead()
     }
