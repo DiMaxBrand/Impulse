@@ -3189,6 +3189,16 @@ private fun RecordingBar(
     }
 }
 
+// When the user types a single "." at the end of the message with a letter right before it,
+// auto-append a space — same "forgot to hit space after the period" convenience other
+// messengers offer. Skipped after a digit (decimals like 3.14) or another dot (ellipses).
+private fun autoSpaceAfterPeriod(old: String, new: String): String {
+    if (new.length != old.length + 1 || !new.endsWith(".") || new != "$old.") return new
+    val before = old.lastOrNull() ?: return new
+    if (!before.isLetter()) return new
+    return "$new "
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
@@ -3374,8 +3384,9 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     BasicTextField(
                         value = text,
                         onValueChange = {
-                            state.setInput(it)
-                            listener.onInputChanged(it)
+                            val autoSpaced = autoSpaceAfterPeriod(text, it)
+                            state.setInput(autoSpaced)
+                            listener.onInputChanged(autoSpaced)
                         },
                         textStyle =
                             LocalTextStyle.current.copy(
