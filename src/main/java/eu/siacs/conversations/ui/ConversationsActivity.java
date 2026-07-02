@@ -199,23 +199,13 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         if (appSettings.isNotificationSetupDone()) return;
         binding.getRoot().postDelayed(() -> {
             if (isFinishing() || isDestroyed()) return;
-            final android.app.NotificationManager nm =
-                    getSystemService(android.app.NotificationManager.class);
-            final android.app.NotificationChannel messages =
-                    nm != null ? nm.getNotificationChannel("messages") : null;
-            final android.app.NotificationChannel calls =
-                    nm != null ? nm.getNotificationChannel("incoming_calls_channel#0") : null;
-            final android.net.Uri mSound = messages != null ? messages.getSound() : null;
-            final android.net.Uri cSound = calls != null ? calls.getSound() : null;
             String hyperOsProp = "";
             try {
                 final Class<?> sp = Class.forName("android.os.SystemProperties");
                 final java.lang.reflect.Method get = sp.getMethod("get", String.class, String.class);
                 hyperOsProp = (String) get.invoke(null, "ro.mi.os.version.name", "");
             } catch (final Exception ignored) {}
-            final String msg = "messages: " + mSound + " | calls: " + cSound
-                    + " | hyperos: \"" + hyperOsProp + "\"";
-            Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "hyperos: \"" + hyperOsProp + "\"", Toast.LENGTH_LONG).show();
             startActivity(new Intent(this, NotificationSetupActivity.class));
         }, 2000);
     }
