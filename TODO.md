@@ -12,6 +12,27 @@
 
 - [x] Merge `java-to-kotlin` branch into `dev` (277 Java → Kotlin conversions).
 
+## Developer options
+
+Hidden behind a three-finger tap on the version row in Settings > About.
+Currently implemented: reset update-sheet pause timer. Backlog:
+
+- [ ] **Update system**
+  - [ ] Force a channel check right now, bypassing the weekly `UpdateCheckWorker` schedule
+  - [ ] Simulate a paused/failed download state (fake `STATUS_PAUSED`/`STATUS_FAILED` + reason code) to preview status text without needing real bad network conditions
+  - [ ] Read-only dump of all `UpdatePreferences` values (`activeDownloadId`, `downloadedApkPath`, `sheetDismissedUntil`, `pendingNoWifi`, etc.)
+  - [ ] Force-run `ApkCleanupWorker` immediately instead of waiting for midnight
+  - [ ] Show WorkManager's next-run time for `UpdateCheckWorker`/`ApkCleanupWorker` to confirm they're actually scheduled
+- [ ] **Re-arm one-shot prompts** (currently only resettable via a full app-data wipe)
+  - [ ] Reset the battery-optimization dialog flag
+  - [ ] Reset the notification-permission request flag
+  - [ ] Reset `hasInstalledUpdate` (the "first update" flag)
+- [ ] **Crash/diagnostics**
+  - [ ] Trigger a test crash, to confirm the crash-reporting pipeline reaches `support@on-chat.ru` end to end
+  - [ ] One-tap "copy debug info" (version name/code, DB schema version, device model, Android version) for bug reports
+- [ ] **Storage**
+  - [ ] Cache/media size breakdown with a clear button per category (avatars, attachments, etc.)
+
 ## General
 
 - [ ] **Voice message transcription** — on-demand, on-device via ML Kit Speech Recognition (`com.google.mlkit:speech-recognition`). Tap a "transcribe" button on the audio bubble → POST the downloaded `.ogg`/`.m4a` to the on-device model → store result in a new `transcript TEXT` column on the message → display below the waveform. Model (~80 MB) is downloaded on demand, no API key needed. Same ML Kit family as subject segmentation already used for 3D avatars.

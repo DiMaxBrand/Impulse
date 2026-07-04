@@ -372,6 +372,9 @@
             android:name=".ui.activity.UpdatesActivity"
             android:parentActivityName=".ui.activity.SettingsActivity" />
         <activity
+            android:name=".ui.activity.DeveloperOptionsActivity"
+            android:parentActivityName=".ui.AboutActivity" />
+        <activity
             android:name=".ui.AboutActivity"
             android:parentActivityName=".ui.activity.SettingsActivity">
             <meta-data
