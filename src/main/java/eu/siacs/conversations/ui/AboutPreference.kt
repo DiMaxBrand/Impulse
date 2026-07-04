@@ -3,6 +3,8 @@ package eu.siacs.conversations.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -13,14 +15,6 @@ import eu.siacs.conversations.ui.activity.DeveloperOptionsActivity
 
 @Suppress("DEPRECATION")
 class AboutPreference : android.preference.Preference {
-    // Hidden entry point: a genuine two-finger tap (not a tap count, not a long-press — both
-    // already mean something else in the app) on this row opens Developer Options. Three
-    // fingers was the original idea but many OEM skins (Samsung OneUI among them) intercept
-    // three-finger touches system-wide for screenshot capture before the app ever sees them.
-    // Consuming the gesture once triggered stops the normal single-tap click from also firing
-    // and opening AboutActivity.
-    private var developerGestureTriggered = false
-
     constructor(context: Context, attrs: AttributeSet?, defStyle: Int) : super(context, attrs, defStyle) {
         setSummaryAndTitle(context)
     }
@@ -41,27 +35,33 @@ class AboutPreference : android.preference.Preference {
         title = context.getString(R.string.title_activity_about_x, appName)
     }
 
+    // Hidden entry point: holding this row for DEVELOPER_HOLD_MS opens Developer Options.
+    // Multi-finger taps were tried first but proved unreliable — the very first finger's
+    // touchdown already arms the enclosing ListView's own click detection (that's the gray
+    // ripple), so by the time a second or third pointer lands it's often too late to override.
+    // A custom-duration hold uses the platform's real long-press machinery instead of fighting
+    // the list's touch handling, and 3s is deliberately longer than a normal long-press so it
+    // doesn't fire by accident. Long-press has no existing meaning on this specific screen —
+    // it's only used elsewhere, in the conversation view.
     override fun onBindView(view: View) {
         super.onBindView(view)
+        val handler = Handler(Looper.getMainLooper())
+        var triggered = false
+        val holdRunnable = Runnable {
+            triggered = true
+            view.context.startActivity(Intent(view.context, DeveloperOptionsActivity::class.java))
+        }
         view.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    developerGestureTriggered = false
+                    triggered = false
+                    handler.postDelayed(holdRunnable, DEVELOPER_HOLD_MS)
                     false
                 }
-                MotionEvent.ACTION_POINTER_DOWN -> {
-                    if (event.pointerCount >= 2 && !developerGestureTriggered) {
-                        developerGestureTriggered = true
-                        view.context.startActivity(
-                            Intent(view.context, DeveloperOptionsActivity::class.java)
-                        )
-                        true
-                    } else {
-                        false
-                    }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(holdRunnable)
+                    triggered
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
-                    developerGestureTriggered
                 else -> false
             }
         }
@@ -70,5 +70,9 @@ class AboutPreference : android.preference.Preference {
     override fun onClick() {
         super.onClick()
         context.startActivity(Intent(context, AboutActivity::class.java))
+    }
+
+    companion object {
+        private const val DEVELOPER_HOLD_MS = 3000L
     }
 }

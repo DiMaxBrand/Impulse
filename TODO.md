@@ -14,9 +14,11 @@
 
 ## Developer options
 
-Hidden behind a two-finger tap on the version row in Settings > About
-(three-finger was tried first, but many OEM skins intercept that
-system-wide for screenshot capture).
+Hidden behind a 3-second hold on the version row in Settings > About.
+Multi-finger taps were tried first (three, then two) but proved
+unreliable on the legacy Preference/ListView row — the first finger's
+touchdown already arms the list's own click detection before
+additional pointers register.
 Currently implemented: reset update-sheet pause timer. Backlog:
 
 - [ ] **Update system**
