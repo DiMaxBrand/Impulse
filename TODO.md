@@ -14,7 +14,9 @@
 
 ## Developer options
 
-Hidden behind a three-finger tap on the version row in Settings > About.
+Hidden behind a two-finger tap on the version row in Settings > About
+(three-finger was tried first, but many OEM skins intercept that
+system-wide for screenshot capture).
 Currently implemented: reset update-sheet pause timer. Backlog:
 
 - [ ] **Update system**

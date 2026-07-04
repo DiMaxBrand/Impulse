@@ -13,10 +13,12 @@ import eu.siacs.conversations.ui.activity.DeveloperOptionsActivity
 
 @Suppress("DEPRECATION")
 class AboutPreference : android.preference.Preference {
-    // Hidden entry point: a genuine three-finger tap (not a tap count, not a long-press —
-    // both of those are already used elsewhere in the app) on this row opens Developer
-    // Options. Consuming the gesture once triggered stops the normal single-tap click from
-    // also firing and opening AboutActivity.
+    // Hidden entry point: a genuine two-finger tap (not a tap count, not a long-press — both
+    // already mean something else in the app) on this row opens Developer Options. Three
+    // fingers was the original idea but many OEM skins (Samsung OneUI among them) intercept
+    // three-finger touches system-wide for screenshot capture before the app ever sees them.
+    // Consuming the gesture once triggered stops the normal single-tap click from also firing
+    // and opening AboutActivity.
     private var developerGestureTriggered = false
 
     constructor(context: Context, attrs: AttributeSet?, defStyle: Int) : super(context, attrs, defStyle) {
@@ -48,7 +50,7 @@ class AboutPreference : android.preference.Preference {
                     false
                 }
                 MotionEvent.ACTION_POINTER_DOWN -> {
-                    if (event.pointerCount >= 3 && !developerGestureTriggered) {
+                    if (event.pointerCount >= 2 && !developerGestureTriggered) {
                         developerGestureTriggered = true
                         view.context.startActivity(
                             Intent(view.context, DeveloperOptionsActivity::class.java)
