@@ -3508,11 +3508,10 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 }
                 // Mic → send morph: the mic capsule sits on the left with its stand/base on
                 // the right; rotated 90° counter-clockwise, that silhouette roughly lines up
-                // with the send icon's shape (wide part left, tapered point right). The turn
-                // happens first while fully opaque; only once it completes does the crossfade
-                // begin — doing both at once made the icon look messy mid-rotation. Both
-                // rotation and alpha are driven manually (not AnimatedContent's built-in
-                // fade) so they can be sequenced instead of overlapping.
+                // with the send icon's shape (wide part left, tapered point right). Rotation
+                // and crossfade run concurrently, both starting at 0ms. Both rotation and
+                // alpha are driven manually (not AnimatedContent's built-in fade) so their
+                // timing can be tuned independently.
                 AnimatedContent(
                     targetState = iconRes,
                     transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
@@ -3523,9 +3522,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     // exiting turns clockwise (mic → send), while send/done exiting turns
                     // counter-clockwise (send → mic).
                     val exitRotation = if (targetIcon == R.drawable.ic_mic_24dp) 90f else -90f
-                    // M3 Expressive DefaultSpatial spring (380f/0.8f) for the turn; alpha's
-                    // delay is an estimate of that spring's settling time for a 90° change,
-                    // since springs (unlike tween) have no fixed duration to key off of.
+                    // M3 Expressive DefaultSpatial spring (380f/0.8f) for the turn.
                     val rotation by
                         this.transition.animateFloat(
                             label = "iconRotation",
@@ -3536,7 +3533,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     val iconAlpha by
                         this.transition.animateFloat(
                             label = "iconAlpha",
-                            transitionSpec = { tween(durationMillis = 200, delayMillis = 300) },
+                            transitionSpec = { tween(durationMillis = 200) },
                         ) { state ->
                             if (isExiting) {
                                 if (state == EnterExitState.PostExit) 0f else 1f
