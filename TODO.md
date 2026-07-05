@@ -11,14 +11,18 @@
 ## Refactoring
 
 - [x] Merge `java-to-kotlin` branch into `dev` (277 Java → Kotlin conversions).
+- [ ] **Composer input state: `String` → `TextFieldValue`** — `autoSpaceAfterPeriod()` in `ConversationScreen.kt` (auto-inserts a space after a typed `.`) fires unreliably: it needs an exact one-character diff between `onValueChange` calls, but predictive keyboards buffer recently-typed text in an uncommitted IME "composing" region and only flush it to the field on their own schedule — not necessarily one keystroke at a time. Observed effects: the space sometimes only appears bundled with the *next* typed letter instead of immediately after the period, and behavior differs by keyboard language subtype (reported: works with a delay for one script, not at all for another). `inputText` is a plain `MutableState<String>` and `BasicTextField` uses the `String`-only overload, which has zero visibility into composing state. Fix is switching to the `TextFieldValue` overload (exposes `composition: TextRange?`, so the transform can defer until text is actually committed) — a real refactor since `setInput`/`getInput` are called from a dozen-plus places (replies, corrections, quoting, mention highlighting, draft restore). Needs live testing across keyboards/languages to verify, not something confirmable from code alone.
 
 ## Developer options
 
-Hidden behind a 3-second hold on the version row in Settings > About.
-Multi-finger taps were tried first (three, then two) but proved
-unreliable on the legacy Preference/ListView row — the first finger's
-touchdown already arms the list's own click detection before
-additional pointers register.
+Hidden behind a long-press on the version row in Settings > About.
+Multi-finger taps (three, then two) and a custom 3-second hold were
+all tried first but proved unreliable on the legacy Preference/ListView
+row: the first finger's touchdown already arms the list's own click
+detection before additional pointers register, and the list's own
+long-press gesture detector cancels any custom-duration touch tracking
+at the standard ~500ms threshold. Standard `setOnLongClickListener`
+is the one gesture this widget is actually built to cooperate with.
 Currently implemented: reset update-sheet pause timer. Backlog:
 
 - [ ] **Update system**
