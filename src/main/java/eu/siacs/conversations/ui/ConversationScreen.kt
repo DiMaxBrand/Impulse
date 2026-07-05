@@ -3268,12 +3268,11 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         AnimatedContent(
             targetState = recording is RecordingUiState.Active,
             transitionSpec = {
+                // M3 Expressive DefaultSpatial spring (380f/0.8f) for the width interpolation;
+                // fade duration stays an explicit 1s tween since a spring has no fixed duration.
                 (fadeIn(tween(1000)) togetherWith fadeOut(tween(1000))).using(
                     SizeTransform(clip = false) { _, _ ->
-                        spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMedium,
-                        )
+                        spring(stiffness = 380f, dampingRatio = 0.8f)
                     }
                 )
             },
@@ -3295,26 +3294,22 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
             AnimatedContent(
                 targetState = attachMenuOpen,
                 transitionSpec = {
+                    // M3 Expressive DefaultSpatial spring (380f/0.8f) throughout.
                     ContentTransform(
                         targetContentEnter =
                             expandHorizontally(
                                 expandFrom = Alignment.Start,
-                                animationSpec =
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessMedium,
-                                    ),
+                                animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
                             ) + fadeIn(),
                         initialContentExit =
                             shrinkHorizontally(
                                 shrinkTowards = Alignment.Start,
-                                animationSpec =
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium,
-                                    ),
+                                animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
                             ) + fadeOut(),
-                        sizeTransform = SizeTransform(clip = false),
+                        sizeTransform =
+                            SizeTransform(clip = false) { _, _ ->
+                                spring(stiffness = 380f, dampingRatio = 0.8f)
+                            },
                     )
                 },
                 label = "attachTransform",
@@ -3466,15 +3461,14 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
             }
 
             // Morphing send button: rounded square at rest, springs to a pill once there
-            // is something to send.
+            // is something to send. M3 Expressive DefaultSpatial spring (380f/0.8f).
             val corner by
                 androidx.compose.animation.core.animateDpAsState(
                     targetValue = if (hasText) 24.dp else 14.dp,
                     animationSpec =
                         androidx.compose.animation.core.spring(
-                            dampingRatio =
-                                androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                            stiffness = androidx.compose.animation.core.Spring.StiffnessMedium,
+                            stiffness = 380f,
+                            dampingRatio = 0.8f,
                         ),
                     label = "sendCorner",
                 )
@@ -3525,17 +3519,20 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     // exiting turns clockwise (mic → send), while send/done exiting turns
                     // counter-clockwise (send → mic).
                     val exitRotation = if (targetIcon == R.drawable.ic_mic_24dp) 90f else -90f
+                    // M3 Expressive DefaultSpatial spring (380f/0.8f) for the turn; alpha's
+                    // delay is an estimate of that spring's settling time for a 90° change,
+                    // since springs (unlike tween) have no fixed duration to key off of.
                     val rotation by
                         this.transition.animateFloat(
                             label = "iconRotation",
-                            transitionSpec = { tween(durationMillis = 150) },
+                            transitionSpec = { spring(stiffness = 380f, dampingRatio = 0.8f) },
                         ) { state ->
                             if (isExiting && state == EnterExitState.PostExit) exitRotation else 0f
                         }
                     val iconAlpha by
                         this.transition.animateFloat(
                             label = "iconAlpha",
-                            transitionSpec = { tween(durationMillis = 200, delayMillis = 150) },
+                            transitionSpec = { tween(durationMillis = 200, delayMillis = 300) },
                         ) { state ->
                             if (isExiting) {
                                 if (state == EnterExitState.PostExit) 0f else 1f
