@@ -3,10 +3,7 @@ package eu.siacs.conversations.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.util.AttributeSet
-import android.view.MotionEvent
 import android.view.View
 import com.google.common.base.Strings
 import eu.siacs.conversations.BuildConfig
@@ -35,44 +32,24 @@ class AboutPreference : android.preference.Preference {
         title = context.getString(R.string.title_activity_about_x, appName)
     }
 
-    // Hidden entry point: holding this row for DEVELOPER_HOLD_MS opens Developer Options.
-    // Multi-finger taps were tried first but proved unreliable — the very first finger's
-    // touchdown already arms the enclosing ListView's own click detection (that's the gray
-    // ripple), so by the time a second or third pointer lands it's often too late to override.
-    // A custom-duration hold uses the platform's real long-press machinery instead of fighting
-    // the list's touch handling, and 3s is deliberately longer than a normal long-press so it
-    // doesn't fire by accident. Long-press has no existing meaning on this specific screen —
-    // it's only used elsewhere, in the conversation view.
+    // Hidden entry point: long-pressing this row opens Developer Options. Two earlier attempts
+    // failed for reasons rooted in this legacy ListView-hosted row's own built-in gesture
+    // handling: multi-finger taps got armed-and-committed by the list's click detection before
+    // a second/third pointer registered, and a custom 3-second hold via raw touch tracking got
+    // cancelled by the list's own long-press detector at the standard ~500ms threshold (which
+    // sends ACTION_CANCEL to the child view once it claims the gesture for itself). Using the
+    // platform's real setOnLongClickListener works because it's the one gesture this widget is
+    // actually built to cooperate with, rather than fighting its internals further.
     override fun onBindView(view: View) {
         super.onBindView(view)
-        val handler = Handler(Looper.getMainLooper())
-        var triggered = false
-        val holdRunnable = Runnable {
-            triggered = true
-            view.context.startActivity(Intent(view.context, DeveloperOptionsActivity::class.java))
-        }
-        view.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    triggered = false
-                    handler.postDelayed(holdRunnable, DEVELOPER_HOLD_MS)
-                    false
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    handler.removeCallbacks(holdRunnable)
-                    triggered
-                }
-                else -> false
-            }
+        view.setOnLongClickListener {
+            it.context.startActivity(Intent(it.context, DeveloperOptionsActivity::class.java))
+            true
         }
     }
 
     override fun onClick() {
         super.onClick()
         context.startActivity(Intent(context, AboutActivity::class.java))
-    }
-
-    companion object {
-        private const val DEVELOPER_HOLD_MS = 3000L
     }
 }
