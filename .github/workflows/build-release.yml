@@ -38,5 +38,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: impulse-release
-          path: build/outputs/apk/conversationsFree/release/*arm64-v8a*.apk
+          path: build/outputs/apk/conversationsFree/release/Impulse_arm64.apk
           retention-days: 14
