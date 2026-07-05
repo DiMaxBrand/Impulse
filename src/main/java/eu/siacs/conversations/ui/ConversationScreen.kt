@@ -10,6 +10,7 @@ import android.widget.EditText
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
@@ -3501,24 +3502,41 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     ),
                 modifier = Modifier.size(48.dp),
             ) {
-                Icon(
-                    painter =
-                        painterResource(
-                            when {
-                                showMic -> R.drawable.ic_mic_24dp
-                                correcting -> R.drawable.ic_done_24dp
-                                conversation != null &&
-                                    conversation.nextEncryption != Message.ENCRYPTION_NONE ->
-                                    R.drawable.ic_send_encrypted_24dp
-                                else -> R.drawable.ic_send_24dp
-                            }
-                        ),
-                    contentDescription =
-                        stringResource(
-                            if (showMic) R.string.attachment_choice_recording
-                            else R.string.send_message
-                        ),
-                )
+                val iconRes = when {
+                    showMic -> R.drawable.ic_mic_24dp
+                    correcting -> R.drawable.ic_done_24dp
+                    conversation != null &&
+                        conversation.nextEncryption != Message.ENCRYPTION_NONE ->
+                        R.drawable.ic_send_encrypted_24dp
+                    else -> R.drawable.ic_send_24dp
+                }
+                // Mic → send morph: the mic capsule sits on the left with its stand/base on
+                // the right; rotated 90° clockwise, that silhouette roughly lines up with the
+                // send icon's shape (wide part left, tapered point right). So only the
+                // *exiting* icon rotates 0→90° as it fades out — the incoming icon holds still
+                // at its resting orientation — making a fast (<250ms) crossfade read as the mic
+                // spinning into the paper plane rather than two unrelated shapes blending.
+                AnimatedContent(
+                    targetState = iconRes,
+                    transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(220)) },
+                    label = "micSendIconMorph",
+                ) { targetIcon ->
+                    val isExiting = targetIcon != iconRes
+                    val rotation by
+                        this.transition.animateFloat(label = "iconRotation") { state ->
+                            if (isExiting && state == EnterExitState.PostExit) 90f else 0f
+                        }
+                    Icon(
+                        painter = painterResource(targetIcon),
+                        contentDescription =
+                            stringResource(
+                                if (targetIcon == R.drawable.ic_mic_24dp)
+                                    R.string.attachment_choice_recording
+                                else R.string.send_message
+                            ),
+                        modifier = Modifier.graphicsLayer { rotationZ = rotation },
+                    )
+                }
             }
         }
         } // end else (not recording)
