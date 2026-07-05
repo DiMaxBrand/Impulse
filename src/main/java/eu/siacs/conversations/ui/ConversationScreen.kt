@@ -3535,10 +3535,9 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 ) { targetIcon ->
                     val isExiting = targetIcon != iconRes
                     // Direction depends on which icon is leaving, not a uniform sign: the mic
-                    // exiting turns counter-clockwise (mic → send), while send/done exiting
-                    // turns clockwise (send → mic) — mirroring the same visual path back rather
-                    // than continuing to spin the same way in both directions.
-                    val exitRotation = if (targetIcon == R.drawable.ic_mic_24dp) -90f else 90f
+                    // exiting turns clockwise (mic → send), while send/done exiting turns
+                    // counter-clockwise (send → mic).
+                    val exitRotation = if (targetIcon == R.drawable.ic_mic_24dp) 90f else -90f
                     val rotation by
                         this.transition.animateFloat(
                             label = "iconRotation",
