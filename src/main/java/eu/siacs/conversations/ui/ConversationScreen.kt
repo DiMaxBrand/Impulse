@@ -3523,13 +3523,23 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     // exiting turns clockwise (mic → send), while send/done exiting turns
                     // counter-clockwise (send → mic).
                     val exitRotation = if (targetIcon == R.drawable.ic_mic_24dp) 90f else -90f
-                    // Experimental: high-bouncy, ~1s settle (same 380 stiffness as the M3E
-                    // token, but a low 0.2 damping ratio for a pronounced bounce) to preview
-                    // how a much slower, springier turn reads.
                     val rotation by
                         this.transition.animateFloat(
                             label = "iconRotation",
-                            transitionSpec = { spring(stiffness = 380f, dampingRatio = 0.2f) },
+                            transitionSpec = {
+                                if (exitRotation < 0f) {
+                                    // Experimental, send → mic only: the overshoot is fully
+                                    // visible before the icon disappears here, so it's safe to
+                                    // preview a much longer, high-bouncy preset spring.
+                                    spring(
+                                        dampingRatio = Spring.DampingRatioHighBouncy,
+                                        stiffness = Spring.StiffnessLow,
+                                    )
+                                } else {
+                                    // mic → send: unchanged M3 Expressive DefaultSpatial token.
+                                    spring(stiffness = 380f, dampingRatio = 0.8f)
+                                }
+                            },
                         ) { state ->
                             if (isExiting && state == EnterExitState.PostExit) exitRotation else 0f
                         }
