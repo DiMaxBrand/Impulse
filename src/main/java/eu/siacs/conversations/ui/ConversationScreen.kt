@@ -3509,9 +3509,9 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 // Mic → send morph: the mic capsule sits on the left with its stand/base on
                 // the right; rotated 90° counter-clockwise, that silhouette roughly lines up
                 // with the send icon's shape (wide part left, tapered point right). The turn
-                // happens first while fully opaque; only once it completes does the crossfade
-                // begin — doing both at once made the icon look messy mid-rotation. Both
-                // rotation and alpha are driven manually (not AnimatedContent's built-in
+                // happens first while fully opaque; only once it's almost done does the
+                // crossfade begin — doing both at once made the icon look messy mid-rotation.
+                // Both rotation and alpha are driven manually (not AnimatedContent's built-in
                 // fade) so they can be sequenced instead of overlapping.
                 AnimatedContent(
                     targetState = iconRes,
@@ -3523,9 +3523,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     // exiting turns clockwise (mic → send), while send/done exiting turns
                     // counter-clockwise (send → mic).
                     val exitRotation = if (targetIcon == R.drawable.ic_mic_24dp) 90f else -90f
-                    // M3 Expressive DefaultSpatial spring (380f/0.8f) for the turn; alpha's
-                    // delay is an estimate of that spring's settling time for a 90° change,
-                    // since springs (unlike tween) have no fixed duration to key off of.
+                    // M3 Expressive DefaultSpatial spring (380f/0.8f) for the turn.
                     val rotation by
                         this.transition.animateFloat(
                             label = "iconRotation",
@@ -3533,16 +3531,25 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                         ) { state ->
                             if (isExiting && state == EnterExitState.PostExit) exitRotation else 0f
                         }
-                    val iconAlpha by
+                    val enterAlpha by
                         this.transition.animateFloat(
-                            label = "iconAlpha",
-                            transitionSpec = { tween(durationMillis = 200, delayMillis = 300) },
-                        ) { state ->
-                            if (isExiting) {
-                                if (state == EnterExitState.PostExit) 0f else 1f
-                            } else {
-                                if (state == EnterExitState.PreEnter) 0f else 1f
-                            }
+                            label = "iconEnterAlpha",
+                            transitionSpec = { tween(durationMillis = 200) },
+                        ) { state -> if (state == EnterExitState.PreEnter) 0f else 1f }
+                    // Exiting fade waits for the turn to actually be almost done before it
+                    // starts, driven by the turn's own live progress rather than a guessed
+                    // delay — a spring has no fixed duration, so a timer can't reliably track
+                    // when it visually settles.
+                    val exitTurnProgress =
+                        if (isExiting && exitRotation != 0f) (rotation / exitRotation).coerceIn(0f, 1f)
+                        else 0f
+                    val holdUntil = 0.75f
+                    val iconAlpha =
+                        if (isExiting) {
+                            if (exitTurnProgress < holdUntil) 1f
+                            else 1f - (exitTurnProgress - holdUntil) / (1f - holdUntil)
+                        } else {
+                            enterAlpha
                         }
                     // Same clockwise exit the mic uses when morphing into send, but driven by
                     // the outer row's own transition so tapping mic to start a recording turns
