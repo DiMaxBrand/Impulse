@@ -3263,14 +3263,14 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         }
         // Mic → recording bar container transform. A plain crossfade — trying to anchor the
         // expand/shrink to a specific edge (matching the mic button's position) kept producing
-        // a "flinging" effect regardless of which side it was anchored to. A simple 1s fade
+        // a "flinging" effect regardless of which side it was anchored to. A simple fade
         // with a spring-driven width interpolation sidesteps that entirely.
         AnimatedContent(
             targetState = recording is RecordingUiState.Active,
             transitionSpec = {
-                // M3 Expressive DefaultSpatial spring (380f/0.8f) for the width interpolation;
-                // fade duration stays an explicit 1s tween since a spring has no fixed duration.
-                (fadeIn(tween(1000)) togetherWith fadeOut(tween(1000))).using(
+                // Plain default springs for the fade — the width interpolation keeps the
+                // custom M3E DefaultSpatial token (380f/0.8f).
+                (fadeIn(spring()) togetherWith fadeOut(spring())).using(
                     SizeTransform(clip = false) { _, _ ->
                         spring(stiffness = 380f, dampingRatio = 0.8f)
                     }
