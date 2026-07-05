@@ -8,6 +8,48 @@
 
 - [ ] README rebrand — remove upstream store links, update issue tracker URL, add roadmap section.
 
+## Video circles (round video messages) — plan only, not started
+
+Camera icon in the top bar → `SharedTransitionLayout` expand into a
+centered in-app circular recorder, rest of the screen blurred except
+the bottom bar (which gets dedicated recording controls). Not the
+system camera app.
+
+- **Entry point**: needs a brand-new icon in the conversation top bar.
+  There is no existing camera icon there today — `actions` currently
+  has only `ic_call_24dp` (audio call) and `ic_videocam_24dp` (video
+  *call*, WebRTC — unrelated feature, don't repurpose it). The only
+  existing camera icon (`ic_camera_alt_24dp`) lives in the attach
+  menu's "take photo" option and launches the *system* camera via
+  `MediaStore.ACTION_IMAGE_CAPTURE` (`ConversationComposeFragment.
+  onTakePhoto()`) — not reusable, since this feature needs in-app
+  preview, not an external app hand-off.
+- **Transition**: `SharedTransitionLayout` + `Modifier.sharedBounds`
+  genuinely fits here (unlike the mic→recording-bar swap, which is a
+  plain `AnimatedContent` case) — the icon *is* the same visual circle
+  that grows from the top bar into the centered recorder, not a
+  content swap between unrelated layouts.
+- **Background blur**: `Modifier.blur()` (native `RenderEffect`,
+  unconditionally available — minSdk 33 is well past the API 31
+  requirement) on the message list + top bar while the recorder is
+  expanded. Bottom bar is explicitly excluded from the blur and swaps
+  to dedicated recording controls, the same pattern `RecordingBar`
+  already uses to replace the composer during voice recording.
+- **In-app camera preview + capture**: requires adding CameraX as a
+  new dependency (`camera-core`, `camera-camera2`, `camera-lifecycle`,
+  `camera-video`, `camera-view`) — not currently in the project. A
+  `PreviewView` clipped to `CircleShape`, embedded via `AndroidView`
+  (same pattern as the composer's `EditText`), with CameraX's
+  `VideoCapture` use case doing the actual recording.
+- **Transport**: reuse the existing video-attachment upload pipeline
+  (HTTP upload), with a metadata flag marking it as a "circle" so
+  supporting clients render it differently; non-supporting clients see
+  a normal video attachment (graceful degradation) — same approach
+  already used for XEP-0444 reactions/replies in this app.
+- **Effort**: large — new dependency, new permission handling (camera
+  + mic, on top of the existing mic-only voice recording), a new UI
+  surface, and circular-video playback support in the message bubble.
+
 ## Refactoring
 
 - [x] Merge `java-to-kotlin` branch into `dev` (277 Java → Kotlin conversions).
