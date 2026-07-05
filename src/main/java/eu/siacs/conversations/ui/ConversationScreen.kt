@@ -11,6 +11,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
@@ -3520,20 +3522,35 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     else -> R.drawable.ic_send_24dp
                 }
                 // Mic → send morph: the mic capsule sits on the left with its stand/base on
-                // the right; rotated 90° clockwise, that silhouette roughly lines up with the
-                // send icon's shape (wide part left, tapered point right). So only the
-                // *exiting* icon rotates 0→90° as it fades out — the incoming icon holds still
-                // at its resting orientation — making a fast (<250ms) crossfade read as the mic
-                // spinning into the paper plane rather than two unrelated shapes blending.
+                // the right; rotated 90° counter-clockwise, that silhouette roughly lines up
+                // with the send icon's shape (wide part left, tapered point right). The turn
+                // happens first while fully opaque; only once it completes does the crossfade
+                // begin — doing both at once made the icon look messy mid-rotation. Both
+                // rotation and alpha are driven manually (not AnimatedContent's built-in
+                // fade) so they can be sequenced instead of overlapping.
                 AnimatedContent(
                     targetState = iconRes,
-                    transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(220)) },
+                    transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
                     label = "micSendIconMorph",
                 ) { targetIcon ->
                     val isExiting = targetIcon != iconRes
                     val rotation by
-                        this.transition.animateFloat(label = "iconRotation") { state ->
-                            if (isExiting && state == EnterExitState.PostExit) 90f else 0f
+                        this.transition.animateFloat(
+                            label = "iconRotation",
+                            transitionSpec = { tween(durationMillis = 150) },
+                        ) { state ->
+                            if (isExiting && state == EnterExitState.PostExit) -90f else 0f
+                        }
+                    val iconAlpha by
+                        this.transition.animateFloat(
+                            label = "iconAlpha",
+                            transitionSpec = { tween(durationMillis = 200, delayMillis = 150) },
+                        ) { state ->
+                            if (isExiting) {
+                                if (state == EnterExitState.PostExit) 0f else 1f
+                            } else {
+                                if (state == EnterExitState.PreEnter) 0f else 1f
+                            }
                         }
                     Icon(
                         painter = painterResource(targetIcon),
@@ -3543,7 +3560,11 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                                     R.string.attachment_choice_recording
                                 else R.string.send_message
                             ),
-                        modifier = Modifier.graphicsLayer { rotationZ = rotation },
+                        modifier =
+                            Modifier.graphicsLayer {
+                                rotationZ = rotation
+                                alpha = iconAlpha
+                            },
                     )
                 }
             }
