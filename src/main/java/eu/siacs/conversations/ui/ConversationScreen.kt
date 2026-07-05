@@ -1,7 +1,12 @@
 package eu.siacs.conversations.ui
 
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
 import android.text.format.DateUtils
+import android.widget.EditText
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
@@ -51,9 +56,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -65,7 +67,6 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
@@ -3189,16 +3190,6 @@ private fun RecordingBar(
     }
 }
 
-// When the user types a single "." at the end of the message with a letter right before it,
-// auto-append a space — same "forgot to hit space after the period" convenience other
-// messengers offer. Skipped after a digit (decimals like 3.14) or another dot (ellipses).
-private fun autoSpaceAfterPeriod(old: String, new: String): String {
-    if (new.length != old.length + 1 || !new.endsWith(".") || new != "$old.") return new
-    val before = old.lastOrNull() ?: return new
-    if (!before.isLetter()) return new
-    return "$new "
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
@@ -3258,8 +3249,39 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         if (hasAttachments) {
             AttachmentPreviewStrip(state)
         }
-        if (recording is RecordingUiState.Active) {
-            RecordingBar(recording, listener)
+        // Mic → recording bar container transform. Same pattern as the attach button below:
+        // AnimatedContent + SizeTransform give a spring-driven horizontal expand, so the
+        // composer row visually grows/morphs into the full-width recording bar instead of
+        // an abrupt swap.
+        AnimatedContent(
+            targetState = recording,
+            transitionSpec = {
+                ContentTransform(
+                    targetContentEnter =
+                        expandHorizontally(
+                            expandFrom = Alignment.Start,
+                            animationSpec =
+                                spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessMedium,
+                                ),
+                        ) + fadeIn(),
+                    initialContentExit =
+                        shrinkHorizontally(
+                            shrinkTowards = Alignment.Start,
+                            animationSpec =
+                                spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium,
+                                ),
+                        ) + fadeOut(),
+                    sizeTransform = SizeTransform(clip = false),
+                )
+            },
+            label = "micToRecordingTransform",
+        ) { targetRecording ->
+        if (targetRecording is RecordingUiState.Active) {
+            RecordingBar(targetRecording, listener)
         } else {
         Row(
             verticalAlignment = Alignment.Bottom,
@@ -3367,42 +3389,81 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
             ) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    if (text.isEmpty()) {
-                        Text(
-                            text =
-                                if (correcting) stringResource(R.string.send_corrected_message)
-                                else
-                                    conversation?.let { UIHelper.getMessageHint(context, it) }
-                                        ?: stringResource(R.string.send_message),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    BasicTextField(
-                        value = text,
-                        onValueChange = {
-                            val autoSpaced = autoSpaceAfterPeriod(text, it)
-                            state.setInput(autoSpaced)
-                            listener.onInputChanged(autoSpaced)
-                        },
-                        textStyle =
-                            LocalTextStyle.current.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                        cursorBrush =
-                            androidx.compose.ui.graphics.SolidColor(
-                                MaterialTheme.colorScheme.primary
-                            ),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences,
-                        ),
-                        maxLines = 6,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                // Native EditText instead of BasicTextField: autocorrect-revert on some IMEs
+                // (reported: Samsung Keyboard) was landing edits in the wrong place against
+                // Compose's plain-String text field, producing duplicated words. EditText's
+                // Editable/InputConnection is the same mature, decades-tested implementation
+                // every other Android messenger's chat input uses, so IME edit commands
+                // (autocorrect, autocorrect-revert, composing regions) apply correctly.
+                val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
+                val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+                val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
+                val hintText =
+                    if (correcting) stringResource(R.string.send_corrected_message)
+                    else conversation?.let { UIHelper.getMessageHint(context, it) }
+                        ?: stringResource(R.string.send_message)
+                AndroidView(
+                    factory = { ctx ->
+                        EditText(ctx).apply {
+                            background = null
+                            setPadding(0, 0, 0, 0)
+                            maxLines = 6
+                            inputType = InputType.TYPE_CLASS_TEXT or
+                                InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                            textSize = 16f
+                            var lastText = ""
+                            var programmatic = false
+                            addTextChangedListener(object : TextWatcher {
+                                override fun beforeTextChanged(
+                                    s: CharSequence?, start: Int, count: Int, after: Int,
+                                ) = Unit
+                                override fun onTextChanged(
+                                    s: CharSequence?, start: Int, before: Int, count: Int,
+                                ) = Unit
+                                override fun afterTextChanged(s: Editable?) {
+                                    if (programmatic || s == null) return
+                                    val newText = s.toString()
+                                    // Same "auto-space after a typed period" heuristic as
+                                    // before, but applied directly on the live Editable —
+                                    // afterTextChanged fires after IME composing regions
+                                    // actually settle, so this now fires reliably per
+                                    // keystroke regardless of keyboard/language.
+                                    if (newText.length == lastText.length + 1 &&
+                                        newText.endsWith(".") &&
+                                        newText == "$lastText."
+                                    ) {
+                                        val charBefore = lastText.lastOrNull()
+                                        if (charBefore != null && charBefore.isLetter()) {
+                                            programmatic = true
+                                            s.insert(newText.length, " ")
+                                            programmatic = false
+                                        }
+                                    }
+                                    lastText = s.toString()
+                                    state.setInput(lastText)
+                                    listener.onInputChanged(lastText)
+                                }
+                            })
+                        }
+                    },
+                    update = { editText ->
+                        editText.setTextColor(onSurfaceColor)
+                        editText.setHintTextColor(onSurfaceVariantColor)
+                        editText.hint = hintText
+                        if (editText.text?.toString() != text) {
+                            editText.setText(text)
+                            editText.setSelection((editText.text?.length ?: 0))
+                        }
+                        // setTextCursorDrawable exists since API 29; minSdk is 33, always available.
+                        val cursorWidthPx = (2 * editText.resources.displayMetrics.density).toInt()
+                        editText.textCursorDrawable = GradientDrawable().apply {
+                            setColor(primaryColor)
+                            setSize(cursorWidthPx, -1)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                )
             }
 
             // Morphing send button: rounded square at rest, springs to a pill once there
@@ -3461,6 +3522,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
             }
         }
         } // end else (not recording)
+        } // end AnimatedContent content
         }
     }
 }
