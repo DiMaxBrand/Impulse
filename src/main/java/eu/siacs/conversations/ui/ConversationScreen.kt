@@ -3243,6 +3243,15 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     val correcting = state.correcting.value != null
     val hasAttachments = state.attachments.isNotEmpty()
     val recording = state.recordingState.value
+    // Only the coarse "are we recording at all" flag drives the transition below — using the
+    // full RecordingUiState.Active (elapsedMs ticks every timer tick) as AnimatedContent's
+    // targetState made it compare unequal on every tick, re-triggering the enter/exit
+    // transition constantly (visible as the whole bar blinking). The live timer value is read
+    // separately inside the content lambda so it recomposes normally without retriggering it.
+    var lastActiveRecording by remember { mutableStateOf<RecordingUiState.Active?>(null) }
+    if (recording is RecordingUiState.Active) {
+        lastActiveRecording = recording
+    }
 
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column {
@@ -3255,7 +3264,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         // composer row visually grows/morphs into the full-width recording bar instead of
         // an abrupt swap.
         AnimatedContent(
-            targetState = recording,
+            targetState = recording is RecordingUiState.Active,
             transitionSpec = {
                 ContentTransform(
                     targetContentEnter =
@@ -3280,9 +3289,9 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 )
             },
             label = "micToRecordingTransform",
-        ) { targetRecording ->
-        if (targetRecording is RecordingUiState.Active) {
-            RecordingBar(targetRecording, listener)
+        ) { isRecording ->
+        if (isRecording) {
+            lastActiveRecording?.let { RecordingBar(it, listener) }
         } else {
         Row(
             verticalAlignment = Alignment.Bottom,
