@@ -10,34 +10,45 @@
 
 ## Video circles (round video messages) — plan only, not started
 
-Camera icon in the top bar → `SharedTransitionLayout` expand into a
-centered in-app circular recorder, rest of the screen blurred except
-the bottom bar (which gets dedicated recording controls). Not the
-system camera app.
+`ic_videocam_24dp` (currently the video-*call* icon; visually it's
+just a camera icon) reused as a new button inside `RecordingBar` —
+the voice-recording bar — positioned between the pause and send
+buttons. Tapping it switches from voice recording into an in-app,
+`SharedTransitionLayout`-driven circular video recorder that expands
+from that button's position, with the rest of the screen blurred
+except the bottom bar (dedicated recording controls). Not the system
+camera app.
 
-- **Entry point**: needs a brand-new icon in the conversation top bar.
-  There is no existing camera icon there today — `actions` currently
-  has only `ic_call_24dp` (audio call) and `ic_videocam_24dp` (video
-  *call*, WebRTC — unrelated feature, don't repurpose it). The only
-  existing camera icon (`ic_camera_alt_24dp`) lives in the attach
-  menu's "take photo" option and launches the *system* camera via
+- **Entry point**: a new icon added to `RecordingBar`, between the
+  existing pause and send buttons — not a top-bar icon. Reuses the
+  `ic_videocam_24dp` asset (currently used for the top bar's video
+  *call* button, a separate WebRTC feature — don't touch that usage,
+  just reuse the same drawable here). The existing "take photo" attach
+  menu option launches the *system* camera via
   `MediaStore.ACTION_IMAGE_CAPTURE` (`ConversationComposeFragment.
-  onTakePhoto()`) — not reusable, since this feature needs in-app
+  onTakePhoto()`) and isn't reusable — this feature needs in-app
   preview, not an external app hand-off.
 - **Transition**: `SharedTransitionLayout` + `Modifier.sharedBounds`
-  genuinely fits here (unlike the mic→recording-bar swap, which is a
-  plain `AnimatedContent` case) — the icon *is* the same visual circle
-  that grows from the top bar into the centered recorder, not a
-  content swap between unrelated layouts.
+  genuinely fits here (unlike the mic→recording-bar swap, or the
+  mic→send icon morph — both plain `AnimatedContent` cases) — the
+  button *is* the same visual circle that grows from its position in
+  the recording bar into the centered recorder, a real position/size
+  change between two different composables.
 - **Background blur**: `Modifier.blur()` (native `RenderEffect`,
   unconditionally available — minSdk 33 is well past the API 31
   requirement) on the message list + top bar while the recorder is
-  expanded. Bottom bar is explicitly excluded from the blur and swaps
-  to dedicated recording controls, the same pattern `RecordingBar`
-  already uses to replace the composer during voice recording.
+  expanded. This is a general Compose graphics primitive, not a
+  Material 3 Expressive API — Expressive only comes in for the
+  transition's motion (spring specs), not the blur itself. Bottom bar
+  is explicitly excluded from the blur and swaps to dedicated
+  recording controls, the same pattern `RecordingBar` already uses to
+  replace the composer during voice recording.
 - **In-app camera preview + capture**: requires adding CameraX as a
   new dependency (`camera-core`, `camera-camera2`, `camera-lifecycle`,
-  `camera-video`, `camera-view`) — not currently in the project. A
+  `camera-video`, `camera-view`) — not currently in the project, and
+  the only reasonable choice for this (raw Camera2 is far more complex
+  and CameraX exists specifically to abstract it away; the legacy
+  `android.hardware.Camera` API has been deprecated since API 21). A
   `PreviewView` clipped to `CircleShape`, embedded via `AndroidView`
   (same pattern as the composer's `EditText`), with CameraX's
   `VideoCapture` use case doing the actual recording.
