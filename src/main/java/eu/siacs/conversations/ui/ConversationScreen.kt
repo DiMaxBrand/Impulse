@@ -3281,6 +3281,10 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         if (isRecording) {
             lastActiveRecording?.let { RecordingBar(it, listener) }
         } else {
+        // Captured here, before nested AnimatedContents shadow `this`, so the mic icon can
+        // also rotate away (matching its normal exit direction) when this row exits because
+        // recording just started.
+        val recordingRowTransition = this.transition
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier =
@@ -3540,6 +3544,14 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                                 if (state == EnterExitState.PreEnter) 0f else 1f
                             }
                         }
+                    // Same clockwise exit the mic uses when morphing into send, but driven by
+                    // the outer row's own transition so tapping mic to start a recording turns
+                    // the icon away too, instead of it just riding the plain row crossfade.
+                    val recordingExitRotation by
+                        recordingRowTransition.animateFloat(
+                            label = "recordingExitRotation",
+                            transitionSpec = { spring(stiffness = 380f, dampingRatio = 0.8f) },
+                        ) { state -> if (state == EnterExitState.PostExit) 90f else 0f }
                     Icon(
                         painter = painterResource(targetIcon),
                         contentDescription =
@@ -3550,7 +3562,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             ),
                         modifier =
                             Modifier.graphicsLayer {
-                                rotationZ = rotation
+                                rotationZ = rotation + recordingExitRotation
                                 alpha = iconAlpha
                             },
                     )
