@@ -3264,14 +3264,16 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         // Mic → recording bar container transform. Same pattern as the attach button below:
         // AnimatedContent + SizeTransform give a spring-driven horizontal expand, so the
         // composer row visually grows/morphs into the full-width recording bar instead of
-        // an abrupt swap.
+        // an abrupt swap. Anchored at the *end* (right edge), where the mic button actually
+        // sits — anchoring at Start caused the whole row to grow from the wrong side relative
+        // to the button's real position, which read as the mic icon flinging across the row.
         AnimatedContent(
             targetState = recording is RecordingUiState.Active,
             transitionSpec = {
                 ContentTransform(
                     targetContentEnter =
                         expandHorizontally(
-                            expandFrom = Alignment.Start,
+                            expandFrom = Alignment.End,
                             animationSpec =
                                 spring(
                                     dampingRatio = Spring.DampingRatioLowBouncy,
@@ -3280,7 +3282,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                         ) + fadeIn(),
                     initialContentExit =
                         shrinkHorizontally(
-                            shrinkTowards = Alignment.Start,
+                            shrinkTowards = Alignment.End,
                             animationSpec =
                                 spring(
                                     dampingRatio = Spring.DampingRatioMediumBouncy,
