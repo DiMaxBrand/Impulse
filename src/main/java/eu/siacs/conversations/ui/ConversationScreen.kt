@@ -3261,35 +3261,20 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         if (hasAttachments) {
             AttachmentPreviewStrip(state)
         }
-        // Mic → recording bar container transform. Same pattern as the attach button below:
-        // AnimatedContent + SizeTransform give a spring-driven horizontal expand, so the
-        // composer row visually grows/morphs into the full-width recording bar instead of
-        // an abrupt swap. Anchored at the *end* (right edge), where the mic button actually
-        // sits — anchoring at Start caused the whole row to grow from the wrong side relative
-        // to the button's real position, which read as the mic icon flinging across the row.
+        // Mic → recording bar container transform. A plain crossfade — trying to anchor the
+        // expand/shrink to a specific edge (matching the mic button's position) kept producing
+        // a "flinging" effect regardless of which side it was anchored to. A simple 1s fade
+        // with a spring-driven width interpolation sidesteps that entirely.
         AnimatedContent(
             targetState = recording is RecordingUiState.Active,
             transitionSpec = {
-                ContentTransform(
-                    targetContentEnter =
-                        expandHorizontally(
-                            expandFrom = Alignment.End,
-                            animationSpec =
-                                spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessMedium,
-                                ),
-                        ) + fadeIn(),
-                    initialContentExit =
-                        shrinkHorizontally(
-                            shrinkTowards = Alignment.End,
-                            animationSpec =
-                                spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessMedium,
-                                ),
-                        ) + fadeOut(),
-                    sizeTransform = SizeTransform(clip = false),
+                (fadeIn(tween(1000)) togetherWith fadeOut(tween(1000))).using(
+                    SizeTransform(clip = false) { _, _ ->
+                        spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMedium,
+                        )
+                    }
                 )
             },
             label = "micToRecordingTransform",
