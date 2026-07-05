@@ -3543,7 +3543,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     val exitTurnProgress =
                         if (isExiting && exitRotation != 0f) (rotation / exitRotation).coerceIn(0f, 1f)
                         else 0f
-                    val holdUntil = 0.75f
+                    val holdUntil = 0.9f
                     val iconAlpha =
                         if (isExiting) {
                             if (exitTurnProgress < holdUntil) 1f
