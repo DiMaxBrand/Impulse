@@ -882,17 +882,36 @@ private fun MessageList(
             .collect { atBottom -> if (atBottom) listener.onScrolledToBottom() }
     }
 
-    // Guards against the "keep pinned to bottom" effect below fighting the audio auto-advance
-    // scroll — both call listState.animateScrollToItem, and whichever fires second cancels the
-    // other mid-animation, which is what caused the erratic multi-scroll/snap-back behavior.
-    var autoAdvancing by remember { mutableStateOf(false) }
+    // Single scroll executor: every scroll request — pin-to-bottom or audio auto-advance —
+    // goes through this one LaunchedEffect, keyed on an incrementing nonce. A brand new request
+    // always cancels whichever scroll was previously in flight (LaunchedEffect's own key-change
+    // cancellation), instead of two independent coroutines each calling animateScrollToItem and
+    // fighting each other mid-animation, which is what caused the erratic multi-scroll/snap-back
+    // behavior. offsetFraction=0f anchors the item at the bottom; e.g. 0.70f lands it upper-center.
+    var scrollRequest by remember { mutableStateOf<Pair<Int, Float>?>(null) }
+    var scrollNonce by remember { mutableIntStateOf(0) }
+    fun requestScroll(index: Int, offsetFraction: Float) {
+        scrollRequest = index to offsetFraction
+        scrollNonce++
+    }
+    LaunchedEffect(scrollNonce) {
+        val (index, offsetFraction) = scrollRequest ?: return@LaunchedEffect
+        // reverseLayout=true: scrollOffset is measured from the BOTTOM of the viewport, so a
+        // larger offset lands the item higher on screen.
+        val viewportHeight = listState.layoutInfo.viewportSize.height
+        val offsetPx =
+            if (offsetFraction <= 0f) 0
+            else if (viewportHeight > 0) (viewportHeight * offsetFraction).toInt()
+            else 800 // fallback if layout not yet measured
+        listState.animateScrollToItem(index, scrollOffset = offsetPx)
+        if (index == 0) listener.onScrolledToBottom()
+    }
 
     // Keep pinned to the bottom when a new message arrives while we are (nearly) there.
     val newestKey = items.firstOrNull()?.key
     LaunchedEffect(newestKey) {
-        if (!autoAdvancing && listState.firstVisibleItemIndex <= 1) {
-            listState.animateScrollToItem(0)
-            listener.onScrolledToBottom()
+        if (listState.firstVisibleItemIndex <= 1) {
+            requestScroll(0, 0f)
         }
     }
 
@@ -902,11 +921,10 @@ private fun MessageList(
     // Unit-keyed effect would only ever capture the very first list and silently go stale for
     // any message that arrived after the screen first composed.
     val context = LocalContext.current
-    // Holds the currently in-flight auto-advance scroll, if any. On short messages, a new
-    // completion can fire (and want to scroll to the next-next message) before the previous
-    // scroll animation has finished — two overlapping animateScrollToItem calls fight each
-    // other, which is what caused the scroll-then-snap-back/multi-scroll behavior. Cancelling
-    // the old one before starting a new one ensures only the latest target ever animates.
+    // Holds the currently in-flight "start next playback" sequence, if any. On short messages,
+    // a new completion can fire before the previous sequence's 300ms delay has elapsed —
+    // cancelling the old one before starting a new one avoids a stale play() call for a message
+    // that isn't the current target anymore.
     var autoAdvanceJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     androidx.compose.runtime.DisposableEffect(revision) {
         AudioPlaybackController.onCompletion = onCompletion@{ completedUuid ->
@@ -922,24 +940,15 @@ private fun MessageList(
                 if (file != null && file.exists()) {
                     val nextIdx = items.indexOf(next)
                     autoAdvanceJob?.cancel()
-                    autoAdvancing = true
                     autoAdvanceJob = scope.launch {
-                        try {
-                            kotlinx.coroutines.delay(300)
-                            (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
-                                .playSoundEffect(android.media.AudioManager.FX_KEY_CLICK)
-                            AudioPlaybackController.play(next.message.getUuid()!!, file)
-                            if (nextIdx >= 0) {
-                                // reverseLayout=true: scrollOffset=0 puts item at the BOTTOM.
-                                // To land at upper-center, read viewport height after the delay
-                                // (so layout has measured) and offset by ~70% of height.
-                                val viewportHeight = listState.layoutInfo.viewportSize.height
-                                val offset = if (viewportHeight > 0) (viewportHeight * 0.70f).toInt()
-                                             else 800 // fallback if layout not yet measured
-                                listState.animateScrollToItem(nextIdx, scrollOffset = offset)
-                            }
-                        } finally {
-                            autoAdvancing = false
+                        kotlinx.coroutines.delay(300)
+                        (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
+                            .playSoundEffect(android.media.AudioManager.FX_KEY_CLICK)
+                        AudioPlaybackController.play(next.message.getUuid()!!, file)
+                        if (nextIdx >= 0) {
+                            // Upper-center, not bottom — goes through the single scroll executor
+                            // above so it can't race the pin-to-bottom effect.
+                            requestScroll(nextIdx, 0.70f)
                         }
                     }
                 }
