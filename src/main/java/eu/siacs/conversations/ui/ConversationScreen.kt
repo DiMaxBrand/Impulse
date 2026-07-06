@@ -896,13 +896,21 @@ private fun MessageList(
     }
     LaunchedEffect(scrollNonce) {
         val (index, offsetFraction) = scrollRequest ?: return@LaunchedEffect
-        // reverseLayout=true: scrollOffset is measured from the BOTTOM of the viewport, so a
-        // larger offset lands the item higher on screen.
+        // LazyListState.scrollToItem's own KDoc (androidx.compose.foundation.lazy.LazyListState):
+        // "positive offset refers to forward scroll, so in a top-to-bottom list, positive offset
+        // will scroll the item further upward, taking it partly offscreen." reverseLayout=true
+        // mirrors BOTH the layout order AND the scroll direction (see LazyColumn's own KDoc:
+        // "reverse the direction of scrolling and layout"), so the mirrored equivalent here is:
+        // positive offset pushes the item further off-screen at the BOTTOM (the viewport
+        // "start" edge for a reversed list), not up. That is backwards from what we want, and
+        // was previously landing auto-advanced messages below the visible screen instead of
+        // upper-center. A NEGATIVE offset is what moves the item away from the start edge and
+        // higher up the screen.
         val viewportHeight = listState.layoutInfo.viewportSize.height
         val offsetPx =
             if (offsetFraction <= 0f) 0
-            else if (viewportHeight > 0) (viewportHeight * offsetFraction).toInt()
-            else 800 // fallback if layout not yet measured
+            else if (viewportHeight > 0) -(viewportHeight * offsetFraction).toInt()
+            else -800 // fallback if layout not yet measured
         listState.animateScrollToItem(index, scrollOffset = offsetPx)
         if (index == 0) listener.onScrolledToBottom()
     }
