@@ -208,6 +208,9 @@ class UpdatesActivity : ActionBarActivity() {
         val id = UpdateDownloader.startDownload(this, info)
         prefs.activeDownloadId = id
         prefs.pendingNoWifi = false
+        // Starting a download is itself engagement — clear any earlier dismiss cooldown so a
+        // stale one from a previous session can't suppress the sheet reporting on this download.
+        prefs.sheetDismissedUntil = 0L
         uiState = uiState.copy(
             downloadPhase = DownloadPhase.DOWNLOADING,
             downloadProgress = 0f,

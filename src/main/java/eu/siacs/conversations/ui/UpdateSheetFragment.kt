@@ -64,8 +64,16 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
-        if (!installInitiated) {
-            prefs.sheetDismissedUntil = System.currentTimeMillis() + 24 * 60 * 60 * 1000
+        if (installInitiated) return
+        when (uiState.downloadPhase) {
+            // Actively in progress — dismissing here just closes the progress view, it isn't
+            // the user declining the update, so don't suppress the sheet from reappearing.
+            DownloadPhase.DOWNLOADING, DownloadPhase.PROCESSING, DownloadPhase.CANCELING -> Unit
+            // Already downloaded, one tap from installing — a short cooldown, not a full day.
+            DownloadPhase.READY ->
+                prefs.sheetDismissedUntil = System.currentTimeMillis() + 60 * 60 * 1000
+            DownloadPhase.IDLE, DownloadPhase.NO_WIFI_PENDING ->
+                prefs.sheetDismissedUntil = System.currentTimeMillis() + 24 * 60 * 60 * 1000
         }
     }
 
@@ -111,6 +119,9 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         val id = UpdateDownloader.startDownload(requireActivity(), info)
         prefs.activeDownloadId = id
         prefs.pendingNoWifi = false
+        // Starting a download is itself engagement — clear any earlier dismiss cooldown so a
+        // stale one from a previous session can't suppress the sheet reporting on this download.
+        prefs.sheetDismissedUntil = 0L
         uiState = uiState.copy(
             downloadPhase = DownloadPhase.DOWNLOADING,
             downloadProgress = 0f,
