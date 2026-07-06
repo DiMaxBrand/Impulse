@@ -3261,16 +3261,14 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         if (hasAttachments) {
             AttachmentPreviewStrip(state)
         }
-        // Mic → recording bar container transform. A plain crossfade — trying to anchor the
-        // expand/shrink to a specific edge (matching the mic button's position) kept producing
-        // a "flinging" effect regardless of which side it was anchored to. A simple fade
-        // with a spring-driven width interpolation sidesteps that entirely.
+        // Mic → recording bar container transform. Fade is handled manually per-branch (see
+        // below) instead of AnimatedContent's built-in fade, so the composer row's crossfade
+        // can be synced to the mic icon's own rotation progress; only the width interpolation
+        // stays automatic, keeping the M3E DefaultSpatial token (380f/0.8f).
         AnimatedContent(
             targetState = recording is RecordingUiState.Active,
             transitionSpec = {
-                // Plain default springs for the fade — the width interpolation keeps the
-                // custom M3E DefaultSpatial token (380f/0.8f).
-                (fadeIn(spring()) togetherWith fadeOut(spring())).using(
+                (EnterTransition.None togetherWith ExitTransition.None).using(
                     SizeTransform(clip = false) { _, _ ->
                         spring(stiffness = 380f, dampingRatio = 0.8f)
                     }
@@ -3279,17 +3277,47 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
             label = "micToRecordingTransform",
         ) { isRecording ->
         if (isRecording) {
-            lastActiveRecording?.let { RecordingBar(it, listener) }
+            // Simple fade, unrelated to any rotation.
+            val barAlpha by
+                this.transition.animateFloat(
+                    label = "recordingBarAlpha",
+                    transitionSpec = { spring(stiffness = 380f, dampingRatio = 0.8f) },
+                ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
+            lastActiveRecording?.let {
+                Box(modifier = Modifier.graphicsLayer { alpha = barAlpha }) {
+                    RecordingBar(it, listener)
+                }
+            }
         } else {
-        // Captured here, before nested AnimatedContents shadow `this`, so the mic icon can
-        // also rotate away (matching its normal exit direction) when this row exits because
-        // recording just started.
+        // Captured here, before nested AnimatedContents shadow `this`. The mic icon rotates
+        // away when this row exits (recording starting) and rotates into place when it enters
+        // (recording ending/cancelled) — symmetric with the mic's own text-morph rotation. The
+        // row's own crossfade is synced to that rotation's progress instead of a plain fade, so
+        // the turn is actually visible (held opaque/hidden until ~90% done) rather than getting
+        // faded out from under it.
         val recordingRowTransition = this.transition
+        val recordingRotation by
+            recordingRowTransition.animateFloat(
+                label = "recordingRotation",
+                transitionSpec = { spring(stiffness = 380f, dampingRatio = 0.8f) },
+            ) { state -> if (state == EnterExitState.Visible) 0f else 90f }
+        val isRowExiting = recordingRowTransition.targetState == EnterExitState.PostExit
+        val recordingRotationProgress = (recordingRotation / 90f).coerceIn(0f, 1f)
+        val rowHoldUntil = 0.9f
+        val rowAlpha =
+            if (isRowExiting) {
+                if (recordingRotationProgress < rowHoldUntil) 1f
+                else 1f - (recordingRotationProgress - rowHoldUntil) / (1f - rowHoldUntil)
+            } else {
+                val arrived = 1f - recordingRotationProgress
+                if (arrived < rowHoldUntil) 0f else (arrived - rowHoldUntil) / (1f - rowHoldUntil)
+            }
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier =
                 Modifier.fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .graphicsLayer { alpha = rowAlpha },
         ) {
             // Attach button → toolbar container transform.
             // AnimatedContent + SizeTransform give a spring-driven horizontal expand from the
@@ -3498,79 +3526,73 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     ),
                 modifier = Modifier.size(48.dp),
             ) {
+                // Always the plain round send icon, even when the conversation is encrypted —
+                // OMEMO still applies to the message, only the icon no longer changes for it.
                 val iconRes = when {
                     showMic -> R.drawable.ic_mic_24dp
                     correcting -> R.drawable.ic_done_24dp
-                    conversation != null &&
-                        conversation.nextEncryption != Message.ENCRYPTION_NONE ->
-                        R.drawable.ic_send_encrypted_24dp
                     else -> R.drawable.ic_send_24dp
                 }
-                // Mic → send morph: the mic capsule sits on the left with its stand/base on
-                // the right; rotated 90° counter-clockwise, that silhouette roughly lines up
-                // with the send icon's shape (wide part left, tapered point right). The turn
-                // happens first while fully opaque; only once it's almost done does the
-                // crossfade begin — doing both at once made the icon look messy mid-rotation.
-                // Both rotation and alpha are driven manually (not AnimatedContent's built-in
-                // fade) so they can be sequenced instead of overlapping.
+                // Only the mic icon ever turns; send/done just fade, no rotation. Exiting mic
+                // (typing starts) keeps the unchanged M3 Expressive DefaultSpatial spring;
+                // entering mic (text cleared, i.e. send → mic) uses a slower, high-bouncy
+                // preset spring so that turn is clearly visible as it settles into place.
                 AnimatedContent(
                     targetState = iconRes,
                     transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
                     label = "micSendIconMorph",
                 ) { targetIcon ->
                     val isExiting = targetIcon != iconRes
-                    // Direction depends on which icon is leaving, not a uniform sign: the mic
-                    // exiting turns clockwise (mic → send), while send/done exiting turns
-                    // counter-clockwise (send → mic).
-                    val exitRotation = if (targetIcon == R.drawable.ic_mic_24dp) 90f else -90f
+                    val isMic = targetIcon == R.drawable.ic_mic_24dp
                     val rotation by
                         this.transition.animateFloat(
                             label = "iconRotation",
                             transitionSpec = {
-                                if (exitRotation < 0f) {
-                                    // Experimental, send → mic only: the overshoot is fully
-                                    // visible before the icon disappears here, so it's safe to
-                                    // preview a much longer, high-bouncy preset spring.
+                                if (isMic && !isExiting) {
                                     spring(
                                         dampingRatio = Spring.DampingRatioHighBouncy,
                                         stiffness = Spring.StiffnessLow,
                                     )
                                 } else {
-                                    // mic → send: unchanged M3 Expressive DefaultSpatial token.
                                     spring(stiffness = 380f, dampingRatio = 0.8f)
                                 }
                             },
                         ) { state ->
-                            if (isExiting && state == EnterExitState.PostExit) exitRotation else 0f
+                            if (!isMic) {
+                                0f
+                            } else if (isExiting) {
+                                if (state == EnterExitState.PostExit) 90f else 0f
+                            } else {
+                                if (state == EnterExitState.PreEnter) -90f else 0f
+                            }
                         }
-                    val enterAlpha by
+                    // Plain, immediate fade for send/done, which never rotate.
+                    val plainAlpha by
                         this.transition.animateFloat(
-                            label = "iconEnterAlpha",
+                            label = "iconPlainAlpha",
                             transitionSpec = { tween(durationMillis = 200) },
-                        ) { state -> if (state == EnterExitState.PreEnter) 0f else 1f }
-                    // Exiting fade waits for the turn to actually be almost done before it
-                    // starts, driven by the turn's own live progress rather than a guessed
-                    // delay — a spring has no fixed duration, so a timer can't reliably track
-                    // when it visually settles.
-                    val exitTurnProgress =
-                        if (isExiting && exitRotation != 0f) (rotation / exitRotation).coerceIn(0f, 1f)
-                        else 0f
+                        ) { state ->
+                            if (isExiting) {
+                                if (state == EnterExitState.PostExit) 0f else 1f
+                            } else {
+                                if (state == EnterExitState.PreEnter) 0f else 1f
+                            }
+                        }
+                    // Mic's own fade waits for its turn to actually be almost done, driven by
+                    // its own live rotation progress rather than a guessed delay — a spring
+                    // has no fixed duration, so a timer can't reliably track when it settles.
                     val holdUntil = 0.9f
                     val iconAlpha =
-                        if (isExiting) {
-                            if (exitTurnProgress < holdUntil) 1f
-                            else 1f - (exitTurnProgress - holdUntil) / (1f - holdUntil)
+                        if (!isMic) {
+                            plainAlpha
+                        } else if (isExiting) {
+                            val progress = (rotation / 90f).coerceIn(0f, 1f)
+                            if (progress < holdUntil) 1f
+                            else 1f - (progress - holdUntil) / (1f - holdUntil)
                         } else {
-                            enterAlpha
+                            val arrived = 1f - (rotation / -90f).coerceIn(0f, 1f)
+                            if (arrived < holdUntil) 0f else (arrived - holdUntil) / (1f - holdUntil)
                         }
-                    // Same clockwise exit the mic uses when morphing into send, but driven by
-                    // the outer row's own transition so tapping mic to start a recording turns
-                    // the icon away too, instead of it just riding the plain row crossfade.
-                    val recordingExitRotation by
-                        recordingRowTransition.animateFloat(
-                            label = "recordingExitRotation",
-                            transitionSpec = { spring(stiffness = 380f, dampingRatio = 0.8f) },
-                        ) { state -> if (state == EnterExitState.PostExit) 90f else 0f }
                     Icon(
                         painter = painterResource(targetIcon),
                         contentDescription =
@@ -3581,7 +3603,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             ),
                         modifier =
                             Modifier.graphicsLayer {
-                                rotationZ = rotation + recordingExitRotation
+                                rotationZ = rotation + recordingRotation
                                 alpha = iconAlpha
                             },
                     )
