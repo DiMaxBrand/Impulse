@@ -2095,6 +2095,14 @@ private fun AudioMessageContent(message: Message) {
                 modifier = Modifier.size(20.dp),
             )
         }
+        // Thumb is short while idle, taller while playing — spring-animated between the two,
+        // reusing SliderDefaults.Thumb's own thumbSize param rather than a custom control.
+        val thumbHeight by
+            androidx.compose.animation.core.animateDpAsState(
+                targetValue = if (playing) 44.dp else 20.dp,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "audioThumbHeight",
+            )
         androidx.compose.material3.Slider(
             value = animatedFraction.value,
             onValueChange = { fraction ->
@@ -2103,6 +2111,13 @@ private fun AudioMessageContent(message: Message) {
                 tick++
             },
             interactionSource = sliderInteractionSource,
+            thumb = { sliderState ->
+                androidx.compose.material3.SliderDefaults.Thumb(
+                    interactionSource = sliderInteractionSource,
+                    sliderState = sliderState,
+                    thumbSize = androidx.compose.ui.unit.DpSize(4.dp, thumbHeight),
+                )
+            },
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
         )
         Text(
