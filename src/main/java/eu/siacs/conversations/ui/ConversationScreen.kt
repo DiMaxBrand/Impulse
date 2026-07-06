@@ -882,10 +882,15 @@ private fun MessageList(
             .collect { atBottom -> if (atBottom) listener.onScrolledToBottom() }
     }
 
+    // Guards against the "keep pinned to bottom" effect below fighting the audio auto-advance
+    // scroll — both call listState.animateScrollToItem, and whichever fires second cancels the
+    // other mid-animation, which is what caused the erratic multi-scroll/snap-back behavior.
+    var autoAdvancing by remember { mutableStateOf(false) }
+
     // Keep pinned to the bottom when a new message arrives while we are (nearly) there.
     val newestKey = items.firstOrNull()?.key
     LaunchedEffect(newestKey) {
-        if (listState.firstVisibleItemIndex <= 1) {
+        if (!autoAdvancing && listState.firstVisibleItemIndex <= 1) {
             listState.animateScrollToItem(0)
             listener.onScrolledToBottom()
         }
@@ -910,19 +915,24 @@ private fun MessageList(
                 val file = try { activity?.xmppConnectionService?.fileBackend?.getFile(next.message) } catch (_: Exception) { null }
                 if (file != null && file.exists()) {
                     val nextIdx = items.indexOf(next)
+                    autoAdvancing = true
                     scope.launch {
-                        kotlinx.coroutines.delay(300)
-                        (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
-                            .playSoundEffect(android.media.AudioManager.FX_KEY_CLICK)
-                        AudioPlaybackController.play(next.message.getUuid()!!, file)
-                        if (nextIdx >= 0) {
-                            // reverseLayout=true: scrollOffset=0 puts item at the BOTTOM.
-                            // To land at upper-center, read viewport height after the delay
-                            // (so layout has measured) and offset by ~70% of height.
-                            val viewportHeight = listState.layoutInfo.viewportSize.height
-                            val offset = if (viewportHeight > 0) (viewportHeight * 0.70f).toInt()
-                                         else 800 // fallback if layout not yet measured
-                            listState.animateScrollToItem(nextIdx, scrollOffset = offset)
+                        try {
+                            kotlinx.coroutines.delay(300)
+                            (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
+                                .playSoundEffect(android.media.AudioManager.FX_KEY_CLICK)
+                            AudioPlaybackController.play(next.message.getUuid()!!, file)
+                            if (nextIdx >= 0) {
+                                // reverseLayout=true: scrollOffset=0 puts item at the BOTTOM.
+                                // To land at upper-center, read viewport height after the delay
+                                // (so layout has measured) and offset by ~70% of height.
+                                val viewportHeight = listState.layoutInfo.viewportSize.height
+                                val offset = if (viewportHeight > 0) (viewportHeight * 0.70f).toInt()
+                                             else 800 // fallback if layout not yet measured
+                                listState.animateScrollToItem(nextIdx, scrollOffset = offset)
+                            }
+                        } finally {
+                            autoAdvancing = false
                         }
                     }
                 }
@@ -1990,7 +2000,10 @@ private fun AudioMessageContent(message: Message) {
     val uuid = message.getUuid() ?: return
     val playing = AudioPlaybackController.activeUuid == uuid && AudioPlaybackController.isPlaying
     var tick by remember(uuid) { mutableIntStateOf(0) }
-    val positionMs = remember(uuid, tick) { AudioPlaybackController.positionFor(uuid) }
+    // Also keyed on `playing`: the ticker below only advances while playing, so without this,
+    // positionMs would freeze at its last ticked value instead of reflecting the reset to 0
+    // that happens on natural completion (or the paused position on a manual pause).
+    val positionMs = remember(uuid, tick, playing) { AudioPlaybackController.positionFor(uuid) }
     val durationMs =
         AudioPlaybackController.durations[uuid] ?: (message.fileParams?.runtime ?: 0)
 
