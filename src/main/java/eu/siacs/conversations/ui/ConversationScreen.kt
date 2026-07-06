@@ -891,9 +891,13 @@ private fun MessageList(
         }
     }
 
-    // Auto-advance to the next audio message when one finishes playing naturally.
+    // Auto-advance to the next audio message when one finishes playing naturally. Keyed on
+    // `revision` (not Unit) so the closure is re-registered with a fresh `items` every time the
+    // list actually changes — `items` is a plain val recomputed per recomposition, so a
+    // Unit-keyed effect would only ever capture the very first list and silently go stale for
+    // any message that arrived after the screen first composed.
     val context = LocalContext.current
-    androidx.compose.runtime.DisposableEffect(Unit) {
+    androidx.compose.runtime.DisposableEffect(revision) {
         AudioPlaybackController.onCompletion = onCompletion@{ completedUuid ->
             val completedIdx = items.indexOfFirst { it is ChatItem.Msg && it.message.getUuid() == completedUuid }
             if (completedIdx < 0) return@onCompletion
