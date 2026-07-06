@@ -8,47 +8,50 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import eu.siacs.conversations.update.UpdateChecker
-import eu.siacs.conversations.update.UpdateDownloader
-import eu.siacs.conversations.update.UpdatePreferences
-import okhttp3.OkHttpClient
+import eu.siacs.conversations.update.UpdateCheckHelper
+import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
+/** Checks for updates once daily at 10:00 local time, instead of on every app launch. On a
+ * hit: auto-downloads on wifi, or marks it pending so the sheet shows a manual Download button
+ * otherwise (see [UpdateCheckHelper.performCheck]). This worker only ever updates prefs, never
+ * touches UI — the next time the app is opened in the foreground,
+ * ConversationsActivity.maybeShowUpdateSheet() shows the sheet based on that state via
+ * UpdateSheetFragment.shouldShow(). Runs for every channel; beta/alpha additionally get a check
+ * on app launch too, via UpdateCheckHelper.checkOnLaunchIfEligible(). */
 class UpdateCheckWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
-        val prefs = UpdatePreferences(applicationContext)
-        if (!prefs.autoCheck) return Result.success()
-
-        val checker = UpdateChecker(OkHttpClient())
-        val result = checker.checkForUpdate(prefs.selectedChannel)
-        if (result !is UpdateChecker.CheckResult.UpdateAvailable) return Result.success()
-        val info = result.info
-
-        prefs.pendingUpdateVersion = info.versionName
-        prefs.pendingUpdateUrl = info.downloadUrl
-
-        if (UpdateDownloader.isWifiConnected(applicationContext)) {
-            prefs.pendingNoWifi = false
-            val id = UpdateDownloader.startDownload(applicationContext, info)
-            prefs.activeDownloadId = id
-        } else {
-            prefs.pendingNoWifi = true
-        }
+        UpdateCheckHelper.performCheck(applicationContext)
         return Result.success()
     }
 
     companion object {
-        private const val WORK_NAME = "weekly_update_check"
+        // Migrating off the old untimed weekly schedule onto the new daily-at-10:00 one.
+        private const val OLD_WORK_NAME = "weekly_update_check"
+        private const val WORK_NAME = "daily_update_check"
 
         fun schedule(context: Context) {
+            val workManager = WorkManager.getInstance(context)
+            workManager.cancelUniqueWork(OLD_WORK_NAME)
+
+            val now = Calendar.getInstance()
+            val next10am = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 10)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                if (before(now)) add(Calendar.DAY_OF_YEAR, 1)
+            }
+            val initialDelay = next10am.timeInMillis - now.timeInMillis
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
-            val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(7, TimeUnit.DAYS)
+            val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(1, TimeUnit.DAYS)
                 .setConstraints(constraints)
+                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
                 .build()
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            workManager.enqueueUniquePeriodicWork(
                 WORK_NAME,
                 ExistingPeriodicWorkPolicy.KEEP,
                 request

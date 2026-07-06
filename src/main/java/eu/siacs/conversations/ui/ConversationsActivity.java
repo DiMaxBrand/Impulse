@@ -528,7 +528,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     public void onResume() {
         super.onResume();
         this.mActivityPaused = false;
-        UpdateCheckHelper.runIfNeeded(this);
+        UpdateCheckHelper.checkOnLaunchIfEligible(this);
         maybeShowUpdateSheet();
     }
 
