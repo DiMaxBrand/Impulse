@@ -902,6 +902,12 @@ private fun MessageList(
     // Unit-keyed effect would only ever capture the very first list and silently go stale for
     // any message that arrived after the screen first composed.
     val context = LocalContext.current
+    // Holds the currently in-flight auto-advance scroll, if any. On short messages, a new
+    // completion can fire (and want to scroll to the next-next message) before the previous
+    // scroll animation has finished — two overlapping animateScrollToItem calls fight each
+    // other, which is what caused the scroll-then-snap-back/multi-scroll behavior. Cancelling
+    // the old one before starting a new one ensures only the latest target ever animates.
+    var autoAdvanceJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     androidx.compose.runtime.DisposableEffect(revision) {
         AudioPlaybackController.onCompletion = onCompletion@{ completedUuid ->
             val completedIdx = items.indexOfFirst { it is ChatItem.Msg && it.message.getUuid() == completedUuid }
@@ -915,8 +921,9 @@ private fun MessageList(
                 val file = try { activity?.xmppConnectionService?.fileBackend?.getFile(next.message) } catch (_: Exception) { null }
                 if (file != null && file.exists()) {
                     val nextIdx = items.indexOf(next)
+                    autoAdvanceJob?.cancel()
                     autoAdvancing = true
-                    scope.launch {
+                    autoAdvanceJob = scope.launch {
                         try {
                             kotlinx.coroutines.delay(300)
                             (context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager)
@@ -2022,6 +2029,36 @@ private fun AudioMessageContent(message: Message) {
         }
     }
 
+    // Spring-animated seek position — ticks land every 250ms, which without this reads as a
+    // jump cut rather than smooth motion (especially obvious on short messages, and on the
+    // reset to 0 after natural completion). Snap instantly while the user is actively dragging
+    // so direct manipulation stays 1:1; animate the rest of the time. Animatable.animateTo
+    // naturally re-targets mid-flight if ticks arrive back-to-back, so stacked updates stay
+    // smooth instead of restarting the animation from scratch.
+    val rawFraction = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
+    val sliderInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    var isDraggingSlider by remember { mutableStateOf(false) }
+    LaunchedEffect(sliderInteractionSource) {
+        sliderInteractionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is androidx.compose.foundation.interaction.DragInteraction.Start -> isDraggingSlider = true
+                is androidx.compose.foundation.interaction.DragInteraction.Stop,
+                is androidx.compose.foundation.interaction.DragInteraction.Cancel -> isDraggingSlider = false
+            }
+        }
+    }
+    val animatedFraction = remember(uuid) { Animatable(rawFraction) }
+    LaunchedEffect(rawFraction, isDraggingSlider) {
+        if (isDraggingSlider) {
+            animatedFraction.snapTo(rawFraction)
+        } else {
+            animatedFraction.animateTo(
+                rawFraction,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+            )
+        }
+    }
+
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.width(232.dp)) {
         FilledIconButton(
             onClick = { AudioPlaybackController.toggle(uuid, file) },
@@ -2042,13 +2079,13 @@ private fun AudioMessageContent(message: Message) {
             )
         }
         androidx.compose.material3.Slider(
-            value =
-                if (durationMs > 0) positionMs.toFloat() / durationMs else 0f,
+            value = animatedFraction.value,
             onValueChange = { fraction ->
                 val target = (fraction * durationMs).toInt()
                 AudioPlaybackController.seekTo(uuid, file, target)
                 tick++
             },
+            interactionSource = sliderInteractionSource,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
         )
         Text(
