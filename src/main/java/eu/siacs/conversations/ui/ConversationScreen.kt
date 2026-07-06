@@ -3556,7 +3556,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             transitionSpec = {
                                 if (isMic && !isExiting) {
                                     spring(
-                                        dampingRatio = Spring.DampingRatioHighBouncy,
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
                                         stiffness = Spring.StiffnessLow,
                                     )
                                 } else {
@@ -3569,7 +3569,11 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             } else if (isExiting) {
                                 if (state == EnterExitState.PostExit) 90f else 0f
                             } else {
-                                if (state == EnterExitState.PreEnter) -90f else 0f
+                                // Starts at +90 (to the right) and decreases to 0 — rotationZ is
+                                // positive-clockwise, so a decreasing value here is what actually
+                                // produces counter-clockwise motion, mirroring the mic's own
+                                // clockwise exit.
+                                if (state == EnterExitState.PreEnter) 90f else 0f
                             }
                         }
                     // Plain, immediate fade for send/done, which never rotate.
@@ -3599,7 +3603,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             if (progress < holdUntil) 1f
                             else 1f - (progress - holdUntil) / (1f - holdUntil)
                         } else {
-                            val arrived = 1f - (rotation / -90f).coerceIn(0f, 1f)
+                            val arrived = 1f - (rotation / 90f).coerceIn(0f, 1f)
                             val revealBy = 1f - holdUntil
                             (arrived / revealBy).coerceIn(0f, 1f)
                         }
