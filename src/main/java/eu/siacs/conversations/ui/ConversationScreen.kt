@@ -3306,11 +3306,17 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         val rowHoldUntil = 0.9f
         val rowAlpha =
             if (isRowExiting) {
+                // Stay visible while it spins away; only fade in the final stretch so the
+                // motion isn't cut off by the disappearance.
                 if (recordingRotationProgress < rowHoldUntil) 1f
                 else 1f - (recordingRotationProgress - rowHoldUntil) / (1f - rowHoldUntil)
             } else {
+                // Mirror image: reveal quickly at the start, then stay visible for the rest
+                // of the turn so you actually watch it spin into place, instead of it staying
+                // hidden until the spin is basically already done.
                 val arrived = 1f - recordingRotationProgress
-                if (arrived < rowHoldUntil) 0f else (arrived - rowHoldUntil) / (1f - rowHoldUntil)
+                val revealBy = 1f - rowHoldUntil
+                (arrived / revealBy).coerceIn(0f, 1f)
             }
         Row(
             verticalAlignment = Alignment.Bottom,
@@ -3578,9 +3584,12 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                                 if (state == EnterExitState.PreEnter) 0f else 1f
                             }
                         }
-                    // Mic's own fade waits for its turn to actually be almost done, driven by
-                    // its own live rotation progress rather than a guessed delay — a spring
-                    // has no fixed duration, so a timer can't reliably track when it settles.
+                    // Mic's own fade is driven by its own live rotation progress rather than a
+                    // guessed delay — a spring has no fixed duration, so a timer can't reliably
+                    // track when it settles. Exiting: stay visible while it spins away, only
+                    // fade in the final stretch. Entering: mirror image — reveal quickly at the
+                    // start, then stay visible for the rest so the turn into place is actually
+                    // watchable, instead of staying hidden until the spin is basically done.
                     val holdUntil = 0.9f
                     val iconAlpha =
                         if (!isMic) {
@@ -3591,7 +3600,8 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             else 1f - (progress - holdUntil) / (1f - holdUntil)
                         } else {
                             val arrived = 1f - (rotation / -90f).coerceIn(0f, 1f)
-                            if (arrived < holdUntil) 0f else (arrived - holdUntil) / (1f - holdUntil)
+                            val revealBy = 1f - holdUntil
+                            (arrived / revealBy).coerceIn(0f, 1f)
                         }
                     Icon(
                         painter = painterResource(targetIcon),
