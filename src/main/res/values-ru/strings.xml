@@ -1309,4 +1309,12 @@
     <string name="update_channel_beta_description">Новые функции на стадии тестирования. Возможны ошибки и нестабильная работа.</string>
     <string name="update_channel_alpha_description">Крайне нестабильная. Сбои и неработающие функции — норма. Только если готовы к переустановке.</string>
     <string name="update_channel_info_title">О канале</string>
+    <string name="listen_status_not_listened">Не прослушано</string>
+    <string name="listen_status_listening">Слушает</string>
+    <string name="listen_status_paused">Пауза</string>
+    <string name="listen_status_unknown">Неизвестно</string>
+    <string name="developer_options_title">Параметры разработчика</string>
+    <string name="developer_options_reset_pause_timer">Сбросить таймер паузы обновлений</string>
+    <string name="developer_options_reset_pause_timer_summary">Сбрасывает задержку после закрытия панели обновления, чтобы она могла появиться снова сразу</string>
+    <string name="developer_options_reset_pause_timer_done">Таймер паузы сброшен</string>
 </resources>
