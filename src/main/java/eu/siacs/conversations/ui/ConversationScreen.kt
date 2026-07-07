@@ -2036,7 +2036,16 @@ private fun AudioMessageContent(message: Message) {
     // position at 1x speed). If the estimate overruns the duration without a "listened"
     // confirmation arriving, we genuinely don't know where they are — flip to UNKNOWN.
     val isOutgoing = message.status != Message.STATUS_RECEIVED
-    val peer = if (isOutgoing) ListenStatusManager.peerStates[uuid] else null
+    // In-memory state wins; the persisted terminal LISTENED is the across-restarts fallback.
+    val peer =
+        if (isOutgoing) {
+            ListenStatusManager.peerStates[uuid]
+                ?: if (message.listenStatus == Message.LISTEN_STATUS_LISTENED)
+                    ListenStatusManager.PeerState(
+                        ListenStatusManager.State.LISTENED, 0L, Long.MAX_VALUE
+                    )
+                else null
+        } else null
     var peerTick by remember(uuid) { mutableIntStateOf(0) }
     LaunchedEffect(uuid, peer?.state) {
         while (ListenStatusManager.peerStates[uuid]?.state == ListenStatusManager.State.LISTENING) {
@@ -2438,8 +2447,13 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         if (!isAudio || footerUuid == null) {
             null
         } else if (outgoing) {
+            val peerState =
+                ListenStatusManager.peerStates[footerUuid]?.state
+                    ?: if (message.listenStatus == Message.LISTEN_STATUS_LISTENED)
+                        ListenStatusManager.State.LISTENED
+                    else null
             if (message.conversation.getMode() != Conversational.MODE_SINGLE) null
-            else when (ListenStatusManager.peerStates[footerUuid]?.state) {
+            else when (peerState) {
                 null, ListenStatusManager.State.NOT_LISTENED ->
                     stringResource(R.string.listen_status_not_listened)
                 ListenStatusManager.State.LISTENING ->
@@ -2450,7 +2464,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                     stringResource(R.string.listen_status_unknown)
             }
         } else {
-            if (ListenStatusManager.localListened[footerUuid] == true) null
+            if (ListenStatusManager.localListened[footerUuid] == true ||
+                message.listenStatus == Message.LISTEN_STATUS_LISTENED
+            ) null
             else stringResource(R.string.listen_status_not_listened)
         }
     Row(

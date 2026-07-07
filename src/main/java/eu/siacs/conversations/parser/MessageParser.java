@@ -890,6 +890,13 @@ public class MessageParser extends AbstractParser
                     if (found != null && found.getUuid() != null) {
                         eu.siacs.conversations.ui.ListenStatusManager.onPeerTransition(
                                 found.getUuid(), listenState);
+                        // The terminal state survives restarts; ephemeral ones stay in memory.
+                        if (eu.siacs.conversations.entities.Message.LISTEN_STATUS_LISTENED.equals(
+                                listenState)) {
+                            found.setListenStatus(
+                                    eu.siacs.conversations.entities.Message.LISTEN_STATUS_LISTENED);
+                            mXmppConnectionService.updateMessage(found, false);
+                        }
                         mXmppConnectionService.updateConversationUi();
                     }
                 }

@@ -218,6 +218,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         if (message.mimeType?.startsWith("audio/") != true) return
         if (wireState == ListenStatusManager.WIRE_LISTENED) {
             ListenStatusManager.markLocallyListened(uuid)
+            message.listenStatus = Message.LISTEN_STATUS_LISTENED
+            getXmppConnectionService()?.updateMessage(message, false)
         }
         sendListenStatusStanza(message, wireState)
     }

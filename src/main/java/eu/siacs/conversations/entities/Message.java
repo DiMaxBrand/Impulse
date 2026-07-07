@@ -93,7 +93,15 @@ public class Message extends AbstractEntity
     public static final String PINNED = "pinned";
     public static final String REPLIED_TO = "repliedTo";
     public static final String REMOTE_EDITING = "remoteEditing";
+    public static final String LISTEN_STATUS = "listenStatus";
     public static final String ME_COMMAND = "/me ";
+
+    /**
+     * Terminal value for {@link #LISTEN_STATUS}: on OUTGOING audio messages, the peer fully
+     * listened; on INCOMING ones, the local user did. Ephemeral states (listening/paused) are never
+     * persisted — they live in ListenStatusManager only.
+     */
+    public static final String LISTEN_STATUS_LISTENED = "listened";
 
     public static final String ERROR_MESSAGE_CANCELLED = "eu.siacs.conversations.cancelled";
 
@@ -128,6 +136,7 @@ public class Message extends AbstractEntity
     private boolean pinned = false;
     private String repliedTo = null;
     private boolean remoteEditing = false;
+    private String listenStatus = null;
 
     private Boolean isGeoUri = null;
     private Boolean isEmojisOnly = null;
@@ -302,6 +311,10 @@ public class Message extends AbstractEntity
         if (remoteEditingIndex >= 0) {
             message.remoteEditing = cursor.getInt(remoteEditingIndex) > 0;
         }
+        final int listenStatusIndex = cursor.getColumnIndex(LISTEN_STATUS);
+        if (listenStatusIndex >= 0) {
+            message.listenStatus = cursor.getString(listenStatusIndex);
+        }
         return message;
     }
 
@@ -396,6 +409,7 @@ public class Message extends AbstractEntity
         values.put(PINNED, pinned ? 1 : 0);
         values.put(REPLIED_TO, repliedTo);
         values.put(REMOTE_EDITING, remoteEditing ? 1 : 0);
+        values.put(LISTEN_STATUS, listenStatus);
         return values;
     }
 
@@ -527,6 +541,14 @@ public class Message extends AbstractEntity
 
     public void setRemoteEditing(final boolean active) {
         this.remoteEditing = active;
+    }
+
+    public String getListenStatus() {
+        return listenStatus;
+    }
+
+    public void setListenStatus(final String listenStatus) {
+        this.listenStatus = listenStatus;
     }
 
     public boolean isRead() {
