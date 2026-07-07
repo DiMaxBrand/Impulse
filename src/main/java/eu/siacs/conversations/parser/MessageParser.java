@@ -872,6 +872,31 @@ public class MessageParser extends AbstractParser
             return;
         }
 
+        final eu.siacs.conversations.xml.Element listenEl =
+                original.findChild("listening", Namespace.IMPULSE_LISTEN_STATUS);
+        if (listenEl != null) {
+            final String listenId = listenEl.getAttribute("id");
+            final String listenState = listenEl.getAttribute("state");
+            if (listenId != null && listenState != null && from != null) {
+                final eu.siacs.conversations.entities.Conversation conv =
+                        mXmppConnectionService.find(account, from.asBareJid());
+                // 1:1 only. The id references a message WE sent — the peer knows it by the id
+                // on the wire, which findSentMessageWithUuidOrRemoteId resolves either way.
+                if (conv != null
+                        && conv.getMode()
+                                == eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {
+                    final eu.siacs.conversations.entities.Message found =
+                            conv.findSentMessageWithUuidOrRemoteId(listenId);
+                    if (found != null && found.getUuid() != null) {
+                        eu.siacs.conversations.ui.ListenStatusManager.onPeerTransition(
+                                found.getUuid(), listenState);
+                        mXmppConnectionService.updateConversationUi();
+                    }
+                }
+            }
+            return;
+        }
+
         if (original.hasExtension(Event.class)) {
             getManager(PubSubManager.class).handleEvent(original);
         }

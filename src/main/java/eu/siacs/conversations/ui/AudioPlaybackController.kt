@@ -27,6 +27,12 @@ object AudioPlaybackController {
     /** Invoked on the main thread when a message finishes playing naturally (not paused/stopped). */
     var onCompletion: ((completedUuid: String) -> Unit)? = null
 
+    /** Playback state transitions (wire tokens from [ListenStatusManager]): "listening" on
+     * start/resume, "paused" on any pause, "listened" on natural completion. The fragment
+     * decides whether the message qualifies for a listen-status stanza (incoming, audio, 1:1)
+     * — this controller just reports raw transitions. */
+    var onTransition: ((uuid: String, wireState: String) -> Unit)? = null
+
     fun positionFor(uuid: String): Int =
         if (activeUuid == uuid) player?.currentPosition ?: (positions[uuid] ?: 0) else positions[uuid] ?: 0
 
@@ -61,6 +67,7 @@ object AudioPlaybackController {
             // Clear activeUuid so positionFor() reads positions[uuid]=0 instead of
             // player.currentPosition (which sits at the end of the file after completion).
             activeUuid = null
+            onTransition?.invoke(uuid, ListenStatusManager.WIRE_LISTENED)
             onCompletion?.invoke(uuid)
         }
         val savedPosition = positions[uuid] ?: 0
@@ -75,21 +82,29 @@ object AudioPlaybackController {
 
     fun play(uuid: String, file: File) {
         resumableOnReturn.remove(uuid)
+        val wasPlayingThis = activeUuid == uuid && isPlaying
         val mp = ensurePlayer(uuid, file)
         mp.start()
         activeUuid = uuid
         isPlaying = true
+        if (!wasPlayingThis) {
+            onTransition?.invoke(uuid, ListenStatusManager.WIRE_LISTENING)
+        }
     }
 
     private fun pause(uuid: String, userInitiated: Boolean) {
         if (activeUuid != uuid) return
         val mp = player ?: return
+        val wasPlaying = isPlaying
         try {
             positions[uuid] = mp.currentPosition
             mp.pause()
         } catch (_: Exception) {
         }
         isPlaying = false
+        if (wasPlaying) {
+            onTransition?.invoke(uuid, ListenStatusManager.WIRE_PAUSED)
+        }
         if (userInitiated) {
             resumableOnReturn.remove(uuid)
         } else {

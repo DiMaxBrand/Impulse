@@ -197,6 +197,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 android.content.res.Configuration.UI_MODE_NIGHT_YES
         androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView)
             .isAppearanceLightStatusBars = isLight
+        AudioPlaybackController.onTransition = ::handleListenTransition
     }
 
     override fun onStop() {
@@ -205,7 +206,51 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             stopRecordingSession(save = false)
             state.recordingState.value = RecordingUiState.Idle
         }
+        // pauseForBackground() fires a PAUSED transition; keep the handler registered until
+        // after it runs so backgrounding mid-listen still sends a best-effort "paused" stanza.
         AudioPlaybackController.pauseForBackground()
+        AudioPlaybackController.onTransition = null
+    }
+
+    private fun handleListenTransition(uuid: String, wireState: String) {
+        val message = conversation?.findMessageWithUuid(uuid) ?: return
+        if (message.status != Message.STATUS_RECEIVED) return
+        if (message.mimeType?.startsWith("audio/") != true) return
+        if (wireState == ListenStatusManager.WIRE_LISTENED) {
+            ListenStatusManager.markLocallyListened(uuid)
+        }
+        sendListenStatusStanza(message, wireState)
+    }
+
+    /** Tells the sender what we're doing with their voice message. 1:1 chats only — in group
+     * rooms this would broadcast listening habits to everyone present. Only ever fires for
+     * INCOMING messages (playing back your own sent message says nothing useful to anyone). */
+    private fun sendListenStatusStanza(message: Message, wireState: String) {
+        val service = getXmppConnectionService() ?: return
+        val c = message.conversation as? Conversation ?: return
+        if (c.getMode() != eu.siacs.conversations.entities.Conversational.MODE_SINGLE) return
+        val packet = im.conversations.android.xmpp.model.stanza.Message()
+        packet.setFrom(c.getAccount().jid)
+        packet.setTo(message.counterpart.asBareJid())
+        val el = eu.siacs.conversations.xml.Element(
+            "listening",
+            eu.siacs.conversations.xml.Namespace.IMPULSE_LISTEN_STATUS,
+        )
+        // Reference the id the sender knows their message by: their uuid, which arrived on our
+        // side as remoteMsgId. (Same reasoning as editing indicators and retractions — a local
+        // uuid means nothing to the other device.)
+        el.setAttribute("id", message.remoteMsgId ?: message.getUuid())
+        el.setAttribute("state", wireState)
+        packet.addChild(el)
+        // Ephemeral transitions (listening/paused) are worthless hours later — don't archive
+        // them. The terminal "listened" is the one worth delivering even if the sender is
+        // offline right now, like a displayed marker.
+        if (wireState == ListenStatusManager.WIRE_LISTENED) {
+            packet.addExtension(im.conversations.android.xmpp.model.hints.Store())
+        } else {
+            packet.addExtension(im.conversations.android.xmpp.model.hints.NoStore())
+        }
+        service.sendMessagePacket(c.getAccount(), packet)
     }
 
     fun reInit(conversation: Conversation, extras: Bundle) {
