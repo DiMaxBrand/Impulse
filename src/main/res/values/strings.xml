@@ -1255,4 +1255,9 @@
     <string name="update_channel_beta_description">New features in active testing. Some rough edges expected.</string>
     <string name="update_channel_alpha_description">Highly unstable. Crashes and broken features are expected. Only if you\'re willing to reinstall.</string>
     <string name="update_channel_info_title">About this channel</string>
+    <!-- Voice message listen status -->
+    <string name="listen_status_not_listened">Not listened</string>
+    <string name="listen_status_listening">Listening</string>
+    <string name="listen_status_paused">Paused</string>
+    <string name="listen_status_unknown">Unknown</string>
 </resources>

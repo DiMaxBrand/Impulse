@@ -2031,6 +2031,41 @@ private fun AudioMessageContent(message: Message) {
     val durationMs =
         AudioPlaybackController.durations[uuid] ?: (message.fileParams?.runtime ?: 0)
 
+    // Peer listen status (outgoing 1:1 voice messages): while the peer is LISTENING, this
+    // ticker advances the locally-extrapolated position (wall-clock maps 1:1 to playback
+    // position at 1x speed). If the estimate overruns the duration without a "listened"
+    // confirmation arriving, we genuinely don't know where they are — flip to UNKNOWN.
+    val isOutgoing = message.status != Message.STATUS_RECEIVED
+    val peer = if (isOutgoing) ListenStatusManager.peerStates[uuid] else null
+    var peerTick by remember(uuid) { mutableIntStateOf(0) }
+    LaunchedEffect(uuid, peer?.state) {
+        while (ListenStatusManager.peerStates[uuid]?.state == ListenStatusManager.State.LISTENING) {
+            peerTick++
+            if (durationMs > 0 &&
+                ListenStatusManager.estimatedListenedMs(uuid) > durationMs + 4000L
+            ) {
+                ListenStatusManager.markUnknown(uuid)
+                break
+            }
+            kotlinx.coroutines.delay(250)
+        }
+    }
+    val peerFraction =
+        if (peer == null || durationMs <= 0) 0f
+        else {
+            @Suppress("UNUSED_EXPRESSION") peerTick
+            when (peer.state) {
+                ListenStatusManager.State.LISTENED, ListenStatusManager.State.UNKNOWN -> 1f
+                else ->
+                    (ListenStatusManager.estimatedListenedMs(uuid).toFloat() / durationMs)
+                        .coerceIn(0f, 1f)
+            }
+        }
+    // Local playback owns the track whenever it has any position; otherwise (idle outgoing
+    // bubble) the track becomes the peer-progress display, moving entirely natively — same
+    // slider, same thumb, only the fill value and colors are driven by the peer state.
+    val localOwnsTrack = playing || positionMs > 0
+
     LaunchedEffect(uuid) {
         AudioPlaybackController.onRowEnteredComposition(uuid, file)
     }
@@ -2052,7 +2087,10 @@ private fun AudioMessageContent(message: Message) {
     // so direct manipulation stays 1:1; animate the rest of the time. Animatable.animateTo
     // naturally re-targets mid-flight if ticks arrive back-to-back, so stacked updates stay
     // smooth instead of restarting the animation from scratch.
-    val rawFraction = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
+    val rawFraction =
+        if (durationMs <= 0) 0f
+        else if (localOwnsTrack) positionMs.toFloat() / durationMs
+        else peerFraction
     val sliderInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     var isDraggingSlider by remember { mutableStateOf(false) }
     LaunchedEffect(sliderInteractionSource) {
@@ -2103,6 +2141,27 @@ private fun AudioMessageContent(message: Message) {
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "audioThumbHeight",
             )
+        // Two-tone track: the filled left side is "what has been listened to" — white with a
+        // slight primary tint — whether that's local playback (incoming) or the peer's
+        // extrapolated progress (outgoing). UNKNOWN swaps the fill to a white-with-error tint.
+        // The unfilled right side keeps the default muted inactive color ("not listened").
+        val listenedTint =
+            androidx.compose.ui.graphics.lerp(
+                Color.White, MaterialTheme.colorScheme.primary, 0.18f
+            )
+        val unknownTint =
+            androidx.compose.ui.graphics.lerp(
+                Color.White, MaterialTheme.colorScheme.error, 0.22f
+            )
+        val activeTrackColor by
+            androidx.compose.animation.animateColorAsState(
+                targetValue =
+                    if (!localOwnsTrack && peer?.state == ListenStatusManager.State.UNKNOWN)
+                        unknownTint
+                    else listenedTint,
+                animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+                label = "audioTrackColor",
+            )
         androidx.compose.material3.Slider(
             value = animatedFraction.value,
             onValueChange = { fraction ->
@@ -2111,6 +2170,10 @@ private fun AudioMessageContent(message: Message) {
                 tick++
             },
             interactionSource = sliderInteractionSource,
+            colors =
+                androidx.compose.material3.SliderDefaults.colors(
+                    activeTrackColor = activeTrackColor,
+                ),
             thumb = { sliderState ->
                 androidx.compose.material3.SliderDefaults.Thumb(
                     interactionSource = sliderInteractionSource,
@@ -2366,12 +2429,36 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         } else null
     }
     val timeText = DateUtils.formatDateTime(context, message.timeSent, DateUtils.FORMAT_SHOW_TIME)
+    // Voice-message listen status, leftmost in the "status · size · time" line. Outgoing (1:1
+    // only): what the peer is doing with our message; LISTENED itself has no label — the fully
+    // tinted track is its indicator. Incoming: purely local "have I listened to this yet".
+    val footerUuid = message.getUuid()
+    val isAudio = message.mimeType?.startsWith("audio/") == true
+    val listenLabel: String? =
+        if (!isAudio || footerUuid == null) {
+            null
+        } else if (outgoing) {
+            if (message.conversation.getMode() != Conversational.MODE_SINGLE) null
+            else when (ListenStatusManager.peerStates[footerUuid]?.state) {
+                null, ListenStatusManager.State.NOT_LISTENED ->
+                    stringResource(R.string.listen_status_not_listened)
+                ListenStatusManager.State.LISTENING ->
+                    stringResource(R.string.listen_status_listening)
+                ListenStatusManager.State.PAUSED -> stringResource(R.string.listen_status_paused)
+                ListenStatusManager.State.LISTENED -> null
+                ListenStatusManager.State.UNKNOWN ->
+                    stringResource(R.string.listen_status_unknown)
+            }
+        } else {
+            if (ListenStatusManager.localListened[footerUuid] == true) null
+            else stringResource(R.string.listen_status_not_listened)
+        }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
     ) {
         Text(
-            text = if (fileSize != null) "$fileSize · $timeText" else timeText,
+            text = listOfNotNull(listenLabel, fileSize, timeText).joinToString(" · "),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
