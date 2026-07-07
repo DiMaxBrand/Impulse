@@ -100,7 +100,6 @@ fun UpdatesScreen(
     onInstall: () -> Unit,
     onConfirmInstall: () -> Unit,
     onDownloadCircleTapped: () -> Unit = {},
-    onShowUpdateSheet: () -> Unit = {},
     onHideUpdateSheet: () -> Unit = {},
 ) {
     var channelPickerVisible by remember { mutableStateOf(false) }
@@ -235,15 +234,6 @@ fun UpdatesScreen(
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
-
-                FilledTonalButton(
-                    onClick = onShowUpdateSheet,
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Show update bottom sheet")
-                }
             }
 
             // ── Scrim (animated independently) ───────────────────────────

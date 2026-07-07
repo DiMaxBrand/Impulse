@@ -90,7 +90,6 @@ class UpdatesActivity : ActionBarActivity() {
                                 prefs.hasInstalledUpdate = true
                                 UpdateDownloader.installApk(this@UpdatesActivity, path)
                             },
-                            onShowUpdateSheet = { showUpdateSheet() },
                             onHideUpdateSheet = {
                                 uiState = uiState.copy(showUpdateSheet = false)
                             },
@@ -101,14 +100,6 @@ class UpdatesActivity : ActionBarActivity() {
         }
 
         resumeActiveDownload()
-    }
-
-    private fun showUpdateSheet() {
-        val currentPhase = uiState.downloadPhase
-        uiState = uiState.copy(
-            downloadPhase = if (currentPhase == DownloadPhase.IDLE) DownloadPhase.NO_WIFI_PENDING else currentPhase,
-            showUpdateSheet = true,
-        )
     }
 
     private fun initState() {

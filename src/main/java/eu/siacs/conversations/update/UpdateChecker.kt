@@ -46,6 +46,36 @@ class UpdateChecker(private val client: OkHttpClient) {
         object ChannelBehind : CheckResult()
     }
 
+    /** Every published release with an APK asset, newest first, regardless of channel or how
+     * it compares to the installed version. Powers the developer-options manual version picker,
+     * which deliberately bypasses the checkForUpdate() upgrade-only restriction. */
+    fun listReleases(): List<UpdateInfo> {
+        val releases = fetchReleases() ?: return emptyList()
+        return releases
+            .mapNotNull { release ->
+                val tag = release.optString("tag_name")
+                if (tag.isNullOrEmpty()) return@mapNotNull null
+                val version = parseVersion(tag) ?: return@mapNotNull null
+                val apkUrl = findApkAsset(release) ?: return@mapNotNull null
+                Triple(version, apkUrl, tag)
+            }
+            .sortedWith { a, b -> compareSemver(b.first, a.first) }
+            .map { (_, apkUrl, tag) ->
+                val channel = when {
+                    tag.contains("-alpha.") -> UpdateChannel.ALPHA
+                    tag.contains("-beta.") -> UpdateChannel.BETA
+                    tag.contains("-rc.") -> UpdateChannel.RC
+                    else -> UpdateChannel.STABLE
+                }
+                UpdateInfo(
+                    versionName = tag,
+                    channel = channel,
+                    downloadUrl = apkUrl,
+                    releaseNotes = "",
+                )
+            }
+    }
+
     private fun fetchReleases(): List<JSONObject>? {
         val request = Request.Builder()
             .url("https://api.github.com/repos/DiMaxBrand/Impulse/releases?per_page=50")

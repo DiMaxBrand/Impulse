@@ -1317,4 +1317,9 @@
     <string name="developer_options_reset_pause_timer">Сбросить таймер паузы обновлений</string>
     <string name="developer_options_reset_pause_timer_summary">Сбрасывает задержку после закрытия панели обновления, чтобы она могла появиться снова сразу</string>
     <string name="developer_options_reset_pause_timer_done">Таймер паузы сброшен</string>
+    <string name="developer_options_show_update_sheet">Показать панель обновления</string>
+    <string name="developer_options_show_update_sheet_summary">Открывает панель обновления в текущем состоянии загрузчика</string>
+    <string name="developer_options_pick_version">Выбрать версию вручную</string>
+    <string name="developer_options_pick_version_summary">Обходит ограничения на понижение — переход к любой опубликованной версии</string>
+    <string name="developer_options_pick_version_empty">Версии не найдены</string>
 </resources>

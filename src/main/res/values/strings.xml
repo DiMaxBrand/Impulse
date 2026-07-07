@@ -1255,6 +1255,11 @@
     <string name="update_channel_beta_description">New features in active testing. Some rough edges expected.</string>
     <string name="update_channel_alpha_description">Highly unstable. Crashes and broken features are expected. Only if you\'re willing to reinstall.</string>
     <string name="update_channel_info_title">About this channel</string>
+    <string name="developer_options_show_update_sheet">Show update bottom sheet</string>
+    <string name="developer_options_show_update_sheet_summary">Opens the update sheet in whatever state the updater is currently in</string>
+    <string name="developer_options_pick_version">Pick version manually</string>
+    <string name="developer_options_pick_version_summary">Bypasses downgrade restrictions — jump to any published version</string>
+    <string name="developer_options_pick_version_empty">No versions found</string>
     <!-- Voice message listen status -->
     <string name="listen_status_not_listened">Not listened</string>
     <string name="listen_status_listening">Listening</string>
