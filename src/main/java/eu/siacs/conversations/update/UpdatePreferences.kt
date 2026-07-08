@@ -70,6 +70,32 @@ class UpdatePreferences(context: Context) {
         }
     }
 
+    /** Self-heals stale pending/downloaded state left over from before an update was installed:
+     * onConfirmInstall() hands off to the system installer without clearing these (there's no
+     * reliable "install actually finished" callback — the process can die mid-install), so on
+     * the FIRST launch of a version that was itself the pending update, these prefs are still
+     * pointing at what's now already installed. If the referenced APK file has since been
+     * cleaned up (nightly wipe, DownloadManager retention), the sheet would otherwise land in
+     * the dead IDLE phase — a "new version available" card with no button at all.
+     *
+     * Only call this once, at process startup, before any UI (or the developer-options manual
+     * version picker, which deliberately stages a version that isn't newer) has run — otherwise
+     * this would immediately wipe out a deliberate downgrade pick made later in the session. */
+    fun clearIfNotNewerThan(currentVersionRaw: String) {
+        val current =
+            UpdateChecker.parseVersion(UpdateChecker.stripBuildMeta(currentVersionRaw))
+                ?: return
+        pendingUpdateVersion?.let { UpdateChecker.parseVersion(it) }?.let { pending ->
+            if (UpdateChecker.compareSemver(pending, current) <= 0) clearPending()
+        }
+        downloadedVersion?.let { UpdateChecker.parseVersion(it) }?.let { downloaded ->
+            if (UpdateChecker.compareSemver(downloaded, current) <= 0) {
+                clearDownload()
+                downloadedApkPath = null
+            }
+        }
+    }
+
     companion object {
         private const val KEY_CHANNEL = "channel"
         private const val KEY_AUTO_CHECK = "auto_check"
