@@ -57,13 +57,23 @@ object ListenStatusManager {
                 peerStates[uuid] = PeerState(
                     State.LISTENING,
                     listeningSinceMs = now,
-                    accumulatedMs = prev?.let { estimatedListenedMs(uuid, now) } ?: 0L,
+                    // Only a genuine resume (from PAUSED) carries prior progress forward.
+                    // Starting fresh from any other prior state — including LISTENED, whose
+                    // accumulatedMs is the Long.MAX_VALUE sentinel — must reset to 0. Feeding
+                    // that sentinel through estimatedListenedMs() here used to overflow into a
+                    // deeply negative number, which coerced the progress fraction to a
+                    // permanent 0 for the rest of the replay (looked like the handle jumping
+                    // to the far left and never moving again).
+                    accumulatedMs = if (prev?.state == State.PAUSED) prev.accumulatedMs else 0L,
                 )
             WIRE_PAUSED ->
                 peerStates[uuid] = PeerState(
                     State.PAUSED,
                     listeningSinceMs = 0L,
-                    accumulatedMs = prev?.let { estimatedListenedMs(uuid, now) } ?: 0L,
+                    // Same reasoning: only meaningful when pausing FROM an active listen.
+                    accumulatedMs =
+                        if (prev?.state == State.LISTENING) estimatedListenedMs(uuid, now)
+                        else 0L,
                 )
             WIRE_LISTENED ->
                 peerStates[uuid] = PeerState(

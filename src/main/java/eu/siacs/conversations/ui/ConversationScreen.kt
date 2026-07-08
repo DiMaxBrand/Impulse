@@ -1445,8 +1445,15 @@ private fun ReactionChips(
             val isOurs = emoji in aggregated.ourReactions
             Surface(
                 shape = RoundedCornerShape(50),
+                // "Ours" uses tertiaryContainer, not primaryContainer: primaryContainer is also
+                // the outgoing bubble's own background, so a reaction you added to your own
+                // message used to be visually identical to the bubble it overlaps — it read as
+                // melting into the bubble rather than as a distinct chip. tertiary is
+                // deliberately hue-shifted further from the seed color in Material You, so it
+                // stays visually distinct from both the outgoing (primaryContainer) and
+                // incoming (surfaceContainerHigh) bubble colors.
                 color =
-                    if (isOurs) MaterialTheme.colorScheme.primaryContainer
+                    if (isOurs) MaterialTheme.colorScheme.tertiaryContainer
                     else MaterialTheme.colorScheme.secondaryContainer,
                 modifier =
                     Modifier.combinedClickable(
@@ -1469,7 +1476,7 @@ private fun ReactionChips(
                             text = count.toString(),
                             style = MaterialTheme.typography.labelMedium,
                             color =
-                                if (isOurs) MaterialTheme.colorScheme.onPrimaryContainer
+                                if (isOurs) MaterialTheme.colorScheme.onTertiaryContainer
                                 else MaterialTheme.colorScheme.onSecondaryContainer,
                         )
                     }
