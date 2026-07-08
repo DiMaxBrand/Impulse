@@ -19,6 +19,16 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 - **When to bump**: after completing a meaningful chapter of work (feature, set of fixes), before the user triggers a GitHub release. Analyze commits since the last tag — new user-facing features → MINOR, fixes/polish → PATCH, breaking changes → MAJOR. Do this proactively; don't wait to be asked.
 - **Beta versioning**: while in beta (`-beta.N`), increment only the beta number (`beta.4` → `beta.5`). Do NOT jump the MINOR or PATCH component during beta — that only happens on final release.
 
+### Release notes (GitHub Release title/description)
+
+- **Alpha/beta releases**: a description is optional — skip it unless there's something worth calling out.
+- **Release candidates**: more important to include one, since RC is the last stop before stable.
+- **RC → Stable promotion**: must be a pure version bump, no code changes bundled in. If something still needs fixing, ship it on another RC first, get it tested, and only promote to stable once verified — never mix code changes into the stable-promotion commit.
+- **Stable release title**: format `MAJOR.MINOR.PATCH: <short description>` — short but proper, following the existing tag conventions, with the key points after the colon (e.g. `1.12.0: Better voice messages, improved sync`).
+- **Stable release description**: must summarize everything shipped since the *first alpha* of that cycle, not just the diff since the last RC.
+
+> **TEMPORARY — remove this note once the first stable release ships:** no stable release has been published for this app yet, so the rules above haven't been exercised in practice. Delete this callout after the first stable release goes out.
+
 ## Branches
 
 | Branch | Purpose |
