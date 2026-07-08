@@ -2157,11 +2157,16 @@ private fun AudioMessageContent(message: Message) {
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "audioThumbHeight",
             )
-        // Two-tone track: the filled left side is "what has been listened to" — plain white —
-        // whether that's local playback (incoming) or the peer's extrapolated progress
-        // (outgoing). UNKNOWN swaps the fill to a white-with-error tint. The unfilled right
-        // side keeps the default muted inactive color ("not listened").
-        val listenedTint = Color.White
+        // Two-tone track: the filled left side is "what has been listened to" — white with a
+        // small primary tint, whether that's local playback (incoming) or the peer's
+        // extrapolated progress (outgoing). Pure white read as too high-contrast; a light touch
+        // of tint softens it without going back to looking gray. UNKNOWN swaps the fill to a
+        // white-with-error tint. The unfilled right side keeps the default muted inactive color
+        // ("not listened").
+        val listenedTint =
+            androidx.compose.ui.graphics.lerp(
+                Color.White, MaterialTheme.colorScheme.primary, 0.08f
+            )
         val unknownTint =
             androidx.compose.ui.graphics.lerp(
                 Color.White, MaterialTheme.colorScheme.error, 0.22f
