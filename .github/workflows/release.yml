@@ -12,12 +12,24 @@ on:
         required: false
         type: boolean
         default: true
+      title:
+        description: 'Release title (optional, default: "Impulse <version>"). For a stable release, use this for a short changelog headline.'
+        required: false
+        type: string
+      description:
+        description: 'Release description (optional, prepended above the auto-generated changelog)'
+        required: false
+        type: string
 
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      INPUT_VERSION_NAME: ${{ inputs.version_name }}
+      INPUT_TITLE: ${{ inputs.title }}
+      INPUT_DESCRIPTION: ${{ inputs.description }}
 
     steps:
       - name: Checkout
@@ -25,8 +37,8 @@ jobs:
 
       - name: Extract version name
         run: |
-          if [ -n "${{ inputs.version_name }}" ]; then
-            VERSION="${{ inputs.version_name }}"
+          if [ -n "$INPUT_VERSION_NAME" ]; then
+            VERSION="$INPUT_VERSION_NAME"
           else
             VERSION=$(grep 'val appVersion' build.gradle.kts | sed 's/.*"\(.*\)".*/\1/' | cut -d'+' -f1)
           fi
@@ -67,8 +79,19 @@ jobs:
           if [ "${{ inputs.prerelease }}" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
+
+          TITLE="$INPUT_TITLE"
+          if [ -z "$TITLE" ]; then
+            TITLE="Impulse ${{ env.VERSION }}"
+          fi
+
+          NOTES_ARGS=(--generate-notes)
+          if [ -n "$INPUT_DESCRIPTION" ]; then
+            NOTES_ARGS=(--notes "$INPUT_DESCRIPTION" --generate-notes)
+          fi
+
           gh release create "${{ env.VERSION }}" \
             $PRERELEASE_FLAG \
-            --title "Impulse ${{ env.VERSION }}" \
-            --generate-notes \
+            --title "$TITLE" \
+            "${NOTES_ARGS[@]}" \
             "build/outputs/apk/conversationsFree/release/Impulse_arm64.apk"
