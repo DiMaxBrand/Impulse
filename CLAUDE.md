@@ -25,7 +25,7 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 - **Release candidates**: more important to include one, since RC is the last stop before stable.
 - **RC → Stable promotion**: must be a pure version bump, no code changes bundled in. If something still needs fixing, ship it on another RC first, get it tested, and only promote to stable once verified — never mix code changes into the stable-promotion commit.
 - **Stable release title**: format `MAJOR.MINOR.PATCH: <short description>` — short but proper, following the existing tag conventions, with the key points after the colon (e.g. `1.12.0: Better voice messages, improved sync`).
-- **Stable release description**: must summarize everything shipped since the *first alpha* of that cycle, not just the diff since the last RC.
+- **Stable release description**: summarize everything shipped since the **previous stable release** (not just the diff since the last RC). Exception: the **first-ever stable release** has no previous stable to diff against, so it collapses everything since the **first-ever alpha**.
 
 > **TEMPORARY — remove this note once the first stable release ships:** no stable release has been published for this app yet, so the rules above haven't been exercised in practice. Delete this callout after the first stable release goes out.
 
