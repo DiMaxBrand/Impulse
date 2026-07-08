@@ -2190,6 +2190,27 @@ private fun AudioMessageContent(message: Message) {
                     thumbSize = androidx.compose.ui.unit.DpSize(4.dp, thumbHeight),
                 )
             },
+            track = { sliderState ->
+                // The default stop-indicator dot at the track's end reuses activeTrackColor,
+                // which we've tinted near-white — against that, or against a light theme's
+                // inactive track, the dot loses contrast and effectively disappears. Draw it
+                // with a fixed, always-visible color instead, independent of listen-status tint.
+                val dotColor = MaterialTheme.colorScheme.onSurfaceVariant
+                val dotRadiusPx =
+                    with(androidx.compose.ui.platform.LocalDensity.current) {
+                        (androidx.compose.material3.SliderDefaults.TrackStopIndicatorSize / 2).toPx()
+                    }
+                androidx.compose.material3.SliderDefaults.Track(
+                    sliderState = sliderState,
+                    colors =
+                        androidx.compose.material3.SliderDefaults.colors(
+                            activeTrackColor = activeTrackColor,
+                        ),
+                    drawStopIndicator = { offset ->
+                        drawCircle(color = dotColor, radius = dotRadiusPx, center = offset)
+                    },
+                )
+            },
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
         )
         Text(
