@@ -26,6 +26,7 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 - **RC → Stable promotion**: must be a pure version bump, no code changes bundled in. If something still needs fixing, ship it on another RC first, get it tested, and only promote to stable once verified — never mix code changes into the stable-promotion commit.
 - **Stable release title**: format `MAJOR.MINOR.PATCH: <short description>` — short but proper, following the existing tag conventions, with the key points after the colon (e.g. `1.12.0: Better voice messages, improved sync`).
 - **Stable release description**: summarize everything shipped since the **previous stable release** (not just the diff since the last RC). Exception: the **first-ever stable release** has no previous stable to diff against, so it collapses everything since the **first-ever alpha this app has cut** — the earliest alpha in git/release history, regardless of its version number.
+- **Language**: the user-facing highlights section goes **Russian first, then English** — both are written for regular (non-developer) users, since most people opening a release land on it via Russian. Only Russian and English — see "Localization" below. If technical detail is worth including for developers, put it in a separate **English-only "Developer notes"** section after the two user-facing ones.
 
 > **TEMPORARY — remove this note once the first stable release ships:** no stable release has been published for this app yet — 1.11.0 never reached stable before work moved on to 1.12.0. So the exception above applies right now: whichever version ends up shipping first stable, its description must reach all the way back to 1.11.0's first alpha, not restart at its own cycle's first alpha. Delete this whole callout after the first stable release goes out.
 
@@ -95,6 +96,14 @@ geo → `ShowLocationActivity`, web+ap → handler or HTTPS fallback).
   short tap still opens the viewer.
 - Context sheet (`MessageContextSheet`) currently implements: reply, copy text,
   correct, open file, download file, add reaction. See TODO.md for the backlog.
+
+## Localization
+
+- Only **Russian and English** are actively maintained (`values/strings.xml`
+  and `values-ru/strings.xml`). Do not add or auto-translate into any other
+  locale unless explicitly asked — the user can't verify translations they
+  don't speak, and stale/wrong translations are worse than a missing one.
+  This applies to `strings.xml` as well as GitHub release notes.
 
 ## Signing
 
