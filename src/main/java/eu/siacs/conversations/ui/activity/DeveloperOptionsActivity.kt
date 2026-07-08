@@ -25,10 +25,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -268,7 +268,19 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                                             .padding(vertical = 32.dp),
                                                         contentAlignment = Alignment.Center,
                                                     ) {
-                                                        CircularProgressIndicator()
+                                                        // Developer options is a showcase spot for
+                                                        // new M3 Expressive components — the
+                                                        // morphing-shapes indicator, sized up, in
+                                                        // place of a plain circular spinner. Its
+                                                        // shape-morph motion has no public
+                                                        // animationSpec param in this material3
+                                                        // version (checked the decompiled class:
+                                                        // no MotionScheme consumption either), so
+                                                        // the damping ratio can't be overridden —
+                                                        // this is the built-in motion as shipped.
+                                                        androidx.compose.material3.LoadingIndicator(
+                                                            modifier = Modifier.size(64.dp),
+                                                        )
                                                     }
                                                 list.isEmpty() ->
                                                     Text(
