@@ -10,6 +10,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -114,14 +115,16 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                         animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
                         label = "version_picker_scrim",
                     )
-                    // Expansion gets the requested high bounce; the collapse back into the row
-                    // uses the standard M3E spatial token so it settles quickly before the
-                    // bottom sheet appears. pickerExpanded is already flipped when the bounds
-                    // animation starts, so it doubles as the direction flag.
+                    // Expansion gets medium bounce — high bounce (0.2) was overwhelming here,
+                    // even by Expressive-showcase standards. Collapse back into the row uses the
+                    // standard M3E spatial token so it settles quickly before the bottom sheet
+                    // appears. pickerExpanded is already flipped when the bounds animation
+                    // starts, so it doubles as the direction flag.
                     val pickerBoundsTransform = BoundsTransform { _, _ ->
                         spring(
                             stiffness = 380f,
-                            dampingRatio = if (pickerExpanded) 0.2f else 0.8f,
+                            dampingRatio =
+                                if (pickerExpanded) Spring.DampingRatioMediumBouncy else 0.8f,
                         )
                     }
 
