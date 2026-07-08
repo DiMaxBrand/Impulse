@@ -1412,7 +1412,11 @@ private fun MessageRow(
             listener = listener,
             modifier = Modifier
                 .fillMaxWidth()
-                .offset(y = (-4).dp)
+                // Pulled up closer to the bubble — the reaction/bubble colors are now
+                // distinct enough (tertiaryContainer / secondaryContainer vs. the bubble's
+                // own primaryContainer / surfaceContainerHigh) that the extra breathing room
+                // isn't needed to tell them apart.
+                .offset(y = (-8).dp)
                 .padding(
                     start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 10.dp,
                     end = if (outgoing) 10.dp else 48.dp,
