@@ -915,9 +915,13 @@ private fun MessageList(
         if (index == 0) listener.onScrolledToBottom()
     }
 
-    // Keep pinned to the bottom when a new message arrives while we are (nearly) there.
+    // Keep pinned to the bottom when a new message arrives, or the typing indicator
+    // appears/disappears, while we are (nearly) there. The typing bubble is its own list item
+    // (added/removed above), which shifts every real message's index by one — without `isTyping`
+    // as a key here, that shift never re-triggers this check, so the indicator can slide in
+    // below the visible fold and just sit there unseen until something else happens to scroll.
     val newestKey = items.firstOrNull()?.key
-    LaunchedEffect(newestKey) {
+    LaunchedEffect(newestKey, isTyping) {
         if (listState.firstVisibleItemIndex <= 1) {
             requestScroll(0, 0f)
         }
