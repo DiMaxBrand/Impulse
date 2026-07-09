@@ -62,11 +62,11 @@ object UpdateDownloader {
             val fraction = if (total > 0) downloaded.toFloat() / total.toFloat() else 0f
             return when (status) {
                 DownloadManager.STATUS_RUNNING ->
-                    DownloadProgress.InProgress(fraction, statusText = null)
+                    DownloadProgress.InProgress(fraction, statusText = null, downloaded, total)
                 DownloadManager.STATUS_PENDING ->
-                    DownloadProgress.InProgress(fraction, statusText = "Queued…")
+                    DownloadProgress.InProgress(fraction, statusText = "Queued…", downloaded, total)
                 DownloadManager.STATUS_PAUSED ->
-                    DownloadProgress.InProgress(fraction, statusText = pausedReasonText(reason))
+                    DownloadProgress.InProgress(fraction, pausedReasonText(reason), downloaded, total)
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     val localUri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI))
                     DownloadProgress.Complete(localUri)
@@ -109,7 +109,12 @@ object UpdateDownloader {
     }
 
     sealed class DownloadProgress {
-        data class InProgress(val fraction: Float, val statusText: String? = null) : DownloadProgress()
+        data class InProgress(
+            val fraction: Float,
+            val statusText: String? = null,
+            val downloadedBytes: Long = 0L,
+            val totalBytes: Long = 0L,
+        ) : DownloadProgress()
         data class Complete(val localUri: String) : DownloadProgress()
         data class Failed(val reasonText: String = "Download failed") : DownloadProgress()
         object Unknown : DownloadProgress()

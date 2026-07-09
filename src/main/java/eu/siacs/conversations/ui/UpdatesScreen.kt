@@ -584,6 +584,18 @@ internal fun StatusSection(
             }
         }
 
+        // Speed/ETA — only populated while actively downloading (not paused/queued/failed),
+        // see UpdatesActivity.pollDownload().
+        AnimatedVisibility(visible = state.downloadSpeedText != null) {
+            Text(
+                text = state.downloadSpeedText ?: "",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
         SharedTransitionLayout {
             AnimatedContent(
                 targetState = state.downloadPhase,
@@ -1064,6 +1076,7 @@ data class UpdatesUiState(
     val downloadPhase: DownloadPhase = DownloadPhase.IDLE,
     val downloadProgress: Float = 0f,
     val downloadStatusText: String? = null,
+    val downloadSpeedText: String? = null,
     val cancelConfirmVisible: Boolean = false,
     val pendingVersion: String? = null,
     val showInstallCard: Boolean = false,

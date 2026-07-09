@@ -2,6 +2,8 @@ package eu.siacs.conversations.ui.activity
 
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
+import android.text.format.Formatter
 import androidx.activity.compose.setContent
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -212,20 +214,56 @@ class UpdatesActivity : ActionBarActivity() {
 
     private fun pollDownload(id: Long) {
         lifecycleScope.launch {
+            // Speed is smoothed (EMA) across polls rather than read instantaneously — raw
+            // byte-delta/time-delta per 500ms tick is jittery (bursty disk flushes), and would
+            // make the ETA number visibly jump around.
+            var lastSampleAt = 0L
+            var lastSampleBytes = 0L
+            var smoothedBps = 0.0
             while (true) {
                 val progress = withContext(Dispatchers.IO) {
                     UpdateDownloader.queryProgress(this@UpdatesActivity, id)
                 }
                 when (progress) {
                     is UpdateDownloader.DownloadProgress.InProgress -> {
+                        // Only STATUS_RUNNING clears statusText to null — paused/queued states
+                        // set it, which doubles as our signal that bytes aren't actually moving
+                        // right now, so speed/ETA would be meaningless.
+                        val speedText = if (progress.statusText == null && progress.totalBytes > 0) {
+                            val now = SystemClock.elapsedRealtime()
+                            if (lastSampleAt != 0L) {
+                                val deltaMs = now - lastSampleAt
+                                val deltaBytes = progress.downloadedBytes - lastSampleBytes
+                                if (deltaMs > 0 && deltaBytes >= 0) {
+                                    val instantBps = deltaBytes * 1000.0 / deltaMs
+                                    smoothedBps =
+                                        if (smoothedBps <= 0.0) instantBps
+                                        else smoothedBps * 0.7 + instantBps * 0.3
+                                }
+                            }
+                            lastSampleAt = now
+                            lastSampleBytes = progress.downloadedBytes
+                            formatSpeedAndEta(smoothedBps, progress.totalBytes - progress.downloadedBytes)
+                        } else {
+                            // Not actively running — reset so a stale rate doesn't carry over
+                            // into the next running stretch (e.g. after a pause/resume).
+                            lastSampleAt = 0L
+                            smoothedBps = 0.0
+                            null
+                        }
                         uiState = uiState.copy(
                             downloadPhase = DownloadPhase.DOWNLOADING,
                             downloadProgress = progress.fraction,
                             downloadStatusText = progress.statusText,
+                            downloadSpeedText = speedText,
                         )
                     }
                     is UpdateDownloader.DownloadProgress.Complete -> {
-                        uiState = uiState.copy(downloadPhase = DownloadPhase.PROCESSING, downloadStatusText = null)
+                        uiState = uiState.copy(
+                            downloadPhase = DownloadPhase.PROCESSING,
+                            downloadStatusText = null,
+                            downloadSpeedText = null,
+                        )
                         prefs.downloadedVersion = prefs.pendingUpdateVersion
                         prefs.downloadedApkPath = progress.localUri
                         prefs.activeDownloadId = -1L
@@ -239,6 +277,7 @@ class UpdatesActivity : ActionBarActivity() {
                         uiState = uiState.copy(
                             downloadPhase = DownloadPhase.DOWNLOADING,
                             downloadStatusText = progress.reasonText,
+                            downloadSpeedText = null,
                         )
                         prefs.activeDownloadId = -1L
                         delay(4000)
@@ -250,6 +289,18 @@ class UpdatesActivity : ActionBarActivity() {
                 delay(500)
             }
         }
+    }
+
+    private fun formatSpeedAndEta(bytesPerSecond: Double, remainingBytes: Long): String? {
+        if (bytesPerSecond <= 0.0) return null
+        val speedText = Formatter.formatShortFileSize(this, bytesPerSecond.toLong()) + "/s"
+        val etaSeconds = (remainingBytes / bytesPerSecond).toLong().coerceAtLeast(0)
+        val etaText = when {
+            etaSeconds < 60 -> "${etaSeconds}s left"
+            etaSeconds < 3600 -> "${etaSeconds / 60}m ${etaSeconds % 60}s left"
+            else -> "${etaSeconds / 3600}h ${(etaSeconds % 3600) / 60}m left"
+        }
+        return "$speedText · $etaText"
     }
 
     private fun cancelDownload() {
