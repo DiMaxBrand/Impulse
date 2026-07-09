@@ -192,7 +192,11 @@ public class AppSettings {
     }
 
     public boolean isUserManagedAvailability() {
-        return getBooleanPreference(MANUALLY_CHANGE_PRESENCE, R.bool.manually_change_presence);
+        // Temporarily disabled — the toggle is commented out in preferences_availability.xml and
+        // existing users get migrated back to automatic (see migratePreferences()), but this is
+        // the single point every caller actually goes through, so it's forced here too rather
+        // than relying solely on the UI being hidden and the one-time migration having run.
+        return false;
     }
 
     public boolean isAutomaticAvailability() {
@@ -490,6 +494,15 @@ public class AppSettings {
                 editor.putString(PICTURE_COMPRESSION, DEFAULT_PICTURE_COMPRESSION);
             }
             editor.putBoolean("pref_migrated_picture_compression", true).apply();
+        }
+
+        if (!prefs.getBoolean("pref_migrated_disable_manual_availability", false)) {
+            // Manual availability is being disabled (see isUserManagedAvailability()) — anyone
+            // who already had it toggled on gets switched back to automatic.
+            prefs.edit()
+                    .putBoolean(MANUALLY_CHANGE_PRESENCE, false)
+                    .putBoolean("pref_migrated_disable_manual_availability", true)
+                    .apply();
         }
     }
 }
