@@ -3669,6 +3669,10 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             textSize = 16f
                             var lastText = ""
                             var programmatic = false
+                            // Index of the space we auto-inserted after a period, if the very
+                            // next keystroke is still pending — lets us tell "typed a real
+                            // sentence" from "typed another dot" (see below).
+                            var autoSpaceIndex: Int? = null
                             addTextChangedListener(object : TextWatcher {
                                 override fun beforeTextChanged(
                                     s: CharSequence?, start: Int, count: Int, after: Int,
@@ -3684,16 +3688,35 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                                     // afterTextChanged fires after IME composing regions
                                     // actually settle, so this now fires reliably per
                                     // keystroke regardless of keyboard/language.
-                                    if (newText.length == lastText.length + 1 &&
-                                        newText.endsWith(".") &&
-                                        newText == "$lastText."
-                                    ) {
-                                        val charBefore = lastText.lastOrNull()
-                                        if (charBefore != null && charBefore.isLetter()) {
+                                    val typedDot =
+                                        newText.length == lastText.length + 1 &&
+                                            newText == "$lastText."
+                                    if (typedDot) {
+                                        val pendingAutoSpace = autoSpaceIndex
+                                        if (pendingAutoSpace != null &&
+                                            pendingAutoSpace == lastText.length - 1 &&
+                                            lastText.getOrNull(pendingAutoSpace) == ' '
+                                        ) {
+                                            // A dot right after a space we just auto-inserted
+                                            // means the user is typing "...", not a new sentence
+                                            // — collapse the space so the dots stay together.
                                             programmatic = true
-                                            s.insert(newText.length, " ")
+                                            s.delete(pendingAutoSpace, pendingAutoSpace + 1)
                                             programmatic = false
+                                            autoSpaceIndex = null
+                                        } else {
+                                            val charBefore = lastText.lastOrNull()
+                                            if (charBefore != null && charBefore.isLetter()) {
+                                                programmatic = true
+                                                s.insert(newText.length, " ")
+                                                programmatic = false
+                                                autoSpaceIndex = newText.length
+                                            } else {
+                                                autoSpaceIndex = null
+                                            }
                                         }
+                                    } else {
+                                        autoSpaceIndex = null
                                     }
                                     lastText = s.toString()
                                     state.setInput(lastText)
