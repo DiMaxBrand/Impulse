@@ -1580,7 +1580,12 @@ private fun MessageBubble(
             ) {
                 val repliedToId = message.getRepliedTo()
                 if (repliedToId != null) {
-                    val original = remember(repliedToId) { resolveReply(repliedToId) }
+                    // Keyed on revision too, not just repliedToId: if the reply's target message
+                    // hasn't been paged in yet (e.g. it's older than the initially-loaded
+                    // window), resolveReply() returns null on the first composition. Without
+                    // revision in the key, that null gets cached forever — the reply card never
+                    // reappears even after the target is later loaded via onLoadMoreMessages().
+                    val original = remember(repliedToId, revision) { resolveReply(repliedToId) }
                     if (original != null) {
                         ReplyCard(original = original, onClick = { onReplyCardClick(original) })
                     }
