@@ -139,7 +139,8 @@ private fun presenceShape(
 
 private fun presenceStringRes(availability: Presence.Availability?): Int? = when (availability) {
     Presence.Availability.CHAT, Presence.Availability.ONLINE -> R.string.presence_online
-    Presence.Availability.AWAY, Presence.Availability.XA -> R.string.presence_away
+    Presence.Availability.AWAY -> R.string.presence_away
+    Presence.Availability.XA -> R.string.presence_xa
     Presence.Availability.DND -> R.string.presence_dnd
     else -> null
 }

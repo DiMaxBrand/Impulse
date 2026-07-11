@@ -509,5 +509,17 @@ public class AppSettings {
                     .putBoolean("pref_migrated_disable_manual_availability", true)
                     .apply();
         }
+
+        if (!prefs.getBoolean("pref_migrated_last_activity_default", false)) {
+            // "Show last seen" is switching to on-by-default — a one-time flip for anyone who
+            // already has the old (off) default persisted, not just a new default for fresh
+            // installs (the preference screen persists the shown default the first time it's
+            // opened, so simply changing R.bool.last_activity doesn't retroactively help anyone
+            // who's already visited Settings > Privacy).
+            prefs.edit()
+                    .putBoolean(BROADCAST_LAST_ACTIVITY, true)
+                    .putBoolean("pref_migrated_last_activity_default", true)
+                    .apply();
+        }
     }
 }

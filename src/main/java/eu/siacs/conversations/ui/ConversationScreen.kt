@@ -123,6 +123,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
@@ -583,6 +584,19 @@ private fun ConversationTopBar(
                 }
             } else null
         }
+    // Same reciprocity rule as the legacy screen (ConversationFragment.mShowLastUserInteraction):
+    // showing someone else's last-seen time is gated on whether you broadcast your own — if you
+    // don't share yours, the app doesn't show others' to you either.
+    val lastUserInteraction: im.conversations.android.xmpp.model.idle.LastUserInteraction? =
+        remember(conversation, revision) {
+            if (conversation != null && isSingle && AppSettings(context).isBroadcastLastActivity) {
+                try {
+                    conversation.getContact().lastUserInteraction
+                } catch (_: Exception) {
+                    null
+                }
+            } else null
+        }
     val isTyping: Boolean =
         remember(conversation, revision) {
             if (conversation != null && isSingle) {
@@ -664,11 +678,14 @@ private fun ConversationTopBar(
                             availability == Presence.Availability.CHAT ||
                                 availability == Presence.Availability.ONLINE ->
                                 stringResource(R.string.presence_online)
-                            availability == Presence.Availability.AWAY ||
-                                availability == Presence.Availability.XA ->
+                            availability == Presence.Availability.AWAY ->
                                 stringResource(R.string.presence_away)
+                            availability == Presence.Availability.XA ->
+                                stringResource(R.string.presence_xa)
                             availability == Presence.Availability.DND ->
                                 stringResource(R.string.presence_dnd)
+                            lastUserInteraction != null ->
+                                UIHelper.lastUserInteraction(context, lastUserInteraction)
                             else -> null
                         }
                     if (subtitle != null) {

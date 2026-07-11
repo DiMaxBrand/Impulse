@@ -536,7 +536,7 @@
     <string name="presence_chat">Свободен для общения</string>
     <string name="presence_online">В сети</string>
     <string name="presence_away">Отошёл</string>
-    <string name="presence_xa">Недоступен</string>
+    <string name="presence_xa">Давно отошёл</string>
     <string name="presence_dnd">Не беспокоить</string>
     <string name="secure_password_generated">Пароль был сгенерирован</string>
     <string name="device_does_not_support_battery_op">Ваше устройство не поддерживает отключение оптимизации энергопотребления</string>
