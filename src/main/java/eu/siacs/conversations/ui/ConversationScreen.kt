@@ -1417,33 +1417,25 @@ private fun MessageRow(
             listener = listener,
             modifier = Modifier
                 .fillMaxWidth()
-                // Outgoing is untouched — pulled up closer to the bubble (colors are distinct
-                // enough — tertiaryContainer/secondaryContainer vs. the bubble's own
-                // primaryContainer — that the breathing room isn't needed), plain offset(),
-                // exactly as it was before this file's other reaction-chip changes. Only
-                // incoming gets the layout-reclaim treatment: a plain offset() shifts where
-                // something is drawn without shrinking the space it reserves in the parent
-                // Column, so pulling it up into the bubble above just relocates the gap to
-                // below the chip instead of removing it. Reporting a shorter measured height
-                // while still placing the content at the shifted position reclaims that space.
+                // Pulled up into the bubble — a plain offset() shifts where this is drawn
+                // without shrinking the space it reserves in the parent Column, so pulling it
+                // up just relocates the gap to below the chip instead of removing it. Reporting
+                // a shorter measured height while still placing the content at the shifted
+                // position reclaims that space instead.
                 //
-                // Incoming also needs to lift further than outgoing for a real (not just
-                // magnitude) reason: MessageFooter is unconditionally right-aligned regardless
-                // of direction. Outgoing's End-aligned chips land right on/next to that footer
-                // content, so the overlap reads as clearly attached. Incoming's Start-aligned
-                // chips overlap the bubble's bottom-left corner instead, which has no content
-                // in it at all — the same geometric overlap looks emptier there because there's
-                // nothing to visually anchor it to.
+                // The lift amount is keyed on item.lastOfGroup (tail vs. no tail), not on
+                // outgoing/incoming — verified against a real screenshot: a solo/tailed bubble's
+                // curled nub reads as "attached" with a small lift, while a middle-of-group
+                // bubble's plain small (5dp) corner curves away much faster and needs a bigger
+                // lift to look equally attached. This isn't a direction-specific difference —
+                // it happens on either side, it just looked incoming-specific because the
+                // examples being compared happened to differ in tail status.
                 .then(
-                    if (outgoing) {
-                        Modifier.offset(y = (-8).dp)
-                    } else {
-                        Modifier.layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints)
-                            val liftPx = (-18).dp.roundToPx()
-                            layout(placeable.width, (placeable.height + liftPx).coerceAtLeast(0)) {
-                                placeable.placeRelative(0, liftPx)
-                            }
+                    Modifier.layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        val liftPx = (if (item.lastOfGroup) (-8).dp else (-18).dp).roundToPx()
+                        layout(placeable.width, (placeable.height + liftPx).coerceAtLeast(0)) {
+                            placeable.placeRelative(0, liftPx)
                         }
                     }
                 )
