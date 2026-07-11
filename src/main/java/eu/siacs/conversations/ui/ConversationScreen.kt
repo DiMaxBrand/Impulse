@@ -1448,7 +1448,7 @@ private fun MessageRow(
                     }
                 )
                 .padding(
-                    start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 10.dp,
+                    start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 15.dp,
                     end = if (outgoing) 10.dp else 48.dp,
                 ),
         )
