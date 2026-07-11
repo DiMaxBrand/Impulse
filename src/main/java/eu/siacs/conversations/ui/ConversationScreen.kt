@@ -1417,22 +1417,28 @@ private fun MessageRow(
             listener = listener,
             modifier = Modifier
                 .fillMaxWidth()
-                // Pulled up closer to the bubble — the reaction/bubble colors are now
-                // distinct enough (tertiaryContainer / secondaryContainer vs. the bubble's
-                // own primaryContainer / surfaceContainerHigh) that the extra breathing room
-                // isn't needed to tell them apart. A plain offset() only shifts where this is
-                // drawn — it doesn't shrink the space reserved for it in the parent Column, so
-                // pulling it up into the bubble above just moved the gap to below the chip
-                // instead of removing it (visible as extra space before the next message).
-                // Reporting a shorter measured height while still placing the content at the
-                // shifted position reclaims that space instead of merely relocating it.
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    val liftPx = (if (outgoing) (-8).dp else (-14).dp).roundToPx()
-                    layout(placeable.width, (placeable.height + liftPx).coerceAtLeast(0)) {
-                        placeable.placeRelative(0, liftPx)
+                // Outgoing is untouched — pulled up closer to the bubble (colors are distinct
+                // enough — tertiaryContainer/secondaryContainer vs. the bubble's own
+                // primaryContainer — that the breathing room isn't needed), plain offset(),
+                // exactly as it was before this file's other reaction-chip changes. Only
+                // incoming gets the layout-reclaim treatment: a plain offset() shifts where
+                // something is drawn without shrinking the space it reserves in the parent
+                // Column, so pulling it up into the bubble above just relocates the gap to
+                // below the chip instead of removing it. Reporting a shorter measured height
+                // while still placing the content at the shifted position reclaims that space.
+                .then(
+                    if (outgoing) {
+                        Modifier.offset(y = (-8).dp)
+                    } else {
+                        Modifier.layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints)
+                            val liftPx = (-14).dp.roundToPx()
+                            layout(placeable.width, (placeable.height + liftPx).coerceAtLeast(0)) {
+                                placeable.placeRelative(0, liftPx)
+                            }
+                        }
                     }
-                }
+                )
                 .padding(
                     start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 10.dp,
                     end = if (outgoing) 10.dp else 48.dp,
