@@ -36,31 +36,23 @@ public final class TrustManagers {
 
     public static X509TrustManager createForAndroidVersion(final Context context)
             throws NoSuchAlgorithmException, KeyStoreException, CertificateException, IOException {
-        // The system default trust manager validates a chain using only what the server itself
-        // sends plus whatever AIA (Authority Information Access) fetching the platform's TLS
-        // stack manages to do live, during the handshake. A server that doesn't send its full
-        // chain (a common misconfiguration — pointing the XMPP daemon at the bare leaf cert
-        // instead of the "fullchain" file certbot also produces) relies entirely on that live
-        // AIA fetch succeeding, which is flaky on mobile networks. Bundling Let's Encrypt's
-        // currently-active intermediates lets the chain complete locally as a fallback, without
-        // granting trust to anything that isn't a legitimately CA-issued certificate — this does
-        // NOT weaken validation for self-signed/unknown certs, which still go through
-        // MemorizingTrustManager's normal TOFU-prompt path untouched.
-        final var intermediateHelper =
-                createWithKeyStore(
-                        context.getResources().openRawResource(R.raw.letsencrypt_intermediates));
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N) {
-            final var rootHelper =
-                    createWithKeyStore(context.getResources().openRawResource(R.raw.letsencrypt));
-            return CombiningTrustManager.combineWithDefault(intermediateHelper, rootHelper);
+            return TrustManagers.createDefaultWithBundledLetsEncrypt(context);
         } else {
-            return CombiningTrustManager.combineWithDefault(intermediateHelper);
+            return TrustManagers.createDefaultTrustManager();
         }
     }
 
     public static X509TrustManager createDefaultTrustManager()
             throws NoSuchAlgorithmException, KeyStoreException {
         return createTrustManager(null);
+    }
+
+    private static X509TrustManager createDefaultWithBundledLetsEncrypt(final Context context)
+            throws NoSuchAlgorithmException, KeyStoreException, CertificateException, IOException {
+        final var bundleTrustManager =
+                createWithKeyStore(context.getResources().openRawResource(R.raw.letsencrypt));
+        return CombiningTrustManager.combineWithDefault(bundleTrustManager);
     }
 
     private static X509TrustManager createWithKeyStore(final InputStream inputStream)
