@@ -137,6 +137,7 @@ import im.conversations.android.xmpp.model.reactions.Restrictions
 import im.conversations.android.xmpp.model.stanza.Presence
 import im.conversations.android.xmpp.model.state.Composing
 import eu.siacs.conversations.xmpp.manager.ChatStateManager
+import eu.siacs.conversations.xmpp.manager.JingleManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -584,12 +585,33 @@ private fun ConversationTopBar(
                 }
             } else null
         }
+    // Same "am I mid-call with this specific contact" check the chat list uses for the
+    // soft-burst avatar shape (ConversationList.kt) — last-seen has no place in the subtitle
+    // while a call is actually happening.
+    val hasOngoingCall: Boolean =
+        remember(conversation, revision) {
+            if (conversation != null && isSingle) {
+                try {
+                    conversation.getAccount()
+                        .xmppConnection
+                        .getManager(JingleManager::class.java)
+                        .getOngoingRtpConnection(conversation.getContact())
+                        .isPresent
+                } catch (_: Exception) {
+                    false
+                }
+            } else false
+        }
     // Same reciprocity rule as the legacy screen (ConversationFragment.mShowLastUserInteraction):
     // showing someone else's last-seen time is gated on whether you broadcast your own — if you
     // don't share yours, the app doesn't show others' to you either.
     val lastUserInteraction: im.conversations.android.xmpp.model.idle.LastUserInteraction? =
-        remember(conversation, revision) {
-            if (conversation != null && isSingle && AppSettings(context).isBroadcastLastActivity) {
+        remember(conversation, revision, hasOngoingCall) {
+            if (conversation != null &&
+                isSingle &&
+                !hasOngoingCall &&
+                AppSettings(context).isBroadcastLastActivity
+            ) {
                 try {
                     conversation.getContact().lastUserInteraction
                 } catch (_: Exception) {
@@ -672,7 +694,11 @@ private fun ConversationTopBar(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    val subtitle: String? =
+                    // Last-seen is appended to every non-online status (Away, Extended away,
+                    // DND, or no presence at all) — not shown next to Online/Chat, where it
+                    // would be redundant, and not while typing or mid-call (lastUserInteraction
+                    // is already null in both of those cases per the checks above).
+                    val statusLabel: String? =
                         when {
                             isTyping -> stringResource(R.string.typing_indicator)
                             availability == Presence.Availability.CHAT ||
@@ -684,9 +710,22 @@ private fun ConversationTopBar(
                                 stringResource(R.string.presence_xa)
                             availability == Presence.Availability.DND ->
                                 stringResource(R.string.presence_dnd)
-                            lastUserInteraction != null ->
-                                UIHelper.lastUserInteraction(context, lastUserInteraction)
                             else -> null
+                        }
+                    val lastSeenText: String? =
+                        if (!isTyping &&
+                            availability != Presence.Availability.CHAT &&
+                            availability != Presence.Availability.ONLINE &&
+                            lastUserInteraction != null
+                        ) {
+                            UIHelper.lastUserInteraction(context, lastUserInteraction)
+                        } else null
+                    val subtitle: String? =
+                        when {
+                            statusLabel != null && lastSeenText != null ->
+                                "$statusLabel · $lastSeenText"
+                            statusLabel != null -> statusLabel
+                            else -> lastSeenText
                         }
                     if (subtitle != null) {
                         Text(
