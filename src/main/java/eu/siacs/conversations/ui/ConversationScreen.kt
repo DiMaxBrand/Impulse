@@ -1426,13 +1426,21 @@ private fun MessageRow(
                 // Column, so pulling it up into the bubble above just relocates the gap to
                 // below the chip instead of removing it. Reporting a shorter measured height
                 // while still placing the content at the shifted position reclaims that space.
+                //
+                // Incoming also needs to lift further than outgoing for a real (not just
+                // magnitude) reason: MessageFooter is unconditionally right-aligned regardless
+                // of direction. Outgoing's End-aligned chips land right on/next to that footer
+                // content, so the overlap reads as clearly attached. Incoming's Start-aligned
+                // chips overlap the bubble's bottom-left corner instead, which has no content
+                // in it at all — the same geometric overlap looks emptier there because there's
+                // nothing to visually anchor it to.
                 .then(
                     if (outgoing) {
                         Modifier.offset(y = (-8).dp)
                     } else {
                         Modifier.layout { measurable, constraints ->
                             val placeable = measurable.measure(constraints)
-                            val liftPx = (-14).dp.roundToPx()
+                            val liftPx = (-18).dp.roundToPx()
                             layout(placeable.width, (placeable.height + liftPx).coerceAtLeast(0)) {
                                 placeable.placeRelative(0, liftPx)
                             }
