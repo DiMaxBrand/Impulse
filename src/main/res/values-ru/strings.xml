@@ -453,6 +453,8 @@
     <string name="pref_presence_settings">Доступность</string>
     <string name="pref_away_when_screen_off">\"Отошёл\" при блокировке экрана</string>
     <string name="pref_away_when_screen_off_summary">Устанавливать статус \"Отошёл\", когда устройство заблокировано</string>
+    <string name="pref_away_when_app_exited">\"Отошёл\" при выходе из приложения</string>
+    <string name="pref_away_when_app_exited_summary">Устанавливать статус \"Отошёл\" вскоре после выхода из Impulse, даже если экран не заблокирован</string>
     <string name="pref_show_connection_options">Имя хоста и порт</string>
     <string name="pref_show_connection_options_summary">Показывать расширенные настройки соединения при настройке аккаунта</string>
     <string name="hostname_example">xmpp.example.com</string>

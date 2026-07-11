@@ -478,6 +478,8 @@
     <string name="pref_presence_settings_summary">Away on device lock, Sync system DND</string>
     <string name="pref_away_when_screen_off">Away when device is locked</string>
     <string name="pref_away_when_screen_off_summary">Show as Away when the device is locked</string>
+    <string name="pref_away_when_app_exited">Away when app is exited</string>
+    <string name="pref_away_when_app_exited_summary">Show as Away shortly after leaving Impulse, even with the screen still on</string>
     <string name="pref_show_connection_options">Hostname &amp; Port</string>
     <string name="pref_show_connection_options_summary">Show extended connection settings when setting up an account</string>
     <string name="hostname_example">xmpp.example.com</string>

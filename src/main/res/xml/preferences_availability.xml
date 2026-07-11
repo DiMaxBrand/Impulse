@@ -21,6 +21,12 @@
         android:key="away_when_screen_off"
         android:summary="@string/pref_away_when_screen_off_summary"
         android:title="@string/pref_away_when_screen_off" />
+    <SwitchPreferenceCompat
+        android:defaultValue="@bool/away_when_app_exited"
+        android:icon="@drawable/ic_logout_24dp"
+        android:key="away_when_app_exited"
+        android:summary="@string/pref_away_when_app_exited_summary"
+        android:title="@string/pref_away_when_app_exited" />
     <!-- The name of the key reflects the old functionality but will be reused -->
     <SwitchPreferenceCompat
         android:defaultValue="@bool/dnd_sync_system"

@@ -32,6 +32,7 @@ public class AppSettings {
 
     public static final String KEEP_FOREGROUND_SERVICE = "enable_foreground_service";
     public static final String AWAY_WHEN_SCREEN_IS_OFF = "away_when_screen_off";
+    public static final String AWAY_WHEN_APP_EXITED = "away_when_app_exited";
     public static final String DND_SYNC_SYSTEM = "dnd_on_silent_mode";
     public static final String DND_INCLUDE_SILENT_MODES = "treat_vibrate_as_silent";
     public static final String GRACE_PERIOD_LENGTH = "grace_period_length";
@@ -215,6 +216,10 @@ public class AppSettings {
     public boolean isAwayWhenScreenLocked() {
         return getBooleanPreference(
                 AppSettings.AWAY_WHEN_SCREEN_IS_OFF, R.bool.away_when_screen_off);
+    }
+
+    public boolean isAwayWhenAppExited() {
+        return getBooleanPreference(AppSettings.AWAY_WHEN_APP_EXITED, R.bool.away_when_app_exited);
     }
 
     public boolean isUseSharedStorage() {

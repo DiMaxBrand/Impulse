@@ -26,6 +26,10 @@ object Config {
     const val CONTACT_SYNC_RETRY_INTERVAL = 1000L * 60 * 5
     const val QUICKSTART_ENABLED = true
 
+    // Grace period before "away when app is exited" actually flips presence to AWAY — avoids
+    // flickering to Away and back for a quick app switch (e.g. checking a notification).
+    const val AWAY_ON_APP_EXIT_GRACE_PERIOD_MILLIS = 1000L * 60
+
     const val HIDE_MESSAGE_TEXT_IN_NOTIFICATION = false
     const val ALWAYS_NOTIFY_BY_DEFAULT = false
     const val SUPPRESS_ERROR_NOTIFICATION = false

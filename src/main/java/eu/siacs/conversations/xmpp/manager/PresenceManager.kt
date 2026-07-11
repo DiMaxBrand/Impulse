@@ -348,6 +348,8 @@ class PresenceManager(private val service: XmppConnectionService, connection: Xm
             Presence.Availability.DND
         } else if (appSettings.isAwayWhenScreenLocked() && device.isScreenLocked()) {
             Presence.Availability.AWAY
+        } else if (appSettings.isAwayWhenAppExited() && service.isAwayDueToAppExit()) {
+            Presence.Availability.AWAY
         } else {
             Presence.Availability.ONLINE
         }

@@ -25,7 +25,9 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Messenger;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
@@ -39,6 +41,9 @@ import android.util.Pair;
 import androidx.annotation.NonNull;
 import androidx.core.app.RemoteInput;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.ProcessLifecycleOwner;
 import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
@@ -296,6 +301,46 @@ public class XmppConnectionService extends Service {
     private final BroadcastReceiver mInternalRestrictedEventReceiver =
             new RestrictedEventReceiver(List.of(TorServiceUtils.ACTION_STATUS));
     private final BroadcastReceiver mInternalScreenEventReceiver = new InternalEventReceiver();
+
+    // "Away when app is exited": tracks whether the grace period (see
+    // Config.AWAY_ON_APP_EXIT_GRACE_PERIOD_MILLIS) has elapsed since the app was last
+    // backgrounded, without it coming back to the foreground in the meantime. Read from the
+    // XMPP connection thread (PresenceManager.getTargetPresence()), written from the main
+    // thread (ProcessLifecycleOwner callbacks below) — volatile covers that handoff since it's
+    // only ever a plain flag read/write, no compound operations.
+    private volatile boolean awayDueToAppExit = false;
+    private final Handler mAppExitAwayHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mAppExitAwayRunnable =
+            () -> {
+                awayDueToAppExit = true;
+                if (appSettings.isAwayWhenAppExited() && appSettings.isAutomaticAvailability()) {
+                    refreshAllPresences();
+                }
+            };
+
+    private final DefaultLifecycleObserver mProcessLifecycleObserver =
+            new DefaultLifecycleObserver() {
+                @Override
+                public void onStop(final LifecycleOwner owner) {
+                    if (appSettings.isAwayWhenAppExited()) {
+                        mAppExitAwayHandler.postDelayed(
+                                mAppExitAwayRunnable, Config.AWAY_ON_APP_EXIT_GRACE_PERIOD_MILLIS);
+                    }
+                }
+
+                @Override
+                public void onStart(final LifecycleOwner owner) {
+                    mAppExitAwayHandler.removeCallbacks(mAppExitAwayRunnable);
+                    if (awayDueToAppExit) {
+                        awayDueToAppExit = false;
+                        refreshAllPresences();
+                    }
+                }
+            };
+
+    public boolean isAwayDueToAppExit() {
+        return awayDueToAppExit;
+    }
 
     public boolean isInLowPingTimeoutMode(Account account) {
         synchronized (mLowPingTimeoutMode) {
@@ -1190,6 +1235,7 @@ public class XmppConnectionService extends Service {
         toggleForegroundService();
         updateUnreadCountBadge();
         toggleScreenEventReceiver();
+        ProcessLifecycleOwner.get().getLifecycle().addObserver(mProcessLifecycleObserver);
         final IntentFilter systemBroadcastFilter = new IntentFilter();
         scheduleNextIdlePing();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -1310,6 +1356,8 @@ public class XmppConnectionService extends Service {
         } catch (final RuntimeException e) {
             // ignored
         }
+        ProcessLifecycleOwner.get().getLifecycle().removeObserver(mProcessLifecycleObserver);
+        mAppExitAwayHandler.removeCallbacks(mAppExitAwayRunnable);
         destroyed = false;
         fileObserver.stopWatching();
         internalPingExecutor.shutdown();
