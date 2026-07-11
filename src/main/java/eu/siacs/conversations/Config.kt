@@ -30,6 +30,12 @@ object Config {
     // flickering to Away and back for a quick app switch (e.g. checking a notification).
     const val AWAY_ON_APP_EXIT_GRACE_PERIOD_MILLIS = 1000L * 30
 
+    // How long continuously AWAY (from either trigger — screen lock or app exit) before presence
+    // escalates from AWAY to XA (Extended Away). Deliberately much longer than the AWAY
+    // thresholds themselves — this is meant to signal genuine long-term absence, not just having
+    // stepped out for a bit.
+    const val EXTENDED_AWAY_THRESHOLD_MILLIS = 1000L * 60 * 60 * 12
+
     const val HIDE_MESSAGE_TEXT_IN_NOTIFICATION = false
     const val ALWAYS_NOTIFY_BY_DEFAULT = false
     const val SUPPRESS_ERROR_NOTIFICATION = false

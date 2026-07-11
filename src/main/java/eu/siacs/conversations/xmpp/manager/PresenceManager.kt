@@ -343,12 +343,18 @@ class PresenceManager(private val service: XmppConnectionService, connection: Xm
 
     private fun getTargetPresence(): Presence.Availability {
         val device = Device(context)
+        val isAway =
+            (appSettings.isAwayWhenScreenLocked() && device.isScreenLocked()) ||
+                (appSettings.isAwayWhenAppExited() && service.isAwayDueToAppExit())
         return if (appSettings.isDndSyncSystem() &&
                 device.isPhoneSilenced(appSettings.isDndIncludeSilentMode())) {
             Presence.Availability.DND
-        } else if (appSettings.isAwayWhenScreenLocked() && device.isScreenLocked()) {
-            Presence.Availability.AWAY
-        } else if (appSettings.isAwayWhenAppExited() && service.isAwayDueToAppExit()) {
+        } else if (isAway && service.isExtendedAway()) {
+            // XA — same underlying "not actively present" condition as AWAY, escalated once
+            // it's held continuously for Config.EXTENDED_AWAY_THRESHOLD_MILLIS (see
+            // XmppConnectionService.recomputeAwaySince()).
+            Presence.Availability.XA
+        } else if (isAway) {
             Presence.Availability.AWAY
         } else {
             Presence.Availability.ONLINE

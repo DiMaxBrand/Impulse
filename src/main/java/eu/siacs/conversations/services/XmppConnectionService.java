@@ -62,6 +62,7 @@ import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.Conversations;
 import eu.siacs.conversations.R;
+import eu.siacs.conversations.android.Device;
 import eu.siacs.conversations.android.JabberIdContact;
 import eu.siacs.conversations.crypto.OmemoSetting;
 import eu.siacs.conversations.crypto.PgpDecryptionService;
@@ -340,6 +341,43 @@ public class XmppConnectionService extends Service {
 
     public boolean isAwayDueToAppExit() {
         return awayDueToAppExit;
+    }
+
+    // Timestamp of when AWAY (from either trigger — screen lock or app exit) most recently
+    // started continuously, or 0 if not currently away. Recomputed on every refreshAllPresences()
+    // call, which already happens at exactly the moments this needs to change (screen on/off,
+    // app-exit grace period elapsing, app returning to foreground) — see the call sites of
+    // refreshAllPresences() elsewhere in this file.
+    private volatile long awaySinceMillis = 0L;
+    private final Handler mExtendedAwayHandler = new Handler(Looper.getMainLooper());
+    // Just re-triggers a presence refresh — recomputeAwaySince() + getTargetPresence() do the
+    // actual escalation once this fires. Needed because nothing else calls refreshAllPresences()
+    // while continuously away with no other event happening (e.g. the screen staying locked
+    // overnight) — without a proactively scheduled check, the threshold would only ever get
+    // noticed by the NEXT unrelated trigger, which for an overnight lock is "waking up and
+    // unlocking," by which point AWAY has already cleared and XA never actually got sent.
+    private final Runnable mExtendedAwayRunnable = this::refreshAllPresences;
+
+    private void recomputeAwaySince() {
+        final boolean isAway =
+                (appSettings.isAwayWhenScreenLocked() && new Device(this).isScreenLocked())
+                        || (appSettings.isAwayWhenAppExited() && awayDueToAppExit);
+        if (isAway) {
+            if (awaySinceMillis == 0L) {
+                awaySinceMillis = System.currentTimeMillis();
+                mExtendedAwayHandler.postDelayed(
+                        mExtendedAwayRunnable, Config.EXTENDED_AWAY_THRESHOLD_MILLIS);
+            }
+        } else {
+            awaySinceMillis = 0L;
+            mExtendedAwayHandler.removeCallbacks(mExtendedAwayRunnable);
+        }
+    }
+
+    public boolean isExtendedAway() {
+        return awaySinceMillis != 0L
+                && (System.currentTimeMillis() - awaySinceMillis)
+                        >= Config.EXTENDED_AWAY_THRESHOLD_MILLIS;
     }
 
     public boolean isInLowPingTimeoutMode(Account account) {
@@ -1358,6 +1396,7 @@ public class XmppConnectionService extends Service {
         }
         ProcessLifecycleOwner.get().getLifecycle().removeObserver(mProcessLifecycleObserver);
         mAppExitAwayHandler.removeCallbacks(mAppExitAwayRunnable);
+        mExtendedAwayHandler.removeCallbacks(mExtendedAwayRunnable);
         destroyed = false;
         fileObserver.stopWatching();
         internalPingExecutor.shutdown();
@@ -3812,6 +3851,7 @@ public class XmppConnectionService extends Service {
     }
 
     public void refreshAllPresences() {
+        recomputeAwaySince();
         final boolean includeIdleTimestamp =
                 checkListeners() && appSettings.isBroadcastLastActivity();
         for (final var account : getAccounts()) {
