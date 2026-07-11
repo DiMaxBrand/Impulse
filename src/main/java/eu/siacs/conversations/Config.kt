@@ -34,7 +34,7 @@ object Config {
     // escalates from AWAY to XA (Extended Away). Deliberately much longer than the AWAY
     // thresholds themselves — this is meant to signal genuine long-term absence, not just having
     // stepped out for a bit.
-    const val EXTENDED_AWAY_THRESHOLD_MILLIS = 1000L * 60 * 60 * 12
+    const val EXTENDED_AWAY_THRESHOLD_MILLIS = 1000L * 60 * 60 * 5
 
     const val HIDE_MESSAGE_TEXT_IN_NOTIFICATION = false
     const val ALWAYS_NOTIFY_BY_DEFAULT = false
