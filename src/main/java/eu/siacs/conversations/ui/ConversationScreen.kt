@@ -1422,7 +1422,14 @@ private fun MessageRow(
                 // isn't needed to tell them apart.
                 .offset(y = (-8).dp)
                 .padding(
-                    start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 10.dp,
+                    // Mirrors the bubble Row's own start padding above (`12.dp - tailInset` when
+                    // there's no avatar slot) — without subtracting tailInset here too, a
+                    // last-of-group incoming bubble's tail (TAIL_WIDTH = 8dp) shifts the bubble's
+                    // real left edge further left than the chips accounted for, leaving a visible
+                    // gap that outgoing never has (its start position doesn't depend on the tail).
+                    start = if (outgoing) 48.dp
+                        else if (showAvatarSlot) 8.dp + 32.dp + 6.dp
+                        else 10.dp - tailInset,
                     end = if (outgoing) 10.dp else 48.dp,
                 ),
         )
