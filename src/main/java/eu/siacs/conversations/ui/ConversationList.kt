@@ -77,7 +77,6 @@ import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
@@ -143,6 +142,7 @@ private fun presenceStringRes(availability: Presence.Availability?): Int? = when
     Presence.Availability.AWAY -> R.string.presence_away
     Presence.Availability.XA -> R.string.presence_xa
     Presence.Availability.DND -> R.string.presence_dnd
+    Presence.Availability.OFFLINE -> R.string.presence_offline
     else -> null
 }
 
@@ -326,24 +326,6 @@ private fun ConversationItem(
         else false
     }
 
-    // Same reciprocity rule as the conversation screen: only fetch a timing to show if we
-    // broadcast our own last-activity, and never while a call with this contact is ongoing.
-    val idleInteraction: im.conversations.android.xmpp.model.idle.LastUserInteraction.Idle? =
-        remember(conversation, revision, ongoingCall) {
-            if (conversation.getMode() == Conversational.MODE_SINGLE &&
-                !ongoingCall.isPresent &&
-                AppSettings(context).isBroadcastLastActivity
-            ) {
-                try {
-                    conversation.getContact().lastUserInteraction
-                        as? im.conversations.android.xmpp.model.idle.LastUserInteraction.Idle
-                } catch (_: Exception) {
-                    null
-                }
-            } else null
-        }
-
-
     val avatarItemDistance = dimensionResource(R.dimen.avatar_item_distance)
     var cardHeightPx by remember { mutableIntStateOf(0) }
 
@@ -381,19 +363,9 @@ private fun ConversationItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).padding(end = 4.dp),
                     )
-                    // Only Away/Extended away get a badge on the list — Online and DND are left
-                    // for the conversation screen itself. When we have a real "last seen" timing
-                    // for an away contact, show that instead of the plain label — "last seen just
-                    // now" already says he just went away.
-                    val isAwayOrXa =
-                        availability == Presence.Availability.AWAY ||
-                            availability == Presence.Availability.XA
                     val presenceText = when {
                         isTyping -> stringResource(R.string.typing_indicator)
-                        isAwayOrXa && idleInteraction != null ->
-                            "● ${UIHelper.lastUserInteraction(context, idleInteraction)}"
-                        isAwayOrXa -> presenceStringRes(availability)?.let { "● ${stringResource(it)}" }
-                        else -> null
+                        else -> presenceStringRes(availability)?.let { "● ${stringResource(it)}" }
                     }
                     if (presenceText != null) {
                         Text(
