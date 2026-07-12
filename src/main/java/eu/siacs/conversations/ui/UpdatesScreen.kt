@@ -525,7 +525,11 @@ fun UpdateSheetContent(
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
         )
-        if (state.pendingVersion != null) {
+        // "Version X is available" only makes sense before a download has started — once it's
+        // downloading/ready, sheetStatusText below already says so (and, since rc.34, says which
+        // version), so showing this too would be redundant and, worse, contradict it ("available"
+        // next to "ready to install").
+        if (state.pendingVersion != null && state.downloadPhase == DownloadPhase.IDLE) {
             Text(
                 text = stringResource(R.string.updates_new_version_available, state.pendingVersion),
                 style = MaterialTheme.typography.bodyLarge,
@@ -1058,8 +1062,10 @@ private fun sheetStatusText(state: UpdatesUiState): String? = when {
         state.downloadStatusText ?: stringResource(R.string.updates_status_downloading)
     state.downloadPhase == DownloadPhase.PROCESSING ->
         stringResource(R.string.updates_status_processing)
+    state.downloadPhase == DownloadPhase.READY && state.pendingVersion != null ->
+        stringResource(R.string.updates_status_ready, state.pendingVersion)
     state.downloadPhase == DownloadPhase.READY ->
-        stringResource(R.string.updates_status_ready)
+        stringResource(R.string.updates_status_ready_unknown_version)
     else -> null
 }
 

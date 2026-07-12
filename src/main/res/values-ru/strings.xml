@@ -1295,7 +1295,8 @@
     <string name="updates_status_up_to_date">Актуальная версия</string>
     <string name="updates_status_downloading">Загрузка обновления…</string>
     <string name="updates_status_processing">Подготовка…</string>
-    <string name="updates_status_ready">Готово к установке</string>
+    <string name="updates_status_ready">Версия %s готова к установке</string>
+    <string name="updates_status_ready_unknown_version">Готово к установке</string>
     <string name="updates_status_no_wifi">Нет Wi-Fi — обновление загрузится при подключении</string>
     <string name="updates_status_no_wifi_detected">При обнаружении обновления не было Wi-Fi — вы можете загрузить сейчас</string>
     <string name="updates_stop_download_question">Остановить загрузку?</string>

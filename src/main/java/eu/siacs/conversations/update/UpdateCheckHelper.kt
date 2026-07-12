@@ -3,6 +3,7 @@ package eu.siacs.conversations.update
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,13 +47,53 @@ object UpdateCheckHelper {
         prefs.pendingUpdateVersion = info.versionName
         prefs.pendingUpdateUrl = info.downloadUrl
 
-        if (info.versionName == prefs.downloadedVersion && prefs.downloadedApkExists()) {
-            // Already downloaded in full — sheet will show READY via initState(), nothing to do.
-        } else if (UpdateDownloader.isWifiConnected(context)) {
-            prefs.pendingNoWifi = false
-            prefs.activeDownloadId = UpdateDownloader.startDownload(context, info)
-        } else {
-            prefs.pendingNoWifi = true
+        when {
+            info.versionName == prefs.downloadedVersion && prefs.downloadedApkExists() -> {
+                // Already downloaded in full — sheet will show READY via initState(), nothing to do.
+            }
+            prefs.activeDownloadId != -1L -> {
+                // A download from an earlier check is still in flight — wait for it instead of
+                // wiping and restarting, which is what caused the redownload/renotify loop this
+                // guards against.
+                awaitDownload(context, prefs, prefs.activeDownloadId)
+            }
+            UpdateDownloader.isWifiConnected(context) -> {
+                prefs.pendingNoWifi = false
+                val id = UpdateDownloader.startDownload(context, info)
+                prefs.activeDownloadId = id
+                awaitDownload(context, prefs, id)
+            }
+            else -> prefs.pendingNoWifi = true
         }
+    }
+
+    // Blocks (this whole function is already documented as blocking / off-main-thread) until the
+    // download finishes or a generous timeout elapses, persisting state exactly like
+    // UpdateSheetFragment.pollDownload()'s Complete branch does. This is what actually marks a
+    // version as downloaded — without it, a headless (worker- or launch-triggered) download would
+    // finish inside DownloadManager with prefs never updated, so the NEXT check's dedup guard
+    // (downloadedVersion == info.versionName && downloadedApkExists()) would keep failing and
+    // wipe + restart the same download indefinitely.
+    private fun awaitDownload(context: Context, prefs: UpdatePreferences, downloadId: Long) {
+        val deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(5)
+        while (System.currentTimeMillis() < deadline) {
+            when (val progress = UpdateDownloader.queryProgress(context, downloadId)) {
+                is UpdateDownloader.DownloadProgress.Complete -> {
+                    prefs.downloadedVersion = prefs.pendingUpdateVersion
+                    prefs.downloadedApkPath = progress.localUri
+                    prefs.activeDownloadId = -1L
+                    prefs.clearPending()
+                    return
+                }
+                is UpdateDownloader.DownloadProgress.Failed -> {
+                    prefs.activeDownloadId = -1L
+                    return
+                }
+                else -> Unit
+            }
+            Thread.sleep(1000)
+        }
+        // Timed out waiting — leave activeDownloadId set so it's resumed (by the sheet, or the
+        // "already in flight" branch above on the next check) instead of wiped and restarted.
     }
 }
