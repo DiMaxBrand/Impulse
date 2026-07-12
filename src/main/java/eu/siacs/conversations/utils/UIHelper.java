@@ -106,14 +106,26 @@ public class UIHelper {
 
     public static String lastUserInteraction(
             final Context context, final LastUserInteraction interaction) {
+        return lastUserInteraction(context, interaction, null);
+    }
+
+    public static String lastUserInteraction(
+            final Context context,
+            final LastUserInteraction interaction,
+            @Nullable final String displayName) {
         if (interaction instanceof LastUserInteraction.Online) {
             return context.getString(R.string.presence_online);
         } else if (interaction instanceof LastUserInteraction.None) {
             return null; // just hide the subtitle
         } else if (interaction instanceof LastUserInteraction.Idle idle) {
+            final int stringRes =
+                    NameGenderGuesser.INSTANCE.guess(displayName)
+                                    == NameGenderGuesser.Gender.FEMININE
+                            ? R.string.last_seen_feminine
+                            : R.string.last_seen;
             if (context.getResources().getBoolean(R.bool.last_seen_full_text)) {
                 return context.getString(
-                        R.string.last_seen,
+                        stringRes,
                         UIHelper.readableTimeDifferenceFull(
                                 context, idle.getSince().toEpochMilli()));
             } else {

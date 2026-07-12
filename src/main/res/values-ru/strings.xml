@@ -1155,6 +1155,7 @@
     <string name="do_not_show_this_warning_again">Больше не предупреждать.</string>
     <string name="could_not_moderate_message">Невозможно модерировать сообщение</string>
     <string name="last_seen">Был в сети %s</string>
+    <string name="last_seen_feminine">Была в сети %s</string>
     <plurals name="x_participants">
         <item quantity="one">%1$d участник</item>
         <item quantity="few">%1$d участника</item>

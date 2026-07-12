@@ -757,7 +757,11 @@ private fun ConversationTopBar(
                             availability != Presence.Availability.ONLINE &&
                             idleInteraction != null
                         ) {
-                            UIHelper.lastUserInteraction(context, idleInteraction)
+                            UIHelper.lastUserInteraction(
+                                context,
+                                idleInteraction,
+                                conversation?.getName()?.toString(),
+                            )
                         } else null
                     val subtitle: String? =
                         when {
