@@ -60,8 +60,10 @@ import eu.siacs.conversations.ui.util.JidDialog;
 import eu.siacs.conversations.ui.util.MenuDoubleTabUtil;
 import eu.siacs.conversations.utils.AccountUtils;
 import eu.siacs.conversations.utils.Compatibility;
+import eu.siacs.conversations.utils.ContactGenderOverride;
 import eu.siacs.conversations.utils.Emoticons;
 import eu.siacs.conversations.utils.IrregularUnicodeDetector;
+import eu.siacs.conversations.utils.NameGenderGuesser;
 import eu.siacs.conversations.utils.PhoneNumberUtilWrapper;
 import eu.siacs.conversations.xmpp.Jid;
 import eu.siacs.conversations.xmpp.OnKeyStatusUpdated;
@@ -501,6 +503,7 @@ public class ContactDetailsActivity extends OmemoActivity
         final String account = contact.getAccount().getJid().asBareJid().toString();
         binding.detailsAccount.setOnClickListener(this::onDetailsAccountClicked);
         binding.detailsAccount.setText(getString(R.string.using_account, account));
+        updateGenderRow(contact);
         AvatarWorkerTask.loadAvatar(contact, binding.detailsAvatar, R.dimen.publish_avatar_size);
         binding.detailsAvatar.setOnClickListener(this::onAvatarClicked);
         if (QuickConversationsService.isContactListIntegration(this)) {
@@ -599,6 +602,56 @@ public class ContactDetailsActivity extends OmemoActivity
         } else {
             this.binding.tags.setVisibility(View.GONE);
         }
+    }
+
+    private void updateGenderRow(final Contact contact) {
+        binding.detailsGender.setText(
+                getString(R.string.contact_grammatical_gender, genderLabel(contact)));
+        binding.detailsGender.setOnClickListener(v -> showGenderDialog(contact));
+    }
+
+    private String genderLabel(final Contact contact) {
+        final NameGenderGuesser.Gender gender = ContactGenderOverride.INSTANCE.get(this, contact);
+        return switch (gender) {
+            case MASCULINE -> getString(R.string.contact_grammatical_gender_masculine);
+            case FEMININE -> getString(R.string.contact_grammatical_gender_feminine);
+            case UNKNOWN -> getString(R.string.contact_grammatical_gender_auto);
+        };
+    }
+
+    private void showGenderDialog(final Contact contact) {
+        final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
+        builder.setTitle(R.string.contact_grammatical_gender_dialog_title);
+        final String[] choices = {
+            getString(R.string.contact_grammatical_gender_auto),
+            getString(R.string.contact_grammatical_gender_masculine),
+            getString(R.string.contact_grammatical_gender_feminine),
+        };
+        final NameGenderGuesser.Gender current = ContactGenderOverride.INSTANCE.get(this, contact);
+        final int initial =
+                switch (current) {
+                    case MASCULINE -> 1;
+                    case FEMININE -> 2;
+                    case UNKNOWN -> 0;
+                };
+        final java.util.concurrent.atomic.AtomicInteger choice =
+                new java.util.concurrent.atomic.AtomicInteger(initial);
+        builder.setSingleChoiceItems(choices, initial, (dialog, which) -> choice.set(which));
+        builder.setMessage(R.string.contact_grammatical_gender_explanation);
+        builder.setNegativeButton(R.string.cancel, null);
+        builder.setPositiveButton(
+                R.string.ok,
+                (dialog, which) -> {
+                    final NameGenderGuesser.Gender selected =
+                            switch (choice.get()) {
+                                case 1 -> NameGenderGuesser.Gender.MASCULINE;
+                                case 2 -> NameGenderGuesser.Gender.FEMININE;
+                                default -> NameGenderGuesser.Gender.UNKNOWN;
+                            };
+                    ContactGenderOverride.INSTANCE.set(this, contact, selected);
+                    updateGenderRow(contact);
+                });
+        builder.create().show();
     }
 
     private void onDetailsAccountClicked(final View view) {

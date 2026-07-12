@@ -15,6 +15,7 @@ import com.google.common.collect.Iterables;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.crypto.axolotl.AxolotlService;
 import eu.siacs.conversations.entities.Account;
+import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Conversational;
 import eu.siacs.conversations.entities.Message;
@@ -112,15 +113,14 @@ public class UIHelper {
     public static String lastUserInteraction(
             final Context context,
             final LastUserInteraction interaction,
-            @Nullable final String displayName) {
+            @Nullable final Contact contact) {
         if (interaction instanceof LastUserInteraction.Online) {
             return context.getString(R.string.presence_online);
         } else if (interaction instanceof LastUserInteraction.None) {
             return null; // just hide the subtitle
         } else if (interaction instanceof LastUserInteraction.Idle idle) {
             final int stringRes =
-                    NameGenderGuesser.INSTANCE.guess(displayName)
-                                    == NameGenderGuesser.Gender.FEMININE
+                    resolveGender(context, contact) == NameGenderGuesser.Gender.FEMININE
                             ? R.string.last_seen_feminine
                             : R.string.last_seen;
             if (context.getResources().getBoolean(R.bool.last_seen_full_text)) {
@@ -134,6 +134,21 @@ public class UIHelper {
         } else {
             return null;
         }
+    }
+
+    // Manual per-contact override wins over the heuristic name guess — it exists specifically
+    // for the names the guesser gets wrong.
+    private static NameGenderGuesser.Gender resolveGender(
+            final Context context, @Nullable final Contact contact) {
+        if (contact == null) {
+            return NameGenderGuesser.Gender.UNKNOWN;
+        }
+        final NameGenderGuesser.Gender override =
+                ContactGenderOverride.INSTANCE.get(context, contact);
+        if (override != NameGenderGuesser.Gender.UNKNOWN) {
+            return override;
+        }
+        return NameGenderGuesser.INSTANCE.guess(contact.getDisplayName());
     }
 
     @ColorInt

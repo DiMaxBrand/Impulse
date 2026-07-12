@@ -760,7 +760,7 @@ private fun ConversationTopBar(
                             UIHelper.lastUserInteraction(
                                 context,
                                 idleInteraction,
-                                conversation?.getName()?.toString(),
+                                conversation?.let { runCatching { it.getContact() }.getOrNull() },
                             )
                         } else null
                     val subtitle: String? =

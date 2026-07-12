@@ -150,6 +150,12 @@
     <string name="send_presence_updates">Send presence updates</string>
     <string name="receive_presence_updates">Receive presence updates</string>
     <string name="ask_for_presence_updates">Ask for presence updates</string>
+    <string name="contact_grammatical_gender">Grammatical gender: %s</string>
+    <string name="contact_grammatical_gender_dialog_title">Grammatical gender</string>
+    <string name="contact_grammatical_gender_explanation">Used only to pick the correct verb form (e.g. \"was online\") in translations that vary by gender, like Russian.</string>
+    <string name="contact_grammatical_gender_auto">Auto-detect</string>
+    <string name="contact_grammatical_gender_masculine">Masculine</string>
+    <string name="contact_grammatical_gender_feminine">Feminine</string>
     <string name="preemptively_grant">Preemptively grant subscription request</string>
     <string name="error_not_an_image_file">The file you selected is not an image</string>
     <string name="error_compressing_image">Could not convert image file</string>

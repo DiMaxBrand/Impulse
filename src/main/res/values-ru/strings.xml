@@ -142,6 +142,12 @@
     <string name="send_presence_updates">Отправлять присутствие</string>
     <string name="receive_presence_updates">Получать присутствие</string>
     <string name="ask_for_presence_updates">Запрашивать присутствие</string>
+    <string name="contact_grammatical_gender">Грамматический род: %s</string>
+    <string name="contact_grammatical_gender_dialog_title">Грамматический род</string>
+    <string name="contact_grammatical_gender_explanation">Используется только для выбора правильной формы глагола (например, «был(а) в сети») в переводах, где это зависит от рода, — например, в русском.</string>
+    <string name="contact_grammatical_gender_auto">Определять автоматически</string>
+    <string name="contact_grammatical_gender_masculine">Мужской</string>
+    <string name="contact_grammatical_gender_feminine">Женский</string>
     <string name="preemptively_grant">Удовлетворять запросы на подписки</string>
     <string name="error_not_an_image_file">Выбранный файл не является изображением</string>
     <string name="error_compressing_image">Невозможно преобразовать изображение</string>
