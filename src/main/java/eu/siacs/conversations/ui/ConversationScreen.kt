@@ -97,11 +97,13 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -360,6 +362,29 @@ private sealed interface ChatItem {
 private fun sameDay(a: Long, b: Long): Boolean {
     return UIHelper.sameDay(a, b)
 }
+
+// Compresses content horizontally (scaleX only, height untouched) instead of ellipsizing when it
+// doesn't fit — measures the child unconstrained to get its natural width, then scales it down to
+// the available width if needed. Below minScale it clips rather than shrinking further, so text
+// never becomes illegibly small.
+private fun Modifier.squeezeToFit(minScale: Float = 0.75f): Modifier =
+    this.layout { measurable, constraints ->
+        val natural = measurable.measure(Constraints(maxHeight = constraints.maxHeight))
+        val availableWidth = constraints.maxWidth
+        if (availableWidth == Constraints.Infinity || natural.width <= availableWidth) {
+            layout(natural.width, natural.height) { natural.placeRelative(0, 0) }
+        } else {
+            val scale = (availableWidth.toFloat() / natural.width.toFloat()).coerceAtLeast(minScale)
+            val placedWidth = (natural.width * scale).toInt().coerceIn(0, availableWidth)
+            layout(placedWidth, natural.height) {
+                natural.placeWithLayer(0, 0) {
+                    scaleX = scale
+                    transformOrigin = TransformOrigin(0f, 0.5f)
+                    clip = true
+                }
+            }
+        }
+    }
 
 private fun sameSender(a: Message, b: Message): Boolean {
     val aReceived = a.status == Message.STATUS_RECEIVED
@@ -744,7 +769,7 @@ private fun ConversationTopBar(
                                 if (isTyping) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.squeezeToFit(),
                         )
                     }
                 }
