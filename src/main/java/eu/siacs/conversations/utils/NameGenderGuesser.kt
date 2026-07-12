@@ -33,6 +33,16 @@ object NameGenderGuesser {
             "петька", "ванька", "юрка", "лёвка", "левка", "лёшка", "лешка", "гошка", "жорка",
         )
 
+    // Russian endearment suffixes are productive (Дима → Димуля → Димуленька → Димусенька →
+    // Димончик, indefinitely) — no exact-match list can ever be complete. For a handful of stems
+    // confident enough not to collide with any unrelated name (e.g. nothing feminine starts with
+    // "дим"), match by prefix instead so the whole family is covered at once. Deliberately not
+    // done for shorter/riskier stems (e.g. "вит" would also catch "Виталина", "миш" would catch
+    // "Мишель") — those stay exact-match-only above, falling back to UNKNOWN rather than risk a
+    // wrong guess.
+    private val RUSSIAN_MASCULINE_STEMS =
+        setOf("дим", "гош", "жор", "никит", "кузьм", "серёж", "сереж", "кирюш", "андрюш", "мит", "вов")
+
     // Names commonly used by either gender in Russian — deliberately treated as UNKNOWN rather
     // than guessed, since a wrong guess here is common enough to be worse than falling back.
     private val RUSSIAN_AMBIGUOUS =
@@ -88,6 +98,7 @@ object NameGenderGuesser {
         if (name in RUSSIAN_AMBIGUOUS) return Gender.UNKNOWN
         if (name in RUSSIAN_MASCULINE_EXCEPTIONS) return Gender.MASCULINE
         if (name in RUSSIAN_FEMININE_EXCEPTIONS) return Gender.FEMININE
+        if (RUSSIAN_MASCULINE_STEMS.any { name.startsWith(it) }) return Gender.MASCULINE
         val last = name.last()
         return if (last == 'а' || last == 'я') Gender.FEMININE else Gender.MASCULINE
     }
