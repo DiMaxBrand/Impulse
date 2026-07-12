@@ -637,7 +637,6 @@ public class ContactDetailsActivity extends OmemoActivity
         final java.util.concurrent.atomic.AtomicInteger choice =
                 new java.util.concurrent.atomic.AtomicInteger(initial);
         builder.setSingleChoiceItems(choices, initial, (dialog, which) -> choice.set(which));
-        builder.setMessage(R.string.contact_grammatical_gender_explanation);
         builder.setNegativeButton(R.string.cancel, null);
         builder.setPositiveButton(
                 R.string.ok,
