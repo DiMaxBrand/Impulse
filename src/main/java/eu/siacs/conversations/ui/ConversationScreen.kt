@@ -367,7 +367,7 @@ private fun sameDay(a: Long, b: Long): Boolean {
 // doesn't fit — measures the child unconstrained to get its natural width, then scales it down to
 // the available width if needed. Below minScale it clips rather than shrinking further, so text
 // never becomes illegibly small.
-private fun Modifier.squeezeToFit(minScale: Float = 0.75f): Modifier =
+private fun Modifier.squeezeToFit(minScale: Float = 0.65f): Modifier =
     this.layout { measurable, constraints ->
         val natural = measurable.measure(Constraints(maxHeight = constraints.maxHeight))
         val availableWidth = constraints.maxWidth
@@ -691,7 +691,8 @@ private fun ConversationTopBar(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
-                    Modifier.clip(RoundedCornerShape(12.dp))
+                    Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable { listener.onOpenDetails() }
                         .padding(vertical = 2.dp, horizontal = 2.dp),
             ) {
@@ -712,7 +713,11 @@ private fun ConversationTopBar(
                     )
                 }
                 Spacer(Modifier.width(12.dp))
-                Column {
+                // weight(1f) claims all remaining width in the row (up to wherever TopAppBar
+                // starts reserving space for the actions/call button) — without this the column
+                // only sizes to its own content, leaving the subtitle way less room than is
+                // actually available.
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = conversation?.getName()?.toString() ?: "",
                         style = MaterialTheme.typography.titleMedium,
