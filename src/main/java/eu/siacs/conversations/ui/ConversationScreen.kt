@@ -712,11 +712,16 @@ private fun ConversationTopBar(
                                 stringResource(R.string.presence_dnd)
                             else -> null
                         }
+                    // Only the Idle variant carries genuine "last seen at time X" data — Online
+                    // just means "no XEP-0319 Idle element on this presence" and would otherwise
+                    // render as the literal word "Online", contradicting a non-online statusLabel
+                    // (e.g. "Away · Online").
                     val lastSeenText: String? =
                         if (!isTyping &&
                             availability != Presence.Availability.CHAT &&
                             availability != Presence.Availability.ONLINE &&
-                            lastUserInteraction != null
+                            lastUserInteraction
+                                is im.conversations.android.xmpp.model.idle.LastUserInteraction.Idle
                         ) {
                             UIHelper.lastUserInteraction(context, lastUserInteraction)
                         } else null
