@@ -26,6 +26,11 @@ object NameGenderGuesser {
             "лёва", "лева", "лёша", "леша", "ваня", "петя", "костя", "серёжа", "сережа", "паша",
             "миша", "боря", "толя", "коля", "гриша", "витя", "вова", "гена", "тёма", "тема",
             "кирюша", "андрюша", "лёня", "леня",
+            // The "-ка" diminutive suffix (Димка, Вовка, ...) attaches to already-masculine names
+            // and stays masculine — distinct from names that are simply -а/-я by root (Танька,
+            // from Таня, is feminine because Таня already was, not because of the suffix).
+            "димка", "вовка", "мишка", "витька", "колька", "толька", "гришка", "борька",
+            "петька", "ванька", "юрка", "лёвка", "левка", "лёшка", "лешка", "гошка", "жорка",
         )
 
     // Names commonly used by either gender in Russian — deliberately treated as UNKNOWN rather
