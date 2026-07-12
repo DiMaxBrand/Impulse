@@ -85,7 +85,7 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         } else true
 
         val apkExists = prefs.downloadedApkExists()
-        if (downloadedPath != null && !apkExists) prefs.downloadedApkPath = null
+        if (downloadedPath != null && !apkExists) prefs.clearDownload()
 
         val restoredPhase = when {
             apkExists -> DownloadPhase.READY
@@ -194,7 +194,15 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         @JvmStatic
         fun shouldShow(context: Context): Boolean {
             val prefs = UpdatePreferences(context)
-            if (prefs.pendingUpdateVersion == null && prefs.downloadedApkPath == null) return false
+            // A non-null downloadedApkPath isn't enough on its own — the file it points to can
+            // go missing behind our back (the nightly ApkCleanupWorker runs on an independent
+            // schedule from the download check, so it can race an in-progress/just-finished
+            // download; OS-level storage cleanup is another way). initState() already self-heals
+            // this, but only after the sheet is already showing, which is how you'd get a sheet
+            // with no content at all instead of no sheet. Check here too so it never opens for a
+            // download that isn't actually there.
+            val hasDownloaded = prefs.downloadedApkPath != null && prefs.downloadedApkExists()
+            if (prefs.pendingUpdateVersion == null && !hasDownloaded) return false
             return System.currentTimeMillis() > prefs.sheetDismissedUntil
         }
     }
