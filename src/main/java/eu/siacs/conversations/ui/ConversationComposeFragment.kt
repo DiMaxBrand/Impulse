@@ -188,7 +188,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onResume() {
         super.onResume()
-        markRead()
+        // Read-marking is now progressive (see onMarkReadUpTo / the viewport-tracking effect in
+        // MessageList) — it fires as soon as the first layout pass populates visibleItemsInfo,
+        // which happens right after this anyway, so there's no blanket "mark everything read"
+        // call here anymore. That used to mark a whole unread backlog as read the instant the
+        // conversation opened, before the user had actually scrolled up to see any of it.
         val activity = activity ?: return
         val color = com.google.android.material.elevation.SurfaceColors.SURFACE_2.getColor(activity)
         activity.window.statusBarColor = color
@@ -313,7 +317,6 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             onStartRecording()
         }
         refreshMessages()
-        markRead()
     }
 
     /** Switches the composer to a private message addressed to the given MUC participant. */
@@ -384,6 +387,12 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val lastUuid = state.messages.value.lastOrNull()?.getUuid()
         activity.onConversationRead(c, lastUuid ?: "")
         state.unreadCount.intValue = 0
+    }
+
+    override fun onMarkReadUpTo(uuid: String) {
+        if (!isResumed) return
+        val activity = activity as? OnConversationRead ?: return
+        activity.onConversationRead(conversation ?: return, uuid)
     }
 
     // ---- ConversationScreenListener ----

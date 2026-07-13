@@ -436,6 +436,7 @@
     <string name="typing_indicator">typing…</string>
     <string name="contact_has_stopped_typing">%s has stopped typing</string>
     <string name="its_time_for_contact">It’s ^1 for ^2</string>
+    <string name="its_time_for_contact_compose">It’s %1$s for %2$s</string>
     <string name="contact_has_paused_their_notifications">%s has paused their notifications</string>
     <string name="contacts_are_typing">%s are typing…</string>
     <string name="contacts_have_stopped_typing">%s have stopped typing</string>
@@ -515,6 +516,10 @@
     <plurals name="x_messages">
         <item quantity="one">%d message</item>
         <item quantity="other">%d messages</item>
+    </plurals>
+    <plurals name="new_messages_pill">
+        <item quantity="one">%d new message</item>
+        <item quantity="other">%d new messages</item>
     </plurals>
     <string name="load_more_messages">Load more messages</string>
     <string name="shared_file_with_x">File shared with %s</string>

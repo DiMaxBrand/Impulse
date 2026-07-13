@@ -139,8 +139,10 @@ import im.conversations.android.xmpp.model.reactions.Restrictions
 import im.conversations.android.xmpp.model.stanza.Presence
 import im.conversations.android.xmpp.model.state.Composing
 import eu.siacs.conversations.xmpp.manager.ChatStateManager
+import eu.siacs.conversations.xmpp.manager.EntityTimeManager
 import eu.siacs.conversations.xmpp.manager.JingleManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -232,6 +234,12 @@ interface ConversationScreenListener {
     fun onLoadMoreMessages()
 
     fun onScrolledToBottom()
+
+    // Progressive read-marking: called with the UUID of the newest message that has actually
+    // been on screen (present in the LazyColumn's visibleItemsInfo, i.e. genuinely rendered —
+    // not a recycled/off-screen slot), as the user scrolls through an unread run. Marks
+    // everything up to and including it as read, same as XEP-0333 "displayed" semantics.
+    fun onMarkReadUpTo(uuid: String)
 
     fun onStartRecording()
 
@@ -358,6 +366,11 @@ private sealed interface ChatItem {
         override val key: String
             get() = "date-$timestamp"
     }
+
+    data class NewMessagesPill(val count: Int) : ChatItem {
+        override val key: String
+            get() = "new-messages"
+    }
 }
 
 private fun sameDay(a: Long, b: Long): Boolean {
@@ -407,15 +420,29 @@ private fun groupable(a: Message, b: Message): Boolean {
         sameDay(a.timeSent, b.timeSent)
 }
 
-/** Builds the display list, newest first (for the reversed LazyColumn). */
-private fun buildChatItems(messages: List<Message>): List<ChatItem> {
+/**
+ * Builds the display list, newest first (for the reversed LazyColumn). [newMessagesBoundaryUuid]
+ * and [newMessagesCount] are frozen at conversation-open time by the caller (not recomputed live
+ * as messages get progressively marked read) — the pill marks "where you left off when you
+ * opened this", not a running unread count that would shrink/flicker as you scroll.
+ */
+private fun buildChatItems(
+    messages: List<Message>,
+    newMessagesBoundaryUuid: String? = null,
+    newMessagesCount: Int = 0,
+): List<ChatItem> {
     val chronological = ArrayList<ChatItem>(messages.size + 8)
+    var pillInserted = newMessagesBoundaryUuid == null
     for (i in messages.indices) {
         val message = messages[i]
         val previous = messages.getOrNull(i - 1)
         val next = messages.getOrNull(i + 1)
         if (previous == null || !sameDay(previous.timeSent, message.timeSent)) {
             chronological.add(ChatItem.DatePill(message.timeSent))
+        }
+        if (!pillInserted && message.getUuid() == newMessagesBoundaryUuid) {
+            chronological.add(ChatItem.NewMessagesPill(newMessagesCount))
+            pillInserted = true
         }
         val firstOfGroup = previous == null || !groupable(previous, message)
         val lastOfGroup =
@@ -929,6 +956,27 @@ private fun ConversationTopBar(
     )
 }
 
+// Bridges a Guava ListenableFuture (used throughout the XMPP manager layer, incl.
+// EntityTimeManager) into a suspend call — null on failure/cancellation rather than throwing, so
+// callers can treat "couldn't get it" the same as "don't have it".
+private suspend fun <T> com.google.common.util.concurrent.ListenableFuture<T>.awaitOrNull(): T? =
+    kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+        com.google.common.util.concurrent.Futures.addCallback(
+            this,
+            object : com.google.common.util.concurrent.FutureCallback<T> {
+                override fun onSuccess(result: T) {
+                    if (cont.isActive) cont.resume(result) {}
+                }
+
+                override fun onFailure(t: Throwable) {
+                    if (cont.isActive) cont.resume(null) {}
+                }
+            },
+            com.google.common.util.concurrent.MoreExecutors.directExecutor(),
+        )
+        cont.invokeOnCancellation { this@awaitOrNull.cancel(false) }
+    }
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MessageList(
@@ -944,11 +992,26 @@ private fun MessageList(
     // Reading `revision` here makes MessageList recompose on every refresh(), which rebuilds items
     // and passes the new `revision` into every visible MessageRow so footers re-render.
     @Suppress("UNUSED_EXPRESSION") revision
-    val items = buildChatItems(state.messages.value)
+    val conversation = state.conversation.value
+    // Frozen once per conversation-open, not recomputed live as progressive read-marking (see
+    // the scroll-driven read-marker effect below) shrinks the real unread count — the pill marks
+    // "where you left off when you opened this", not a live counter that would shrink/flicker
+    // under it while it's still on screen.
+    val newMessagesBoundary =
+        remember(conversation?.getUuid()) {
+            val first =
+                try {
+                    conversation?.getFirstUnreadMessage()
+                } catch (_: Exception) {
+                    null
+                }
+            if (first != null) first.getUuid() to (conversation?.unreadCount() ?: 0) else null
+        }
+    val items =
+        buildChatItems(state.messages.value, newMessagesBoundary?.first, newMessagesBoundary?.second ?: 0)
     val listState = rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
-    val conversation = state.conversation.value
     val isTyping: Boolean =
         remember(conversation, revision) {
             if (conversation != null && conversation.getMode() == Conversational.MODE_SINGLE) {
@@ -964,6 +1027,47 @@ private fun MessageList(
                     false
                 }
             } else false
+        }
+
+    // EntityTime (XEP-0202) "it's late for them" indicator, ported from the old screen — shown
+    // as a plain row at the bottom of the list (same slot as TypingBubble below), not its own
+    // chat bubble. Independent of DND: DND already shows in the top bar subtitle, so it no
+    // longer needs its own separate status message here like the old screen did. Gated on: 1:1
+    // chat, not currently typing (typing takes priority and hides this), no message received in
+    // the last 12 minutes (goes quiet once a conversation is actively happening), a successfully
+    // resolved contact-side time, that time being in a different zone than this device's own,
+    // and it being "night" for them.
+    val quietLongEnough: Boolean =
+        remember(conversation, revision) {
+            conversation != null && EntityTimeManager.noRecentMessages(conversation)
+        }
+    val entityTime =
+        remember(conversation?.getUuid()) { mutableStateOf<java.time.ZonedDateTime?>(null) }
+    LaunchedEffect(conversation?.getUuid(), isTyping, quietLongEnough) {
+        val c = conversation
+        if (c == null || c.getMode() != Conversational.MODE_SINGLE || isTyping || !quietLongEnough) {
+            return@LaunchedEffect
+        }
+        val connection = try {
+            c.getAccount().xmppConnection
+        } catch (_: Exception) {
+            null
+        } ?: return@LaunchedEffect
+        val future =
+            try {
+                connection.getManager(EntityTimeManager::class.java).getZonedDateTime(c.getAddress())
+            } catch (_: Exception) {
+                null
+            } ?: return@LaunchedEffect
+        entityTime.value = future.awaitOrNull()
+    }
+    val localTimeForContact: java.time.ZonedDateTime? =
+        entityTime.value?.takeIf {
+            isTyping.not() &&
+                quietLongEnough &&
+                conversation?.getMode() == Conversational.MODE_SINGLE &&
+                EntityTimeManager.isDifferentTimeZone(it) &&
+                EntityTimeManager.isNightTime(it)
         }
 
     // Request older messages when the user approaches the (chronological) top.
@@ -982,6 +1086,33 @@ private fun MessageList(
         snapshotFlow { listState.firstVisibleItemIndex == 0 }
             .distinctUntilChanged()
             .collect { atBottom -> if (atBottom) listener.onScrolledToBottom() }
+    }
+
+    // Progressive read-marking: mark read only what has actually been on screen (present in
+    // visibleItemsInfo — genuinely rendered, not a recycled/off-screen slot), as it happens,
+    // instead of blanket-marking the whole unread backlog the instant the conversation opens.
+    // markedThroughIndex is a monotonic ratchet (lower index = newer, reverseLayout) so scrolling
+    // back up never "unmarks" anything already confirmed seen.
+    var markedThroughIndex by remember(conversation?.getUuid()) { mutableIntStateOf(Int.MAX_VALUE) }
+    LaunchedEffect(conversation?.getUuid()) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.index } }
+            .collect { visibleIndices ->
+                val lowestVisibleUnread =
+                    visibleIndices
+                        .filter { idx ->
+                            (items.getOrNull(idx) as? ChatItem.Msg)?.message?.let {
+                                it.status == Message.STATUS_RECEIVED && !it.isRead()
+                            } == true
+                        }
+                        .minOrNull()
+                if (lowestVisibleUnread != null && lowestVisibleUnread < markedThroughIndex) {
+                    val uuid = (items[lowestVisibleUnread] as ChatItem.Msg).message.getUuid()
+                    if (uuid != null) {
+                        markedThroughIndex = lowestVisibleUnread
+                        listener.onMarkReadUpTo(uuid)
+                    }
+                }
+            }
     }
 
     // Single scroll executor: every scroll request — pin-to-bottom or audio auto-advance —
@@ -1026,17 +1157,12 @@ private fun MessageList(
     // scroll-to-bottom while this is still deciding; it hands off once done, either way.
     val hasPositioned = remember(conversation?.getUuid()) { mutableStateOf(false) }
     LaunchedEffect(conversation?.getUuid()) {
-        val firstUnread =
-            try {
-                conversation?.getFirstUnreadMessage()
-            } catch (_: Exception) {
-                null
-            }
-        if (firstUnread != null) {
+        val firstUnreadUuid = newMessagesBoundary?.first
+        if (firstUnreadUuid != null) {
             snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
             val targetIndex =
                 items.indexOfFirst {
-                    it is ChatItem.Msg && it.message.getUuid() == firstUnread.getUuid()
+                    it is ChatItem.Msg && it.message.getUuid() == firstUnreadUuid
                 }
             if (targetIndex > 0) {
                 val info = listState.layoutInfo
@@ -1154,6 +1280,16 @@ private fun MessageList(
             if (isTyping) {
                 item(key = "typing-indicator") { TypingBubble(modifier = Modifier.animateItem()) }
             }
+            val localTime = localTimeForContact
+            if (localTime != null && conversation != null) {
+                item(key = "local-time-indicator") {
+                    LocalTimeForContactRow(
+                        zonedDateTime = localTime,
+                        contactName = conversation.getName()?.toString() ?: "",
+                        modifier = Modifier.animateItem(),
+                    )
+                }
+            }
             itemsIndexed(items, key = { _, item -> item.key }) { index, item ->
                 // All three animateItem specs are null to prevent intermittent blank bubbles.
                 //
@@ -1180,6 +1316,8 @@ private fun MessageList(
                 when (item) {
                     is ChatItem.DatePill ->
                         DatePill(timestamp = item.timestamp, modifier = itemModifier)
+                    is ChatItem.NewMessagesPill ->
+                        NewMessagesPill(count = item.count, modifier = itemModifier)
                     is ChatItem.Msg ->
                         MessageRow(
                             item = item,
@@ -1292,6 +1430,38 @@ private fun TypingBubble(modifier: Modifier = Modifier) {
     }
 }
 
+// Deliberately plain — no Surface/bubble shape, unlike DatePill/NewMessagesPill/TypingBubble.
+// Just an icon and a line of text, same visual weight as a subtitle rather than a message.
+@Composable
+private fun LocalTimeForContactRow(
+    zonedDateTime: java.time.ZonedDateTime,
+    contactName: String,
+    modifier: Modifier = Modifier,
+) {
+    val timeText =
+        remember(zonedDateTime) {
+            zonedDateTime.toLocalTime().truncatedTo(java.time.temporal.ChronoUnit.MINUTES).toString()
+        }
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_schedule_24dp),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = stringResource(R.string.its_time_for_contact_compose, timeText, contactName),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 private fun formatDatePill(context: android.content.Context, timestamp: Long): String {
     val now = java.util.Calendar.getInstance()
@@ -1334,6 +1504,39 @@ private fun DatePill(timestamp: Long, modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
             )
+        }
+    }
+}
+
+// Same visual language as DatePill (same shape/color/text style) — this just marks where the
+// unread run started instead of a date boundary, and unlike DatePill it doesn't stay forever:
+// it fades out on its own after a few seconds once the user has had a chance to notice it.
+@Composable
+private fun NewMessagesPill(count: Int, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var visible by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(5000)
+        visible = false
+    }
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier,
+    ) {
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                Text(
+                    text = context.resources.getQuantityString(R.plurals.new_messages_pill, count, count),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                )
+            }
         }
     }
 }

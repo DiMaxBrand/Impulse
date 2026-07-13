@@ -493,6 +493,12 @@
         <item quantity="many">%d сообщений</item>
         <item quantity="other">%d сообщений</item>
     </plurals>
+    <plurals name="new_messages_pill">
+        <item quantity="one">%d новое сообщение</item>
+        <item quantity="few">%d новых сообщения</item>
+        <item quantity="many">%d новых сообщений</item>
+        <item quantity="other">%d новых сообщений</item>
+    </plurals>
     <string name="load_more_messages">Загрузить больше сообщений</string>
     <string name="shared_file_with_x">Файл отправлен %s</string>
     <string name="shared_image_with_x">Изображение отправлено %s</string>
@@ -1212,6 +1218,7 @@
     <string name="pref_category_backup_storage">Хранилище</string>
     <string name="pref_import_backup_summary">Выбор файла резервной копии для восстановления данных</string>
     <string name="its_time_for_contact">У ^2 сейчас ^1</string>
+    <string name="its_time_for_contact_compose">У %2$s сейчас %1$s</string>
     <string name="mobile_ticket">Цифровой пропуск</string>
     <string name="pref_entity_time_summary">Делиться своим текущим временем с контактами, чтобы взамен знать их местное время</string>
     <string name="pref_entity_time">Делиться местным временем</string>
