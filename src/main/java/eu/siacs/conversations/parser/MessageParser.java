@@ -629,6 +629,20 @@ public class MessageParser extends AbstractParser
                             }
                         }
                         mXmppConnectionService.getNotificationService().updateNotification();
+                        // The scroll-based "mark read" trigger in the UI only fires on a scroll
+                        // *transition* to the bottom — a correction that updates a message
+                        // already sitting on screen (user already at the bottom) doesn't move
+                        // the scroll position, so that trigger never re-fires and the message
+                        // would sit marked unread indefinitely despite being actively visible.
+                        // Send the receipt directly here instead, exactly like the UI would if
+                        // it noticed.
+                        if (replacedMessage.getStatus() == Message.STATUS_RECEIVED
+                                && mXmppConnectionService
+                                        .getNotificationService()
+                                        .isConversationOpen(conversation)) {
+                            mXmppConnectionService.sendReadMarker(
+                                    conversation, replacedMessage.getUuid());
+                        }
                         return;
                     } else {
                         Log.d(

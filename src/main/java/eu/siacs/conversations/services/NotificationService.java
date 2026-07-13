@@ -1812,6 +1812,16 @@ public class NotificationService {
         this.mIsInForeground = foreground;
     }
 
+    // Same condition already used to suppress notifications for the conversation currently on
+    // screen (see pushFailedDelivery() above) — reused wherever else "is the user actually
+    // looking at this chat right now" needs answering, e.g. deciding whether an incoming message
+    // correction should immediately send a fresh read receipt instead of just sitting unread.
+    public boolean isConversationOpen(final Conversation conversation) {
+        return this.mIsInForeground
+                && !new Device(mXmppConnectionService).isScreenLocked()
+                && this.mOpenConversation == conversation;
+    }
+
     private int getPixel(final int dp) {
         final DisplayMetrics metrics = mXmppConnectionService.getResources().getDisplayMetrics();
         return ((int) (dp * metrics.density));
