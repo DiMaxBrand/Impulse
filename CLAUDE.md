@@ -21,10 +21,11 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 
 ### Release notes (GitHub Release title/description)
 
-- **Alpha/beta releases**: a description is optional — skip it unless there's something worth calling out.
-- **Release candidates**: more important to include one, since RC is the last stop before stable.
+- **Every release gets a real title**, not just stable — the in-app update sheet displays the GitHub release title verbatim as its hero text (see `releaseTitle` in `UpdateInfo`/`UpdatesScreen.kt`), so leaving RC/beta/alpha releases on the workflow's bare `Impulse <version>` default means RC-channel users never see what's actually in a build until they read the changelog separately. Write a short real title for every release, RC included.
+- **Alpha/beta releases**: a description is optional — skip it unless there's something worth calling out. Title still applies.
+- **Release candidates**: more important to include a description too, since RC is the last stop before stable.
 - **RC → Stable promotion**: must be a pure version bump, no code changes bundled in. If something still needs fixing, ship it on another RC first, get it tested, and only promote to stable once verified — never mix code changes into the stable-promotion commit.
-- **Stable release title**: format `MAJOR.MINOR.PATCH: <short description>` — short but proper, following the existing tag conventions, with the key points after the colon (e.g. `1.12.0: Better voice messages, improved sync`).
+- **Title format, every channel**: `Impulse MAJOR.MINOR.PATCH[-prerelease.N]: <short description>` — always keep the literal word "Impulse" as a prefix. The update-sheet hero shows this title with no other text-based branding fallback once a title is set (only the update icon), and the workflow's own default (`Impulse <version>`) already follows this shape — a custom title that drops "Impulse" reads inconsistently against it. E.g. `Impulse 1.12.0: Better voice messages, improved sync` (stable), `Impulse 1.12.0-rc.45: In-app release notes, cleaner update dialog` (RC).
 - **Stable release description**: summarize everything shipped since the **previous stable release** (not just the diff since the last RC). Exception: the **first-ever stable release** has no previous stable to diff against, so it collapses everything since the **first-ever alpha this app has cut** — the earliest alpha in git/release history, regardless of its version number.
 - **Language**: the user-facing highlights section goes **Russian first, then English** — both are written for regular (non-developer) users, since most people opening a release land on it via Russian. Only Russian and English — see "Localization" below. If technical detail is worth including for developers, put it in a separate **English-only "Developer notes"** section after the two user-facing ones.
 
