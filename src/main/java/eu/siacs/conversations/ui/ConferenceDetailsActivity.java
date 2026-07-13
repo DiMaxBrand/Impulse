@@ -704,28 +704,40 @@ public class ConferenceDetailsActivity extends XmppActivity
             this.binding.notificationStatusButton.setImageResource(
                     R.drawable.ic_notifications_none_24dp);
         }
-        this.binding.users.post(
-                () -> {
-                    final var list =
-                            mucOptions.getUsersPreview(
-                                    GridManager.getCurrentColumnCount(binding.users));
-                    this.mUserPreviewAdapter.submitList(list);
-                });
         final var userCount = mucOptions.getUserCount();
         this.binding.invite.setVisibility(mucOptions.canInvite() ? View.VISIBLE : View.GONE);
-        this.binding.showUsers.setVisibility(userCount == 0 ? View.GONE : View.VISIBLE);
-        this.binding.showUsers.setText(
-                getResources().getQuantityString(R.plurals.view_users, userCount, userCount));
-        this.binding.usersWrapper.setVisibility(
-                userCount > 0 || mucOptions.canInvite() ? View.VISIBLE : View.GONE);
-        if (userCount == 0) {
-            this.binding.noUsersHints.setText(
-                    mucOptions.isPrivateAndNonAnonymous()
-                            ? R.string.no_users_hint_group_chat
-                            : R.string.no_users_hint_channel);
-            this.binding.noUsersHints.setVisibility(View.VISIBLE);
+        if (mucOptions.isPrivateAndNonAnonymous()) {
+            // Private group: members already chose to be identifiable to each other, so the
+            // roster preview/browse flow is fine to show as usual.
+            this.binding.users.post(
+                    () -> {
+                        final var list =
+                                mucOptions.getUsersPreview(
+                                        GridManager.getCurrentColumnCount(binding.users));
+                        this.mUserPreviewAdapter.submitList(list);
+                    });
+            this.binding.users.setVisibility(View.VISIBLE);
+            this.binding.showUsers.setVisibility(userCount == 0 ? View.GONE : View.VISIBLE);
+            this.binding.showUsers.setText(
+                    getResources().getQuantityString(R.plurals.view_users, userCount, userCount));
+            this.binding.usersWrapper.setVisibility(
+                    userCount > 0 || mucOptions.canInvite() ? View.VISIBLE : View.GONE);
+            if (userCount == 0) {
+                this.binding.noUsersHints.setText(R.string.no_users_hint_group_chat);
+                this.binding.noUsersHints.setVisibility(View.VISIBLE);
+            } else {
+                this.binding.noUsersHints.setVisibility(View.GONE);
+            }
         } else {
-            this.binding.noUsersHints.setVisibility(View.GONE);
+            // Channel: nobody — not even the owner — gets a browsable list of who's joined.
+            // People didn't sign up to be listed, and moderation (ban/promote) doesn't need a
+            // roster to work; it can act on whoever sent a given message.
+            this.mUserPreviewAdapter.submitList(Collections.emptyList());
+            this.binding.users.setVisibility(View.GONE);
+            this.binding.showUsers.setVisibility(View.GONE);
+            this.binding.noUsersHints.setText(R.string.channel_members_hidden);
+            this.binding.noUsersHints.setVisibility(View.VISIBLE);
+            this.binding.usersWrapper.setVisibility(View.VISIBLE);
         }
     }
 

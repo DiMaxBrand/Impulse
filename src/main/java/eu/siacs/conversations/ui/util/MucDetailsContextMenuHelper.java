@@ -76,7 +76,11 @@ public final class MucDetailsContextMenuHelper {
         if (user.realJidMatchesAccount()) {
             showContactDetails.setVisible(true);
             showContactDetails.setTitle(R.string.account_details);
-        } else {
+        } else if (isGroupChat) {
+            // Only offer to reveal another member's identity in private, already-mutually-known
+            // groups. In a channel, moderators still need real JIDs for moderation actions below
+            // (ban/promote are bare-JID-bound by protocol) — but casually looking someone up or
+            // starting a 1:1 with them isn't a moderation action, so don't offer it here.
             showContactDetails.setVisible(true);
             startConversation.setVisible(true);
             showContactDetails.setTitle(R.string.action_contact_details);

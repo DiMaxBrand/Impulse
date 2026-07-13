@@ -120,7 +120,12 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
                         });
         viewHolder.binding.contactDisplayName.setText(user.getDisplayName());
         final var jid = user.getRealJid();
-        if (jid != null) {
+        // Only private, already-mutually-known groups get real JIDs surfaced in the UI. In a
+        // channel/public room, members never chose to be identifiable to each other or to the
+        // owner — Impulse itself should stay blind to it here even though the server discloses
+        // it to moderators at the protocol level (that's what semi-anonymous "whois=moderators"
+        // means; the client doesn't have to render what it's told).
+        if (jid != null && user.getMucOptions().isPrivateAndNonAnonymous()) {
             viewHolder.binding.contactJid.setText(jid);
             viewHolder.binding.contactJid.setVisibility(View.VISIBLE);
         } else {

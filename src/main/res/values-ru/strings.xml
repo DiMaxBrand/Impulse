@@ -866,6 +866,7 @@
     <string name="jabber_ids_are_visible_to_anyone">XMPP-адреса видны всем.</string>
     <string name="no_users_hint_channel">У этого публичного канала нет участников. Пригласите ваших знакомых или нажмите кнопку \"Поделиться\", чтобы отправить XMPP-адрес.</string>
     <string name="no_users_hint_group_chat">У этой приватной конференции нет участников.</string>
+    <string name="channel_members_hidden">Список участников канала скрыт. Никто, включая вас, не видит, кто подписан.</string>
     <string name="manage_permission">Управление правами</string>
     <string name="search_participants">Поиск участников</string>
     <string name="file_too_large">Размер файла слишком велик</string>
