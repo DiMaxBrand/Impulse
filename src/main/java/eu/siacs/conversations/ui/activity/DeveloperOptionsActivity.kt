@@ -159,7 +159,7 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                         },
                                     )
                                 }
-                                ExpressiveGroupRow(GroupPosition.MIDDLE) {
+                                ExpressiveGroupRow(GroupPosition.BOTTOM) {
                                     ListItem(
                                         headlineContent = {
                                             Text(stringResource(R.string.developer_options_show_update_sheet))
@@ -171,7 +171,12 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                         modifier = Modifier.clickable { showUpdateSheet() },
                                     )
                                 }
-                                ExpressiveGroupRow(GroupPosition.BOTTOM) {
+
+                                Spacer(Modifier.height(6.dp))
+
+                                // Own group — language switching isn't an update-sheet debugging
+                                // tool, so it doesn't belong visually merged with the group above.
+                                ExpressiveGroupRow(GroupPosition.SINGLE) {
                                     ListItem(
                                         headlineContent = {
                                             Text(stringResource(R.string.developer_options_change_language))
