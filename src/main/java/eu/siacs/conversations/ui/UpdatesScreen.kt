@@ -1057,7 +1057,11 @@ private fun sheetStatusText(state: UpdatesUiState): String? = when {
     state.downloadPhase == DownloadPhase.CANCELING -> stringResource(R.string.updates_canceling)
     state.cancelConfirmVisible -> stringResource(R.string.updates_stop_download_question)
     state.downloadPhase == DownloadPhase.NO_WIFI_PENDING ->
-        stringResource(R.string.updates_status_no_wifi_detected)
+        if (state.pendingVersion != null) {
+            stringResource(R.string.updates_status_no_wifi_detected, state.pendingVersion)
+        } else {
+            stringResource(R.string.updates_status_no_wifi_detected_unknown_version)
+        }
     state.downloadPhase == DownloadPhase.DOWNLOADING ->
         state.downloadStatusText
             ?: if (state.pendingVersion != null) {
@@ -1066,7 +1070,11 @@ private fun sheetStatusText(state: UpdatesUiState): String? = when {
                 stringResource(R.string.updates_status_downloading_unknown_version)
             }
     state.downloadPhase == DownloadPhase.PROCESSING ->
-        stringResource(R.string.updates_status_processing)
+        if (state.pendingVersion != null) {
+            stringResource(R.string.updates_status_processing, state.pendingVersion)
+        } else {
+            stringResource(R.string.updates_status_processing_unknown_version)
+        }
     state.downloadPhase == DownloadPhase.READY && state.pendingVersion != null ->
         stringResource(R.string.updates_status_ready, state.pendingVersion)
     state.downloadPhase == DownloadPhase.READY ->

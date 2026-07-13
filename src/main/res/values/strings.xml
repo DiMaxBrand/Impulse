@@ -1239,11 +1239,13 @@
     <string name="updates_status_up_to_date">Up to date</string>
     <string name="updates_status_downloading">Downloading version %s…</string>
     <string name="updates_status_downloading_unknown_version">Downloading update…</string>
-    <string name="updates_status_processing">Preparing…</string>
+    <string name="updates_status_processing">Preparing version %s…</string>
+    <string name="updates_status_processing_unknown_version">Preparing…</string>
     <string name="updates_status_ready">Version %s ready to install</string>
     <string name="updates_status_ready_unknown_version">Ready to install</string>
     <string name="updates_status_no_wifi">No Wi-Fi — update will download when connected</string>
-    <string name="updates_status_no_wifi_detected">No Wi-Fi when the update was detected — you can download now</string>
+    <string name="updates_status_no_wifi_detected">Version %s detected, but no Wi-Fi — you can download now</string>
+    <string name="updates_status_no_wifi_detected_unknown_version">No Wi-Fi when the update was detected — you can download now</string>
     <string name="updates_stop_download_question">Stop downloading?</string>
     <string name="updates_canceling">Canceling…</string>
     <string name="updates_almost_done">Almost done…</string>
