@@ -1237,7 +1237,8 @@
     <string name="updates_continue">Continue</string>
     <string name="updates_status_checking">Checking…</string>
     <string name="updates_status_up_to_date">Up to date</string>
-    <string name="updates_status_downloading">Downloading update…</string>
+    <string name="updates_status_downloading">Downloading version %s…</string>
+    <string name="updates_status_downloading_unknown_version">Downloading update…</string>
     <string name="updates_status_processing">Preparing…</string>
     <string name="updates_status_ready">Version %s ready to install</string>
     <string name="updates_status_ready_unknown_version">Ready to install</string>

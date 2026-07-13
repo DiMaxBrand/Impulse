@@ -1300,7 +1300,8 @@
     <string name="updates_continue">Продолжить</string>
     <string name="updates_status_checking">Проверка…</string>
     <string name="updates_status_up_to_date">Актуальная версия</string>
-    <string name="updates_status_downloading">Загрузка обновления…</string>
+    <string name="updates_status_downloading">Загрузка версии %s…</string>
+    <string name="updates_status_downloading_unknown_version">Загрузка обновления…</string>
     <string name="updates_status_processing">Подготовка…</string>
     <string name="updates_status_ready">Версия %s готова к установке</string>
     <string name="updates_status_ready_unknown_version">Готово к установке</string>

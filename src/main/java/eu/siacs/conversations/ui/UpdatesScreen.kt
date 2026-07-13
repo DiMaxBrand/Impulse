@@ -1059,7 +1059,12 @@ private fun sheetStatusText(state: UpdatesUiState): String? = when {
     state.downloadPhase == DownloadPhase.NO_WIFI_PENDING ->
         stringResource(R.string.updates_status_no_wifi_detected)
     state.downloadPhase == DownloadPhase.DOWNLOADING ->
-        state.downloadStatusText ?: stringResource(R.string.updates_status_downloading)
+        state.downloadStatusText
+            ?: if (state.pendingVersion != null) {
+                stringResource(R.string.updates_status_downloading, state.pendingVersion)
+            } else {
+                stringResource(R.string.updates_status_downloading_unknown_version)
+            }
     state.downloadPhase == DownloadPhase.PROCESSING ->
         stringResource(R.string.updates_status_processing)
     state.downloadPhase == DownloadPhase.READY && state.pendingVersion != null ->
