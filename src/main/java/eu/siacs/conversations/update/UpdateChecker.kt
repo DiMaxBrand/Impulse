@@ -18,19 +18,21 @@ class UpdateChecker(private val client: OkHttpClient) {
                 val tag = release.optString("tag_name")
                 val version = parseVersion(tag) ?: return@mapNotNull null
                 val apkUrl = findApkAsset(release) ?: return@mapNotNull null
-                Triple(version, apkUrl, tag)
+                Triple(version, apkUrl, tag) to release
             }
-            .maxWithOrNull { a, b -> compareSemver(a.first, b.first) }
+            .maxWithOrNull { (a, _), (b, _) -> compareSemver(a.first, b.first) }
             ?: return CheckResult.UpToDate
+        val (bestTriple, bestRelease) = best
 
-        val cmp = compareSemver(best.first, current)
+        val cmp = compareSemver(bestTriple.first, current)
         return when {
             cmp > 0 -> CheckResult.UpdateAvailable(
                 UpdateInfo(
-                    versionName = best.third,
+                    versionName = bestTriple.third,
                     channel = channel,
-                    downloadUrl = best.second,
-                    releaseNotes = "",
+                    downloadUrl = bestTriple.second,
+                    releaseNotes = bestRelease.optString("body"),
+                    releaseTitle = bestRelease.optString("name"),
                 )
             )
             cmp < 0 -> CheckResult.ChannelBehind
@@ -57,10 +59,11 @@ class UpdateChecker(private val client: OkHttpClient) {
                 if (tag.isNullOrEmpty()) return@mapNotNull null
                 val version = parseVersion(tag) ?: return@mapNotNull null
                 val apkUrl = findApkAsset(release) ?: return@mapNotNull null
-                Triple(version, apkUrl, tag)
+                Triple(version, apkUrl, tag) to release
             }
-            .sortedWith { a, b -> compareSemver(b.first, a.first) }
-            .map { (_, apkUrl, tag) ->
+            .sortedWith { (a, _), (b, _) -> compareSemver(b.first, a.first) }
+            .map { (triple, release) ->
+                val (_, apkUrl, tag) = triple
                 val channel = when {
                     tag.contains("-alpha.") -> UpdateChannel.ALPHA
                     tag.contains("-beta.") -> UpdateChannel.BETA
@@ -71,7 +74,8 @@ class UpdateChecker(private val client: OkHttpClient) {
                     versionName = tag,
                     channel = channel,
                     downloadUrl = apkUrl,
-                    releaseNotes = "",
+                    releaseNotes = release.optString("body"),
+                    releaseTitle = release.optString("name"),
                 )
             }
     }

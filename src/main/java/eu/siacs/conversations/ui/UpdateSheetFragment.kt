@@ -94,6 +94,8 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         }
         uiState = uiState.copy(
             pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
+            releaseNotes = prefs.pendingReleaseNotes,
+            releaseTitle = prefs.pendingReleaseTitle,
             downloadPhase = restoredPhase,
             canInstallDirectly = canInstallDirectly,
             isFirstUpdate = !prefs.hasInstalledUpdate,
@@ -114,7 +116,8 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
             versionName = version,
             channel = prefs.selectedChannel,
             downloadUrl = url,
-            releaseNotes = "",
+            releaseNotes = prefs.pendingReleaseNotes ?: "",
+            releaseTitle = prefs.pendingReleaseTitle ?: "",
         )
         val id = UpdateDownloader.startDownload(requireActivity(), info)
         prefs.activeDownloadId = id

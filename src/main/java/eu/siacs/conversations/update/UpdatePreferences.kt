@@ -25,6 +25,14 @@ class UpdatePreferences(context: Context) {
         get() = prefs.getString(KEY_PENDING_URL, null)
         set(value) = prefs.edit { putString(KEY_PENDING_URL, value) }
 
+    var pendingReleaseNotes: String?
+        get() = prefs.getString(KEY_PENDING_RELEASE_NOTES, null)
+        set(value) = prefs.edit { putString(KEY_PENDING_RELEASE_NOTES, value) }
+
+    var pendingReleaseTitle: String?
+        get() = prefs.getString(KEY_PENDING_RELEASE_TITLE, null)
+        set(value) = prefs.edit { putString(KEY_PENDING_RELEASE_TITLE, value) }
+
     var pendingNoWifi: Boolean
         get() = prefs.getBoolean(KEY_PENDING_NO_WIFI, false)
         set(value) = prefs.edit { putBoolean(KEY_PENDING_NO_WIFI, value) }
@@ -67,6 +75,8 @@ class UpdatePreferences(context: Context) {
         prefs.edit {
             remove(KEY_DOWNLOADED_APK)
             remove(KEY_DOWNLOADED_VERSION)
+            remove(KEY_PENDING_RELEASE_NOTES)
+            remove(KEY_PENDING_RELEASE_TITLE)
         }
     }
 
@@ -101,6 +111,8 @@ class UpdatePreferences(context: Context) {
         private const val KEY_AUTO_CHECK = "auto_check"
         private const val KEY_PENDING_VERSION = "pending_version"
         private const val KEY_PENDING_URL = "pending_url"
+        private const val KEY_PENDING_RELEASE_NOTES = "pending_release_notes"
+        private const val KEY_PENDING_RELEASE_TITLE = "pending_release_title"
         private const val KEY_PENDING_NO_WIFI = "pending_no_wifi"
         private const val KEY_DOWNLOAD_ID = "download_id"
         private const val KEY_DOWNLOADED_APK = "downloaded_apk"

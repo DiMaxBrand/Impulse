@@ -46,6 +46,8 @@ object UpdateCheckHelper {
 
         prefs.pendingUpdateVersion = info.versionName
         prefs.pendingUpdateUrl = info.downloadUrl
+        prefs.pendingReleaseNotes = info.releaseNotes
+        prefs.pendingReleaseTitle = info.releaseTitle
 
         when {
             info.versionName == prefs.downloadedVersion && prefs.downloadedApkExists() -> {

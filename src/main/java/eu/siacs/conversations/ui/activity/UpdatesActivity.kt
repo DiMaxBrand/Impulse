@@ -114,7 +114,7 @@ class UpdatesActivity : ActionBarActivity() {
         } else true
 
         val apkExists = prefs.downloadedApkExists()
-        if (downloadedPath != null && !apkExists) prefs.downloadedApkPath = null
+        if (downloadedPath != null && !apkExists) prefs.clearDownload()
 
         val restoredPhase = when {
             apkExists -> DownloadPhase.READY
@@ -127,6 +127,8 @@ class UpdatesActivity : ActionBarActivity() {
             autoCheck = prefs.autoCheck,
             downloadPhase = restoredPhase,
             pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
+            releaseNotes = prefs.pendingReleaseNotes,
+            releaseTitle = prefs.pendingReleaseTitle,
             canInstallDirectly = canInstallDirectly,
             isFirstUpdate = !prefs.hasInstalledUpdate,
             showUpdateSheet = restoredPhase != DownloadPhase.IDLE,
@@ -157,12 +159,16 @@ class UpdatesActivity : ActionBarActivity() {
                     pendingInfo = info
                     prefs.pendingUpdateVersion = info.versionName
                     prefs.pendingUpdateUrl = info.downloadUrl
+                    prefs.pendingReleaseNotes = info.releaseNotes
+                    prefs.pendingReleaseTitle = info.releaseTitle
                     if (info.versionName == prefs.downloadedVersion && prefs.downloadedApkExists()) {
                         // Already downloaded in full — go straight to install, don't refetch.
                         uiState = uiState.copy(
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,
                             downloadPhase = DownloadPhase.READY,
                             pendingVersion = info.versionName,
+                            releaseNotes = info.releaseNotes,
+                            releaseTitle = info.releaseTitle,
                             showUpdateSheet = true,
                         )
                     } else if (UpdateDownloader.isWifiConnected(this@UpdatesActivity)) {
@@ -170,6 +176,8 @@ class UpdatesActivity : ActionBarActivity() {
                         uiState = uiState.copy(
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,
                             pendingVersion = info.versionName,
+                            releaseNotes = info.releaseNotes,
+                            releaseTitle = info.releaseTitle,
                             showUpdateSheet = true,
                         )
                         startUserDownload()
@@ -179,6 +187,8 @@ class UpdatesActivity : ActionBarActivity() {
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,
                             downloadPhase = DownloadPhase.NO_WIFI_PENDING,
                             pendingVersion = info.versionName,
+                            releaseNotes = info.releaseNotes,
+                            releaseTitle = info.releaseTitle,
                             showUpdateSheet = true,
                         )
                     }
@@ -195,7 +205,8 @@ class UpdatesActivity : ActionBarActivity() {
                 versionName = version,
                 channel = prefs.selectedChannel,
                 downloadUrl = url,
-                releaseNotes = "",
+                releaseNotes = prefs.pendingReleaseNotes ?: "",
+                releaseTitle = prefs.pendingReleaseTitle ?: "",
             )
         }
         val id = UpdateDownloader.startDownload(this, info)

@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -61,6 +62,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -521,7 +523,7 @@ fun UpdateSheetContent(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = stringResource(R.string.app_name),
+            text = state.releaseTitle?.takeIf { it.isNotBlank() } ?: stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
         )
@@ -548,6 +550,39 @@ fun UpdateSheetContent(
             onConfirmInstall = onConfirmInstall,
             onDownloadCircleTapped = onDownloadCircleTapped,
         )
+
+        ReleaseNotesSection(state.releaseNotes)
+    }
+}
+
+// The GitHub release body — collapsed by default (release descriptions run long: bilingual RU+EN
+// sections plus dev notes per this project's release-notes convention), plain text rather than
+// rendered Markdown (the body is Markdown source; a real renderer is more than this needs right
+// now — showing the raw text at least answers "why update" instead of showing nothing).
+@Composable
+private fun ReleaseNotesSection(releaseNotes: String?, modifier: Modifier = Modifier) {
+    if (releaseNotes.isNullOrBlank()) return
+    var expanded by remember(releaseNotes) { mutableStateOf(false) }
+    Column(modifier = modifier.fillMaxWidth()) {
+        TextButton(onClick = { expanded = !expanded }) {
+            Text(
+                stringResource(
+                    if (expanded) R.string.updates_hide_whats_new else R.string.updates_whats_new
+                )
+            )
+        }
+        if (expanded) {
+            Text(
+                text = releaseNotes,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 240.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+            )
+        }
     }
 }
 
@@ -1098,6 +1133,8 @@ data class UpdatesUiState(
     val downloadSpeedText: String? = null,
     val cancelConfirmVisible: Boolean = false,
     val pendingVersion: String? = null,
+    val releaseNotes: String? = null,
+    val releaseTitle: String? = null,
     val showInstallCard: Boolean = false,
     val canInstallDirectly: Boolean = true,
     val isFirstUpdate: Boolean = false,
