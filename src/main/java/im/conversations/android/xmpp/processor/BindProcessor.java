@@ -62,6 +62,14 @@ public class BindProcessor extends XmppConnection.Delegate implements Runnable {
                                 + ": display name wasn't empty on first log in. publishing");
                 getManager(NickManager.class).publish(displayName);
             }
+            // Auto-join the official Impulse announcements channel on first-ever login — same
+            // join+bookmark pattern ChannelDiscoveryActivity uses for a manual channel join.
+            // loggedInSuccessfully is true only once per account's lifetime, so this doesn't
+            // re-run (or re-join if the user later leaves) on every reconnect.
+            final var newsConversation =
+                    service.findOrCreateConversation(
+                            account, Config.NEWS_CHANNEL, true, true, false);
+            getManager(BookmarkManager.class).ensureBookmarkIsAutoJoin(newsConversation);
         }
 
         getManager(PresenceManager.class).clear();
