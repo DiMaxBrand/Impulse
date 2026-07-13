@@ -373,18 +373,7 @@ private fun SharedTransitionScope.ChannelList(
 
         val channels = UpdateChannel.entries
         channels.forEachIndexed { index, channel ->
-            val position = when {
-                channels.size == 1 -> GroupPosition.SINGLE
-                index == 0 -> GroupPosition.TOP
-                index == channels.lastIndex -> GroupPosition.BOTTOM
-                else -> GroupPosition.MIDDLE
-            }
-            val rowShape = when (position) {
-                GroupPosition.TOP -> RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp)
-                GroupPosition.MIDDLE -> RoundedCornerShape(8.dp)
-                GroupPosition.BOTTOM -> RoundedCornerShape(8.dp, 8.dp, 28.dp, 28.dp)
-                GroupPosition.SINGLE -> RoundedCornerShape(28.dp)
-            }
+            val rowShape = ListItemDefaults.segmentedShapes(index = index, count = channels.size).shape
             // Each row's Surface is the source of its own row→info container transform
             Surface(
                 shape = rowShape,
@@ -1049,12 +1038,17 @@ fun ExpressiveGroupRow(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val shape = when (position) {
-        GroupPosition.TOP -> RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp)
-        GroupPosition.MIDDLE -> RoundedCornerShape(8.dp)
-        GroupPosition.BOTTOM -> RoundedCornerShape(8.dp, 8.dp, 28.dp, 28.dp)
-        GroupPosition.SINGLE -> RoundedCornerShape(28.dp)
+    // index/count fed into the official M3 Expressive segmented-list shape API — the same one
+    // backing grouped settings lists platform-wide — rather than hand-picking corner radii.
+    // Only whether index is first/last/neither/sole matters to segmentedShapes, so any count>1
+    // with a non-edge index reads as MIDDLE.
+    val (index, count) = when (position) {
+        GroupPosition.SINGLE -> 0 to 1
+        GroupPosition.TOP -> 0 to 2
+        GroupPosition.BOTTOM -> 1 to 2
+        GroupPosition.MIDDLE -> 1 to 3
     }
+    val shape = ListItemDefaults.segmentedShapes(index = index, count = count).shape
     Surface(
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
