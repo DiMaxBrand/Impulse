@@ -1344,4 +1344,6 @@
     <string name="developer_options_pick_version">Выбрать версию вручную</string>
     <string name="developer_options_pick_version_summary">Обходит ограничения на понижение — переход к любой опубликованной версии</string>
     <string name="developer_options_pick_version_empty">Версии не найдены</string>
+    <string name="developer_options_change_language">Изменить язык приложения</string>
+    <string name="developer_options_change_language_summary">Открывает системный выбор языка для этого приложения</string>
 </resources>

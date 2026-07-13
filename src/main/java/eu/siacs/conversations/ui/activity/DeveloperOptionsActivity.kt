@@ -1,6 +1,9 @@
 package eu.siacs.conversations.ui.activity
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -156,7 +159,7 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                         },
                                     )
                                 }
-                                ExpressiveGroupRow(GroupPosition.BOTTOM) {
+                                ExpressiveGroupRow(GroupPosition.MIDDLE) {
                                     ListItem(
                                         headlineContent = {
                                             Text(stringResource(R.string.developer_options_show_update_sheet))
@@ -166,6 +169,18 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                         },
                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                         modifier = Modifier.clickable { showUpdateSheet() },
+                                    )
+                                }
+                                ExpressiveGroupRow(GroupPosition.BOTTOM) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_change_language))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_change_language_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable { openLanguageSettings() },
                                     )
                                 }
 
@@ -350,5 +365,11 @@ class DeveloperOptionsActivity : ActionBarActivity() {
         if (supportFragmentManager.findFragmentByTag(UpdateSheetFragment.TAG) == null) {
             UpdateSheetFragment().show(supportFragmentManager, UpdateSheetFragment.TAG)
         }
+    }
+
+    private fun openLanguageSettings() {
+        val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS)
+            .setData(Uri.fromParts("package", packageName, null))
+        startActivity(intent)
     }
 }
