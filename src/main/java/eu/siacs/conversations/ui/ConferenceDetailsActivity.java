@@ -706,9 +706,11 @@ public class ConferenceDetailsActivity extends XmppActivity
         }
         final var userCount = mucOptions.getUserCount();
         this.binding.invite.setVisibility(mucOptions.canInvite() ? View.VISIBLE : View.GONE);
-        if (mucOptions.isPrivateAndNonAnonymous()) {
-            // Private group: members already chose to be identifiable to each other, so the
-            // roster preview/browse flow is fine to show as usual.
+        if (mucOptions.nonanonymous()) {
+            // Room already broadcasts real JIDs to every occupant via presence (whois=anyone) —
+            // that covers private groups AND non-anonymous public group chats alike — so showing
+            // the roster preview/browse flow here doesn't expose anything the protocol doesn't
+            // already hand out to every occupant.
             this.binding.users.post(
                     () -> {
                         final var list =
@@ -723,15 +725,18 @@ public class ConferenceDetailsActivity extends XmppActivity
             this.binding.usersWrapper.setVisibility(
                     userCount > 0 || mucOptions.canInvite() ? View.VISIBLE : View.GONE);
             if (userCount == 0) {
-                this.binding.noUsersHints.setText(R.string.no_users_hint_group_chat);
+                this.binding.noUsersHints.setText(
+                        mucOptions.isPrivateAndNonAnonymous()
+                                ? R.string.no_users_hint_group_chat
+                                : R.string.no_users_hint_channel);
                 this.binding.noUsersHints.setVisibility(View.VISIBLE);
             } else {
                 this.binding.noUsersHints.setVisibility(View.GONE);
             }
         } else {
-            // Channel: nobody — not even the owner — gets a browsable list of who's joined.
-            // People didn't sign up to be listed, and moderation (ban/promote) doesn't need a
-            // roster to work; it can act on whoever sent a given message.
+            // Semi-anonymous room (whois=moderators): nobody — not even the owner — gets a
+            // browsable list of who's joined. People didn't sign up to be listed, and moderation
+            // (ban/promote) doesn't need a roster to work; it can act on whoever sent a message.
             this.mUserPreviewAdapter.submitList(Collections.emptyList());
             this.binding.users.setVisibility(View.GONE);
             this.binding.showUsers.setVisibility(View.GONE);
