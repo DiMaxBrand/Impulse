@@ -528,10 +528,13 @@ fun UpdateSheetContent(
             textAlign = TextAlign.Center,
         )
         // "Version X is available" only makes sense before a download has started — once it's
-        // downloading/ready, sheetStatusText below already says so (and, since rc.34, says which
-        // version), so showing this too would be redundant and, worse, contradict it ("available"
-        // next to "ready to install").
-        if (state.pendingVersion != null && state.downloadPhase == DownloadPhase.IDLE) {
+        // downloading/ready, sheetStatusText below already says so. Also skipped whenever the
+        // hero above is already showing a real release title, since that title leads with the
+        // version by convention — this line would just repeat it right underneath.
+        if (state.pendingVersion != null &&
+            state.downloadPhase == DownloadPhase.IDLE &&
+            !state.versionAlreadyShownInTitle()
+        ) {
             Text(
                 text = stringResource(R.string.updates_new_version_available, state.pendingVersion),
                 style = MaterialTheme.typography.bodyLarge,
@@ -1077,12 +1080,22 @@ private fun channelDescription(channel: UpdateChannel): Int = when (channel) {
     UpdateChannel.ALPHA -> R.string.update_channel_alpha_description
 }
 
+// The hero already shows the release title, and project convention has every title lead with
+// the version number (default fallback is literally "Impulse <version>"; the documented stable
+// format is "<version>: <description>") — so once a title is actually present, repeating the
+// version down here too is just showing the same string twice in the same small dialog. Only
+// worth calling out separately when the hero has nothing to show it with — a blank title, which
+// falls back to the plain "Impulse" wordmark with no version anywhere.
+private fun UpdatesUiState.versionAlreadyShownInTitle(): Boolean = !releaseTitle.isNullOrBlank()
+
 @Composable
 private fun mainStatusText(state: UpdatesUiState): String? = when {
     state.checkStatus == CheckStatus.CHECKING -> stringResource(R.string.updates_status_checking)
     state.checkStatus == CheckStatus.UP_TO_DATE -> stringResource(R.string.updates_status_up_to_date)
     state.checkStatus == CheckStatus.CHANNEL_BEHIND -> stringResource(R.string.updates_status_channel_behind)
-    state.pendingVersion != null && state.downloadPhase == DownloadPhase.IDLE ->
+    state.pendingVersion != null &&
+        state.downloadPhase == DownloadPhase.IDLE &&
+        !state.versionAlreadyShownInTitle() ->
         stringResource(R.string.updates_new_version_available, state.pendingVersion)
     else -> null
 }
@@ -1092,25 +1105,27 @@ private fun sheetStatusText(state: UpdatesUiState): String? = when {
     state.downloadPhase == DownloadPhase.CANCELING -> stringResource(R.string.updates_canceling)
     state.cancelConfirmVisible -> stringResource(R.string.updates_stop_download_question)
     state.downloadPhase == DownloadPhase.NO_WIFI_PENDING ->
-        if (state.pendingVersion != null) {
+        if (state.pendingVersion != null && !state.versionAlreadyShownInTitle()) {
             stringResource(R.string.updates_status_no_wifi_detected, state.pendingVersion)
         } else {
             stringResource(R.string.updates_status_no_wifi_detected_unknown_version)
         }
     state.downloadPhase == DownloadPhase.DOWNLOADING ->
         state.downloadStatusText
-            ?: if (state.pendingVersion != null) {
+            ?: if (state.pendingVersion != null && !state.versionAlreadyShownInTitle()) {
                 stringResource(R.string.updates_status_downloading, state.pendingVersion)
             } else {
                 stringResource(R.string.updates_status_downloading_unknown_version)
             }
     state.downloadPhase == DownloadPhase.PROCESSING ->
-        if (state.pendingVersion != null) {
+        if (state.pendingVersion != null && !state.versionAlreadyShownInTitle()) {
             stringResource(R.string.updates_status_processing, state.pendingVersion)
         } else {
             stringResource(R.string.updates_status_processing_unknown_version)
         }
-    state.downloadPhase == DownloadPhase.READY && state.pendingVersion != null ->
+    state.downloadPhase == DownloadPhase.READY &&
+        state.pendingVersion != null &&
+        !state.versionAlreadyShownInTitle() ->
         stringResource(R.string.updates_status_ready, state.pendingVersion)
     state.downloadPhase == DownloadPhase.READY ->
         stringResource(R.string.updates_status_ready_unknown_version)
