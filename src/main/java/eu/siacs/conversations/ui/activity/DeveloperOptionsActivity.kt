@@ -159,6 +159,7 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                         },
                                     )
                                 }
+                                Spacer(Modifier.height(2.dp))
                                 ExpressiveGroupRow(GroupPosition.BOTTOM) {
                                     ListItem(
                                         headlineContent = {

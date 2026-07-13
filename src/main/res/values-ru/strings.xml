@@ -52,6 +52,7 @@
     <string name="register_account">Создать новый аккаунт на сервере</string>
     <string name="change_password_on_server">Изменить пароль на сервере</string>
     <string name="share_with">Поделиться…</string>
+    <string name="forward_message">Переслать</string>
     <string name="invite_contact">Пригласить контакт</string>
     <string name="invite">Пригласить</string>
     <string name="contacts">Контакты</string>

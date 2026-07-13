@@ -278,6 +278,8 @@ interface ConversationScreenListener {
     fun onCopyLink(message: Message)
     fun onCopyUrl(message: Message)
     fun onShareMessage(message: Message)
+    fun onForwardMessage(message: Message)
+    fun onPrivateMessage(message: Message)
     fun onSaveFile(message: Message)
     fun onDeleteMessage(message: Message)
     fun onDeleteForEveryone(message: Message)
@@ -2965,6 +2967,29 @@ private fun MessageContextSheet(
                 state.replyingTo.value = message
             }
         )
+        // Message privately — reach the sender of a group/channel message directly, without
+        // going through the member list (which may not even be visible to non-moderators)
+        val counterpart = message.counterpart
+        if (conversation != null
+            && conversation.getMode() == eu.siacs.conversations.entities.Conversational.MODE_MULTI
+            && message.status == Message.STATUS_RECEIVED
+            && !message.isPrivateMessage()
+            && message.type != Message.TYPE_STATUS
+            && message.type != Message.TYPE_RTP_SESSION
+            && !deleted
+            && counterpart != null
+            && !counterpart.resource.isNullOrEmpty()
+            && conversation.mucOptions.allowPm()
+        ) {
+            add(
+                SheetAction(
+                    R.drawable.ic_person_24dp,
+                    stringResource(R.string.send_private_message),
+                ) {
+                    listener.onPrivateMessage(message)
+                }
+            )
+        }
         // Copy text
         val body = message.body
         if (!body.isNullOrBlank() && !message.isFileOrImage && !deleted) {
@@ -3068,6 +3093,9 @@ private fun MessageContextSheet(
         if (shareable) {
             add(SheetAction(R.drawable.ic_share_24dp, stringResource(R.string.share_with)) {
                 listener.onShareMessage(message)
+            })
+            add(SheetAction(R.drawable.ic_forward_24dp, stringResource(R.string.forward_message)) {
+                listener.onForwardMessage(message)
             })
         }
         // Add reaction

@@ -40,6 +40,7 @@ import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.persistance.FileBackend
 import eu.siacs.conversations.ui.ConversationsActivity
+import eu.siacs.conversations.ui.ShareWithActivity
 import eu.siacs.conversations.ui.XmppActivity
 import java.util.Arrays
 
@@ -47,8 +48,10 @@ object ShareUtil {
 
     private val SCHEMES_COPY_PATH_ONLY: Collection<String> = Arrays.asList("xmpp", "mailto", "tel")
 
-    @JvmStatic
-    fun share(activity: XmppActivity, message: Message) {
+    /** Builds the same ACTION_SEND intent used both for handing a message off to another app
+     * (share()) and for forwarding it to another one of the user's own conversations
+     * (forward()) — only the target/launch mechanics differ between the two. */
+    private fun buildSendIntent(activity: XmppActivity, message: Message): Intent? {
         val intent = Intent()
         intent.action = Intent.ACTION_SEND
         if (message.isGeoUri) {
@@ -75,17 +78,32 @@ object ShareUtil {
                     activity.getString(R.string.no_permission_to_access_x, file.absolutePath),
                     Toast.LENGTH_SHORT
                 ).show()
-                return
+                return null
             }
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             intent.type = ViewUtil.nullToWildcard(message.mimeType)
         }
+        return intent
+    }
+
+    @JvmStatic
+    fun share(activity: XmppActivity, message: Message) {
+        val intent = buildSendIntent(activity, message) ?: return
         try {
             activity.startActivity(Intent.createChooser(intent, activity.getText(R.string.share_with)))
         } catch (e: ActivityNotFoundException) {
             // This should happen only on faulty androids because normally chooser is always available
             Toast.makeText(activity, R.string.no_application_found_to_open_file, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /** Forwards a message straight to Impulse's own conversation picker (the same screen other
+     * apps land on when they share into Impulse), skipping the system app chooser entirely. */
+    @JvmStatic
+    fun forward(activity: XmppActivity, message: Message) {
+        val intent = buildSendIntent(activity, message) ?: return
+        intent.setClass(activity, ShareWithActivity::class.java)
+        activity.startActivity(intent)
     }
 
     @JvmStatic

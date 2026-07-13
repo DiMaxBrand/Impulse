@@ -1074,6 +1074,16 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         eu.siacs.conversations.ui.util.ShareUtil.share(activity, message)
     }
 
+    override fun onForwardMessage(message: Message) {
+        val activity = requireXmppActivity()
+        eu.siacs.conversations.ui.util.ShareUtil.forward(activity, message)
+    }
+
+    override fun onPrivateMessage(message: Message) {
+        val counterpart = message.counterpart ?: return
+        privateMessageWith(counterpart)
+    }
+
     override fun onSaveFile(message: Message) {
         val ctx = context ?: return
         val storageLocation = message.getRelativeFilePath() ?: return
