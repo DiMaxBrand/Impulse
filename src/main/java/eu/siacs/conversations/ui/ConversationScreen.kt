@@ -142,6 +142,7 @@ import eu.siacs.conversations.xmpp.manager.ChatStateManager
 import eu.siacs.conversations.xmpp.manager.JingleManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import android.graphics.SurfaceTexture
 import android.media.MediaPlayer
@@ -1016,6 +1017,42 @@ private fun MessageList(
         if (index == 0) listener.onScrolledToBottom()
     }
 
+    // On first opening a conversation with unread messages, land on the first unread one
+    // (upper-third position, same offsetFraction used for auto-advance) instead of always
+    // jumping straight to the bottom and silently skipping past everything unseen. Only kicks
+    // in when the unread run doesn't already fit on screen together with the newest message —
+    // if it fits, the natural bottom-start position already shows all of it, nothing to correct.
+    // hasPositioned gates the "keep pinned to bottom" effect below so it can't fire a competing
+    // scroll-to-bottom while this is still deciding; it hands off once done, either way.
+    val hasPositioned = remember(conversation?.getUuid()) { mutableStateOf(false) }
+    LaunchedEffect(conversation?.getUuid()) {
+        val firstUnread =
+            try {
+                conversation?.getFirstUnreadMessage()
+            } catch (_: Exception) {
+                null
+            }
+        if (firstUnread != null) {
+            snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
+            val targetIndex =
+                items.indexOfFirst {
+                    it is ChatItem.Msg && it.message.getUuid() == firstUnread.getUuid()
+                }
+            if (targetIndex > 0) {
+                val info = listState.layoutInfo
+                val target = info.visibleItemsInfo.find { it.index == targetIndex }
+                val fullyVisible =
+                    target != null &&
+                        target.offset >= info.viewportStartOffset &&
+                        (target.offset + target.size) <= info.viewportEndOffset
+                if (!fullyVisible) {
+                    requestScroll(targetIndex, 0.7f)
+                }
+            }
+        }
+        hasPositioned.value = true
+    }
+
     // Keep pinned to the bottom when a new message arrives, or the typing indicator
     // appears/disappears, while we are (nearly) there. The typing bubble is its own list item
     // (added/removed above), which shifts every real message's index by one — without `isTyping`
@@ -1023,7 +1060,7 @@ private fun MessageList(
     // below the visible fold and just sit there unseen until something else happens to scroll.
     val newestKey = items.firstOrNull()?.key
     LaunchedEffect(newestKey, isTyping) {
-        if (listState.firstVisibleItemIndex <= 1) {
+        if (hasPositioned.value && listState.firstVisibleItemIndex <= 1) {
             requestScroll(0, 0f)
         }
     }
