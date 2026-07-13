@@ -573,7 +573,7 @@
     <string name="presence_online">Online</string>
     <string name="presence_away">Away</string>
     <string name="presence_xa">Extended away</string>
-    <string name="presence_dnd">Do Not Disturb</string>
+    <string name="presence_dnd">On silent</string>
     <string name="presence_offline">Offline</string>
     <string name="secure_password_generated">A secure password has been generated</string>
     <string name="device_does_not_support_battery_op">Your device does not support opting out of battery optimization</string>
