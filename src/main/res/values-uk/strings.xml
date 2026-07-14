@@ -80,7 +80,6 @@
     <string name="send_unencrypted_message">Незашифроване повідомлення</string>
     <string name="send_message">Надіслати повідомлення</string>
     <string name="send_message_to_x">Повідомлення %s</string>
-    <string name="send_omemo_x509_message">Повідомлення, зашифроване v\\OMEMO</string>
     <string name="your_nick_has_been_changed">Ваше прізвисько змінено</string>
     <string name="send_unencrypted">Надіслати без шифрування</string>
     <string name="decryption_failed">Не вдалося розшифрувати. Можливо, у Вас відсутній потрібний приватний ключ.</string>
@@ -1066,7 +1065,6 @@
     <string name="pref_up_long_summary">При дії в ролі дистриб’ютора UnifiedPush використовується постійне, надійне та енергоефективне з’єднання XMPP для активації інших додатків, сумісних з UnifiedPush, таких як Tusky, Ltt.rs, FluffyChat та інші.</string>
     <string name="pref_allow_screenshots_summary">Показувати вміст застосунку при перемиканні програм і дозволити знімки екрана</string>
     <string name="pref_privacy_summary">Сповіщення про набір, остання активність, ретранслятори P2P</string>
-    <string name="send_encrypted_message">Зашифроване повідомлення</string>
     <string name="pref_large_font">Великий шрифт</string>
     <string name="pref_large_font_summary">Збільшити розмір шрифту повідомлень</string>
     <string name="pref_accept_invites_from_strangers">Запрошення від незнайомців</string>

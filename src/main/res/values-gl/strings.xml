@@ -86,7 +86,6 @@
     <string name="send_unencrypted_message">Enviar mensaxe sen cifrar</string>
     <string name="send_message">Enviar mensaxe</string>
     <string name="send_message_to_x">Enviar mensaxe a 1%s</string>
-    <string name="send_omemo_x509_message">Enviar mensaxe cifrada v\\OMEMO</string>
     <string name="your_nick_has_been_changed">Cambiouse o teu alcume</string>
     <string name="send_unencrypted">Enviar texto sen cifrar</string>
     <string name="decryption_failed">Fallou o desencriptado. Quizais non teñas a chave privada apropiada.</string>
@@ -1022,7 +1021,6 @@
     <string name="pref_privacy_summary">Notificacións de escritura, Último uso, Relés P2P</string>
     <string name="detect_mim_summary">A vinculación de canles pode detectar algúns ataques tipo máquina-interposta</string>
     <string name="detect_mim">Requerir Vinculación de Canles</string>
-    <string name="send_encrypted_message">Enviar mensaxe cifrada</string>
     <string name="pref_large_font">Letra grande</string>
     <string name="pref_large_font_summary">Aumentar o tamaño da letra das mensaxes</string>
     <string name="pref_accept_invites_from_strangers">Convites de descoñecidas</string>

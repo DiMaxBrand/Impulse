@@ -90,7 +90,6 @@
     <string name="send_unencrypted_message">Wyślij wiadomość czystym tekstem</string>
     <string name="send_message">Wyślij wiadomość</string>
     <string name="send_message_to_x">Wyślij wiadomość do %s</string>
-    <string name="send_omemo_x509_message">Wyślij wiadomość zaszyfrowaną v\\OMEMO</string>
     <string name="your_nick_has_been_changed">Twój pseudonim został zmieniony</string>
     <string name="send_unencrypted">Wyślij czysty tekst</string>
     <string name="decryption_failed">Nie można odszyfrować. Sprawdź poprawność klucza prywatnego.</string>
@@ -1046,7 +1045,6 @@
     <string name="pref_category_on_this_device">Na urządzeniu</string>
     <string name="pref_large_font_summary">Zwiększ rozmiar czcionki w dymkach wiadomości</string>
     <string name="pref_use_colorful_bubbles_summary">Różne kolory tła dla wysłanych i odebranych wiadomości</string>
-    <string name="send_encrypted_message">Wyślij zaszyfrowaną wiadomość</string>
     <string name="welcome_header">Dołącz do rozmowy</string>
     <string name="channel_discover_opt_in_message">Odkrywanie kanałów używa usługi podmiotu trzeciego nazywanej &lt;a href=https://search.jabber.network&gt;search.jabber.network&lt;/a&gt;.&lt;br&gt;&lt;br&gt;Używanie tej funkcjonalności spowoduje wysłanie twojego adresu IP oraz kryteriów wyszukiwania. Sprawdź ich &lt;a href=https://search.jabber.network/privacy&gt;politykę prywatności&lt;/a&gt; aby uzyskać więcej informacji.</string>
     <string name="pref_accept_invites_from_strangers">Zaproszenia od nieznajomych</string>
