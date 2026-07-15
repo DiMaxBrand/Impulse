@@ -75,6 +75,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
         }
 
+    private val takePhotoPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) launchCameraCapture()
+        }
+
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
             val ctx = context ?: return@registerForActivityResult
@@ -731,6 +736,14 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onTakePhoto() {
+        // The manifest holds android.permission.CAMERA (for calls), which means
+        // ACTION_IMAGE_CAPTURE crashes with a SecurityException on many devices — notably
+        // Samsung's stock Camera app — unless that permission is actually granted at runtime,
+        // even though the capture itself is delegated to the camera app.
+        takePhotoPermissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    private fun launchCameraCapture() {
         val ctx = requireContext()
         val takePhotoFile = eu.siacs.conversations.persistance.FileBackend.Cache(ctx).takePicture()
         val photoUri = Uri.fromFile(takePhotoFile)
