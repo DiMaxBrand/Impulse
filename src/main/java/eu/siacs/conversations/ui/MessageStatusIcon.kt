@@ -12,7 +12,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -29,6 +31,7 @@ import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.entities.Transferable
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.hypot
@@ -156,77 +159,95 @@ fun MessageStatusIcon(
     val stemProgress = remember { Animatable(0f) }
     val trayProgress = remember { Animatable(0f) }
 
-    LaunchedEffect(phase) {
-        val from = currentPhase
-        val to = phase
-        if (from == to) return@LaunchedEffect
-        when {
-            from == CheckmarkPhase.WAITING && to == CheckmarkPhase.SENT -> {
-                isAnimating = true
-                reposition.animateTo(1f, tween(180, easing = StandardEasing))
-                coroutineScope {
-                    launch { expand1.animateTo(1f, tween(240, easing = StandardEasing)) }
-                    launch { expand2.animateTo(1f, tween(240, delayMillis = 90, easing = StandardEasing)) }
-                }
+    // Keyed on `phase` this used to cancel and restart mid-animation on every status change —
+    // status can flip more than once within a single morph's duration (e.g. an upload finishing
+    // sends WAITING -> UPLOADING -> WAITING -> SENT in quick succession), and a cancelled
+    // coroutine never reaches the `currentPhase = to` line at the bottom, leaving it pointing at
+    // the *previous* phase while the animatables are already partway through a *different*
+    // shape's geometry — the next leg then reinterprets that half-finished progress against the
+    // wrong target points and visibly jumps. Running one long-lived effect that always finishes
+    // its current leg before reading the latest target avoids that: any status changes that land
+    // mid-animation just get picked up as the target for the *next* leg once this one settles.
+    val latestPhase = rememberUpdatedState(phase)
+    LaunchedEffect(Unit) {
+        while (true) {
+            val to = latestPhase.value
+            val from = currentPhase
+            if (from == to) {
+                snapshotFlow { latestPhase.value }.first { it != currentPhase }
+                continue
             }
-            from == CheckmarkPhase.WAITING && to == CheckmarkPhase.UPLOADING -> {
-                isAnimating = true
-                // Same dots-into-3-point-shape technique as waiting -> sent, just aimed at the
-                // chevron's points instead of the checkmark's.
-                reposition.animateTo(1f, tween(180, easing = StandardEasing))
-                coroutineScope {
-                    launch { expand1.animateTo(1f, tween(240, easing = StandardEasing)) }
-                    launch { expand2.animateTo(1f, tween(240, delayMillis = 90, easing = StandardEasing)) }
-                }
-                stemProgress.animateTo(1f, tween(220, easing = StandardEasing))
-                trayProgress.animateTo(1f, tween(500, easing = StandardEasing))
-            }
-            from == CheckmarkPhase.UPLOADING && to == CheckmarkPhase.WAITING -> {
-                isAnimating = true
-                // The whole forward sequence in reverse: tray folds back into its single origin
-                // point, that point travels up the stem — erasing it as it goes, decelerating
-                // hard right before it reaches the tip — then the two chevron arms retract into
-                // dots at their current (chevron) positions, and only then do those three dots
-                // slide back to their waiting-row positions.
-                trayProgress.animateTo(0f, tween(240, easing = StandardEasing))
-                stemProgress.animateTo(0f, tween(320, easing = StemRetractEasing))
-                coroutineScope {
-                    launch { expand2.animateTo(0f, tween(200, easing = StandardEasing)) }
-                    launch { expand1.animateTo(0f, tween(200, delayMillis = 90, easing = StandardEasing)) }
-                }
-                reposition.animateTo(0f, tween(180, easing = StandardEasing))
-            }
-            from == CheckmarkPhase.SENT && to == CheckmarkPhase.DELIVERED -> {
-                isAnimating = true
-                doubleSlide.animateTo(1f, tween(260, easing = StandardEasing))
-            }
-            from == CheckmarkPhase.DELIVERED && to == CheckmarkPhase.READ -> {
-                isAnimating = true
-                coroutineScope {
-                    launch {
-                        bounceScale.animateTo(1.32f, tween(160, easing = StandardEasing))
-                        bounceScale.animateTo(
-                            1f,
-                            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                        )
+            when {
+                from == CheckmarkPhase.WAITING && to == CheckmarkPhase.SENT -> {
+                    isAnimating = true
+                    reposition.animateTo(1f, tween(180, easing = StandardEasing))
+                    coroutineScope {
+                        launch { expand1.animateTo(1f, tween(240, easing = StandardEasing)) }
+                        launch { expand2.animateTo(1f, tween(240, delayMillis = 90, easing = StandardEasing)) }
                     }
-                    launch { colorProgress.animateTo(1f, tween(600, easing = StandardEasing)) }
+                }
+                from == CheckmarkPhase.WAITING && to == CheckmarkPhase.UPLOADING -> {
+                    isAnimating = true
+                    // Same dots-into-3-point-shape technique as waiting -> sent, just aimed at
+                    // the chevron's points instead of the checkmark's.
+                    reposition.animateTo(1f, tween(180, easing = StandardEasing))
+                    coroutineScope {
+                        launch { expand1.animateTo(1f, tween(240, easing = StandardEasing)) }
+                        launch { expand2.animateTo(1f, tween(240, delayMillis = 90, easing = StandardEasing)) }
+                    }
+                    stemProgress.animateTo(1f, tween(220, easing = StandardEasing))
+                    trayProgress.animateTo(1f, tween(500, easing = StandardEasing))
+                }
+                from == CheckmarkPhase.UPLOADING && to == CheckmarkPhase.WAITING -> {
+                    isAnimating = true
+                    // The whole forward sequence in reverse: tray folds back into its single
+                    // origin point, that point travels up the stem — erasing it as it goes,
+                    // decelerating hard right before it reaches the tip — then the two chevron
+                    // arms retract into dots at their current (chevron) positions, and only then
+                    // do those three dots slide back to their waiting-row positions.
+                    trayProgress.animateTo(0f, tween(240, easing = StandardEasing))
+                    stemProgress.animateTo(0f, tween(320, easing = StemRetractEasing))
+                    coroutineScope {
+                        launch { expand2.animateTo(0f, tween(200, easing = StandardEasing)) }
+                        launch { expand1.animateTo(0f, tween(200, delayMillis = 90, easing = StandardEasing)) }
+                    }
+                    reposition.animateTo(0f, tween(180, easing = StandardEasing))
+                }
+                from == CheckmarkPhase.SENT && to == CheckmarkPhase.DELIVERED -> {
+                    isAnimating = true
+                    doubleSlide.animateTo(1f, tween(260, easing = StandardEasing))
+                }
+                from == CheckmarkPhase.DELIVERED && to == CheckmarkPhase.READ -> {
+                    isAnimating = true
+                    coroutineScope {
+                        launch {
+                            bounceScale.animateTo(1.32f, tween(160, easing = StandardEasing))
+                            bounceScale.animateTo(
+                                1f,
+                                spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow,
+                                ),
+                            )
+                        }
+                        launch { colorProgress.animateTo(1f, tween(600, easing = StandardEasing)) }
+                    }
+                }
+                else -> {
+                    // Any other jump (skipped a step, went backwards, or this composable just
+                    // mounted mid-story) — snap straight to the target rather than replaying a
+                    // multi-second morph the user never saw the start of. Never worth animating,
+                    // so isAnimating stays false and this renders the static drawable throughout.
+                    reposition.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
+                    expand1.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
+                    expand2.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
+                    doubleSlide.snapTo(if (to >= CheckmarkPhase.DELIVERED) 1f else 0f)
+                    colorProgress.snapTo(if (to == CheckmarkPhase.READ) 1f else 0f)
                 }
             }
-            else -> {
-                // Any other jump (skipped a step, went backwards, or this composable just
-                // mounted mid-story) — snap straight to the target rather than replaying a
-                // multi-second morph the user never saw the start of. Never worth animating,
-                // so isAnimating stays false and this renders the static drawable throughout.
-                reposition.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
-                expand1.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
-                expand2.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
-                doubleSlide.snapTo(if (to >= CheckmarkPhase.DELIVERED) 1f else 0f)
-                colorProgress.snapTo(if (to == CheckmarkPhase.READ) 1f else 0f)
-            }
+            currentPhase = to
+            isAnimating = false
         }
-        currentPhase = to
-        isAnimating = false
     }
 
     if (!isAnimating) {
