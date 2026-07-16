@@ -13,4 +13,8 @@ public class VCard extends Extension {
     public Photo getPhoto() {
         return this.getExtension(Photo.class);
     }
+
+    public Tel getTel() {
+        return this.getExtension(Tel.class);
+    }
 }

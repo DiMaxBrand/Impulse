@@ -14,7 +14,10 @@ import im.conversations.android.xmpp.IqErrorException
 import im.conversations.android.xmpp.model.error.Condition
 import im.conversations.android.xmpp.model.stanza.Iq
 import im.conversations.android.xmpp.model.vcard.BinaryValue
+import im.conversations.android.xmpp.model.vcard.Cell
 import im.conversations.android.xmpp.model.vcard.Photo
+import im.conversations.android.xmpp.model.vcard.Tel
+import im.conversations.android.xmpp.model.vcard.TelNumber
 import im.conversations.android.xmpp.model.vcard.VCard
 import java.time.Duration
 import java.util.Objects
@@ -145,6 +148,48 @@ class VCardManager(context: Context, connection: XmppConnection) :
                 photo.setType(type)
                 photo.addExtension(BinaryValue()).setContent(image)
                 vCard.setExtension(photo)
+                publish(address, vCard)
+            },
+            MoreExecutors.directExecutor()
+        )
+    }
+
+    /**
+     * Publishes (or, when [phoneNumber] is null/blank, removes) an unverified TEL entry on the
+     * user's own vCard. There is no SMS/ownership check here — it is purely a self-reported field
+     * the user can fill in, edit, or clear like any other profile detail.
+     */
+    fun publishPhoneNumber(phoneNumber: String?): ListenableFuture<Void?> {
+        val address = account.jid.asBareJid()
+        val retrieveFuture = this.retrieve(address)
+
+        val caughtFuture =
+            Futures.catchingAsync(
+                retrieveFuture,
+                IqErrorException::class.java,
+                { ex: IqErrorException ->
+                    val error = ex.error
+                    if (error != null && error.condition is Condition.ItemNotFound) {
+                        Futures.immediateFuture(null)
+                    } else {
+                        Futures.immediateFailedFuture(ex)
+                    }
+                },
+                MoreExecutors.directExecutor()
+            )
+
+        return Futures.transformAsync(
+            caughtFuture,
+            { existing: VCard? ->
+                val vCard = existing ?: VCard()
+                if (phoneNumber.isNullOrBlank()) {
+                    vCard.children.removeIf { it is Tel }
+                } else {
+                    val tel = Tel()
+                    tel.addExtension(Cell())
+                    tel.addExtension(TelNumber()).setContent(phoneNumber)
+                    vCard.setExtension(tel)
+                }
                 publish(address, vCard)
             },
             MoreExecutors.directExecutor()

@@ -823,6 +823,10 @@
     <string name="your_name">Ваше имя</string>
     <string name="enter_your_name">Введите ваше имя</string>
     <string name="no_name_set_instructions">Используйте кнопку редактирования, чтобы задать ваше имя.</string>
+    <string name="your_phone_number">Номер телефона</string>
+    <string name="no_phone_number_set_instructions">Необязательно — используйте кнопку редактирования, чтобы добавить номер, или заполните его с этого устройства.</string>
+    <string name="edit_phone_number">Изменить номер телефона</string>
+    <string name="autofill_phone_number">Заполнить с этого устройства</string>
     <string name="reject_request">Отклонить запрос</string>
     <string name="install_orbot">Установить Orbot</string>
     <string name="start_orbot">Запустить Orbot</string>
