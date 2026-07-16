@@ -41,7 +41,11 @@ private val StandardEasing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 enum class CheckmarkPhase { WAITING, SENT, DELIVERED, READ }
 
 fun checkmarkPhaseForStatus(status: Int): CheckmarkPhase? = when (status) {
-    Message.STATUS_WAITING -> CheckmarkPhase.WAITING
+    // STATUS_UNSEND (written to the socket, awaiting the server's stream-management ack) reads
+    // as "still sending" to a user — there's no meaningful visual difference from STATUS_WAITING
+    // worth inventing a fifth state for, so it just continues the dots. The caller excludes the
+    // other STATUS_UNSEND case — a file genuinely mid-upload — which keeps its own upload icon.
+    Message.STATUS_WAITING, Message.STATUS_UNSEND -> CheckmarkPhase.WAITING
     Message.STATUS_SEND -> CheckmarkPhase.SENT
     Message.STATUS_SEND_RECEIVED -> CheckmarkPhase.DELIVERED
     Message.STATUS_SEND_DISPLAYED -> CheckmarkPhase.READ
