@@ -71,6 +71,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
     private static final String KEY_PINNED_MECHANISM = "pinned_mechanism";
     public static final String KEY_SOS_URL = "sos_url";
     public static final String KEY_PRE_AUTH_REGISTRATION_TOKEN = "pre_auth_registration";
+    public static final String KEY_PENDING_PHONE_NUMBER = "pending_phone_number";
     protected final JSONObject keys;
     protected Jid jid;
     protected String password;

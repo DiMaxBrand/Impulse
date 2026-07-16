@@ -359,6 +359,7 @@ public class EditAccountActivity extends OmemoActivity
                         binding.accountJidLayout.setError(null);
                         mAccount.setPassword(password);
                         mAccount.setOption(Account.OPTION_REGISTER, registerNewAccount);
+                        stashPendingPhoneNumber(mAccount);
                         if (!xmppConnectionService.updateAccount(mAccount)) {
                             Toast.makeText(
                                             EditAccountActivity.this,
@@ -379,6 +380,7 @@ public class EditAccountActivity extends OmemoActivity
                         mAccount.setPort(numericPort);
                         mAccount.setHostname(hostname);
                         mAccount.setOption(Account.OPTION_REGISTER, registerNewAccount);
+                        stashPendingPhoneNumber(mAccount);
                         xmppConnectionService.createAccount(mAccount);
                     }
                     binding.hostnameLayout.setError(null);
@@ -803,6 +805,23 @@ public class EditAccountActivity extends OmemoActivity
                     }
                 },
                 MoreExecutors.directExecutor());
+    }
+
+    /**
+     * Stashes the phone number typed into the account-creation-only field as a pending value on the
+     * account itself, since there is no connection yet to publish it over. {@link
+     * im.conversations.android.xmpp.processor.AccountStateProcessor} publishes it for real (and
+     * clears the pending value) the moment this account first reaches {@link Account.State#ONLINE}.
+     */
+    private void stashPendingPhoneNumber(final Account account) {
+        if (!mInitMode) {
+            return;
+        }
+        final String phoneNumber =
+                CharMatcher.whitespace().trimFrom(binding.phoneNumberInput.getText().toString());
+        if (!phoneNumber.isEmpty()) {
+            account.setKey(Account.KEY_PENDING_PHONE_NUMBER, phoneNumber);
+        }
     }
 
     private void fetchAndDisplayPhoneNumber() {
@@ -1296,6 +1315,12 @@ public class EditAccountActivity extends OmemoActivity
             this.binding.port.setText("");
             this.binding.port.getEditableText().append(String.valueOf(this.mAccount.getPort()));
             this.binding.namePort.setVisibility(mShowOptions ? View.VISIBLE : View.GONE);
+            // Lets the phone number be typed in right on the account-creation screen, before
+            // there's even a connection to publish it over — see mSaveButtonClickListener, which
+            // stashes it as a pending value published automatically on first successful connect.
+            // Once the account exists (mInitMode false from here on), this field is redundant
+            // with the "Phone number" row further down, which talks to the vCard directly.
+            this.binding.phoneNumberLayout.setVisibility(mInitMode ? View.VISIBLE : View.GONE);
             updatePhoneNumber(mLastKnownPhoneNumber);
             fetchAndDisplayPhoneNumber();
         }

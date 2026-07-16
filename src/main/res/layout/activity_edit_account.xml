@@ -138,6 +138,20 @@
                                 </com.google.android.material.textfield.TextInputLayout>
                             </LinearLayout>
 
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:id="@+id/phone_number_layout"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8sp"
+                                android:hint="@string/your_phone_number">
+
+                                <EditText
+                                    android:id="@+id/phone_number_input"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="phone" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
                             <CheckBox
                                 android:id="@+id/account_register_new"
                                 android:layout_width="wrap_content"
