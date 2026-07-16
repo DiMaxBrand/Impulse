@@ -17,6 +17,7 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
@@ -1823,12 +1824,14 @@ private fun ReactionChips(
             val count = entry.value
             val isOurs = emoji in aggregated.ourReactions
             // key() gives each emoji its own composable identity, so a chip that's brand new
-            // this recomposition mounts fresh and actually plays the enter transition below —
-            // without it, Compose would just reuse/update an existing slot and nothing would
-            // visibly scale in.
+            // this recomposition mounts fresh. AnimatedVisibility only plays its enter
+            // transition on an actual false→true edge — a MutableTransitionState created
+            // already-false-then-pushed-to-true gives it that edge on first composition;
+            // `visible = true` alone never transitions, so nothing would have visibly played.
             key(emoji) {
+                val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
                 AnimatedVisibility(
-                    visible = true,
+                    visibleState = visibleState,
                     enter = scaleIn(
                         initialScale = 0f,
                         animationSpec = spring(
@@ -1864,28 +1867,45 @@ private fun ReactionChips(
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         ) {
                             Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
-                            if (count > 1) {
-                                Spacer(Modifier.width(3.dp))
-                                AnimatedContent(
-                                    targetState = count,
-                                    transitionSpec = {
-                                        if (targetState > initialState) {
-                                            (slideInVertically { it } + fadeIn()) togetherWith
-                                                (slideOutVertically { -it } + fadeOut())
-                                        } else {
-                                            (slideInVertically { -it } + fadeIn()) togetherWith
-                                                (slideOutVertically { it } + fadeOut())
-                                        }
-                                    },
-                                    label = "reactionCount",
-                                ) { animatedCount ->
-                                    Text(
-                                        text = animatedCount.toString(),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color =
-                                            if (isOurs) MaterialTheme.colorScheme.onTertiaryContainer
-                                            else MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
+                            // Two nested transitions, not one: an outer AnimatedVisibility for
+                            // the number showing up at all (count crossing 1→2, previously just
+                            // popped in unanimated since AnimatedContent has nothing to
+                            // transition FROM on the frame it first mounts), and an inner
+                            // AnimatedContent for the digit changing once it's already visible.
+                            AnimatedVisibility(
+                                visible = count > 1,
+                                enter = scaleIn(
+                                    initialScale = 0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium,
+                                    ),
+                                ) + fadeIn(tween(150)),
+                                exit = fadeOut(tween(100)),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Spacer(Modifier.width(3.dp))
+                                    AnimatedContent(
+                                        targetState = count,
+                                        transitionSpec = {
+                                            if (targetState > initialState) {
+                                                (slideInVertically { it } + fadeIn()) togetherWith
+                                                    (slideOutVertically { -it } + fadeOut())
+                                            } else {
+                                                (slideInVertically { -it } + fadeIn()) togetherWith
+                                                    (slideOutVertically { it } + fadeOut())
+                                            }
+                                        },
+                                        label = "reactionCount",
+                                    ) { animatedCount ->
+                                        Text(
+                                            text = animatedCount.toString(),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color =
+                                                if (isOurs) MaterialTheme.colorScheme.onTertiaryContainer
+                                                else MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
                                 }
                             }
                         }
