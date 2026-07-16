@@ -2826,26 +2826,32 @@ private fun MediaThumbnailBubble(
             )
         }
 
-        // Upload scrim + spinner scale fully away once the transfer finishes, revealing the
-        // thumbnail that's already sitting underneath rather than fading over top of it.
+        // Scrim and spinner are two separate AnimatedVisibilitys, not one: the scrim covers the
+        // whole bubble, so scaling it down along with the spinner made the darkening itself
+        // visibly shrink toward the center — a "zooming" darkening, not what was intended. Only
+        // the spinner (the actual loading indicator) scales away; the scrim just fades.
         AnimatedVisibility(
             visible = uploading,
             enter = fadeIn(tween(150)),
-            exit = fadeOut(tween(200)) + scaleOut(targetScale = 0.6f, animationSpec = tween(200)),
+            exit = fadeOut(tween(200)),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularWavyProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.size(56.dp),
-                    color = Color.White,
-                    trackColor = Color.White.copy(alpha = 0.30f),
-                )
-            }
+            )
+        }
+        AnimatedVisibility(
+            visible = uploading,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(200)) + scaleOut(targetScale = 0.6f, animationSpec = tween(200)),
+        ) {
+            CircularWavyProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.size(56.dp),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.30f),
+            )
         }
 
         // Play affordance for a finished video — its own beat, delayed to land only once the
