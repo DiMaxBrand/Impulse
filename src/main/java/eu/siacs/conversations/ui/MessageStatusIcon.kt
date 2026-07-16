@@ -36,6 +36,11 @@ import kotlin.math.hypot
 /** Slow-fast-slow, never linear — linear motion on something this small reads as robotic. */
 private val StandardEasing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 
+/** Fast start, hard deceleration into the last stretch — used only for the stem retracting back
+ * up into the chevron, so the "eraser" visibly slows down right before it reaches the tip instead
+ * of just stopping. */
+private val StemRetractEasing = CubicBezierEasing(0.1f, 0.7f, 0.05f, 1f)
+
 /** The statuses that form one continuous story worth morphing between — waiting dots that either
  * turn into an upload glyph (a file transfer starting) or a checkmark (a text message going out),
  * the checkmark growing a second one, then turning green — as opposed to error/p2p icons, which
@@ -173,11 +178,23 @@ fun MessageStatusIcon(
                     launch { expand1.animateTo(1f, tween(240, easing = StandardEasing)) }
                     launch { expand2.animateTo(1f, tween(240, delayMillis = 90, easing = StandardEasing)) }
                 }
-                stemProgress.animateTo(1f, tween(140, easing = StandardEasing))
-                trayProgress.animateTo(
-                    1f,
-                    spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                )
+                stemProgress.animateTo(1f, tween(220, easing = StandardEasing))
+                trayProgress.animateTo(1f, tween(500, easing = StandardEasing))
+            }
+            from == CheckmarkPhase.UPLOADING && to == CheckmarkPhase.WAITING -> {
+                isAnimating = true
+                // The whole forward sequence in reverse: tray folds back into its single origin
+                // point, that point travels up the stem — erasing it as it goes, decelerating
+                // hard right before it reaches the tip — then the two chevron arms retract into
+                // dots at their current (chevron) positions, and only then do those three dots
+                // slide back to their waiting-row positions.
+                trayProgress.animateTo(0f, tween(240, easing = StandardEasing))
+                stemProgress.animateTo(0f, tween(320, easing = StemRetractEasing))
+                coroutineScope {
+                    launch { expand2.animateTo(0f, tween(200, easing = StandardEasing)) }
+                    launch { expand1.animateTo(0f, tween(200, delayMillis = 90, easing = StandardEasing)) }
+                }
+                reposition.animateTo(0f, tween(180, easing = StandardEasing))
             }
             from == CheckmarkPhase.SENT && to == CheckmarkPhase.DELIVERED -> {
                 isAnimating = true
@@ -229,7 +246,10 @@ fun MessageStatusIcon(
         return
     }
 
-    if (phase == CheckmarkPhase.UPLOADING) {
+    // currentPhase only flips to the new value once its transition finishes, so during a
+    // reverse (uploading -> waiting) animation `phase` is already WAITING while `currentPhase`
+    // is still UPLOADING for the whole thing — check both, not just the incoming target.
+    if (phase == CheckmarkPhase.UPLOADING || currentPhase == CheckmarkPhase.UPLOADING) {
         Canvas(modifier = modifier) {
             val s = size.minDimension / 24f
             val strokeW = lerp(DOT_RADIUS * 2f, CHECK_STROKE_WIDTH, expand1.value)
