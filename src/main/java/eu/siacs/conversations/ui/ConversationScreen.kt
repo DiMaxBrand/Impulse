@@ -2220,53 +2220,43 @@ private fun MessageContent(
             val hasKnownDimensions = fp.width > 0 && fp.height > 0
             val phase = when {
                 transferable?.getStatus() == Transferable.STATUS_COMPRESSING -> MediaBubblePhase.COMPRESSING
-                transferable?.getStatus() == Transferable.STATUS_UPLOADING -> MediaBubblePhase.UPLOADING
-                else -> MediaBubblePhase.SENT
+                else -> MediaBubblePhase.MEDIA
             }
             AnimatedContent(
                 targetState = phase,
                 transitionSpec = {
-                    when {
-                        initialState == MediaBubblePhase.COMPRESSING &&
-                            targetState == MediaBubblePhase.UPLOADING ->
-                            (fadeIn(animationSpec = tween(350)) + scaleIn(
-                                initialScale = 0.88f,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessMediumLow,
-                                ),
-                            )) togetherWith fadeOut(animationSpec = tween(200))
-                        initialState == MediaBubblePhase.UPLOADING &&
-                            targetState == MediaBubblePhase.SENT -> {
-                            // Sequential, not blended: the upload scrim/spinner scales fully
-                            // away first; the enter's delayMillis holds the finished bubble
-                            // back until that's done, so the two never cross-fade together.
-                            val outSpec = tween<Float>(220)
-                            (fadeIn(tween(240, delayMillis = 180)) +
-                                scaleIn(
-                                    initialScale = 0.92f,
-                                    animationSpec = tween(260, delayMillis = 180),
-                                )) togetherWith
-                                (fadeOut(outSpec) + scaleOut(targetScale = 0.92f, animationSpec = outSpec))
-                        }
-                        else -> fadeIn(tween(200)) togetherWith fadeOut(tween(150))
-                    }
+                    (fadeIn(animationSpec = tween(350)) + scaleIn(
+                        initialScale = 0.88f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow,
+                        ),
+                    )) togetherWith fadeOut(animationSpec = tween(200))
                 },
                 label = "mediaBubblePhase",
             ) { animatedPhase ->
                 when (animatedPhase) {
                     MediaBubblePhase.COMPRESSING ->
                         CompressingVideoPlaceholder(progress = animatedProgress)
-                    MediaBubblePhase.UPLOADING ->
+                    // Uploading and sent share one persistent MediaThumbnailBubble instance —
+                    // toggling `uploading` doesn't remount it, so its own internal overlays
+                    // (upload scrim/spinner, play button) are the only things that animate.
+                    // The base image/video itself never re-enters AnimatedContent's transition,
+                    // which is what was making the whole bubble zoom instead of just the badge.
+                    MediaBubblePhase.MEDIA ->
                         if (hasKnownDimensions) {
+                            val uploading = transferable?.getStatus() == Transferable.STATUS_UPLOADING
                             MediaThumbnailBubble(
                                 message = message,
                                 isVideo = isVideo,
                                 aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
-                                uploading = true,
-                                progress = animatedProgress,
-                                onOpen = null,
-                                onLongPress = null,
+                                uploading = uploading,
+                                // The spinner's own AnimatedVisibility content stays composed
+                                // through its exit animation — hold progress at 1 once sent so
+                                // it doesn't visibly reset to 0 while fading/scaling away.
+                                progress = if (uploading) animatedProgress else 1f,
+                                onOpen = if (uploading) null else { { listener.onOpenMessage(message) } },
+                                onLongPress = if (uploading) null else onLongPress,
                             )
                         } else {
                             Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
@@ -2281,18 +2271,6 @@ private fun MessageContent(
                                 )
                             }
                         }
-                    // Only reachable once the outer branch condition already required known
-                    // dimensions, so hasKnownDimensions is always true here.
-                    MediaBubblePhase.SENT ->
-                        MediaThumbnailBubble(
-                            message = message,
-                            isVideo = isVideo,
-                            aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
-                            uploading = false,
-                            progress = 1f,
-                            onOpen = { listener.onOpenMessage(message) },
-                            onLongPress = onLongPress,
-                        )
                 }
             }
         }
@@ -2741,7 +2719,7 @@ private fun DownloadingMediaPlaceholder(progress: Float, aspectRatio: Float) {
     }
 }
 
-private enum class MediaBubblePhase { COMPRESSING, UPLOADING, SENT }
+private enum class MediaBubblePhase { COMPRESSING, MEDIA }
 
 /** Image/video bubble shared by the uploading and sent states — same box, same aspect ratio,
  * same [ThumbnailCache]-backed bitmap throughout, so finishing an upload never remounts a fresh
