@@ -2992,29 +2992,37 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         if (outgoing && message.type != Message.TYPE_RTP_SESSION) {
             val statusDrawable = MessageAdapter.getMessageStatusAsDrawable(message, status)
             if (statusDrawable != null) {
-                val displayed = status == Message.STATUS_SEND_DISPLAYED
-                val resolvedDrawable = if (displayed) R.drawable.ic_done_all_bold_24dp else statusDrawable
                 Spacer(Modifier.width(4.dp))
-                // Waiting → sent → delivered → read used to swap the drawable instantly
-                // (a hard "blink" every step) — now each step crossfades with a small scale pop.
-                AnimatedContent(
-                    targetState = resolvedDrawable to displayed,
-                    transitionSpec = {
-                        (fadeIn(tween(180)) +
-                            scaleIn(initialScale = 0.6f, animationSpec = tween(180))) togetherWith
-                            (fadeOut(tween(120)) +
-                                scaleOut(targetScale = 0.6f, animationSpec = tween(120)))
-                    },
-                    label = "messageStatusIcon",
-                ) { (drawableRes, isDisplayed) ->
-                    Icon(
-                        painter = painterResource(drawableRes),
-                        contentDescription = null,
-                        tint =
-                            if (isDisplayed) LocalSuccessColors.current.success
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                if (checkmarkPhaseForStatus(status) != null) {
+                    // Waiting → sent → delivered → read is one continuous morph: dots
+                    // repositioning and growing into checkmark strokes, a second check sliding
+                    // in, then a color+bounce for "read" — see MessageStatusIcon for the choreography.
+                    MessageStatusIcon(
+                        status = status,
+                        grayColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        successColor = LocalSuccessColors.current.success,
                         modifier = Modifier.size(14.dp),
                     )
+                } else {
+                    // Upload/failed/p2p icons aren't part of that story — a dots-to-checkmark
+                    // morph makes no sense turning into an error glyph, so these just crossfade.
+                    AnimatedContent(
+                        targetState = statusDrawable,
+                        transitionSpec = {
+                            (fadeIn(tween(180)) +
+                                scaleIn(initialScale = 0.6f, animationSpec = tween(180))) togetherWith
+                                (fadeOut(tween(120)) +
+                                    scaleOut(targetScale = 0.6f, animationSpec = tween(120)))
+                        },
+                        label = "messageStatusIconFallback",
+                    ) { drawableRes ->
+                        Icon(
+                            painter = painterResource(drawableRes),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                 }
             }
         }
