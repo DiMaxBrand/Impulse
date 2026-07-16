@@ -31,6 +31,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -84,6 +86,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -1819,42 +1822,73 @@ private fun ReactionChips(
             val emoji = entry.key
             val count = entry.value
             val isOurs = emoji in aggregated.ourReactions
-            Surface(
-                shape = RoundedCornerShape(50),
-                // "Ours" uses tertiaryContainer, not primaryContainer: primaryContainer is also
-                // the outgoing bubble's own background, so a reaction you added to your own
-                // message used to be visually identical to the bubble it overlaps — it read as
-                // melting into the bubble rather than as a distinct chip. tertiary is
-                // deliberately hue-shifted further from the seed color in Material You, so it
-                // stays visually distinct from both the outgoing (primaryContainer) and
-                // incoming (surfaceContainerHigh) bubble colors.
-                color =
-                    if (isOurs) MaterialTheme.colorScheme.tertiaryContainer
-                    else MaterialTheme.colorScheme.secondaryContainer,
-                modifier =
-                    Modifier.combinedClickable(
-                        onClick = {
-                            val next = aggregated.ourReactions.toMutableSet()
-                            if (isOurs) next.remove(emoji) else next.add(emoji)
-                            listener.onSendReactions(message, next)
-                        },
-                        onLongClick = { listener.onShowReactionDetails(message, emoji) },
-                    ),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            // key() gives each emoji its own composable identity, so a chip that's brand new
+            // this recomposition mounts fresh and actually plays the enter transition below —
+            // without it, Compose would just reuse/update an existing slot and nothing would
+            // visibly scale in.
+            key(emoji) {
+                AnimatedVisibility(
+                    visible = true,
+                    enter = scaleIn(
+                        initialScale = 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium,
+                        ),
+                    ) + fadeIn(tween(150)),
                 ) {
-                    Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
-                    if (count > 1) {
-                        Spacer(Modifier.width(3.dp))
-                        Text(
-                            text = count.toString(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color =
-                                if (isOurs) MaterialTheme.colorScheme.onTertiaryContainer
-                                else MaterialTheme.colorScheme.onSecondaryContainer,
-                        )
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        // "Ours" uses tertiaryContainer, not primaryContainer: primaryContainer is
+                        // also the outgoing bubble's own background, so a reaction you added to
+                        // your own message used to be visually identical to the bubble it
+                        // overlaps — it read as melting into the bubble rather than as a distinct
+                        // chip. tertiary is deliberately hue-shifted further from the seed color
+                        // in Material You, so it stays visually distinct from both the outgoing
+                        // (primaryContainer) and incoming (surfaceContainerHigh) bubble colors.
+                        color =
+                            if (isOurs) MaterialTheme.colorScheme.tertiaryContainer
+                            else MaterialTheme.colorScheme.secondaryContainer,
+                        modifier =
+                            Modifier.combinedClickable(
+                                onClick = {
+                                    val next = aggregated.ourReactions.toMutableSet()
+                                    if (isOurs) next.remove(emoji) else next.add(emoji)
+                                    listener.onSendReactions(message, next)
+                                },
+                                onLongClick = { listener.onShowReactionDetails(message, emoji) },
+                            ),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        ) {
+                            Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
+                            if (count > 1) {
+                                Spacer(Modifier.width(3.dp))
+                                AnimatedContent(
+                                    targetState = count,
+                                    transitionSpec = {
+                                        if (targetState > initialState) {
+                                            (slideInVertically { it } + fadeIn()) togetherWith
+                                                (slideOutVertically { -it } + fadeOut())
+                                        } else {
+                                            (slideInVertically { -it } + fadeIn()) togetherWith
+                                                (slideOutVertically { it } + fadeOut())
+                                        }
+                                    },
+                                    label = "reactionCount",
+                                ) { animatedCount ->
+                                    Text(
+                                        text = animatedCount.toString(),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color =
+                                            if (isOurs) MaterialTheme.colorScheme.onTertiaryContainer
+                                            else MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -2153,51 +2187,92 @@ private fun MessageContent(
                 )
             }
         }
-        transferable != null && (
-            transferable.getStatus() == Transferable.STATUS_COMPRESSING ||
-            transferable.getStatus() == Transferable.STATUS_UPLOADING
-        ) -> {
-            val currentStatus = transferable.getStatus()
+        (transferable != null &&
+            (transferable.getStatus() == Transferable.STATUS_COMPRESSING ||
+                transferable.getStatus() == Transferable.STATUS_UPLOADING)) ||
+            (transferable == null &&
+                message.isFileOrImage &&
+                message.encryption != Message.ENCRYPTION_PGP &&
+                message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
+                message.fileParams.width > 0 && message.fileParams.height > 0) -> {
+            val fp = message.fileParams
+            val isVideo = message.mimeType?.startsWith("video/") == true
+            val hasKnownDimensions = fp.width > 0 && fp.height > 0
+            val phase = when {
+                transferable?.getStatus() == Transferable.STATUS_COMPRESSING -> MediaBubblePhase.COMPRESSING
+                transferable?.getStatus() == Transferable.STATUS_UPLOADING -> MediaBubblePhase.UPLOADING
+                else -> MediaBubblePhase.SENT
+            }
             AnimatedContent(
-                targetState = currentStatus,
+                targetState = phase,
                 transitionSpec = {
-                    if (initialState == Transferable.STATUS_COMPRESSING) {
-                        (fadeIn(animationSpec = tween(350)) + scaleIn(
-                            initialScale = 0.88f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow,
-                            ),
-                        )) togetherWith fadeOut(animationSpec = tween(200))
-                    } else {
-                        fadeIn(tween(200)) togetherWith fadeOut(tween(150))
+                    when {
+                        initialState == MediaBubblePhase.COMPRESSING &&
+                            targetState == MediaBubblePhase.UPLOADING ->
+                            (fadeIn(animationSpec = tween(350)) + scaleIn(
+                                initialScale = 0.88f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMediumLow,
+                                ),
+                            )) togetherWith fadeOut(animationSpec = tween(200))
+                        initialState == MediaBubblePhase.UPLOADING &&
+                            targetState == MediaBubblePhase.SENT -> {
+                            // Sequential, not blended: the upload scrim/spinner scales fully
+                            // away first; the enter's delayMillis holds the finished bubble
+                            // back until that's done, so the two never cross-fade together.
+                            val outSpec = tween<Float>(220)
+                            (fadeIn(tween(240, delayMillis = 180)) +
+                                scaleIn(
+                                    initialScale = 0.92f,
+                                    animationSpec = tween(260, delayMillis = 180),
+                                )) togetherWith
+                                (fadeOut(outSpec) + scaleOut(targetScale = 0.92f, animationSpec = outSpec))
+                        }
+                        else -> fadeIn(tween(200)) togetherWith fadeOut(tween(150))
                     }
                 },
-                label = "videoSendState",
-            ) { status ->
-                if (status == Transferable.STATUS_COMPRESSING) {
-                    CompressingVideoPlaceholder(progress = animatedProgress)
-                } else {
-                    val fp = message.fileParams
-                    if (fp.width > 0 && fp.height > 0) {
-                        UploadingMediaThumbnail(
-                            message = message,
-                            progress = animatedProgress,
-                            aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
-                        )
-                    } else {
-                        Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
-                            Text(
-                                text = stringResource(R.string.sending_file, transferableProgress ?: 0),
-                                style = MaterialTheme.typography.bodyMedium,
+                label = "mediaBubblePhase",
+            ) { animatedPhase ->
+                when (animatedPhase) {
+                    MediaBubblePhase.COMPRESSING ->
+                        CompressingVideoPlaceholder(progress = animatedProgress)
+                    MediaBubblePhase.UPLOADING ->
+                        if (hasKnownDimensions) {
+                            MediaThumbnailBubble(
+                                message = message,
+                                isVideo = isVideo,
+                                aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
+                                uploading = true,
+                                progress = animatedProgress,
+                                onOpen = null,
+                                onLongPress = null,
                             )
-                            Spacer(Modifier.height(6.dp))
-                            LinearProgressIndicator(
-                                progress = { animatedProgress },
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
-                            )
+                        } else {
+                            Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
+                                Text(
+                                    text = stringResource(R.string.sending_file, transferableProgress ?: 0),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                LinearProgressIndicator(
+                                    progress = { animatedProgress },
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50)),
+                                )
+                            }
                         }
-                    }
+                    // Only reachable once the outer branch condition already required known
+                    // dimensions, so hasKnownDimensions is always true here.
+                    MediaBubblePhase.SENT ->
+                        MediaThumbnailBubble(
+                            message = message,
+                            isVideo = isVideo,
+                            aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
+                            uploading = false,
+                            progress = 1f,
+                            onOpen = { listener.onOpenMessage(message) },
+                            onLongPress = onLongPress,
+                        )
                 }
             }
         }
@@ -2253,55 +2328,6 @@ private fun MessageContent(
                         iconRes = R.drawable.ic_attach_file_24dp,
                         label = fileDescription,
                     )
-            }
-        }
-        message.isFileOrImage &&
-            message.encryption != Message.ENCRYPTION_PGP &&
-            message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
-            message.fileParams.width > 0 && message.fileParams.height > 0 -> {
-            val fileBackend = activity?.xmppConnectionService?.fileBackend
-            val isVideo = message.mimeType?.startsWith("video/") == true
-            if (fileBackend != null) {
-                val thumb = remember(message.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
-                val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
-                LaunchedEffect(message.getUuid()) {
-                    val bm =
-                        withContext(Dispatchers.IO) {
-                            try {
-                                fileBackend.getThumbnail(message, sizePx, false)
-                            } catch (_: Exception) {
-                                null
-                            }
-                        }
-                    if (bm != null) thumb.value = bm.asImageBitmap()
-                }
-                val bitmap = thumb.value
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier =
-                            Modifier.widthIn(max = 280.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .combinedClickable(
-                                    onClick = { listener.onOpenMessage(message) },
-                                    onLongClick = onLongPress,
-                                ),
-                    )
-                } else {
-                    FileActionRow(
-                        iconRes = if (isVideo) R.drawable.ic_movie_24dp else R.drawable.ic_image_24dp,
-                        label = UIHelper.getFileDescriptionString(context, message),
-                        onClick = { listener.onOpenMessage(message) },
-                    )
-                }
-            } else {
-                FileActionRow(
-                    iconRes = if (isVideo) R.drawable.ic_movie_24dp else R.drawable.ic_image_24dp,
-                    label = UIHelper.getFileDescriptionString(context, message),
-                    onClick = { listener.onOpenMessage(message) },
-                )
             }
         }
         message.isFileOrImage &&
@@ -2695,30 +2721,46 @@ private fun DownloadingMediaPlaceholder(progress: Float, aspectRatio: Float) {
     }
 }
 
+private enum class MediaBubblePhase { COMPRESSING, UPLOADING, SENT }
+
+/** Image/video bubble shared by the uploading and sent states — same box, same aspect ratio,
+ * same [ThumbnailCache]-backed bitmap throughout, so finishing an upload never remounts a fresh
+ * composable that has to redecode a thumbnail it already had a frame earlier. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun UploadingMediaThumbnail(message: Message, progress: Float, aspectRatio: Float) {
+private fun MediaThumbnailBubble(
+    message: Message,
+    isVideo: Boolean,
+    aspectRatio: Float,
+    uploading: Boolean,
+    progress: Float,
+    onOpen: (() -> Unit)?,
+    onLongPress: (() -> Unit)?,
+) {
     val context = LocalContext.current
     val activity = context as? XmppActivity
     val fileBackend = activity?.xmppConnectionService?.fileBackend
+    val uuid = message.getUuid()
 
-    val isVideo = message.mimeType?.startsWith("video/") == true
-    val videoFile = remember(message.getUuid()) {
-        if (!isVideo) return@remember null
-        try { fileBackend?.getFile(message) } catch (_: Exception) { null }
-    }
-
-    val thumb = remember(message.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
-    val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
-    LaunchedEffect(message.getUuid()) {
-        val bm = withContext(Dispatchers.IO) {
-            try { fileBackend?.getThumbnail(message, sizePx, false) } catch (_: Exception) { null }
+    val videoFile = if (uploading && isVideo) {
+        remember(uuid) {
+            try { fileBackend?.getFile(message) } catch (_: Exception) { null }
         }
-        if (bm != null) thumb.value = bm.asImageBitmap()
+    } else null
+
+    val cachedBitmap = ThumbnailCache.get(uuid)
+    if (cachedBitmap == null && fileBackend != null) {
+        val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
+        LaunchedEffect(uuid) {
+            val bm = withContext(Dispatchers.IO) {
+                try { fileBackend.getThumbnail(message, sizePx, false) } catch (_: Exception) { null }
+            }
+            if (bm != null) ThumbnailCache.put(uuid, bm.asImageBitmap())
+        }
     }
 
-    val playerRef = remember(message.getUuid()) { mutableStateOf<MediaPlayer?>(null) }
-    DisposableEffect(message.getUuid()) {
+    val playerRef = remember(uuid) { mutableStateOf<MediaPlayer?>(null) }
+    DisposableEffect(uuid) {
         onDispose {
             val mp = playerRef.value
             playerRef.value = null
@@ -2731,7 +2773,12 @@ private fun UploadingMediaThumbnail(message: Message, progress: Float, aspectRat
             .widthIn(max = 280.dp)
             .heightIn(max = 310.dp)
             .aspectRatio(aspectRatio.coerceIn(0.25f, 4f))
-            .clip(RoundedCornerShape(12.dp)),
+            .clip(RoundedCornerShape(12.dp))
+            .let { base ->
+                if (onOpen != null) {
+                    base.combinedClickable(onClick = onOpen, onLongClick = onLongPress ?: {})
+                } else base
+            },
         contentAlignment = Alignment.Center,
     ) {
         if (videoFile != null) {
@@ -2766,36 +2813,71 @@ private fun UploadingMediaThumbnail(message: Message, progress: Float, aspectRat
                 },
                 modifier = Modifier.fillMaxSize(),
             )
+        } else if (cachedBitmap != null) {
+            Image(
+                bitmap = cachedBitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
         } else {
-            val bitmap = thumb.value
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            )
+        }
+
+        // Upload scrim + spinner scale fully away once the transfer finishes, revealing the
+        // thumbnail that's already sitting underneath rather than fading over top of it.
+        AnimatedVisibility(
+            visible = uploading,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(200)) + scaleOut(targetScale = 0.6f, animationSpec = tween(200)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularWavyProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(56.dp),
+                    color = Color.White,
+                    trackColor = Color.White.copy(alpha = 0.30f),
                 )
             }
         }
-        // Scrim + progress indicator always on top, regardless of background content
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f)),
-            contentAlignment = Alignment.Center,
+
+        // Play affordance for a finished video — its own beat, delayed to land only once the
+        // scrim above has fully cleared, never blended with it.
+        AnimatedVisibility(
+            visible = !uploading && isVideo,
+            enter = fadeIn(tween(220, delayMillis = 260)) +
+                scaleIn(
+                    initialScale = 0.4f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium,
+                    ),
+                ),
+            exit = fadeOut(tween(120)),
         ) {
-            CircularWavyProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.size(56.dp),
-                color = Color.White,
-                trackColor = Color.White.copy(alpha = 0.30f),
-            )
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.45f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_play_arrow_24dp),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
     }
 }
