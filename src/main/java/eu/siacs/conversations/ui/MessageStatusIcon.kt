@@ -27,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.util.lerp
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Message
+import eu.siacs.conversations.entities.Transferable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
@@ -35,17 +36,19 @@ import kotlin.math.hypot
 /** Slow-fast-slow, never linear — linear motion on something this small reads as robotic. */
 private val StandardEasing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 
-/** The four message statuses that form one continuous story — waiting dots morphing into a
- * checkmark, growing a second checkmark, then turning green — as opposed to upload/error/p2p
- * icons, which are unrelated glyphs a morph wouldn't make sense for. */
-enum class CheckmarkPhase { WAITING, SENT, DELIVERED, READ }
+/** The statuses that form one continuous story worth morphing between — waiting dots that either
+ * turn into an upload glyph (a file transfer starting) or a checkmark (a text message going out),
+ * the checkmark growing a second one, then turning green — as opposed to error/p2p icons, which
+ * are unrelated glyphs a morph wouldn't make sense for. */
+enum class CheckmarkPhase { WAITING, UPLOADING, SENT, DELIVERED, READ }
 
-fun checkmarkPhaseForStatus(status: Int): CheckmarkPhase? = when (status) {
-    // STATUS_UNSEND (written to the socket, awaiting the server's stream-management ack) reads
-    // as "still sending" to a user — there's no meaningful visual difference from STATUS_WAITING
-    // worth inventing a fifth state for, so it just continues the dots. The caller excludes the
-    // other STATUS_UNSEND case — a file genuinely mid-upload — which keeps its own upload icon.
-    Message.STATUS_WAITING, Message.STATUS_UNSEND -> CheckmarkPhase.WAITING
+fun checkmarkPhaseForStatus(status: Int, transferable: Transferable?): CheckmarkPhase? = when (status) {
+    Message.STATUS_WAITING -> CheckmarkPhase.WAITING
+    // STATUS_UNSEND covers two different things: a file genuinely mid-upload (transferable !=
+    // null — gets its own dots-into-upload-icon morph) and a text message written to the socket
+    // but not yet stream-management-acknowledged, which reads as "still sending" to a user and
+    // isn't worth a distinct visual from STATUS_WAITING, so it just continues the dots.
+    Message.STATUS_UNSEND -> if (transferable != null) CheckmarkPhase.UPLOADING else CheckmarkPhase.WAITING
     Message.STATUS_SEND -> CheckmarkPhase.SENT
     Message.STATUS_SEND_RECEIVED -> CheckmarkPhase.DELIVERED
     Message.STATUS_SEND_DISPLAYED -> CheckmarkPhase.READ
@@ -53,8 +56,9 @@ fun checkmarkPhaseForStatus(status: Int): CheckmarkPhase? = when (status) {
 }
 
 // All geometry below is measured directly off the real Material Symbols paths this icon set
-// already ships (ic_more_horiz_24dp, ic_done_24dp, ic_done_all_24dp — 960x960 viewport, rescaled
-// here to a 24-unit space to match this file's drawing convention), not eyeballed:
+// already ships (ic_more_horiz_24dp, ic_done_24dp, ic_done_all_24dp, ic_upload_24dp — 960x960
+// viewport, rescaled here to a 24-unit space to match this file's drawing convention), not
+// eyeballed:
 //   - dots: 3 circles, centers (240,480)/(480,480)/(720,480), radius 80  -> 24-space r=2.0
 //   - checkmark: a round-capped/round-joined stroke, centerline points recovered from the two
 //     edges flanking each rounded cap in ic_done_24dp's outline; average cap radius ~39.8,
@@ -63,6 +67,10 @@ fun checkmarkPhaseForStatus(status: Int): CheckmarkPhase? = when (status) {
 //     by (+112.8, +0.8) in the 960 viewport -> (+2.82, +0.02) in 24-space; the first checkmark
 //     sits at ic_done_24dp's own unshifted position, with the second one's shape cut out of it
 //     wherever they overlap — that's the "trace" look, not two full opaque copies.
+//   - ic_upload_24dp: a chevron (left tip / apex / right tip — same 3-point shape as the
+//     checkmark, so it reuses the exact same reposition+expand technique), a stem below the
+//     apex, and a 4-corner open-top tray; measured stroke width ~2.0, matching the checkmark's
+//     closely enough to reuse CHECK_STROKE_WIDTH rather than add a near-duplicate constant.
 private val DOT1 = Offset(6f, 12f)
 private val DOT2 = Offset(12f, 12f)
 private val DOT3 = Offset(18f, 12f)
@@ -74,6 +82,18 @@ private val CHECK_P2 = Offset(18.725f, 7.3875f) // end
 private const val CHECK_STROKE_WIDTH = 1.99f
 private val DOUBLE_CHECK_OFFSET = Offset(2.82f, 0.02f)
 
+private val CHEVRON_LEFT = Offset(8.412f, 9.013f)
+private val CHEVRON_APEX = Offset(12f, 4.7f)
+private val CHEVRON_RIGHT = Offset(15.588f, 9.013f)
+private val STEM_BOTTOM = Offset(12f, 15.5f)
+private val TRAY_LEFT_TOP = Offset(5f, 16f)
+private val TRAY_LEFT_BOTTOM = Offset(5f, 19f)
+private val TRAY_RIGHT_BOTTOM = Offset(19f, 19f)
+private val TRAY_RIGHT_TOP = Offset(19f, 16f)
+// The tray's 4 corners unfold outward from this single point rather than fading in flat — the
+// same "grow from a point" trick the dots use, so the reveal reads as one consistent language.
+private val TRAY_COLLAPSE_ORIGIN = Offset(12f, 17.5f)
+
 /**
  * Draws the waiting/sent/delivered/read sequence as one continuously-morphing glyph instead of
  * swapping between four unrelated icons:
@@ -84,6 +104,13 @@ private val DOUBLE_CHECK_OFFSET = Offset(2.82f, 0.02f)
  *   stroke render as a filled circle, so "dot becomes line" falls out of one drawLine() call —
  *   the stroke also thins from the dot's own diameter down to the checkmark's real (thinner)
  *   width over the same motion, since the two aren't actually the same thickness.
+ * - Waiting → uploading (a file transfer starting instead of a text message going out): the same
+ *   three dots reposition onto the upload icon's chevron instead — it has exactly three key
+ *   points too (left tip, apex, right tip), so it's the identical technique with a different
+ *   target shape. Only 3 dots exist but the icon has ~9 key points total, so the remaining ones
+ *   (stem, tray) aren't sourced from dots at all: once the chevron finishes, a stem grows
+ *   straight down from its apex, then the tray's four corners unfold outward from one point below
+ *   the stem with a small bounce — three beats (arrowhead, stem, box), not one impossible mapping.
  * - Sent → delivered: a second checkmark starts exactly on top of the first — at that position
  *   it's fully hidden, matching a single checkmark — and slides right into the real double-check
  *   layout, where it is the fully-visible (front) stroke and the original checkmark becomes the
@@ -96,11 +123,12 @@ private val DOUBLE_CHECK_OFFSET = Offset(2.82f, 0.02f)
 @Composable
 fun MessageStatusIcon(
     status: Int,
+    transferable: Transferable?,
     grayColor: Color,
     successColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val phase = checkmarkPhaseForStatus(status) ?: return
+    val phase = checkmarkPhaseForStatus(status, transferable) ?: return
     var currentPhase by remember { mutableStateOf(phase) }
     // Only true while an actual morph is in flight. At rest — the vast majority of the time,
     // for every message that isn't mid-transition right now — this renders the real bundled
@@ -117,6 +145,11 @@ fun MessageStatusIcon(
     }
     val bounceScale = remember { Animatable(1f) }
     val colorProgress = remember { Animatable(if (phase == CheckmarkPhase.READ) 1f else 0f) }
+    // Only ever driven by the waiting -> uploading transition below, so a plain 0f start is
+    // always correct — unlike reposition/expand1/expand2 there's no later transition that reads
+    // these while already at rest in some other phase.
+    val stemProgress = remember { Animatable(0f) }
+    val trayProgress = remember { Animatable(0f) }
 
     LaunchedEffect(phase) {
         val from = currentPhase
@@ -130,6 +163,21 @@ fun MessageStatusIcon(
                     launch { expand1.animateTo(1f, tween(240, easing = StandardEasing)) }
                     launch { expand2.animateTo(1f, tween(240, delayMillis = 90, easing = StandardEasing)) }
                 }
+            }
+            from == CheckmarkPhase.WAITING && to == CheckmarkPhase.UPLOADING -> {
+                isAnimating = true
+                // Same dots-into-3-point-shape technique as waiting -> sent, just aimed at the
+                // chevron's points instead of the checkmark's.
+                reposition.animateTo(1f, tween(180, easing = StandardEasing))
+                coroutineScope {
+                    launch { expand1.animateTo(1f, tween(240, easing = StandardEasing)) }
+                    launch { expand2.animateTo(1f, tween(240, delayMillis = 90, easing = StandardEasing)) }
+                }
+                stemProgress.animateTo(1f, tween(140, easing = StandardEasing))
+                trayProgress.animateTo(
+                    1f,
+                    spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                )
             }
             from == CheckmarkPhase.SENT && to == CheckmarkPhase.DELIVERED -> {
                 isAnimating = true
@@ -167,6 +215,7 @@ fun MessageStatusIcon(
     if (!isAnimating) {
         val (staticDrawable, staticColor) = when (currentPhase) {
             CheckmarkPhase.WAITING -> R.drawable.ic_more_horiz_24dp to grayColor
+            CheckmarkPhase.UPLOADING -> R.drawable.ic_upload_24dp to grayColor
             CheckmarkPhase.SENT -> R.drawable.ic_done_24dp to grayColor
             CheckmarkPhase.DELIVERED -> R.drawable.ic_done_all_24dp to grayColor
             CheckmarkPhase.READ -> R.drawable.ic_done_all_bold_24dp to successColor
@@ -177,6 +226,60 @@ fun MessageStatusIcon(
             tint = staticColor,
             modifier = modifier,
         )
+        return
+    }
+
+    if (phase == CheckmarkPhase.UPLOADING) {
+        Canvas(modifier = modifier) {
+            val s = size.minDimension / 24f
+            val strokeW = lerp(DOT_RADIUS * 2f, CHECK_STROKE_WIDTH, expand1.value)
+
+            val pos0 = androidx.compose.ui.geometry.lerp(DOT1, CHEVRON_LEFT, reposition.value)
+            val pos1 = androidx.compose.ui.geometry.lerp(DOT2, CHEVRON_APEX, reposition.value)
+            val pos2 = androidx.compose.ui.geometry.lerp(DOT3, CHEVRON_RIGHT, reposition.value)
+
+            // Chevron: identical technique to the checkmark's two-segment growth.
+            drawCircle(color = grayColor, radius = strokeW / 2f * s, center = pos2 * s)
+            drawLine(
+                color = grayColor,
+                start = pos0 * s,
+                end = androidx.compose.ui.geometry.lerp(pos0, pos1, expand1.value) * s,
+                strokeWidth = strokeW * s,
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                color = grayColor,
+                start = pos1 * s,
+                end = androidx.compose.ui.geometry.lerp(pos1, pos2, expand2.value) * s,
+                strokeWidth = strokeW * s,
+                cap = StrokeCap.Round,
+            )
+
+            // Stem: grows straight down from the chevron's apex once it's fully formed.
+            val stemEnd = androidx.compose.ui.geometry.lerp(CHEVRON_APEX, STEM_BOTTOM, stemProgress.value)
+            drawLine(
+                color = grayColor,
+                start = CHEVRON_APEX * s,
+                end = stemEnd * s,
+                strokeWidth = strokeW * s,
+                cap = StrokeCap.Round,
+            )
+
+            // Tray: its four corners unfold outward from one point below the stem instead of
+            // fading in flat — the same "grow from a point" language as the dots themselves.
+            val trayLeftTop = androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_LEFT_TOP, trayProgress.value)
+            val trayLeftBottom =
+                androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_LEFT_BOTTOM, trayProgress.value)
+            val trayRightBottom =
+                androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_RIGHT_BOTTOM, trayProgress.value)
+            val trayRightTop =
+                androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_RIGHT_TOP, trayProgress.value)
+            drawCircle(color = grayColor, radius = strokeW / 2f * s, center = trayLeftBottom * s)
+            drawCircle(color = grayColor, radius = strokeW / 2f * s, center = trayRightBottom * s)
+            drawLine(grayColor, trayLeftTop * s, trayLeftBottom * s, strokeW * s, cap = StrokeCap.Round)
+            drawLine(grayColor, trayLeftBottom * s, trayRightBottom * s, strokeW * s, cap = StrokeCap.Round)
+            drawLine(grayColor, trayRightBottom * s, trayRightTop * s, strokeW * s, cap = StrokeCap.Round)
+        }
         return
     }
 

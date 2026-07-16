@@ -2995,22 +2995,16 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         }
         if (outgoing && message.type != Message.TYPE_RTP_SESSION) {
             val transferable = message.transferable
-            // STATUS_UNSEND covers two different things: a file still mid-upload (its own
-            // ic_upload_24dp icon, unrelated to the checkmark story) and a text message that's
-            // been written to the socket but not yet stream-management-acknowledged by the
-            // server. That second case used to render nothing at all — getMessageStatusAsDrawable
-            // returns null for STATUS_UNSEND once transferable is null — a silent gap between the
-            // waiting dots and the sent checkmark. It isn't meaningfully different from "waiting"
-            // to a user watching the icon, so it just continues showing the dots through it.
-            val checkmarkPhase = checkmarkPhaseForStatus(status)
-                ?.takeUnless { status == Message.STATUS_UNSEND && transferable != null }
+            // Waiting/uploading/sent/delivered/read all morph into each other continuously — see
+            // MessageStatusIcon for the choreography (including how STATUS_UNSEND is split
+            // between "still sending text" and "file genuinely mid-upload"). Only the unrelated
+            // error/p2p glyphs fall through to a plain crossfade below.
+            val checkmarkPhase = checkmarkPhaseForStatus(status, transferable)
             if (checkmarkPhase != null) {
                 Spacer(Modifier.width(4.dp))
-                // Waiting → sent → delivered → read is one continuous morph: dots
-                // repositioning and growing into checkmark strokes, a second check sliding
-                // in, then a color+bounce for "read" — see MessageStatusIcon for the choreography.
                 MessageStatusIcon(
                     status = status,
+                    transferable = transferable,
                     grayColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     successColor = LocalSuccessColors.current.success,
                     modifier = Modifier.size(14.dp),
