@@ -2993,18 +2993,29 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
             val statusDrawable = MessageAdapter.getMessageStatusAsDrawable(message, status)
             if (statusDrawable != null) {
                 val displayed = status == Message.STATUS_SEND_DISPLAYED
+                val resolvedDrawable = if (displayed) R.drawable.ic_done_all_bold_24dp else statusDrawable
                 Spacer(Modifier.width(4.dp))
-                Icon(
-                    painter =
-                        painterResource(
-                            if (displayed) R.drawable.ic_done_all_bold_24dp else statusDrawable
-                        ),
-                    contentDescription = null,
-                    tint =
-                        if (displayed) LocalSuccessColors.current.success
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(14.dp),
-                )
+                // Waiting → sent → delivered → read used to swap the drawable instantly
+                // (a hard "blink" every step) — now each step crossfades with a small scale pop.
+                AnimatedContent(
+                    targetState = resolvedDrawable to displayed,
+                    transitionSpec = {
+                        (fadeIn(tween(180)) +
+                            scaleIn(initialScale = 0.6f, animationSpec = tween(180))) togetherWith
+                            (fadeOut(tween(120)) +
+                                scaleOut(targetScale = 0.6f, animationSpec = tween(120)))
+                    },
+                    label = "messageStatusIcon",
+                ) { (drawableRes, isDisplayed) ->
+                    Icon(
+                        painter = painterResource(drawableRes),
+                        contentDescription = null,
+                        tint =
+                            if (isDisplayed) LocalSuccessColors.current.success
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
             }
         }
     }
