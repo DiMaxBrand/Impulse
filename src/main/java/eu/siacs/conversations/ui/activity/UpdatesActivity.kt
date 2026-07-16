@@ -33,6 +33,7 @@ import eu.siacs.conversations.update.UpdateChecker
 import eu.siacs.conversations.update.UpdateDownloader
 import eu.siacs.conversations.update.UpdateInfo
 import eu.siacs.conversations.update.UpdatePreferences
+import kotlin.math.roundToLong
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -225,12 +226,23 @@ class UpdatesActivity : ActionBarActivity() {
 
     private fun pollDownload(id: Long) {
         lifecycleScope.launch {
-            // Speed is smoothed (EMA) across polls rather than read instantaneously — raw
-            // byte-delta/time-delta per 500ms tick is jittery (bursty disk flushes), and would
-            // make the ETA number visibly jump around.
-            var lastSampleAt = 0L
-            var lastSampleBytes = 0L
-            var smoothedBps = 0.0
+            // Speed comes from a sliding window of the last ~4s of (time, bytes) samples,
+            // not a single 500ms delta — individual polls are bursty (the OS flushes to disk
+            // in chunks, not a smooth stream), so a single-tick rate genuinely alternates
+            // between "burst" and "nothing" every poll or two. Averaging over several real
+            // seconds of samples smooths that out at the source.
+            val samples = ArrayDeque<Pair<Long, Long>>() // elapsedRealtime ms to downloadedBytes
+            val windowMs = 4000L
+
+            // The *displayed* ETA is its own gently-corrected countdown, not a fresh division
+            // result redrawn every poll: between polls it ticks down by real elapsed time, then
+            // nudges a quarter of the way toward the newly measured estimate. Averaging the
+            // displayed number against itself (e.g. new = (old + fresh) / 2) decays
+            // geometrically and mathematically never reaches zero; nudging a live countdown
+            // that's independently ticking down with real time does reach zero, because actual
+            // elapsed seconds are doing the counting, not an infinite series of halvings.
+            var displayedEtaSeconds: Double? = null
+            var lastPollAt = 0L
             while (true) {
                 val progress = withContext(Dispatchers.IO) {
                     UpdateDownloader.queryProgress(this@UpdatesActivity, id)
@@ -242,24 +254,39 @@ class UpdatesActivity : ActionBarActivity() {
                         // right now, so speed/ETA would be meaningless.
                         val speedText = if (progress.statusText == null && progress.totalBytes > 0) {
                             val now = SystemClock.elapsedRealtime()
-                            if (lastSampleAt != 0L) {
-                                val deltaMs = now - lastSampleAt
-                                val deltaBytes = progress.downloadedBytes - lastSampleBytes
-                                if (deltaMs > 0 && deltaBytes >= 0) {
-                                    val instantBps = deltaBytes * 1000.0 / deltaMs
-                                    smoothedBps =
-                                        if (smoothedBps <= 0.0) instantBps
-                                        else smoothedBps * 0.7 + instantBps * 0.3
-                                }
+                            samples.addLast(now to progress.downloadedBytes)
+                            while (samples.isNotEmpty() && now - samples.first().first > windowMs) {
+                                samples.removeFirst()
                             }
-                            lastSampleAt = now
-                            lastSampleBytes = progress.downloadedBytes
-                            formatSpeedAndEta(smoothedBps, progress.totalBytes - progress.downloadedBytes)
+                            val (oldestAt, oldestBytes) = samples.first()
+                            val deltaMs = now - oldestAt
+                            val deltaBytes = progress.downloadedBytes - oldestBytes
+                            val windowBps = if (deltaMs > 200 && deltaBytes >= 0) {
+                                deltaBytes * 1000.0 / deltaMs
+                            } else 0.0
+
+                            val elapsedSincePoll = if (lastPollAt != 0L) (now - lastPollAt) / 1000.0 else 0.0
+                            lastPollAt = now
+                            if (windowBps > 0.0) {
+                                val remainingBytes = progress.totalBytes - progress.downloadedBytes
+                                val rawEtaSeconds = remainingBytes / windowBps
+                                val current = displayedEtaSeconds
+                                displayedEtaSeconds = if (current == null) {
+                                    rawEtaSeconds
+                                } else {
+                                    val ticked = (current - elapsedSincePoll).coerceAtLeast(0.0)
+                                    ticked + (rawEtaSeconds - ticked) * 0.25
+                                }
+                                formatSpeedAndEta(windowBps, displayedEtaSeconds!!)
+                            } else {
+                                null
+                            }
                         } else {
-                            // Not actively running — reset so a stale rate doesn't carry over
-                            // into the next running stretch (e.g. after a pause/resume).
-                            lastSampleAt = 0L
-                            smoothedBps = 0.0
+                            // Not actively running — reset so a stale rate/countdown doesn't
+                            // carry over into the next running stretch (e.g. after pause/resume).
+                            samples.clear()
+                            displayedEtaSeconds = null
+                            lastPollAt = 0L
                             null
                         }
                         uiState = uiState.copy(
@@ -302,10 +329,12 @@ class UpdatesActivity : ActionBarActivity() {
         }
     }
 
-    private fun formatSpeedAndEta(bytesPerSecond: Double, remainingBytes: Long): String? {
+    private fun formatSpeedAndEta(bytesPerSecond: Double, etaSecondsRaw: Double): String? {
         if (bytesPerSecond <= 0.0) return null
         val speedText = Formatter.formatShortFileSize(this, bytesPerSecond.toLong()) + "/s"
-        val etaSeconds = (remainingBytes / bytesPerSecond).toLong().coerceAtLeast(0)
+        // Rounded, not truncated: truncation always displays a smaller number than reality,
+        // which reads as the countdown "sticking" a beat longer than it should before dropping.
+        val etaSeconds = etaSecondsRaw.roundToLong().coerceAtLeast(0)
         val etaText = when {
             etaSeconds < 60 -> "${etaSeconds}s left"
             etaSeconds < 3600 -> "${etaSeconds / 60}m ${etaSeconds % 60}s left"
