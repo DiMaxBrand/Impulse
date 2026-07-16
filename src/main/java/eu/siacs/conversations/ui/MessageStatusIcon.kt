@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,7 +23,9 @@ import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.util.lerp
+import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Message
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -95,6 +98,12 @@ fun MessageStatusIcon(
 ) {
     val phase = checkmarkPhaseForStatus(status) ?: return
     var currentPhase by remember { mutableStateOf(phase) }
+    // Only true while an actual morph is in flight. At rest — the vast majority of the time,
+    // for every message that isn't mid-transition right now — this renders the real bundled
+    // drawable instead of the Canvas, so any tiny residual mismatch between the measured
+    // geometry and the true vector asset can't linger, and idle messages stop paying for a
+    // per-frame Canvas redraw they don't need.
+    var isAnimating by remember { mutableStateOf(false) }
 
     val reposition = remember { Animatable(if (phase == CheckmarkPhase.WAITING) 0f else 1f) }
     val expand1 = remember { Animatable(if (phase == CheckmarkPhase.WAITING) 0f else 1f) }
@@ -111,15 +120,19 @@ fun MessageStatusIcon(
         if (from == to) return@LaunchedEffect
         when {
             from == CheckmarkPhase.WAITING && to == CheckmarkPhase.SENT -> {
+                isAnimating = true
                 reposition.animateTo(1f, tween(180, easing = StandardEasing))
                 coroutineScope {
                     launch { expand1.animateTo(1f, tween(240, easing = StandardEasing)) }
                     launch { expand2.animateTo(1f, tween(240, delayMillis = 90, easing = StandardEasing)) }
                 }
             }
-            from == CheckmarkPhase.SENT && to == CheckmarkPhase.DELIVERED ->
+            from == CheckmarkPhase.SENT && to == CheckmarkPhase.DELIVERED -> {
+                isAnimating = true
                 doubleSlide.animateTo(1f, tween(260, easing = StandardEasing))
+            }
             from == CheckmarkPhase.DELIVERED && to == CheckmarkPhase.READ -> {
+                isAnimating = true
                 coroutineScope {
                     launch {
                         bounceScale.animateTo(1.32f, tween(160, easing = StandardEasing))
@@ -134,7 +147,8 @@ fun MessageStatusIcon(
             else -> {
                 // Any other jump (skipped a step, went backwards, or this composable just
                 // mounted mid-story) — snap straight to the target rather than replaying a
-                // multi-second morph the user never saw the start of.
+                // multi-second morph the user never saw the start of. Never worth animating,
+                // so isAnimating stays false and this renders the static drawable throughout.
                 reposition.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
                 expand1.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
                 expand2.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
@@ -143,6 +157,23 @@ fun MessageStatusIcon(
             }
         }
         currentPhase = to
+        isAnimating = false
+    }
+
+    if (!isAnimating) {
+        val (staticDrawable, staticColor) = when (currentPhase) {
+            CheckmarkPhase.WAITING -> R.drawable.ic_more_horiz_24dp to grayColor
+            CheckmarkPhase.SENT -> R.drawable.ic_done_24dp to grayColor
+            CheckmarkPhase.DELIVERED -> R.drawable.ic_done_all_24dp to grayColor
+            CheckmarkPhase.READ -> R.drawable.ic_done_all_bold_24dp to successColor
+        }
+        Icon(
+            painter = painterResource(staticDrawable),
+            contentDescription = null,
+            tint = staticColor,
+            modifier = modifier,
+        )
+        return
     }
 
     Canvas(modifier = modifier) {
