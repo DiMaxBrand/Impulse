@@ -12,8 +12,9 @@ object Config {
     const val QUICK_LOG = false
 
     @JvmField val BUG_REPORTS: Jid = Jid.of("support@on-chat.ru")
-    // Official Impulse announcements channel — auto-joined for every new account on its first
-    // successful login (see BindProcessor). Not retroactively joined for existing accounts.
+    // Official Impulse announcements channel — auto-joined once per account, new or existing,
+    // the first time it connects after this feature shipped (see BindProcessor's
+    // OPTION_NEWS_CHANNEL_JOINED handling). Does not re-join if the user later leaves.
     @JvmField val NEWS_CHANNEL: Jid = Jid.of("news@conference.on-chat.ru")
     @JvmField val HELP: Uri = Uri.parse("https://help.conversations.im")
     const val MAGIC_CREATE_DOMAIN = "conversations.im"

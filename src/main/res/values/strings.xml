@@ -476,6 +476,9 @@
     <string name="download_failed_could_not_establish_tls">Could not establish TLS connection</string>
     <string name="download_failed_could_not_write_file">Download failed: Could not write file</string>
     <string name="download_failed_invalid_file">Download failed: Invalid file</string>
+    <string name="download_eta_seconds">%1$ds left</string>
+    <string name="download_eta_minutes_seconds">%1$dm %2$ds left</string>
+    <string name="download_eta_hours_minutes">%1$dh %2$dm left</string>
     <string name="account_status_tor_unavailable">Tor network unavailable</string>
     <string name="account_status_bind_failure">Bind failure</string>
     <string name="account_status_host_unknown">Not responsible for domain</string>

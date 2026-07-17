@@ -336,9 +336,15 @@ class UpdatesActivity : ActionBarActivity() {
         // which reads as the countdown "sticking" a beat longer than it should before dropping.
         val etaSeconds = etaSecondsRaw.roundToLong().coerceAtLeast(0)
         val etaText = when {
-            etaSeconds < 60 -> "${etaSeconds}s left"
-            etaSeconds < 3600 -> "${etaSeconds / 60}m ${etaSeconds % 60}s left"
-            else -> "${etaSeconds / 3600}h ${(etaSeconds % 3600) / 60}m left"
+            etaSeconds < 60 -> getString(R.string.download_eta_seconds, etaSeconds)
+            etaSeconds < 3600 ->
+                getString(R.string.download_eta_minutes_seconds, etaSeconds / 60, etaSeconds % 60)
+            else ->
+                getString(
+                    R.string.download_eta_hours_minutes,
+                    etaSeconds / 3600,
+                    (etaSeconds % 3600) / 60,
+                )
         }
         return "$speedText · $etaText"
     }

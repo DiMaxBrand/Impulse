@@ -49,7 +49,14 @@ public class BindProcessor extends XmppConnection.Delegate implements Runnable {
                 account.setOption(
                         Account.OPTION_HTTP_UPLOAD_AVAILABLE,
                         getManager(HttpUploadManager.class).isAvailableForSize(0));
-        if (loggedInSuccessfully || gainedFeature || sosModified) {
+        // Separate from loggedInSuccessfully on purpose: that flag is already permanently set on
+        // every account that existed before this feature shipped, so gating the join on it would
+        // only ever catch brand-new accounts. OPTION_NEWS_CHANNEL_JOINED starts unset for
+        // everyone — new and existing alike — so this fires exactly once per account regardless
+        // of when it was created, then never again (including not re-joining if the user later
+        // leaves the channel, same one-shot-flag pattern as loggedInSuccessfully itself).
+        final boolean joinNewsChannel = account.setOption(Account.OPTION_NEWS_CHANNEL_JOINED, true);
+        if (loggedInSuccessfully || gainedFeature || sosModified || joinNewsChannel) {
             service.databaseBackend.updateAccount(account);
         }
 
@@ -62,10 +69,9 @@ public class BindProcessor extends XmppConnection.Delegate implements Runnable {
                                 + ": display name wasn't empty on first log in. publishing");
                 getManager(NickManager.class).publish(displayName);
             }
-            // Auto-join the official Impulse announcements channel on first-ever login — same
-            // join+bookmark pattern ChannelDiscoveryActivity uses for a manual channel join.
-            // loggedInSuccessfully is true only once per account's lifetime, so this doesn't
-            // re-run (or re-join if the user later leaves) on every reconnect.
+        }
+        if (joinNewsChannel) {
+            // Same join+bookmark pattern ChannelDiscoveryActivity uses for a manual channel join.
             final var newsConversation =
                     service.findOrCreateConversation(
                             account, Config.NEWS_CHANNEL, true, true, false);

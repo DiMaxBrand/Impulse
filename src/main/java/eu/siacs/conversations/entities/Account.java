@@ -65,6 +65,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
     public static final int OPTION_FIXED_USERNAME = 9;
     public static final int OPTION_QUICKSTART_AVAILABLE = 10;
     public static final int OPTION_SOFT_DISABLED = 11;
+    public static final int OPTION_NEWS_CHANNEL_JOINED = 12;
 
     private static final String KEY_PGP_SIGNATURE = "pgp_signature";
     private static final String KEY_PGP_ID = "pgp_id";

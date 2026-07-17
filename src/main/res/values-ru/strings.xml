@@ -998,6 +998,9 @@
     <string name="pref_autojoin_summary">Устанавливать флаг \"автоприсоединение\" при входе и выходе из группового чата, и реагировать на изменения от других клиентов</string>
     <string name="search_group_chats">Поиск конференций</string>
     <string name="download_failed_invalid_file">Загрузка не выполнена: файл испорчен</string>
+    <string name="download_eta_seconds">Осталось %1$d с</string>
+    <string name="download_eta_minutes_seconds">Осталось %1$d мин %2$d с</string>
+    <string name="download_eta_hours_minutes">Осталось %1$d ч %2$d мин</string>
     <string name="rtp_state_content_add_video">Перейти на видеовызов\?</string>
     <string name="outgoing_call_duration_timestamp" formatted="false">Исходящий вызов (%s) · %s</string>
     <string name="incoming_call_duration_timestamp" formatted="false">Входящий вызов (%s) · %s</string>
