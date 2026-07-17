@@ -172,8 +172,38 @@ public class EditAccountActivity extends OmemoActivity
     private MiniUri.Xmpp pendingUri = null;
     private boolean mUseTor;
     private String mLastKnownPhoneNumber;
+    private boolean mPhoneNumberHintOfferedOnCreation = false;
     private ActivityEditAccountBinding binding;
-    private final ActivityResultLauncher<IntentSenderRequest> phoneNumberHintLauncher =
+
+    /**
+     * Used by the single "Edit" action on an already-created account: on a picked number, publishes
+     * it right away; on dismiss/failure, falls back to manual entry.
+     */
+    private final ActivityResultLauncher<IntentSenderRequest> phoneNumberHintLauncherForEdit =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartIntentSenderForResult(),
+                    result -> {
+                        final Intent data = result.getData();
+                        if (data == null) {
+                            openPhoneNumberQuickEdit();
+                            return;
+                        }
+                        try {
+                            final String phoneNumber =
+                                    Identity.getSignInClient(this).getPhoneNumberFromIntent(data);
+                            setPhoneNumber(phoneNumber);
+                        } catch (final Exception e) {
+                            Log.d(Config.LOGTAG, "could not read phone number hint result", e);
+                            openPhoneNumberQuickEdit();
+                        }
+                    });
+
+    /**
+     * Used only by the account-creation-time field: a picked number just fills the input, since
+     * there is nothing to publish to yet; on dismiss/failure it does nothing, leaving the field
+     * focused for manual typing.
+     */
+    private final ActivityResultLauncher<IntentSenderRequest> phoneNumberHintLauncherForCreation =
             registerForActivityResult(
                     new ActivityResultContracts.StartIntentSenderForResult(),
                     result -> {
@@ -184,11 +214,12 @@ public class EditAccountActivity extends OmemoActivity
                         try {
                             final String phoneNumber =
                                     Identity.getSignInClient(this).getPhoneNumberFromIntent(data);
-                            setPhoneNumber(phoneNumber);
+                            binding.phoneNumberInput.setText(phoneNumber);
                         } catch (final Exception e) {
                             Log.d(Config.LOGTAG, "could not read phone number hint result", e);
                         }
                     });
+
     private final OnClickListener mSaveButtonClickListener =
             new OnClickListener() {
 
@@ -734,8 +765,13 @@ public class EditAccountActivity extends OmemoActivity
         }
         this.binding.actionEditYourName.setOnClickListener(this::onEditYourNameClicked);
         this.binding.actionEditPhoneNumber.setOnClickListener(this::onEditPhoneNumberClicked);
-        this.binding.actionAutofillPhoneNumber.setOnClickListener(
-                this::onAutofillPhoneNumberClicked);
+        this.binding.phoneNumberInput.setOnFocusChangeListener(
+                (v, hasFocus) -> {
+                    if (hasFocus && !mPhoneNumberHintOfferedOnCreation) {
+                        mPhoneNumberHintOfferedOnCreation = true;
+                        offerPhoneNumberHint(phoneNumberHintLauncherForCreation);
+                    }
+                });
         this.binding.scanButton.setOnClickListener(
                 (v) -> {
                     requestPermissionAndScanQrCode();
@@ -757,7 +793,15 @@ public class EditAccountActivity extends OmemoActivity
                 true);
     }
 
+    /**
+     * The one "Edit" action for an already-created account's phone number: offers the dismissible
+     * device-number picker first, falling back to manual entry if it's dismissed or unavailable.
+     */
     private void onEditPhoneNumberClicked(View view) {
+        offerPhoneNumberHint(phoneNumberHintLauncherForEdit);
+    }
+
+    private void openPhoneNumberQuickEdit() {
         quickEdit(
                 mLastKnownPhoneNumber,
                 R.string.your_phone_number,
@@ -769,17 +813,22 @@ public class EditAccountActivity extends OmemoActivity
                 true);
     }
 
-    private void onAutofillPhoneNumberClicked(View view) {
+    private void offerPhoneNumberHint(final ActivityResultLauncher<IntentSenderRequest> launcher) {
         final var request = GetPhoneNumberHintIntentRequest.builder().build();
         Identity.getSignInClient(this)
                 .getPhoneNumberHintIntent(request)
                 .addOnSuccessListener(
                         result ->
-                                phoneNumberHintLauncher.launch(
+                                launcher.launch(
                                         new IntentSenderRequest.Builder(result.getIntentSender())
                                                 .build()))
                 .addOnFailureListener(
-                        e -> Log.d(Config.LOGTAG, "could not get phone number hint intent", e));
+                        e -> {
+                            Log.d(Config.LOGTAG, "could not get phone number hint intent", e);
+                            if (launcher == phoneNumberHintLauncherForEdit) {
+                                openPhoneNumberQuickEdit();
+                            }
+                        });
     }
 
     /**
