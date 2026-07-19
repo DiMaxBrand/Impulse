@@ -13,6 +13,8 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
@@ -3970,7 +3972,7 @@ private fun RecordingBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
     val context = LocalContext.current
@@ -4040,6 +4042,10 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         lastActiveRecording = recording
     }
 
+    // SharedTransitionLayout wraps the whole bar so the attach (paperclip) icon can share
+    // identity between its collapsed toggle position and its slot in the expanded toolbar
+    // below, instead of the two independently fading in/out as unrelated icons.
+    SharedTransitionLayout {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column {
         ComposerBanner(state, listener)
@@ -4181,6 +4187,11 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                                     painter = painterResource(R.drawable.ic_attach_file_24dp),
                                     contentDescription =
                                         stringResource(R.string.attachment_choice_file),
+                                    modifier =
+                                        Modifier.sharedElement(
+                                            rememberSharedContentState(key = "attach_paperclip"),
+                                            animatedVisibilityScope = this@AnimatedContent,
+                                        ),
                                 )
                             }
                             IconButton(onClick = { attachMenuOpen = false }) {
@@ -4196,6 +4207,11 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                         Icon(
                             painter = painterResource(R.drawable.ic_attach_file_24dp),
                             contentDescription = stringResource(R.string.attach_file),
+                            modifier =
+                                Modifier.sharedElement(
+                                    rememberSharedContentState(key = "attach_paperclip"),
+                                    animatedVisibilityScope = this@AnimatedContent,
+                                ),
                         )
                     }
                 }
@@ -4436,4 +4452,5 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         } // end AnimatedContent content
         }
     }
+    } // end SharedTransitionLayout
 }
