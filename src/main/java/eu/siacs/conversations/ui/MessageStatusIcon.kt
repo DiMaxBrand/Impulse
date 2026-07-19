@@ -44,22 +44,34 @@ private val StandardEasing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
  * of just stopping. */
 private val StemRetractEasing = CubicBezierEasing(0.1f, 0.7f, 0.05f, 1f)
 
-/** The statuses that form one continuous story worth morphing between — waiting dots that either
- * turn into an upload glyph (a file transfer starting) or a checkmark (a text message going out),
- * the checkmark growing a second one, then turning green — as opposed to error/p2p icons, which
- * are unrelated glyphs a morph wouldn't make sense for. */
-enum class CheckmarkPhase { WAITING, UPLOADING, SENT, DELIVERED, READ }
+/** The statuses that form one continuous story worth morphing between — waiting dots that turn
+ * into an upload glyph (a file transfer starting), a P2P offer glyph (a direct transfer being
+ * proposed), or a checkmark (a text message going out); the checkmark growing a second one, then
+ * turning green; an upload turning into a cancel glyph if stopped. Appended OFFERED/CANCELLED
+ * after READ on purpose — the WAITING..READ ordinal ordering is load-bearing for the `>=`
+ * comparisons in the catch-all snap branch below, and these two aren't part of that chain. */
+enum class CheckmarkPhase { WAITING, UPLOADING, SENT, DELIVERED, READ, OFFERED, CANCELLED }
 
-fun checkmarkPhaseForStatus(status: Int, transferable: Transferable?): CheckmarkPhase? = when (status) {
+fun checkmarkPhaseForStatus(
+    status: Int,
+    transferable: Transferable?,
+    errorMessage: String?,
+): CheckmarkPhase? = when (status) {
     Message.STATUS_WAITING -> CheckmarkPhase.WAITING
     // STATUS_UNSEND covers two different things: a file genuinely mid-upload (transferable !=
     // null — gets its own dots-into-upload-icon morph) and a text message written to the socket
     // but not yet stream-management-acknowledged, which reads as "still sending" to a user and
     // isn't worth a distinct visual from STATUS_WAITING, so it just continues the dots.
     Message.STATUS_UNSEND -> if (transferable != null) CheckmarkPhase.UPLOADING else CheckmarkPhase.WAITING
+    Message.STATUS_OFFERED -> CheckmarkPhase.OFFERED
     Message.STATUS_SEND -> CheckmarkPhase.SENT
     Message.STATUS_SEND_RECEIVED -> CheckmarkPhase.DELIVERED
     Message.STATUS_SEND_DISPLAYED -> CheckmarkPhase.READ
+    // Only the user-cancelled case joins the morph story — a generic send/upload/jingle error
+    // isn't reachable from a single consistent prior glyph the way a deliberate cancel always is
+    // (dots, the upload arrow, or the P2P glyph), so it keeps the plain crossfade fallback.
+    Message.STATUS_SEND_FAILED ->
+        if (errorMessage == Message.ERROR_MESSAGE_CANCELLED) CheckmarkPhase.CANCELLED else null
     else -> null
 }
 
@@ -102,6 +114,31 @@ private val TRAY_RIGHT_TOP = Offset(19f, 16f)
 // same "grow from a point" trick the dots use, so the reveal reads as one consistent language.
 private val TRAY_COLLAPSE_ORIGIN = Offset(12f, 17.5f)
 
+// ic_p2p_24dp: two phone-shaped brackets, diagonally offset (measured: the right phone's bounding
+// box sits 80/960 lower than the left's, not side by side) — and, conveniently, the icon already
+// has its own 3 small transfer dots built into the artwork, sitting almost exactly where the
+// waiting dots already are, so there's a real (not invented) 3-dot anchor to slide onto instead
+// of forcing a mapping onto the two phones directly.
+private val P2P_DOT1 = Offset(8f, 12f)
+private val P2P_DOT2 = Offset(12f, 12f)
+private val P2P_DOT3 = Offset(16f, 12f)
+private const val P2P_DOT_RADIUS = 1f
+private val PHONE_LEFT_TOP_LEFT = Offset(2f, 2f)
+private val PHONE_LEFT_BOTTOM_RIGHT = Offset(11f, 20f)
+private val PHONE_RIGHT_TOP_LEFT = Offset(13f, 4f)
+private val PHONE_RIGHT_BOTTOM_RIGHT = Offset(22f, 22f)
+private const val PHONE_CORNER_RADIUS = 2f
+
+// ic_cancel_24dp: an X of two crossing round-capped/round-joined strokes inside a ring, centerline
+// recovered the same way as the checkmark (averaging the points flanking each rounded tip); comes
+// out to a stroke width matching CHECK_STROKE_WIDTH closely enough to reuse it rather than add a
+// near-duplicate constant, same as the upload chevron did.
+private val CANCEL_CENTER = Offset(12f, 12f)
+private val CANCEL_TOP_LEFT = Offset(8.4f, 8.4f)
+private val CANCEL_TOP_RIGHT = Offset(15.6f, 8.4f)
+private val CANCEL_BOTTOM_LEFT = Offset(8.4f, 15.6f)
+private val CANCEL_BOTTOM_RIGHT = Offset(15.6f, 15.6f)
+
 /**
  * Draws the waiting/sent/delivered/read sequence as one continuously-morphing glyph instead of
  * swapping between four unrelated icons:
@@ -132,11 +169,12 @@ private val TRAY_COLLAPSE_ORIGIN = Offset(12f, 17.5f)
 fun MessageStatusIcon(
     status: Int,
     transferable: Transferable?,
+    errorMessage: String?,
     grayColor: Color,
     successColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val phase = checkmarkPhaseForStatus(status, transferable) ?: return
+    val phase = checkmarkPhaseForStatus(status, transferable, errorMessage) ?: return
     var currentPhase by remember { mutableStateOf(phase) }
     // Only true while an actual morph is in flight. At rest — the vast majority of the time,
     // for every message that isn't mid-transition right now — this renders the real bundled
@@ -161,6 +199,19 @@ fun MessageStatusIcon(
     // Only ever driven by the uploading -> sent transition below — slides the chevron's own
     // points directly onto the checkmark's, never passing back through the dot positions.
     val chevronToCheck = remember { Animatable(0f) }
+    // 0 = dots at their canonical waiting-row positions, 1 = at ic_p2p_24dp's own transfer-dot
+    // positions (and shrunk to that icon's smaller dot radius). Only touched by waiting <-> p2p.
+    val p2pDotShift = remember { Animatable(0f) }
+    // 0 = phone brackets invisible, 1 = fully grown in, at their own final size. Only touched by
+    // waiting <-> p2p (in) and p2p -> uploading (out).
+    val phoneGrow = remember { Animatable(0f) }
+    // Only touched by uploading -> cancelled: 0 = chevron's three points sit at their own
+    // (possibly already-collapsed) positions, 1 = all three have merged into a single point at
+    // the cancel-X's own center.
+    val arrowMergeToCenter = remember { Animatable(0f) }
+    // Only touched by uploading -> cancelled: the X's four strokes growing outward from that
+    // merged center point once it's arrived.
+    val cancelCrossGrow = remember { Animatable(0f) }
 
     // Keyed on `phase` this used to cancel and restart mid-animation on every status change —
     // status can flip more than once within a single morph's duration (e.g. an upload finishing
@@ -227,6 +278,46 @@ fun MessageStatusIcon(
                     stemProgress.animateTo(0f, tween(260, easing = StemRetractEasing))
                     chevronToCheck.animateTo(1f, tween(240, easing = StandardEasing))
                 }
+                from == CheckmarkPhase.WAITING && to == CheckmarkPhase.OFFERED -> {
+                    isAnimating = true
+                    // The dots don't need to invent a mapping onto two phones — ic_p2p_24dp
+                    // already has its own 3 transfer dots sitting almost exactly where these
+                    // already are, so they just slide the short remaining distance while the two
+                    // phone brackets zoom in on either side of them.
+                    p2pDotShift.animateTo(1f, tween(200, easing = StandardEasing))
+                    phoneGrow.animateTo(1f, tween(260, easing = StandardEasing))
+                }
+                from == CheckmarkPhase.OFFERED && to == CheckmarkPhase.UPLOADING -> {
+                    isAnimating = true
+                    // Zoom the two phones back out, let the dots settle onto their exact
+                    // canonical waiting positions, then hand off to the ordinary
+                    // waiting -> uploading sequence completely unchanged.
+                    phoneGrow.animateTo(0f, tween(220, easing = StandardEasing))
+                    p2pDotShift.animateTo(0f, tween(200, easing = StandardEasing))
+                    reposition.animateTo(1f, tween(180, easing = StandardEasing))
+                    coroutineScope {
+                        launch { expand1.animateTo(1f, tween(240, easing = StandardEasing)) }
+                        launch { expand2.animateTo(1f, tween(240, delayMillis = 90, easing = StandardEasing)) }
+                    }
+                    stemProgress.animateTo(1f, tween(220, easing = StandardEasing))
+                    trayProgress.animateTo(1f, tween(500, easing = StandardEasing))
+                }
+                from == CheckmarkPhase.UPLOADING && to == CheckmarkPhase.CANCELLED -> {
+                    isAnimating = true
+                    // Retract the tray/stem/arms first (same motion as uploading -> waiting, just
+                    // not continuing on into dots): that leaves the chevron's three points sitting
+                    // at their own three corners. Those three then merge into one point at the
+                    // cancel-X's own center, and four strokes grow outward from it — the arrow
+                    // quite literally turning into the cross, never passing through dots.
+                    trayProgress.animateTo(0f, tween(200, easing = StandardEasing))
+                    stemProgress.animateTo(0f, tween(260, easing = StemRetractEasing))
+                    coroutineScope {
+                        launch { expand2.animateTo(0f, tween(180, easing = StandardEasing)) }
+                        launch { expand1.animateTo(0f, tween(180, delayMillis = 80, easing = StandardEasing)) }
+                    }
+                    arrowMergeToCenter.animateTo(1f, tween(180, easing = StandardEasing))
+                    cancelCrossGrow.animateTo(1f, tween(260, easing = StandardEasing))
+                }
                 from == CheckmarkPhase.SENT && to == CheckmarkPhase.DELIVERED -> {
                     isAnimating = true
                     doubleSlide.animateTo(1f, tween(260, easing = StandardEasing))
@@ -271,6 +362,8 @@ fun MessageStatusIcon(
             CheckmarkPhase.SENT -> R.drawable.ic_done_24dp to grayColor
             CheckmarkPhase.DELIVERED -> R.drawable.ic_done_all_24dp to grayColor
             CheckmarkPhase.READ -> R.drawable.ic_done_all_bold_24dp to successColor
+            CheckmarkPhase.OFFERED -> R.drawable.ic_p2p_24dp to grayColor
+            CheckmarkPhase.CANCELLED -> R.drawable.ic_cancel_24dp to grayColor
         }
         Icon(
             painter = painterResource(staticDrawable),
@@ -282,12 +375,68 @@ fun MessageStatusIcon(
     }
 
     // currentPhase only flips to the new value once its transition finishes, so during a
-    // reverse (uploading -> waiting) animation `phase` is already WAITING while `currentPhase`
-    // is still UPLOADING for the whole thing — check both, not just the incoming target.
-    if (phase == CheckmarkPhase.UPLOADING || currentPhase == CheckmarkPhase.UPLOADING) {
+    // reverse (e.g. uploading -> waiting) animation `phase` is already at the target while
+    // `currentPhase` is still at the origin for the whole thing — check both, not just the
+    // incoming target. OFFERED joins this same branch since waiting <-> p2p and p2p -> uploading
+    // both live here too (the p2p dots settle onto the exact same canonical positions the
+    // chevron already starts from, so the two families share one Canvas block).
+    val inArrowFamily = phase == CheckmarkPhase.UPLOADING || currentPhase == CheckmarkPhase.UPLOADING ||
+        phase == CheckmarkPhase.OFFERED || currentPhase == CheckmarkPhase.OFFERED
+    if (inArrowFamily) {
         Canvas(modifier = modifier) {
             val s = size.minDimension / 24f
-            val strokeW = lerp(DOT_RADIUS * 2f, CHECK_STROKE_WIDTH, expand1.value)
+
+            if (p2pDotShift.value > 0f || phoneGrow.value > 0f) {
+                // P2P family: dots sliding onto (or off of) ic_p2p_24dp's own transfer dots,
+                // with the two phone brackets zooming in/out on either side of them. Mutually
+                // exclusive with the chevron drawing below in time — these two progresses are
+                // always driven to exactly 0 before reposition/expand1/expand2 ever move.
+                val dotRadius = lerp(DOT_RADIUS, P2P_DOT_RADIUS, p2pDotShift.value)
+                val d0 = androidx.compose.ui.geometry.lerp(DOT1, P2P_DOT1, p2pDotShift.value)
+                val d1 = androidx.compose.ui.geometry.lerp(DOT2, P2P_DOT2, p2pDotShift.value)
+                val d2 = androidx.compose.ui.geometry.lerp(DOT3, P2P_DOT3, p2pDotShift.value)
+                drawCircle(color = grayColor, radius = dotRadius * s, center = d0 * s)
+                drawCircle(color = grayColor, radius = dotRadius * s, center = d1 * s)
+                drawCircle(color = grayColor, radius = dotRadius * s, center = d2 * s)
+
+                if (phoneGrow.value > 0f) {
+                    val phoneStroke = androidx.compose.ui.graphics.drawscope.Stroke(width = CHECK_STROKE_WIDTH * s)
+                    val cornerRadius =
+                        androidx.compose.ui.geometry.CornerRadius(PHONE_CORNER_RADIUS * s, PHONE_CORNER_RADIUS * s)
+                    scale(phoneGrow.value, pivot = P2P_DOT1 * s) {
+                        drawRoundRect(
+                            color = grayColor,
+                            topLeft = PHONE_LEFT_TOP_LEFT * s,
+                            size = androidx.compose.ui.geometry.Size(
+                                (PHONE_LEFT_BOTTOM_RIGHT.x - PHONE_LEFT_TOP_LEFT.x) * s,
+                                (PHONE_LEFT_BOTTOM_RIGHT.y - PHONE_LEFT_TOP_LEFT.y) * s,
+                            ),
+                            cornerRadius = cornerRadius,
+                            style = phoneStroke,
+                        )
+                    }
+                    scale(phoneGrow.value, pivot = P2P_DOT3 * s) {
+                        drawRoundRect(
+                            color = grayColor,
+                            topLeft = PHONE_RIGHT_TOP_LEFT * s,
+                            size = androidx.compose.ui.geometry.Size(
+                                (PHONE_RIGHT_BOTTOM_RIGHT.x - PHONE_RIGHT_TOP_LEFT.x) * s,
+                                (PHONE_RIGHT_BOTTOM_RIGHT.y - PHONE_RIGHT_TOP_LEFT.y) * s,
+                            ),
+                            cornerRadius = cornerRadius,
+                            style = phoneStroke,
+                        )
+                    }
+                }
+            } else {
+
+            // Base stroke width thins from the dot's own diameter (expand1 == 0) down to the
+            // checkmark/chevron's real width as expand1 grows — same as always. arrowMergeToCenter
+            // then thins it the rest of the way to that same final width regardless of expand1,
+            // since uploading -> cancelled retracts the chevron arms (parking strokeW back at the
+            // fat dot width) before merging into the X, whose strokes must be thin, not fat.
+            val baseStrokeW = lerp(DOT_RADIUS * 2f, CHECK_STROKE_WIDTH, expand1.value)
+            val strokeW = lerp(baseStrokeW, CHECK_STROKE_WIDTH, arrowMergeToCenter.value)
 
             val chevronPos0 = androidx.compose.ui.geometry.lerp(DOT1, CHEVRON_LEFT, reposition.value)
             val chevronPos1 = androidx.compose.ui.geometry.lerp(DOT2, CHEVRON_APEX, reposition.value)
@@ -295,9 +444,15 @@ fun MessageStatusIcon(
             // Only ever driven away from 0 by the uploading -> sent transition, which slides the
             // chevron's own two strokes straight into the checkmark's — no dots reappearing in
             // between, since that transition never touches reposition/the dot positions at all.
-            val pos0 = androidx.compose.ui.geometry.lerp(chevronPos0, CHECK_P0, chevronToCheck.value)
-            val pos1 = androidx.compose.ui.geometry.lerp(chevronPos1, CHECK_P1, chevronToCheck.value)
-            val pos2 = androidx.compose.ui.geometry.lerp(chevronPos2, CHECK_P2, chevronToCheck.value)
+            val checkPos0 = androidx.compose.ui.geometry.lerp(chevronPos0, CHECK_P0, chevronToCheck.value)
+            val checkPos1 = androidx.compose.ui.geometry.lerp(chevronPos1, CHECK_P1, chevronToCheck.value)
+            val checkPos2 = androidx.compose.ui.geometry.lerp(chevronPos2, CHECK_P2, chevronToCheck.value)
+            // Only ever driven away from 0 by uploading -> cancelled: the chevron's three points
+            // (wherever chevronToCheck currently has them, ordinarily their own three corners)
+            // converging onto the cancel-X's single center point.
+            val pos0 = androidx.compose.ui.geometry.lerp(checkPos0, CANCEL_CENTER, arrowMergeToCenter.value)
+            val pos1 = androidx.compose.ui.geometry.lerp(checkPos1, CANCEL_CENTER, arrowMergeToCenter.value)
+            val pos2 = androidx.compose.ui.geometry.lerp(checkPos2, CANCEL_CENTER, arrowMergeToCenter.value)
 
             // Chevron: identical technique to the checkmark's two-segment growth.
             drawCircle(color = grayColor, radius = strokeW / 2f * s, center = pos2 * s)
@@ -346,6 +501,22 @@ fun MessageStatusIcon(
                 drawLine(grayColor, trayLeftTop * s, trayLeftBottom * s, strokeW * s, cap = StrokeCap.Round)
                 drawLine(grayColor, trayLeftBottom * s, trayRightBottom * s, strokeW * s, cap = StrokeCap.Round)
                 drawLine(grayColor, trayRightBottom * s, trayRightTop * s, strokeW * s, cap = StrokeCap.Round)
+            }
+
+            // Cancel cross: once the chevron's three points have merged into the X's center
+            // (arrowMergeToCenter reaching 1), four strokes grow outward from it to the X's own
+            // four tips — the arrow having quite literally turned into the cross.
+            if (cancelCrossGrow.value > 0f) {
+                val armStrokeW = CHECK_STROKE_WIDTH * s
+                val tl = androidx.compose.ui.geometry.lerp(CANCEL_CENTER, CANCEL_TOP_LEFT, cancelCrossGrow.value)
+                val tr = androidx.compose.ui.geometry.lerp(CANCEL_CENTER, CANCEL_TOP_RIGHT, cancelCrossGrow.value)
+                val bl = androidx.compose.ui.geometry.lerp(CANCEL_CENTER, CANCEL_BOTTOM_LEFT, cancelCrossGrow.value)
+                val br = androidx.compose.ui.geometry.lerp(CANCEL_CENTER, CANCEL_BOTTOM_RIGHT, cancelCrossGrow.value)
+                drawLine(grayColor, CANCEL_CENTER * s, tl * s, armStrokeW, cap = StrokeCap.Round)
+                drawLine(grayColor, CANCEL_CENTER * s, tr * s, armStrokeW, cap = StrokeCap.Round)
+                drawLine(grayColor, CANCEL_CENTER * s, bl * s, armStrokeW, cap = StrokeCap.Round)
+                drawLine(grayColor, CANCEL_CENTER * s, br * s, armStrokeW, cap = StrokeCap.Round)
+            }
             }
         }
         return

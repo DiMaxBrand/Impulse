@@ -2995,16 +2995,19 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         }
         if (outgoing && message.type != Message.TYPE_RTP_SESSION) {
             val transferable = message.transferable
-            // Waiting/uploading/sent/delivered/read all morph into each other continuously — see
-            // MessageStatusIcon for the choreography (including how STATUS_UNSEND is split
-            // between "still sending text" and "file genuinely mid-upload"). Only the unrelated
-            // error/p2p glyphs fall through to a plain crossfade below.
-            val checkmarkPhase = checkmarkPhaseForStatus(status, transferable)
+            // Waiting/uploading/p2p-offered/sent/delivered/read all morph into each other
+            // continuously — see MessageStatusIcon for the choreography (including how
+            // STATUS_UNSEND is split between "still sending text" and "file genuinely
+            // mid-upload", and how only a user-initiated cancel joins the morph story, not a
+            // generic send/upload error). Only that generic error glyph falls through to a plain
+            // crossfade below.
+            val checkmarkPhase = checkmarkPhaseForStatus(status, transferable, message.errorMessage)
             if (checkmarkPhase != null) {
                 Spacer(Modifier.width(4.dp))
                 MessageStatusIcon(
                     status = status,
                     transferable = transferable,
+                    errorMessage = message.errorMessage,
                     grayColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     successColor = LocalSuccessColors.current.success,
                     modifier = Modifier.size(14.dp),
