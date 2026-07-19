@@ -8,6 +8,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Environment
 import androidx.core.content.FileProvider
+import eu.siacs.conversations.R
 import java.io.File
 
 object UpdateDownloader {
@@ -64,37 +65,43 @@ object UpdateDownloader {
                 DownloadManager.STATUS_RUNNING ->
                     DownloadProgress.InProgress(fraction, statusText = null, downloaded, total)
                 DownloadManager.STATUS_PENDING ->
-                    DownloadProgress.InProgress(fraction, statusText = "Queued…", downloaded, total)
+                    DownloadProgress.InProgress(
+                        fraction,
+                        context.getString(R.string.update_download_status_queued),
+                        downloaded,
+                        total,
+                    )
                 DownloadManager.STATUS_PAUSED ->
-                    DownloadProgress.InProgress(fraction, pausedReasonText(reason), downloaded, total)
+                    DownloadProgress.InProgress(fraction, pausedReasonText(context, reason), downloaded, total)
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     val localUri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI))
                     DownloadProgress.Complete(localUri)
                 }
                 DownloadManager.STATUS_FAILED ->
-                    DownloadProgress.Failed(failedReasonText(reason))
+                    DownloadProgress.Failed(failedReasonText(context, reason))
                 else -> DownloadProgress.Unknown
             }
         }
     }
 
-    private fun pausedReasonText(reason: Int): String = when (reason) {
-        DownloadManager.PAUSED_WAITING_FOR_NETWORK -> "Waiting for network…"
-        DownloadManager.PAUSED_WAITING_TO_RETRY -> "Connection lost, retrying…"
-        DownloadManager.PAUSED_QUEUED_FOR_WIFI -> "Waiting for Wi-Fi…"
-        DownloadManager.PAUSED_UNKNOWN -> "Paused…"
-        else -> "Paused…"
+    private fun pausedReasonText(context: Context, reason: Int): String = when (reason) {
+        DownloadManager.PAUSED_WAITING_FOR_NETWORK ->
+            context.getString(R.string.update_download_status_waiting_for_network)
+        DownloadManager.PAUSED_WAITING_TO_RETRY -> context.getString(R.string.update_download_status_retrying)
+        DownloadManager.PAUSED_QUEUED_FOR_WIFI ->
+            context.getString(R.string.update_download_status_waiting_for_wifi)
+        else -> context.getString(R.string.update_download_status_paused)
     }
 
-    private fun failedReasonText(reason: Int): String = when (reason) {
-        DownloadManager.ERROR_INSUFFICIENT_SPACE -> "Not enough storage space"
-        DownloadManager.ERROR_DEVICE_NOT_FOUND -> "Storage not available"
-        DownloadManager.ERROR_CANNOT_RESUME -> "Connection interrupted, couldn't resume"
-        DownloadManager.ERROR_HTTP_DATA_ERROR -> "Network error"
-        DownloadManager.ERROR_TOO_MANY_REDIRECTS -> "Server redirect error"
-        DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> "Server error"
-        DownloadManager.ERROR_FILE_ERROR -> "File error"
-        else -> "Download failed"
+    private fun failedReasonText(context: Context, reason: Int): String = when (reason) {
+        DownloadManager.ERROR_INSUFFICIENT_SPACE -> context.getString(R.string.update_download_error_insufficient_space)
+        DownloadManager.ERROR_DEVICE_NOT_FOUND -> context.getString(R.string.update_download_error_device_not_found)
+        DownloadManager.ERROR_CANNOT_RESUME -> context.getString(R.string.update_download_error_cannot_resume)
+        DownloadManager.ERROR_HTTP_DATA_ERROR -> context.getString(R.string.update_download_error_http_data)
+        DownloadManager.ERROR_TOO_MANY_REDIRECTS -> context.getString(R.string.update_download_error_too_many_redirects)
+        DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> context.getString(R.string.update_download_error_unhandled_http_code)
+        DownloadManager.ERROR_FILE_ERROR -> context.getString(R.string.update_download_error_file_error)
+        else -> context.getString(R.string.update_download_error_generic)
     }
 
     fun installApk(context: Context, filePath: String) {
@@ -116,7 +123,7 @@ object UpdateDownloader {
             val totalBytes: Long = 0L,
         ) : DownloadProgress()
         data class Complete(val localUri: String) : DownloadProgress()
-        data class Failed(val reasonText: String = "Download failed") : DownloadProgress()
+        data class Failed(val reasonText: String) : DownloadProgress()
         object Unknown : DownloadProgress()
     }
 }

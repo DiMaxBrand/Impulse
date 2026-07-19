@@ -479,6 +479,19 @@
     <string name="download_eta_seconds">%1$ds left</string>
     <string name="download_eta_minutes_seconds">%1$dm %2$ds left</string>
     <string name="download_eta_hours_minutes">%1$dh %2$dm left</string>
+    <string name="update_download_status_queued">Queued…</string>
+    <string name="update_download_status_waiting_for_network">Waiting for network…</string>
+    <string name="update_download_status_retrying">Connection lost, retrying…</string>
+    <string name="update_download_status_waiting_for_wifi">Waiting for Wi-Fi…</string>
+    <string name="update_download_status_paused">Paused…</string>
+    <string name="update_download_error_insufficient_space">Not enough storage space</string>
+    <string name="update_download_error_device_not_found">Storage not available</string>
+    <string name="update_download_error_cannot_resume">Connection interrupted, couldn\'t resume</string>
+    <string name="update_download_error_http_data">Network error</string>
+    <string name="update_download_error_too_many_redirects">Server redirect error</string>
+    <string name="update_download_error_unhandled_http_code">Server error</string>
+    <string name="update_download_error_file_error">File error</string>
+    <string name="update_download_error_generic">Download failed</string>
     <string name="account_status_tor_unavailable">Tor network unavailable</string>
     <string name="account_status_bind_failure">Bind failure</string>
     <string name="account_status_host_unknown">Not responsible for domain</string>
@@ -1228,6 +1241,7 @@
     <string name="delete_message_title">Delete message?</string>
     <string name="delete_for_everyone">Everyone</string>
     <string name="delete_for_myself">Myself</string>
+    <string name="cannot_delete_for_everyone_yet">Can\'t delete for everyone yet — still waiting for the server to confirm this message</string>
 
     <!-- Updates screen -->
     <string name="pref_title_updates">Updates</string>

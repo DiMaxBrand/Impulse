@@ -3370,7 +3370,15 @@ private fun DeleteMessageSheet(
     onDeleteForMyself: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val canRetract = message.status != Message.STATUS_RECEIVED
+    // XEP-0424 retraction in a MUC must reference the room's own server-assigned stanza-id
+    // (XEP-0359) — the sender's local UUID means nothing to other occupants or the room's
+    // archive. That id only exists once the room has echoed this message back to us, which can
+    // lag a moment behind sending, or never happen at all if the room doesn't advertise
+    // urn:xmpp:sid:0. Offering (and silently no-op'ing) "delete for everyone" without it would
+    // wipe the local copy while doing nothing for anyone else — disabled until it's genuinely
+    // possible instead.
+    val isMuc = (message.conversation as? Conversation)?.getMode() == Conversational.MODE_MULTI
+    val canRetract = message.status != Message.STATUS_RECEIVED && (!isMuc || message.serverMsgId != null)
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(

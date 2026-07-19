@@ -1161,6 +1161,14 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private fun retractMessage(message: Message) {
         val service = getXmppConnectionService() ?: return
         val c = message.conversation as? Conversation ?: return
+        // Belt-and-suspenders backstop for DeleteMessageSheet's own canRetract gate: without a
+        // real server-assigned stanza-id, a MUC retraction only matches the sender's own local
+        // UUID and is a no-op for everyone else — refuse rather than wipe the local copy while
+        // silently doing nothing for other occupants.
+        if (c.getMode() == Conversational.MODE_MULTI && message.serverMsgId == null) {
+            Toast.makeText(activity, R.string.cannot_delete_for_everyone_yet, Toast.LENGTH_SHORT).show()
+            return
+        }
         val packet = service.getMessageGenerator().generateRetraction(message)
         service.sendMessagePacket(c.getAccount(), packet)
         deleteMessageEntirely(message)

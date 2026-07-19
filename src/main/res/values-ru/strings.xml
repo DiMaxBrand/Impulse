@@ -1001,6 +1001,19 @@
     <string name="download_eta_seconds">Осталось %1$d с</string>
     <string name="download_eta_minutes_seconds">Осталось %1$d мин %2$d с</string>
     <string name="download_eta_hours_minutes">Осталось %1$d ч %2$d мин</string>
+    <string name="update_download_status_queued">В очереди…</string>
+    <string name="update_download_status_waiting_for_network">Ожидание сети…</string>
+    <string name="update_download_status_retrying">Соединение потеряно, повтор…</string>
+    <string name="update_download_status_waiting_for_wifi">Ожидание Wi-Fi…</string>
+    <string name="update_download_status_paused">Приостановлено…</string>
+    <string name="update_download_error_insufficient_space">Недостаточно места в хранилище</string>
+    <string name="update_download_error_device_not_found">Хранилище недоступно</string>
+    <string name="update_download_error_cannot_resume">Соединение прервано, не удалось возобновить</string>
+    <string name="update_download_error_http_data">Ошибка сети</string>
+    <string name="update_download_error_too_many_redirects">Ошибка перенаправления сервера</string>
+    <string name="update_download_error_unhandled_http_code">Ошибка сервера</string>
+    <string name="update_download_error_file_error">Ошибка файла</string>
+    <string name="update_download_error_generic">Загрузка не удалась</string>
     <string name="rtp_state_content_add_video">Перейти на видеовызов\?</string>
     <string name="outgoing_call_duration_timestamp" formatted="false">Исходящий вызов (%s) · %s</string>
     <string name="incoming_call_duration_timestamp" formatted="false">Входящий вызов (%s) · %s</string>
@@ -1290,6 +1303,7 @@
     <string name="delete_message_title">Удалить сообщение?</string>
     <string name="delete_for_everyone">У всех</string>
     <string name="delete_for_myself">У себя</string>
+    <string name="cannot_delete_for_everyone_yet">Пока нельзя удалить у всех — сервер ещё не подтвердил это сообщение</string>
     <string name="editing">редактирует…</string>
 
     <!-- Updates screen -->
