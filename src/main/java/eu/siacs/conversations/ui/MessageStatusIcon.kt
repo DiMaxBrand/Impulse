@@ -158,6 +158,9 @@ fun MessageStatusIcon(
     // these while already at rest in some other phase.
     val stemProgress = remember { Animatable(0f) }
     val trayProgress = remember { Animatable(0f) }
+    // Only ever driven by the uploading -> sent transition below — slides the chevron's own
+    // points directly onto the checkmark's, never passing back through the dot positions.
+    val chevronToCheck = remember { Animatable(0f) }
 
     // Keyed on `phase` this used to cancel and restart mid-animation on every status change —
     // status can flip more than once within a single morph's duration (e.g. an upload finishing
@@ -212,6 +215,17 @@ fun MessageStatusIcon(
                         launch { expand1.animateTo(0f, tween(200, delayMillis = 90, easing = StandardEasing)) }
                     }
                     reposition.animateTo(0f, tween(180, easing = StandardEasing))
+                }
+                from == CheckmarkPhase.UPLOADING && to == CheckmarkPhase.SENT -> {
+                    isAnimating = true
+                    // An upload finishing goes straight from the arrow to a checkmark with no
+                    // dots in between, so this doesn't touch reposition/the dot positions at
+                    // all: retract the tray and stem first (same motion as the reverse, just
+                    // stopping short of dots), then slide the chevron's own two strokes directly
+                    // onto the checkmark's via chevronToCheck.
+                    trayProgress.animateTo(0f, tween(200, easing = StandardEasing))
+                    stemProgress.animateTo(0f, tween(260, easing = StemRetractEasing))
+                    chevronToCheck.animateTo(1f, tween(240, easing = StandardEasing))
                 }
                 from == CheckmarkPhase.SENT && to == CheckmarkPhase.DELIVERED -> {
                     isAnimating = true
@@ -275,9 +289,15 @@ fun MessageStatusIcon(
             val s = size.minDimension / 24f
             val strokeW = lerp(DOT_RADIUS * 2f, CHECK_STROKE_WIDTH, expand1.value)
 
-            val pos0 = androidx.compose.ui.geometry.lerp(DOT1, CHEVRON_LEFT, reposition.value)
-            val pos1 = androidx.compose.ui.geometry.lerp(DOT2, CHEVRON_APEX, reposition.value)
-            val pos2 = androidx.compose.ui.geometry.lerp(DOT3, CHEVRON_RIGHT, reposition.value)
+            val chevronPos0 = androidx.compose.ui.geometry.lerp(DOT1, CHEVRON_LEFT, reposition.value)
+            val chevronPos1 = androidx.compose.ui.geometry.lerp(DOT2, CHEVRON_APEX, reposition.value)
+            val chevronPos2 = androidx.compose.ui.geometry.lerp(DOT3, CHEVRON_RIGHT, reposition.value)
+            // Only ever driven away from 0 by the uploading -> sent transition, which slides the
+            // chevron's own two strokes straight into the checkmark's — no dots reappearing in
+            // between, since that transition never touches reposition/the dot positions at all.
+            val pos0 = androidx.compose.ui.geometry.lerp(chevronPos0, CHECK_P0, chevronToCheck.value)
+            val pos1 = androidx.compose.ui.geometry.lerp(chevronPos1, CHECK_P1, chevronToCheck.value)
+            val pos2 = androidx.compose.ui.geometry.lerp(chevronPos2, CHECK_P2, chevronToCheck.value)
 
             // Chevron: identical technique to the checkmark's two-segment growth.
             drawCircle(color = grayColor, radius = strokeW / 2f * s, center = pos2 * s)
@@ -296,30 +316,37 @@ fun MessageStatusIcon(
                 cap = StrokeCap.Round,
             )
 
-            // Stem: grows straight down from the chevron's apex once it's fully formed.
-            val stemEnd = androidx.compose.ui.geometry.lerp(CHEVRON_APEX, STEM_BOTTOM, stemProgress.value)
-            drawLine(
-                color = grayColor,
-                start = CHEVRON_APEX * s,
-                end = stemEnd * s,
-                strokeWidth = strokeW * s,
-                cap = StrokeCap.Round,
-            )
+            // Stem: grows straight down from the chevron's apex once it's fully formed. Guarded
+            // so a fully-retracted stem draws nothing at all, rather than leaving a stray dot
+            // sitting at its old anchor while the chevron above it slides away into a checkmark.
+            if (stemProgress.value > 0f) {
+                val stemEnd = androidx.compose.ui.geometry.lerp(pos1, STEM_BOTTOM, stemProgress.value)
+                drawLine(
+                    color = grayColor,
+                    start = pos1 * s,
+                    end = stemEnd * s,
+                    strokeWidth = strokeW * s,
+                    cap = StrokeCap.Round,
+                )
+            }
 
             // Tray: its four corners unfold outward from one point below the stem instead of
             // fading in flat — the same "grow from a point" language as the dots themselves.
-            val trayLeftTop = androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_LEFT_TOP, trayProgress.value)
-            val trayLeftBottom =
-                androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_LEFT_BOTTOM, trayProgress.value)
-            val trayRightBottom =
-                androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_RIGHT_BOTTOM, trayProgress.value)
-            val trayRightTop =
-                androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_RIGHT_TOP, trayProgress.value)
-            drawCircle(color = grayColor, radius = strokeW / 2f * s, center = trayLeftBottom * s)
-            drawCircle(color = grayColor, radius = strokeW / 2f * s, center = trayRightBottom * s)
-            drawLine(grayColor, trayLeftTop * s, trayLeftBottom * s, strokeW * s, cap = StrokeCap.Round)
-            drawLine(grayColor, trayLeftBottom * s, trayRightBottom * s, strokeW * s, cap = StrokeCap.Round)
-            drawLine(grayColor, trayRightBottom * s, trayRightTop * s, strokeW * s, cap = StrokeCap.Round)
+            // Same guard as the stem: fully collapsed draws nothing, no leftover dot.
+            if (trayProgress.value > 0f) {
+                val trayLeftTop = androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_LEFT_TOP, trayProgress.value)
+                val trayLeftBottom =
+                    androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_LEFT_BOTTOM, trayProgress.value)
+                val trayRightBottom =
+                    androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_RIGHT_BOTTOM, trayProgress.value)
+                val trayRightTop =
+                    androidx.compose.ui.geometry.lerp(TRAY_COLLAPSE_ORIGIN, TRAY_RIGHT_TOP, trayProgress.value)
+                drawCircle(color = grayColor, radius = strokeW / 2f * s, center = trayLeftBottom * s)
+                drawCircle(color = grayColor, radius = strokeW / 2f * s, center = trayRightBottom * s)
+                drawLine(grayColor, trayLeftTop * s, trayLeftBottom * s, strokeW * s, cap = StrokeCap.Round)
+                drawLine(grayColor, trayLeftBottom * s, trayRightBottom * s, strokeW * s, cap = StrokeCap.Round)
+                drawLine(grayColor, trayRightBottom * s, trayRightTop * s, strokeW * s, cap = StrokeCap.Round)
+            }
         }
         return
     }
