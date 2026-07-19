@@ -184,26 +184,34 @@ public class UIHelper {
                                 R.string.checking_x, getFileDescriptionString(context, message)),
                         true);
             } else if (status == Transferable.STATUS_DOWNLOADING) {
+                final FileDescription description = describeFile(context, message);
                 return new Pair<>(
                         context.getString(
-                                R.string.receiving_x_file,
-                                getFileDescriptionString(context, message),
+                                pluralAwareStringRes(
+                                        description.gender(),
+                                        R.string.receiving_x_file,
+                                        R.string.receiving_x_file_plural),
+                                description.label(),
                                 d.getProgress()),
                         true);
             } else if (status == Transferable.STATUS_OFFER
                     || status == Transferable.STATUS_OFFER_CHECK_FILESIZE) {
+                final FileDescription description = describeFile(context, message);
                 return new Pair<>(
                         context.getString(
-                                R.string.x_file_offered_for_download,
-                                getFileDescriptionString(context, message)),
+                                pluralAwareStringRes(
+                                        description.gender(),
+                                        R.string.x_file_offered_for_download,
+                                        R.string.x_file_offered_for_download_plural),
+                                description.label()),
                         true);
             } else if (status == Transferable.STATUS_FAILED) {
                 return new Pair<>(context.getString(R.string.file_transmission_failed), true);
             } else if (status == Transferable.STATUS_CANCELLED) {
                 return new Pair<>(context.getString(R.string.file_transmission_cancelled), true);
             } else if (status == Transferable.STATUS_UPLOADING) {
+                final FileDescription description = describeFile(context, message);
                 if (message.getStatus() == Message.STATUS_OFFERED) {
-                    final FileDescription description = describeFile(context, message);
                     return new Pair<>(
                             context.getString(
                                     offeringXFileStringRes(description.gender()),
@@ -212,8 +220,11 @@ public class UIHelper {
                 } else {
                     return new Pair<>(
                             context.getString(
-                                    R.string.sending_x_file,
-                                    getFileDescriptionString(context, message)),
+                                    pluralAwareStringRes(
+                                            description.gender(),
+                                            R.string.sending_x_file,
+                                            R.string.sending_x_file_plural),
+                                    description.label()),
                             true);
                 }
             } else {
@@ -254,10 +265,14 @@ public class UIHelper {
                 return new Pair<>(context.getString(R.string.location), true);
             } else if (message.treatAsDownloadable()
                     || MessageUtils.unInitiatedButKnownSize(message)) {
+                final FileDescription description = describeFile(context, message);
                 return new Pair<>(
                         context.getString(
-                                R.string.x_file_offered_for_download,
-                                getFileDescriptionString(context, message)),
+                                pluralAwareStringRes(
+                                        description.gender(),
+                                        R.string.x_file_offered_for_download,
+                                        R.string.x_file_offered_for_download_plural),
+                                description.label()),
                         true);
             } else {
                 if (textColor != null) {
@@ -505,6 +520,14 @@ public class UIHelper {
             case PLURAL -> R.string.offering_x_file_plural;
             case MASCULINE -> R.string.offering_x_file;
         };
+    }
+
+    // Present-tense verbs in these templates don't change by gender, only by grammatical
+    // number — "Текстовые данные" (plain-text files) is the one noun among the file types that's
+    // plural-only ("данные загружаются", not "загружается"), so only PLURAL needs its own form.
+    private static int pluralAwareStringRes(
+            final FileNounGender gender, final int singularRes, final int pluralRes) {
+        return gender == FileNounGender.PLURAL ? pluralRes : singularRes;
     }
 
     public static String getMessageDisplayName(final Message message) {

@@ -352,6 +352,7 @@
     <string name="notification_restored_backup_title">Your backup has been restored</string>
     <string name="notification_restored_backup_subtitle">Do not forget to enable the account.</string>
     <string name="receiving_x_file">Receiving %1$s (%2$d%% completed)</string>
+    <string name="receiving_x_file_plural">Receiving %1$s (%2$d%% completed)</string>
     <string name="download_x_file">Download %s</string>
     <string name="delete_x_file">Delete %s</string>
     <string name="file">file</string>
@@ -359,6 +360,7 @@
     <string name="sending_file">sending (%1$d%% completed)</string>
     <string name="preparing_file">Getting ready to share file</string>
     <string name="x_file_offered_for_download">%s offered for download</string>
+    <string name="x_file_offered_for_download_plural">%s offered for download</string>
     <string name="cancel_transmission">Cancel transmission</string>
     <string name="file_transmission_failed">could not share file</string>
     <string name="file_transmission_cancelled">file transmission cancelled</string>
@@ -429,6 +431,7 @@
     <string name="vcard">Contact</string>
     <string name="avatar_has_been_published">Avatar has been published!</string>
     <string name="sending_x_file">Sending %s</string>
+    <string name="sending_x_file_plural">Sending %s</string>
     <string name="offering_x_file">Offering %s</string>
     <string name="offering_x_file_feminine">Offering %s</string>
     <string name="offering_x_file_neuter">Offering %s</string>

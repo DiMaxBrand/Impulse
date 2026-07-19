@@ -306,7 +306,7 @@
     <string name="conference_unknown_error">Вы больше не состоите в этой конференции</string>
     <string name="using_account">используется аккаунт %s</string>
     <string name="hosted_on">размещено на %s</string>
-    <string name="checking_x">Проверка %s на сервере HTTP</string>
+    <string name="checking_x">Проверка на сервере HTTP: %s</string>
     <string name="not_connected_try_again">Вы не подключены. Попробуйте позже.</string>
     <string name="check_x_filesize">Проверить размер (%s)</string>
     <string name="check_x_filesize_on_host">Проверить размер на %2$s (%1$s)</string>
@@ -337,6 +337,7 @@
     <string name="notification_restored_backup_title">Восстановление из резервной копии выполнено</string>
     <string name="notification_restored_backup_subtitle">Не забудьте включить аккаунт.</string>
     <string name="receiving_x_file">%1$s загружается (%2$d%% выполнено)</string>
+    <string name="receiving_x_file_plural">%1$s загружаются (%2$d%% выполнено)</string>
     <string name="download_x_file">Загрузить %s</string>
     <string name="delete_x_file">Удалить %s</string>
     <string name="file">файл</string>
@@ -344,6 +345,7 @@
     <string name="sending_file">отправка (%1$d%% выполнено)</string>
     <string name="preparing_file">Файл готовится для передачи</string>
     <string name="x_file_offered_for_download">%s предлагается скачать</string>
+    <string name="x_file_offered_for_download_plural">%s предлагаются скачать</string>
     <string name="cancel_transmission">Отменить передачу</string>
     <string name="file_transmission_failed">передача файла не выполнена</string>
     <string name="file_transmission_cancelled">передача файла отменена</string>
@@ -411,6 +413,7 @@
     <string name="vcard">контакт</string>
     <string name="avatar_has_been_published">Аватар загружен!</string>
     <string name="sending_x_file">Отправляется %s</string>
+    <string name="sending_x_file_plural">Отправляются %s</string>
     <string name="offering_x_file">Предложен %s</string>
     <string name="offering_x_file_feminine">Предложена %s</string>
     <string name="offering_x_file_neuter">Предложено %s</string>
