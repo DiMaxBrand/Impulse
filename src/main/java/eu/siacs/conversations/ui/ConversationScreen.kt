@@ -292,6 +292,7 @@ interface ConversationScreenListener {
     fun onEditingStopped(message: Message)
     fun onCancelTransmission(message: Message)
     fun onResendMessage(message: Message)
+    fun onRetryAsP2P(message: Message)
     fun onPinMessage(message: Message)
     fun onUnpinMessage(message: Message)
 }
@@ -3222,11 +3223,33 @@ private fun MessageContextSheet(
                 }
             )
         }
-        // Send again (failed outgoing message)
+        // Send again (failed outgoing message) — STATUS_SEND_FAILED covers a user-initiated
+        // cancel just as much as a genuine error (both set this same status, only the error
+        // message differs), so this and the P2P retry below are already available after a
+        // cancel too, with no separate handling needed for that case.
         if (message.status == Message.STATUS_SEND_FAILED && !deleted) {
             add(SheetAction(R.drawable.ic_refresh_24dp, stringResource(R.string.send_again)) {
                 listener.onResendMessage(message)
             })
+            // Retry directly peer-to-peer instead of via the server — only offered when there's
+            // an actual choice to make: the file hasn't already reached the server, the
+            // conversation is 1:1 with the peer currently online, and the account can normally
+            // reach an HTTP upload service (i.e. server upload was a real alternative, not the
+            // only option to begin with).
+            val account = conversation?.getAccount()
+            val connection = account?.getXmppConnection()
+            val fileNotUploaded = message.isFileOrImage && !message.hasFileOnRemoteHost()
+            val isPeerOnline = conversation != null &&
+                conversation.getMode() == Conversational.MODE_SINGLE &&
+                conversation.getContact().getPresences().isNotEmpty()
+            val httpUploadAvailable = connection != null &&
+                connection.getManager(eu.siacs.conversations.xmpp.manager.HttpUploadManager::class.java)
+                    .getService() != null
+            if (fileNotUploaded && isPeerOnline && httpUploadAvailable) {
+                add(SheetAction(R.drawable.ic_p2p_24dp, stringResource(R.string.retry_with_p2p)) {
+                    listener.onRetryAsP2P(message)
+                })
+            }
         }
         // Cancel in-progress upload/download
         if (cancelable) {

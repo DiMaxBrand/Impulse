@@ -36,6 +36,7 @@ import eu.siacs.conversations.ui.util.Attachment
 import eu.siacs.conversations.ui.util.PresenceSelector
 import eu.siacs.conversations.ui.util.ViewUtil
 import eu.siacs.conversations.xmpp.jingle.RtpCapability
+import eu.siacs.conversations.xmpp.manager.HttpUploadManager
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.launch
 
@@ -1203,29 +1204,54 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onResendMessage(message: Message) {
+        resendMessage(message, forceP2P = false)
+    }
+
+    override fun onRetryAsP2P(message: Message) {
+        resendMessage(message, forceP2P = true)
+    }
+
+    private fun resendMessage(message: Message, forceP2P: Boolean) {
         val service = getXmppConnectionService() ?: return
         val activity = activity as? XmppActivity ?: return
-        val c = message.conversation as? Conversation ?: return
+        val conversation = message.conversation as? Conversation ?: return
         if (message.isFileOrImage) {
             val file = service.fileBackend.getFile(message)
-            if (!(file.exists() && file.canRead()) && !message.hasFileOnRemoteHost()) {
-                if (!Compatibility.hasStoragePermission(activity)) {
-                    Toast.makeText(
-                        activity,
-                        getString(R.string.no_storage_permission, getString(R.string.app_name)),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                } else {
-                    Toast.makeText(activity, R.string.file_deleted, Toast.LENGTH_SHORT).show()
-                    message.setDeleted(true)
-                    service.updateMessage(message, false)
-                    (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
-                    refreshMessages()
+            if ((file.exists() && file.canRead()) || message.hasFileOnRemoteHost()) {
+                val xmppConnection = conversation.getAccount().getXmppConnection()
+                val needsPresence = !message.hasFileOnRemoteHost() &&
+                    xmppConnection != null &&
+                    conversation.getMode() == Conversational.MODE_SINGLE &&
+                    (
+                        !xmppConnection.getManager(HttpUploadManager::class.java)
+                            .isAvailableForSize(message.fileParams.size) || forceP2P
+                        )
+                if (needsPresence) {
+                    // Picks (or prompts for) which of the peer's online resources to target —
+                    // required for a direct P2P transfer, and harmless for a plain server resend.
+                    activity.selectPresence(conversation) {
+                        message.setCounterpart(conversation.nextCounterpart)
+                        service.resendFailedMessages(message, forceP2P)
+                    }
+                    return
                 }
+            } else if (!Compatibility.hasStoragePermission(activity)) {
+                Toast.makeText(
+                    activity,
+                    getString(R.string.no_storage_permission, getString(R.string.app_name)),
+                    Toast.LENGTH_SHORT,
+                ).show()
+                return
+            } else {
+                Toast.makeText(activity, R.string.file_deleted, Toast.LENGTH_SHORT).show()
+                message.setDeleted(true)
+                service.updateMessage(message, false)
+                (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+                refreshMessages()
                 return
             }
         }
-        service.resendFailedMessages(message, false)
+        service.resendFailedMessages(message, forceP2P)
     }
 
     override fun onScrollToMessage(message: Message) {
