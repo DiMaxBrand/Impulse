@@ -3964,7 +3964,15 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
 
     val isReadOnlyChannel = remember(conversation, revision) {
         try {
+            // A private-message target (set by "Send private message" on a received message —
+            // available to any occupant the room's allowpm setting permits, independent of their
+            // own participating() rank) must win over the read-only placeholder, or tapping that
+            // action in a moderated/announcement channel visibly does nothing: nextCounterpart
+            // gets set correctly, but this bar would still show "read only channel" and never
+            // render the composer/banner that's supposed to reflect it. Mirrors the priority
+            // order the old ConversationFragment.updateChatMsgHint() already used.
             conversation != null &&
+                conversation.getNextCounterpart() == null &&
                 conversation.getMode() == Conversational.MODE_MULTI &&
                 !conversation.mucOptions.participating()
         } catch (_: Exception) {
