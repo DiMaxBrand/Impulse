@@ -412,6 +412,9 @@
     <string name="avatar_has_been_published">Аватар загружен!</string>
     <string name="sending_x_file">Отправляется %s</string>
     <string name="offering_x_file">Предложен %s</string>
+    <string name="offering_x_file_feminine">Предложена %s</string>
+    <string name="offering_x_file_neuter">Предложено %s</string>
+    <string name="offering_x_file_plural">Предложены %s</string>
     <string name="hide_offline">Скрыть не в сети</string>
     <string name="contact_is_typing">%s печатает…</string>
     <string name="contact_has_stopped_typing">%s перестал(а) печатать</string>

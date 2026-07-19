@@ -430,6 +430,9 @@
     <string name="avatar_has_been_published">Avatar has been published!</string>
     <string name="sending_x_file">Sending %s</string>
     <string name="offering_x_file">Offering %s</string>
+    <string name="offering_x_file_feminine">Offering %s</string>
+    <string name="offering_x_file_neuter">Offering %s</string>
+    <string name="offering_x_file_plural">Offering %s</string>
     <string name="hide_offline">Hide offline</string>
     <string name="contact_is_typing">%s is typing…</string>
     <string name="typing_indicator">typing…</string>

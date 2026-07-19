@@ -203,10 +203,11 @@ public class UIHelper {
                 return new Pair<>(context.getString(R.string.file_transmission_cancelled), true);
             } else if (status == Transferable.STATUS_UPLOADING) {
                 if (message.getStatus() == Message.STATUS_OFFERED) {
+                    final FileDescription description = describeFile(context, message);
                     return new Pair<>(
                             context.getString(
-                                    R.string.offering_x_file,
-                                    getFileDescriptionString(context, message)),
+                                    offeringXFileStringRes(description.gender()),
+                                    description.label()),
                             true);
                 } else {
                     return new Pair<>(
@@ -427,48 +428,83 @@ public class UIHelper {
         return concatNames(ImmutableList.copyOf(Iterables.limit(users, max)));
     }
 
-    public static String getFileDescriptionString(final Context context, final Message message) {
+    // Grammatical gender of the noun a file-type label translates to in languages (currently
+    // just Russian) where the verb agreeing with it changes form — e.g. "Предложен файл"
+    // (masculine) vs. "Предложено видео" (neuter). Meaningless for English; kept as MASCULINE
+    // there since English string variants are all identical text regardless of gender.
+    private enum FileNounGender {
+        MASCULINE,
+        FEMININE,
+        NEUTER,
+        PLURAL,
+    }
+
+    private record FileDescription(String label, FileNounGender gender) {}
+
+    private static FileDescription describeFile(final Context context, final Message message) {
         final String mime = message.getMimeType();
         if (Strings.isNullOrEmpty(mime)) {
-            return context.getString(R.string.file);
+            return new FileDescription(context.getString(R.string.file), FileNounGender.MASCULINE);
         } else if (MimeUtils.AMBIGUOUS_CONTAINER_FORMATS.contains(mime)) {
-            return context.getString(R.string.multimedia_file);
+            return new FileDescription(
+                    context.getString(R.string.multimedia_file), FileNounGender.MASCULINE);
         } else if (mime.equals("audio/x-m4b")) {
-            return context.getString(R.string.audiobook);
+            return new FileDescription(
+                    context.getString(R.string.audiobook), FileNounGender.FEMININE);
         } else if (mime.startsWith("audio/")) {
-            return context.getString(R.string.audio);
+            return new FileDescription(context.getString(R.string.audio), FileNounGender.NEUTER);
         } else if (mime.startsWith("video/")) {
-            return context.getString(R.string.video);
+            return new FileDescription(context.getString(R.string.video), FileNounGender.NEUTER);
         } else if (mime.equals("image/gif")) {
-            return context.getString(R.string.gif);
+            return new FileDescription(context.getString(R.string.gif), FileNounGender.MASCULINE);
         } else if (mime.equals("image/svg+xml")) {
-            return context.getString(R.string.vector_graphic);
+            return new FileDescription(
+                    context.getString(R.string.vector_graphic), FileNounGender.FEMININE);
         } else if (mime.startsWith("image/") || message.getType() == Message.TYPE_IMAGE) {
-            return context.getString(R.string.image);
+            return new FileDescription(context.getString(R.string.image), FileNounGender.NEUTER);
         } else if (mime.contains("pdf")) {
-            return context.getString(R.string.pdf_document);
+            return new FileDescription(
+                    context.getString(R.string.pdf_document), FileNounGender.MASCULINE);
         } else if (MimeUtils.WORD_DOCUMENT_MIMES.contains(mime)) {
-            return context.getString(R.string.word_document);
+            return new FileDescription(
+                    context.getString(R.string.word_document), FileNounGender.MASCULINE);
         } else if (mime.equals("application/vnd.android.package-archive")) {
-            return context.getString(R.string.apk);
+            return new FileDescription(context.getString(R.string.apk), FileNounGender.NEUTER);
         } else if (mime.equals(ExportBackupWorker.MIME_TYPE)) {
-            return context.getString(R.string.conversations_backup);
+            return new FileDescription(
+                    context.getString(R.string.conversations_backup), FileNounGender.FEMININE);
         } else if (mime.contains("vcard")) {
-            return context.getString(R.string.vcard);
+            return new FileDescription(context.getString(R.string.vcard), FileNounGender.MASCULINE);
         } else if (mime.equals("text/x-vcalendar") || mime.equals("text/calendar")) {
-            return context.getString(R.string.event);
+            return new FileDescription(context.getString(R.string.event), FileNounGender.NEUTER);
         } else if (mime.equals("application/epub+zip")
                 || mime.equals("application/vnd.amazon.mobi8-ebook")) {
-            return context.getString(R.string.ebook);
+            return new FileDescription(context.getString(R.string.ebook), FileNounGender.FEMININE);
         } else if (mime.equals("application/gpx+xml")) {
-            return context.getString(R.string.gpx_track);
+            return new FileDescription(
+                    context.getString(R.string.gpx_track), FileNounGender.MASCULINE);
         } else if (mime.equals("text/plain")) {
-            return context.getString(R.string.plain_text_document);
+            return new FileDescription(
+                    context.getString(R.string.plain_text_document), FileNounGender.PLURAL);
         } else if (mime.equals("application/vnd.apple.pkpass")) {
-            return context.getString(R.string.mobile_ticket);
+            return new FileDescription(
+                    context.getString(R.string.mobile_ticket), FileNounGender.MASCULINE);
         } else {
-            return mime;
+            return new FileDescription(mime, FileNounGender.MASCULINE);
         }
+    }
+
+    public static String getFileDescriptionString(final Context context, final Message message) {
+        return describeFile(context, message).label();
+    }
+
+    private static int offeringXFileStringRes(final FileNounGender gender) {
+        return switch (gender) {
+            case FEMININE -> R.string.offering_x_file_feminine;
+            case NEUTER -> R.string.offering_x_file_neuter;
+            case PLURAL -> R.string.offering_x_file_plural;
+            case MASCULINE -> R.string.offering_x_file;
+        };
     }
 
     public static String getMessageDisplayName(final Message message) {
