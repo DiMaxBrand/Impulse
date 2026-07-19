@@ -3448,7 +3448,14 @@ private fun ComposerBanner(state: ConversationScreenState, listener: Conversatio
     val revision = state.revision.intValue
     val conversation = state.conversation.value
     val nextCounterpart = remember(conversation, revision) { conversation?.getNextCounterpart() }
-    if (nextCounterpart != null) {
+    // "Private message" is a MUC-only concept, but nextCounterpart itself isn't — selectPresence()
+    // (used e.g. by the P2P retry flow) sets the exact same field on a plain 1:1 conversation just
+    // to target a specific device/resource, which is a normal multi-resource-presence thing, not
+    // anything resembling a private message. Showing this banner for that case claimed the app was
+    // "sending a private message" inside a completely ordinary 1:1 chat — misleading, and the X
+    // button offered to "cancel" something that was never really that in the first place.
+    val isMuc = conversation?.getMode() == Conversational.MODE_MULTI
+    if (nextCounterpart != null && isMuc) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
