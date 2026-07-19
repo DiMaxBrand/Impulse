@@ -2282,11 +2282,16 @@ private fun MessageContent(
             message.mimeType?.startsWith("audio/") == true -> {
             AudioMessageContent(message)
         }
-        message.isFileOrImage &&
+        (message.isFileOrImage || transferable != null) &&
             message.encryption != Message.ENCRYPTION_PGP &&
             message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
             (MessageUtils.unInitiatedButKnownSize(message) ||
                 (transferable != null && transferable.getStatus() != Transferable.STATUS_UPLOADING)) -> {
+            // A pending Jingle (P2P) file offer arrives as a bare TYPE_TEXT message —
+            // setFileOffer() never flips message.type to TYPE_FILE/TYPE_IMAGE before the user
+            // accepts — so isFileOrImage alone would skip this branch entirely for P2P offers,
+            // even though transferable.getStatus() == STATUS_OFFER, falling through to the
+            // final LinkifiedMessageText(body="") case: an empty bubble with no accept button.
             val fileDescription = UIHelper.getFileDescriptionString(context, message)
             when {
                 MessageUtils.unInitiatedButKnownSize(message) ||
