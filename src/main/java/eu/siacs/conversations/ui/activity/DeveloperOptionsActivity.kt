@@ -363,6 +363,11 @@ class DeveloperOptionsActivity : ActionBarActivity() {
             prefs.clearDownload()
             prefs.downloadedApkPath = null
         }
+        // clearDownload() above also wipes the title/notes prefs, so this has to come after it —
+        // otherwise the sheet falls back to the app name instead of the real GitHub release
+        // title, exactly the gap that made this path worth fixing in the first place.
+        prefs.pendingReleaseTitle = info.releaseTitle
+        prefs.pendingReleaseNotes = info.releaseNotes
         showUpdateSheet()
     }
 

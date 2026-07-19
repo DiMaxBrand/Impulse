@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.DialogInterface
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,9 +15,11 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import eu.siacs.conversations.update.DownloadEtaTracker
 import eu.siacs.conversations.update.UpdateDownloader
 import eu.siacs.conversations.update.UpdateInfo
 import eu.siacs.conversations.update.UpdatePreferences
+import eu.siacs.conversations.update.formatSpeedAndEta
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -134,19 +137,33 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
 
     private fun pollDownload(id: Long) {
         lifecycleScope.launch {
+            val etaTracker = DownloadEtaTracker()
             while (true) {
                 val progress = withContext(Dispatchers.IO) {
                     UpdateDownloader.queryProgress(requireContext(), id)
                 }
                 when (progress) {
-                    is UpdateDownloader.DownloadProgress.InProgress ->
+                    is UpdateDownloader.DownloadProgress.InProgress -> {
+                        val sampled = etaTracker.sample(
+                            nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                            downloadedBytes = progress.downloadedBytes,
+                            totalBytes = progress.totalBytes,
+                            activelyRunning = progress.statusText == null,
+                        )
+                        val speedText = sampled?.let { (bps, eta) -> formatSpeedAndEta(requireContext(), bps, eta) }
                         uiState = uiState.copy(
                             downloadPhase = DownloadPhase.DOWNLOADING,
                             downloadProgress = progress.fraction,
                             downloadStatusText = progress.statusText,
+                            downloadSpeedText = speedText,
                         )
+                    }
                     is UpdateDownloader.DownloadProgress.Complete -> {
-                        uiState = uiState.copy(downloadPhase = DownloadPhase.PROCESSING, downloadStatusText = null)
+                        uiState = uiState.copy(
+                            downloadPhase = DownloadPhase.PROCESSING,
+                            downloadStatusText = null,
+                            downloadSpeedText = null,
+                        )
                         prefs.downloadedVersion = prefs.pendingUpdateVersion
                         prefs.downloadedApkPath = progress.localUri
                         prefs.activeDownloadId = -1L
@@ -159,6 +176,7 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
                         uiState = uiState.copy(
                             downloadPhase = DownloadPhase.DOWNLOADING,
                             downloadStatusText = progress.reasonText,
+                            downloadSpeedText = null,
                         )
                         prefs.activeDownloadId = -1L
                         delay(4000)

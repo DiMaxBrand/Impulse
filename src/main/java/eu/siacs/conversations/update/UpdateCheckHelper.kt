@@ -14,9 +14,17 @@ object UpdateCheckHelper {
     /** Runs an extra check on app launch, but only for beta/alpha — those channels move fast
      * enough that waiting for the next scheduled UpdateCheckWorker run (once daily, 10:00
      * local) could mean a stale wait if the device wasn't in use at that time. Stable/RC users
-     * are not bothered on every launch; they rely solely on the daily background check. */
+     * are not bothered on every launch; they rely solely on the daily background check.
+     *
+     * [onChecked], if given, runs once the async network check completes (on the main thread,
+     * only while this activity is still alive — lifecycleScope cancels it otherwise). The caller
+     * is expected to also do its own immediate pending-state check right after calling this, for
+     * whatever was already pending from an earlier check; onChecked exists specifically to catch
+     * a version detected by *this* check, which the immediate one can't see yet since the network
+     * fetch hasn't returned by the time this method itself returns. */
     @JvmStatic
-    fun checkOnLaunchIfEligible(activity: AppCompatActivity) {
+    @JvmOverloads
+    fun checkOnLaunchIfEligible(activity: AppCompatActivity, onChecked: Runnable? = null) {
         val prefs = UpdatePreferences(activity.applicationContext)
         val channel = prefs.selectedChannel
         if (channel != UpdateChannel.BETA && channel != UpdateChannel.ALPHA) return
@@ -24,6 +32,7 @@ object UpdateCheckHelper {
             withContext(Dispatchers.IO) {
                 performCheck(activity.applicationContext)
             }
+            onChecked?.run()
         }
     }
 

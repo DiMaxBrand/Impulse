@@ -528,11 +528,19 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     public void onResume() {
         super.onResume();
         this.mActivityPaused = false;
-        UpdateCheckHelper.checkOnLaunchIfEligible(this);
+        // The immediate call below only ever reflects whatever a *previous* check already wrote
+        // to prefs — checkOnLaunchIfEligible's own network fetch hasn't returned by the time it
+        // returns, so a version detected by *this* check wouldn't show until some later resume
+        // without the onChecked callback re-running the same logic once that fetch completes.
+        UpdateCheckHelper.checkOnLaunchIfEligible(this, this::maybeShowUpdateSheet);
         maybeShowUpdateSheet();
     }
 
     private void maybeShowUpdateSheet() {
+        // The onChecked callback above can fire after this activity has left the resumed state
+        // (backgrounded again before the network check finished) — unlike the immediate call
+        // right after onResume(), which is always safely in a resumed state.
+        if (isFinishing() || getSupportFragmentManager().isStateSaved()) return;
         if (!UpdateSheetFragment.shouldShow(this)) return;
         if (getSupportFragmentManager().findFragmentByTag(UpdateSheetFragment.TAG) != null) return;
         new UpdateSheetFragment().show(getSupportFragmentManager(), UpdateSheetFragment.TAG);
