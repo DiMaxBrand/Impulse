@@ -599,6 +599,7 @@ public class StartConversationActivity extends XmppActivity
                         prefilledJid,
                         invite == null ? null : invite.account,
                         invite == null || !invite.uri.hasOmemoFingerprints(),
+                        true,
                         true);
 
         dialog.setOnEnterJidDialogPositiveListener(

@@ -43,6 +43,7 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
     private static final String ALLOW_EDIT_JID_KEY = "allow_edit_jid";
     private static final String ACCOUNTS_LIST_KEY = "activated_accounts_list";
     private static final String SANITY_CHECK_JID = "sanity_check_jid";
+    private static final String DEFAULT_TO_ACCOUNT_DOMAIN_KEY = "default_to_account_domain";
 
     private KnownHostsAdapter knownHostsAdapter;
     private Collection<String> whitelistedDomains = Collections.emptyList();
@@ -50,6 +51,7 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
     private DialogEnterJidBinding binding;
     private AlertDialog dialog;
     private boolean sanityCheckJid = false;
+    private boolean defaultToAccountDomain = false;
 
     private boolean issuedWarning = false;
 
@@ -61,6 +63,30 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
             final String account,
             boolean allowEditJid,
             final boolean sanity_check_jid) {
+        return newInstance(
+                activatedAccounts,
+                title,
+                positiveButton,
+                prefilledJid,
+                account,
+                allowEditJid,
+                sanity_check_jid,
+                false);
+    }
+
+    // defaultToAccountDomain: when the entered text has no "@", treat it as a local part on the
+    // selected account's own domain instead of erroring/warning that it "looks like a domain" —
+    // used only for the "New Contact" flow, where typing a bare username to add someone on your
+    // own server is a much more common intent than typing that server's bare domain.
+    public static EnterJidDialog newInstance(
+            final ArrayList<String> activatedAccounts,
+            final String title,
+            final String positiveButton,
+            final String prefilledJid,
+            final String account,
+            boolean allowEditJid,
+            final boolean sanity_check_jid,
+            final boolean defaultToAccountDomain) {
         final EnterJidDialog dialog = new EnterJidDialog();
         Bundle bundle = new Bundle();
         bundle.putString(TITLE_KEY, title);
@@ -70,6 +96,7 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         bundle.putBoolean(ALLOW_EDIT_JID_KEY, allowEditJid);
         bundle.putStringArrayList(ACCOUNTS_LIST_KEY, activatedAccounts);
         bundle.putBoolean(SANITY_CHECK_JID, sanity_check_jid);
+        bundle.putBoolean(DEFAULT_TO_ACCOUNT_DOMAIN_KEY, defaultToAccountDomain);
         dialog.setArguments(bundle);
         return dialog;
     }
@@ -117,6 +144,7 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
             }
         }
         sanityCheckJid = getArguments().getBoolean(SANITY_CHECK_JID, false);
+        defaultToAccountDomain = getArguments().getBoolean(DEFAULT_TO_ACCOUNT_DOMAIN_KEY, false);
 
         DelayedHintHelper.setHint(R.string.account_settings_example_jabber_id, binding.jid);
 
@@ -178,8 +206,13 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
             binding.jid.setText(contactJid.toString());
             binding.jid.setSelection(binding.jid.getText().length());
         } else {
+            final String rawInput = binding.jid.getText().toString().trim();
+            final String resolvedInput =
+                    defaultToAccountDomain && !rawInput.isEmpty() && rawInput.indexOf('@') < 0
+                            ? rawInput + "@" + accountJid.getDomain()
+                            : rawInput;
             try {
-                contactJid = Jid.ofUserInput(binding.jid.getText().toString().trim());
+                contactJid = Jid.ofUserInput(resolvedInput);
             } catch (final IllegalArgumentException e) {
                 binding.jidLayout.setError(context.getString(R.string.invalid_jid));
                 return;
