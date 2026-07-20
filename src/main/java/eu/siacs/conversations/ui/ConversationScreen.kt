@@ -647,6 +647,19 @@ private fun ConversationTopBar(
                 }
             } else null
         }
+    // "Away"/"Extended away" are gendered past-tense verbs in Russian ("Отошёл"/"Отошла") —
+    // resolve the same way the chat list does (ConversationList.kt) so this bar agrees too.
+    val isFeminine: Boolean =
+        remember(conversation, revision) {
+            if (conversation != null && isSingle) {
+                try {
+                    UIHelper.resolveGender(context, conversation.getContact()) ==
+                        eu.siacs.conversations.utils.NameGenderGuesser.Gender.FEMININE
+                } catch (_: Exception) {
+                    false
+                }
+            } else false
+        }
     // Same "am I mid-call with this specific contact" check the chat list uses for the
     // soft-burst avatar shape (ConversationList.kt) — last-seen has no place in the subtitle
     // while a call is actually happening.
@@ -780,10 +793,16 @@ private fun ConversationTopBar(
                                 stringResource(R.string.presence_online)
                             availability == Presence.Availability.AWAY ->
                                 if (idleInteraction != null) null
-                                else stringResource(R.string.presence_away)
+                                else stringResource(
+                                    if (isFeminine) R.string.presence_away_feminine
+                                    else R.string.presence_away
+                                )
                             availability == Presence.Availability.XA ->
                                 if (idleInteraction != null) null
-                                else stringResource(R.string.presence_xa)
+                                else stringResource(
+                                    if (isFeminine) R.string.presence_xa_feminine
+                                    else R.string.presence_xa
+                                )
                             availability == Presence.Availability.DND ->
                                 stringResource(R.string.presence_dnd)
                             else -> null

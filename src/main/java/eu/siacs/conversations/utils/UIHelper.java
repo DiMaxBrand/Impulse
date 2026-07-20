@@ -137,7 +137,7 @@ public class UIHelper {
 
     // Manual per-contact override wins over the heuristic name guess — it exists specifically
     // for the names the guesser gets wrong.
-    private static NameGenderGuesser.Gender resolveGender(
+    public static NameGenderGuesser.Gender resolveGender(
             final Context context, @Nullable final Contact contact) {
         if (contact == null) {
             return NameGenderGuesser.Gender.UNKNOWN;
