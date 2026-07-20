@@ -2778,7 +2778,13 @@ private fun MediaThumbnailBubble(
         val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
         LaunchedEffect(uuid) {
             val bm = withContext(Dispatchers.IO) {
-                try { fileBackend.getThumbnail(message, sizePx, false) } catch (_: Exception) { null }
+                // false: this bubble draws its own animated play affordance below, so the
+                // baked-in overlay FileBackend normally adds to video thumbnails would double up.
+                try {
+                    fileBackend.getThumbnail(message, sizePx, false, false)
+                } catch (_: Exception) {
+                    null
+                }
             }
             if (bm != null) ThumbnailCache.put(uuid, bm.asImageBitmap())
         }

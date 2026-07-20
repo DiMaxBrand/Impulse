@@ -971,12 +971,24 @@ public class FileBackend {
     }
 
     public Bitmap getThumbnail(Message message, int size, boolean cacheOnly) throws IOException {
+        return getThumbnail(message, size, cacheOnly, true);
+    }
+
+    // drawVideoPlayOverlay exists for the Compose message bubble (MediaThumbnailBubble in
+    // ConversationScreen.kt), which already draws its own animated play affordance on top of the
+    // thumbnail — every other consumer (notifications, reply/quote previews) has no overlay of
+    // its own and still needs the baked-in one, so this only ever gets passed false from there.
+    // Cached separately from the overlaid version since they're genuinely different bitmaps.
+    public Bitmap getThumbnail(
+            Message message, int size, boolean cacheOnly, boolean drawVideoPlayOverlay)
+            throws IOException {
         final String uuid = message.getUuid();
+        final String cacheKey = drawVideoPlayOverlay ? uuid : uuid + "#no-video-overlay";
         final LruCache<String, Bitmap> cache = mXmppConnectionService.getBitmapCache();
-        Bitmap thumbnail = cache.get(uuid);
+        Bitmap thumbnail = cache.get(cacheKey);
         if ((thumbnail == null) && (!cacheOnly)) {
             synchronized (THUMBNAIL_LOCK) {
-                thumbnail = cache.get(uuid);
+                thumbnail = cache.get(cacheKey);
                 if (thumbnail != null) {
                     return thumbnail;
                 }
@@ -985,7 +997,7 @@ public class FileBackend {
                 if ("application/pdf".equals(mime)) {
                     thumbnail = getPdfDocumentPreview(file, size);
                 } else if (mime.startsWith("video/")) {
-                    thumbnail = getVideoPreview(file, size);
+                    thumbnail = getVideoPreview(file, size, drawVideoPlayOverlay);
                 } else {
                     final Bitmap fullSize = getFullSizeImagePreview(file, size);
                     if (fullSize == null) {
@@ -1005,7 +1017,7 @@ public class FileBackend {
                         thumbnail = withGifOverlay;
                     }
                 }
-                cache.put(uuid, thumbnail);
+                cache.put(cacheKey, thumbnail);
             }
         }
         return thumbnail;
@@ -1095,7 +1107,7 @@ public class FileBackend {
         }
     }
 
-    private Bitmap getVideoPreview(final File file, final int size) {
+    private Bitmap getVideoPreview(final File file, final int size, final boolean drawPlayOverlay) {
         final MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
         Bitmap frame;
         try {
@@ -1107,12 +1119,14 @@ public class FileBackend {
             frame = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
             frame.eraseColor(0xff000000);
         }
-        drawOverlay(
-                frame,
-                paintOverlayBlack(frame)
-                        ? R.drawable.play_video_black
-                        : R.drawable.play_video_white,
-                0.75f);
+        if (drawPlayOverlay) {
+            drawOverlay(
+                    frame,
+                    paintOverlayBlack(frame)
+                            ? R.drawable.play_video_black
+                            : R.drawable.play_video_white,
+                    0.75f);
+        }
         return frame;
     }
 
