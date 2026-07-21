@@ -322,11 +322,23 @@ private fun ItemList(
 ) {
     val listState = rememberLazyListState()
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-        itemsIndexed(items, key = { _, item -> item.getAddress().toString() }) { index, item ->
+        itemsIndexed(items, key = { _, item -> listItemKey(item) }) { index, item ->
             row(item, listItemShape(index, items.size))
         }
         item { Spacer(Modifier.height(88.dp)) } // clears the FAB
     }
+}
+
+// The same JID can be bookmarked or rostered under more than one enabled account, which would
+// otherwise produce two ListItems with an identical getAddress() — qualify by owning account so
+// LazyColumn's key stays unique (IllegalArgumentException: "Key ... was already used").
+private fun listItemKey(item: ListItem): String {
+    val accountJid = when (item) {
+        is Contact -> item.getAccount().getJid()
+        is Bookmark -> item.getAccount().getJid()
+        else -> null
+    }
+    return "${item.getAddress()}#$accountJid"
 }
 
 private fun listItemShape(index: Int, total: Int): RoundedCornerShape {
