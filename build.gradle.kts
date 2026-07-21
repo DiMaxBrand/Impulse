@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42361
-val appVersion = "1.12.0-rc.89+2.20.0"
+val baseVersionCode = 42362
+val appVersion = "1.12.0-rc.90+2.20.0"
 
 @Suppress("DEPRECATION")
 android {
@@ -208,7 +208,6 @@ dependencies {
     implementation("com.google.guava:guava:33.6.0-android")
     implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta5")
     implementation("com.google.zxing:core:3.5.4")
-    implementation("com.leinardi.android:speed-dial:3.3.0")
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
