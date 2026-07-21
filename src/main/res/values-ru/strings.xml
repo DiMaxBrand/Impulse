@@ -392,6 +392,7 @@
     <string name="non_anonymous">Сделать XMPP-адрес видимым для всех</string>
     <string name="moderated">Сделать канал модерируемым</string>
     <string name="you_are_not_participating">Вы не участвуете</string>
+    <string name="read_only_channel">Канал только для чтения — писать могут только администраторы</string>
     <string name="modified_conference_options">Настройки конференции изменены!</string>
     <string name="could_not_modify_conference_options">Невозможно изменить настройки конференции</string>
     <string name="never">Никогда</string>
@@ -862,6 +863,8 @@
     <string name="please_enter_xmpp_address">Введите XMPP-адрес</string>
     <string name="this_is_an_xmpp_address">Это XMPP-адрес. Введите имя.</string>
     <string name="creating_channel">Создание публичного канала…</string>
+    <string name="creating_group_chat">Создание группы…</string>
+    <string name="everyone_can_join">Может присоединиться кто угодно</string>
     <string name="channel_already_exists">Этот канал уже существует</string>
     <string name="joined_an_existing_channel">Вы присоединились к существующему каналу</string>
     <string name="unable_to_set_channel_configuration">Невозможно сохранить настройки канала</string>
@@ -1367,6 +1370,7 @@
     <string name="developer_options_reset_pause_timer">Сбросить таймер паузы обновлений</string>
     <string name="developer_options_reset_pause_timer_summary">Сбрасывает задержку после закрытия панели обновления, чтобы она могла появиться снова сразу</string>
     <string name="developer_options_reset_pause_timer_done">Таймер паузы сброшен</string>
+    <string name="updates_status_channel_behind">Ваша сборка новее этого канала</string>
     <string name="developer_options_show_update_sheet">Показать панель обновления</string>
     <string name="developer_options_show_update_sheet_summary">Открывает панель обновления в текущем состоянии загрузчика</string>
     <string name="developer_options_pick_version">Выбрать версию вручную</string>
