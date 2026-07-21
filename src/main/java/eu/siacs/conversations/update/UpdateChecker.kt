@@ -160,6 +160,19 @@ class UpdateChecker(private val client: OkHttpClient) {
             return SemVer(major, minor, patch, preType, preNum)
         }
 
+        // Shared by every place that decides whether a *stored* version string (pending or
+        // already-downloaded) is still worth acting on — file/pref presence alone isn't enough,
+        // since whatever wrote it can only be trusted at the moment it ran; what's actually
+        // installed can move on without that state ever being told to reconcile. Always re-derive
+        // from BuildConfig.VERSION_NAME — the one source of truth for what's running right now —
+        // rather than some other cached "current version" value that could itself be stale.
+        fun isNewerThanInstalled(versionName: String?): Boolean {
+            if (versionName == null) return false
+            val current = parseVersion(stripBuildMeta(BuildConfig.VERSION_NAME)) ?: return true
+            val candidate = parseVersion(versionName) ?: return false
+            return compareSemver(candidate, current) > 0
+        }
+
         fun compareSemver(a: SemVer, b: SemVer): Int {
             val core = compareValuesBy(a, b, { it.major }, { it.minor }, { it.patch })
             if (core != 0) return core

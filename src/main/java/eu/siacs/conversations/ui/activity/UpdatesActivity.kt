@@ -114,7 +114,7 @@ class UpdatesActivity : ActionBarActivity() {
             packageManager.canRequestPackageInstalls()
         } else true
 
-        val apkExists = prefs.downloadedApkExists()
+        val apkExists = prefs.downloadedApkExists() && UpdateChecker.isNewerThanInstalled(prefs.downloadedVersion)
         if (downloadedPath != null && !apkExists) prefs.clearDownload()
 
         val restoredPhase = when {

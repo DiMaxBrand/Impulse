@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import eu.siacs.conversations.update.DownloadEtaTracker
+import eu.siacs.conversations.update.UpdateChecker
 import eu.siacs.conversations.update.UpdateDownloader
 import eu.siacs.conversations.update.UpdateInfo
 import eu.siacs.conversations.update.UpdatePreferences
@@ -96,7 +97,7 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
             requireActivity().packageManager.canRequestPackageInstalls()
         } else true
 
-        val apkExists = prefs.downloadedApkExists()
+        val apkExists = prefs.downloadedApkExists() && UpdateChecker.isNewerThanInstalled(prefs.downloadedVersion)
         if (downloadedPath != null && !apkExists) prefs.clearDownload()
 
         val restoredPhase = when {
@@ -230,9 +231,13 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
             // download; OS-level storage cleanup is another way). initState() already self-heals
             // this, but only after the sheet is already showing, which is how you'd get a sheet
             // with no content at all instead of no sheet. Check here too so it never opens for a
-            // download that isn't actually there.
-            val hasDownloaded = prefs.downloadedApkPath != null && prefs.downloadedApkExists()
-            if (prefs.pendingUpdateVersion == null && !hasDownloaded) return false
+            // download that isn't actually there. Also require the version to still actually be
+            // newer than what's installed — see UpdateChecker.isNewerThanInstalled().
+            val hasDownloaded = prefs.downloadedApkPath != null &&
+                prefs.downloadedApkExists() &&
+                UpdateChecker.isNewerThanInstalled(prefs.downloadedVersion)
+            val hasPending = UpdateChecker.isNewerThanInstalled(prefs.pendingUpdateVersion)
+            if (!hasPending && !hasDownloaded) return false
             return System.currentTimeMillis() > prefs.sheetDismissedUntil
         }
     }
