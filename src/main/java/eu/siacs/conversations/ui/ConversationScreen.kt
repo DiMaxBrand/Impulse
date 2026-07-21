@@ -3114,12 +3114,15 @@ private fun MessageContextSheet(
             }
         )
         // Message privately — reach the sender of a group/channel message directly, without
-        // going through the member list (which may not even be visible to non-moderators)
+        // going through the member list (which may not even be visible to non-moderators).
+        // Deliberately offered for already-private messages too: replying at all (the plain
+        // "Reply" action above) does NOT put the composer into private mode by itself — that's
+        // governed solely by conversation.nextCounterpart at send time — so without this, a
+        // reply to a whisper you received privately would go out to the whole room by default.
         val counterpart = message.counterpart
         if (conversation != null
             && conversation.getMode() == eu.siacs.conversations.entities.Conversational.MODE_MULTI
             && message.status == Message.STATUS_RECEIVED
-            && !message.isPrivateMessage()
             && message.type != Message.TYPE_STATUS
             && message.type != Message.TYPE_RTP_SESSION
             && !deleted
