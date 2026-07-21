@@ -89,13 +89,6 @@ class ModerationManager(
             )
             return
         }
-        if (mucOptions.isPrivateAndNonAnonymous()) {
-            Log.d(
-                Config.LOGTAG,
-                "${account.getJid().asBareJid()}: retractions are only supported in public channels"
-            )
-            return
-        }
         val retraction = message.getExtension(Retract::class.java)
         val stanzaId = if (retraction == null) null else retraction.getId()
         if (stanzaId == null) {
