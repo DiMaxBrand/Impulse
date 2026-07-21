@@ -4252,6 +4252,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
             ) {
+              Box {
                 // Native EditText instead of BasicTextField: autocorrect-revert on some IMEs
                 // (reported: Samsung Keyboard) was landing edits in the wrong place against
                 // Compose's plain-String text field, producing duplicated words. EditText's
@@ -4259,12 +4260,28 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 // every other Android messenger's chat input uses, so IME edit commands
                 // (autocorrect, autocorrect-revert, composing regions) apply correctly.
                 val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
-                val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
                 val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
                 val hintText =
                     if (correcting) stringResource(R.string.send_corrected_message)
                     else conversation?.let { UIHelper.getMessageHint(context, it) }
                         ?: stringResource(R.string.send_message)
+                // Placeholder text lives here instead of EditText's native hint: the hint shares
+                // the field's own maxLines (6) and wraps to a second line under width pressure —
+                // always a wrapping risk on its own, and it also fought the attach-button shared-
+                // element transition's bounds animation when it happened mid-transition: the row
+                // would grow taller, snap the paperclip out of its animated position with no
+                // transition of its own, then spring back, 2-3 times in a row. Single-line +
+                // ellipsis here means the field's width can never affect its height, tap or not.
+                if (text.isEmpty()) {
+                    Text(
+                        text = hintText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
+                }
                 AndroidView(
                     factory = { ctx ->
                         EditText(ctx).apply {
@@ -4335,8 +4352,6 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     },
                     update = { editText ->
                         editText.setTextColor(onSurfaceColor)
-                        editText.setHintTextColor(onSurfaceVariantColor)
-                        editText.hint = hintText
                         if (editText.text?.toString() != text) {
                             editText.setText(text)
                             editText.setSelection((editText.text?.length ?: 0))
@@ -4350,6 +4365,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 )
+              }
             }
 
             // Morphing send button: rounded square at rest, springs to a pill once there
