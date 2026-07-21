@@ -193,6 +193,8 @@
     <string name="account_settings_jabber_id">XMPP-адрес</string>
     <string name="block_jabber_id">Заблокировать XMPP-адрес</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
+    <string name="xmpp_address_help_title">Как узнать XMPP-адрес собеседника?</string>
+    <string name="xmpp_address_help_body">Попросите собеседника открыть свой XMPP-клиент, перейти в «Управление аккаунтами», выбрать аккаунт и поделиться адресом — текстом или QR-кодом, который можно отсканировать. Адрес выглядит как email, например username@example.com.</string>
     <string name="password">Пароль</string>
     <string name="invalid_jid">Недопустимый XMPP-адрес</string>
     <string name="error_out_of_memory">Нехватка памяти. Изображение слишком большое.</string>

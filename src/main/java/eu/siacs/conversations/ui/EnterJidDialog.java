@@ -2,11 +2,15 @@ package eu.siacs.conversations.ui;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.PopupWindow;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.databinding.DataBindingUtil;
@@ -147,6 +151,7 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         defaultToAccountDomain = getArguments().getBoolean(DEFAULT_TO_ACCOUNT_DOMAIN_KEY, false);
 
         DelayedHintHelper.setHint(R.string.account_settings_example_jabber_id, binding.jid);
+        binding.jidLayout.setEndIconOnClickListener(this::showXmppAddressHelpPopup);
 
         final String account = getArguments().getString(ACCOUNT_KEY);
         if (Strings.isNullOrEmpty(account)) {
@@ -180,6 +185,29 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         dialog.show();
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(dialogOnClick);
         return dialog;
+    }
+
+    // Explains, in an elevated popup card anchored to the field's help icon, how the person
+    // being added can find their own XMPP address to give out — most people typing a contact's
+    // address here don't yet know it looks like an email address or where their counterpart
+    // would go to find/share it.
+    private void showXmppAddressHelpPopup(final View anchor) {
+        final View content =
+                LayoutInflater.from(anchor.getContext())
+                        .inflate(R.layout.popup_xmpp_address_help, null);
+        final PopupWindow popupWindow =
+                new PopupWindow(
+                        content,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        true);
+        // Transparent popup background so the card's own rounded corners and elevation shadow
+        // aren't clipped by the PopupWindow's default opaque frame.
+        popupWindow.setBackgroundDrawable(new ColorDrawable(0));
+        popupWindow.setOutsideTouchable(true);
+        content.findViewById(R.id.xmpp_address_help_dismiss)
+                .setOnClickListener(v -> popupWindow.dismiss());
+        popupWindow.showAsDropDown(binding.jidLayout);
     }
 
     private void handleEnter(final DialogEnterJidBinding binding, final String account) {

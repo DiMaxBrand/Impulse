@@ -205,6 +205,8 @@
     <string name="account_settings_jabber_id">XMPP address</string>
     <string name="block_jabber_id">Block XMPP address</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
+    <string name="xmpp_address_help_title">How do I get their XMPP address?</string>
+    <string name="xmpp_address_help_body">Ask the person to open their XMPP app, go to Manage Accounts, tap their account, and share their address with you — as text or as a QR code you can scan. It looks like an email address, e.g. username@example.com.</string>
     <string name="password">Password</string>
     <string name="invalid_jid">This is not a valid XMPP address</string>
     <string name="error_out_of_memory">Out of memory. Image too big</string>
