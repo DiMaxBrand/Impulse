@@ -80,6 +80,15 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         }
     }
 
+    /** Re-reads prefs into uiState — called by ConversationsActivity when a check completes while
+     * the sheet is already showing, so a title/version written *after* the sheet was first shown
+     * (e.g. this fragment was created from a synchronous re-show before the async launch check
+     * that's about to update prefs had returned) doesn't get stuck stale until the fragment is
+     * torn down and recreated (e.g. by navigating away and back). */
+    fun refresh() {
+        if (view != null) initState()
+    }
+
     private fun initState() {
         val downloadedPath = prefs.downloadedApkPath
         val pendingVersion = prefs.pendingUpdateVersion

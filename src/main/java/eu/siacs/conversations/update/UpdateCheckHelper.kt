@@ -44,6 +44,15 @@ object UpdateCheckHelper {
      * thread. */
     fun performCheck(context: Context) {
         val prefs = UpdatePreferences(context)
+        // Self-heal here too, not just at process startup (Conversations.kt's Application.onCreate):
+        // without this, a device where the process never fully cold-starts between an update
+        // actually landing and the next automatic check is stuck re-offering an install for a
+        // version it's already running — a live check finding nothing newer never reconciled the
+        // leftover pending/downloaded state either, since it early-returns below. Safe here
+        // specifically because performCheck() is only ever reached from genuinely automatic checks
+        // (UpdateCheckWorker, checkOnLaunchIfEligible), never right after the developer-options
+        // manual version picker.
+        prefs.clearIfNotNewerThan(eu.siacs.conversations.BuildConfig.VERSION_NAME)
         if (!prefs.autoCheck) return
         val result = try {
             UpdateChecker(OkHttpClient()).checkForUpdate(prefs.selectedChannel)

@@ -88,9 +88,15 @@ class UpdatePreferences(context: Context) {
      * cleaned up (nightly wipe, DownloadManager retention), the sheet would otherwise land in
      * the dead IDLE phase — a "new version available" card with no button at all.
      *
-     * Only call this once, at process startup, before any UI (or the developer-options manual
-     * version picker, which deliberately stages a version that isn't newer) has run — otherwise
-     * this would immediately wipe out a deliberate downgrade pick made later in the session. */
+     * Besides the process-startup call, this also runs at the top of UpdateCheckHelper.performCheck()
+     * (the daily worker and the beta/alpha launch check) — a device that never fully cold-starts
+     * between installing an update and the next automatic check (e.g. the update was applied but
+     * the process wasn't killed cleanly) would otherwise be stuck re-offering an install for a
+     * version it's already running, forever, since a live check finding nothing newer than that
+     * point never reconciled it either. Do NOT call this from UI render paths (shouldShow()/
+     * initState()) or anywhere reachable right after the developer-options manual version picker,
+     * which deliberately stages a version that isn't newer — this would immediately wipe that
+     * pick before the user gets to install it. */
     fun clearIfNotNewerThan(currentVersionRaw: String) {
         val current =
             UpdateChecker.parseVersion(UpdateChecker.stripBuildMeta(currentVersionRaw))

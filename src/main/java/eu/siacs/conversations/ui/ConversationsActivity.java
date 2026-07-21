@@ -542,7 +542,15 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         // right after onResume(), which is always safely in a resumed state.
         if (isFinishing() || getSupportFragmentManager().isStateSaved()) return;
         if (!UpdateSheetFragment.shouldShow(this)) return;
-        if (getSupportFragmentManager().findFragmentByTag(UpdateSheetFragment.TAG) != null) return;
+        final var existing = getSupportFragmentManager().findFragmentByTag(UpdateSheetFragment.TAG);
+        if (existing instanceof UpdateSheetFragment sheet) {
+            // Already showing — this call is the async check's onChecked callback completing
+            // *after* the sheet was shown from the synchronous call in onResume(), which can only
+            // have read whatever a previous check wrote. Refresh it so a title/version this check
+            // just wrote doesn't sit there stale until the sheet is torn down and recreated.
+            sheet.refresh();
+            return;
+        }
         new UpdateSheetFragment().show(getSupportFragmentManager(), UpdateSheetFragment.TAG);
     }
 
