@@ -206,7 +206,14 @@
     <string name="block_jabber_id">Block XMPP address</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
     <string name="xmpp_address_help_title">How do I get their XMPP address?</string>
-    <string name="xmpp_address_help_body">Ask the person to open their XMPP app, go to Manage Accounts, tap their account, and share their address with you — as text or as a QR code you can scan. It looks like an email address, e.g. username@example.com.</string>
+    <string name="xmpp_address_help_scan_header">Scan their QR code</string>
+    <string name="xmpp_address_help_scan_body">On the home screen, tap the QR icon in the top bar, choose \"Scan QR Code,\" and point your camera at their code. This adds them right away — no typing needed.</string>
+    <string name="xmpp_address_help_show_header">Show them yours</string>
+    <string name="xmpp_address_help_show_body">Tap that same QR icon on the home screen and choose \"Show QR Code\" — or go to Manage Accounts, tap your account, and choose \"Show QR Code\" there. Let them scan it to add you.</string>
+    <string name="xmpp_address_help_other_impulse_header">If they use Impulse too</string>
+    <string name="xmpp_address_help_other_impulse_body">Easiest option: ask them to open this same \"Add contact\" dialog on their phone — the field above already shows their own address.</string>
+    <string name="xmpp_address_help_other_app_header">If they use a different app</string>
+    <string name="xmpp_address_help_other_app_body">Ask for their XMPP address — it looks like an email address, e.g. username@example.com. Most XMPP apps show it somewhere in account or profile settings.</string>
     <string name="password">Password</string>
     <string name="invalid_jid">This is not a valid XMPP address</string>
     <string name="error_out_of_memory">Out of memory. Image too big</string>
