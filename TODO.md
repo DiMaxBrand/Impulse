@@ -114,6 +114,6 @@ Cherry-pick targets from `allow-deleting-messages` are noted.
 | **Delete** | ✅ Done | XEP-0424 retraction (everyone) + local delete (myself); full infra cherry-picked from `allow-deleting-messages` |
 | **Retry decryption** | N/A | Dropped — PGP-only feature, not used in this app |
 | **Retry P2P** | [ ] | Failed send, file not yet uploaded, peer online |
-| **Moderation delete** | [ ] | MUC moderator + server msg ID present |
+| **Moderation delete** | ✅ Done | XEP-0425 IQ moderate; gated on public/anonymous channel + moderator rank + server msg ID; one-time disclaimer re-shown every 5 min |
 | **Report & block** | [ ] | Received from stranger, server has spam reporting |
 | **Open with** | [ ] | Geo URIs / audio files when OsmAnd is installed |

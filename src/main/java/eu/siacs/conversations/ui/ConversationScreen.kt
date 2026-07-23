@@ -190,6 +190,7 @@ class ConversationScreenState {
     internal val pinnedBannerVisible = mutableStateOf(false)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
     internal val deleteTarget = mutableStateOf<Message?>(null)
+    internal val moderateTarget = mutableStateOf<Message?>(null)
     // message UUIDs that a remote peer is actively editing right now
     internal val remoteEditingIds = mutableStateOf<Set<String>>(emptySet())
 
@@ -291,6 +292,7 @@ interface ConversationScreenListener {
     fun onDeleteMessage(message: Message)
     fun onDeleteForEveryone(message: Message)
     fun onDeleteForMyself(message: Message)
+    fun onModerateMessage(message: Message)
     fun onEditingStarted(message: Message)
     fun onEditingStopped(message: Message)
     fun onCancelTransmission(message: Message)
@@ -524,6 +526,17 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 listener.onDeleteForMyself(deleteTarget)
             },
             onDismiss = { state.deleteTarget.value = null },
+        )
+    }
+    val moderateTarget = state.moderateTarget.value
+    if (moderateTarget != null) {
+        ModerationDisclaimerDialog(
+            onConfirm = { doNotShowAgain ->
+                if (doNotShowAgain) markModerationDisclaimerAcked()
+                state.moderateTarget.value = null
+                listener.onModerateMessage(moderateTarget)
+            },
+            onDismiss = { state.moderateTarget.value = null },
         )
     }
 }
@@ -3113,6 +3126,18 @@ private class SheetAction(
     val onClick: () -> Unit,
 )
 
+// Mirrors the old ConversationFragment's static ackModeration field: once the user confirms the
+// "this deletes for everyone" disclaimer, skip it for the next 5 minutes rather than showing it
+// on every single moderation action in a row.
+private var moderationDisclaimerAckedUntil: java.time.Instant = java.time.Instant.MIN
+
+private fun isModerationDisclaimerAcked(): Boolean =
+    moderationDisclaimerAckedUntil.isAfter(java.time.Instant.now())
+
+private fun markModerationDisclaimerAcked() {
+    moderationDisclaimerAckedUntil = java.time.Instant.now().plus(java.time.Duration.ofMinutes(5))
+}
+
 /**
  * Long-press message menu: an M3 Expressive bottom sheet whose actions are rendered as a
  * grouped list — large outer corners, tight inner corners — matching the bubble language.
@@ -3336,6 +3361,28 @@ private fun MessageContextSheet(
                 })
             }
         }
+        // Moderate delete (XEP-0425): a moderator removing someone else's message for everyone.
+        // Distinct from the self-retraction "Delete" below — mirrors the gating the old
+        // ConversationFragment used: public/anonymous channel, room advertises moderation,
+        // we're a moderator, and the message has a real server-assigned stanza-id to target.
+        val mucOptions = conversation?.mucOptions
+        val canModerate = message.status != Message.STATUS_SEND_FAILED
+                && !deleted
+                && conversation?.getMode() == Conversational.MODE_MULTI
+                && mucOptions != null
+                && !mucOptions.isPrivateAndNonAnonymous()
+                && mucOptions.moderation()
+                && mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Role.MODERATOR)
+                && message.serverMsgId != null
+        if (canModerate) {
+            add(SheetAction(R.drawable.ic_delete_24dp, stringResource(R.string.moderate_delete)) {
+                if (isModerationDisclaimerAcked()) {
+                    listener.onModerateMessage(message)
+                } else {
+                    state.moderateTarget.value = message
+                }
+            })
+        }
         // Delete
         val deleteLabel = when {
             deleted -> stringResource(R.string.delete_leftover_message)
@@ -3515,6 +3562,53 @@ private fun DeleteMessageSheet(
             Spacer(Modifier.height(16.dp))
         }
     }
+}
+
+/** One-time (per 5-minute window) disclaimer before a moderator's delete reaches every occupant. */
+@Composable
+private fun ModerationDisclaimerDialog(
+    onConfirm: (doNotShowAgain: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var doNotShowAgain by remember { mutableStateOf(false) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.delete_message)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.moderation_explained),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { doNotShowAgain = !doNotShowAgain }
+                        .padding(top = 16.dp),
+                ) {
+                    androidx.compose.material3.Checkbox(
+                        checked = doNotShowAgain,
+                        onCheckedChange = { doNotShowAgain = it },
+                    )
+                    Text(
+                        text = stringResource(R.string.do_not_show_this_warning_again),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onConfirm(doNotShowAgain) }) {
+                Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
 }
 
 @Composable

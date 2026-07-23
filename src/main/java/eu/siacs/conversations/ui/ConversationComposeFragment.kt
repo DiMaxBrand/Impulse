@@ -37,6 +37,7 @@ import eu.siacs.conversations.ui.util.PresenceSelector
 import eu.siacs.conversations.ui.util.ViewUtil
 import eu.siacs.conversations.xmpp.jingle.RtpCapability
 import eu.siacs.conversations.xmpp.manager.HttpUploadManager
+import eu.siacs.conversations.xmpp.manager.ModerationManager
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.launch
 
@@ -1126,6 +1127,20 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onDeleteForMyself(message: Message) {
         deleteMessageLocally(message)
+    }
+
+    // Confirmation/disclaimer (shown once per 5-minute window) is handled in Compose before this
+    // is called — this just performs the actual XEP-0425 moderation request.
+    override fun onModerateMessage(message: Message) {
+        val account = (message.conversation as? Conversation)?.getAccount() ?: return
+        val manager = account.getXmppConnection().getManager(ModerationManager::class.java)
+        val future = manager.moderate(message)
+        Futures.addCallback(future, object : FutureCallback<Void?> {
+            override fun onSuccess(result: Void?) {}
+            override fun onFailure(t: Throwable) {
+                Toast.makeText(context, R.string.could_not_moderate_message, Toast.LENGTH_LONG).show()
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
     }
 
     override fun onEditingStarted(message: Message) {
