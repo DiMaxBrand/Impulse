@@ -3365,6 +3365,10 @@ private fun MessageContextSheet(
         // Distinct from the self-retraction "Delete" below — mirrors the gating the old
         // ConversationFragment used: public/anonymous channel, room advertises moderation,
         // we're a moderator, and the message has a real server-assigned stanza-id to target.
+        // Owners/admins are supposed to always hold at least moderator role per XEP-0045, but
+        // that depends on the client's role tracking being fresh — OR in the affiliation directly
+        // (ranks(ADMIN) also covers OWNER, since owner outranks admin) so an owner isn't blocked
+        // by stale role state.
         val mucOptions = conversation?.mucOptions
         val canModerate = message.status != Message.STATUS_SEND_FAILED
                 && !deleted
@@ -3372,7 +3376,8 @@ private fun MessageContextSheet(
                 && mucOptions != null
                 && !mucOptions.isPrivateAndNonAnonymous()
                 && mucOptions.moderation()
-                && mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Role.MODERATOR)
+                && (mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Role.MODERATOR)
+                    || mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Affiliation.ADMIN))
                 && message.serverMsgId != null
         if (canModerate) {
             add(SheetAction(R.drawable.ic_delete_24dp, stringResource(R.string.moderate_delete)) {
