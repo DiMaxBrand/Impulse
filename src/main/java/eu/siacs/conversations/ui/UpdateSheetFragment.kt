@@ -149,9 +149,15 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         lifecycleScope.launch {
             val etaTracker = DownloadEtaTracker()
             while (true) {
+                // A newer download (e.g. started from the Updates screen's Check Now while this
+                // sheet's own download was still in flight) may have superseded this one and
+                // taken over prefs.activeDownloadId — stop touching shared state once that
+                // happens, rather than racing the other poll loop to stamp downloadedVersion.
+                if (prefs.activeDownloadId != id) return@launch
                 val progress = withContext(Dispatchers.IO) {
                     UpdateDownloader.queryProgress(requireContext(), id)
                 }
+                if (prefs.activeDownloadId != id) return@launch
                 when (progress) {
                     is UpdateDownloader.DownloadProgress.InProgress -> {
                         val sampled = etaTracker.sample(

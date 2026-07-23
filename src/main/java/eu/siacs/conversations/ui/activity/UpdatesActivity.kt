@@ -157,6 +157,23 @@ class UpdatesActivity : ActionBarActivity() {
                     uiState = uiState.copy(checkStatus = CheckStatus.CHANNEL_BEHIND)
                 is UpdateChecker.CheckResult.UpdateAvailable -> {
                     val info = result.info
+                    // A different version's download can still be in flight in the background
+                    // (e.g. downloaded rc.104, then Check Now found rc.105 before it finished) —
+                    // starting a second download without cancelling the first would leave two
+                    // pollDownload loops racing to write prefs.downloadedVersion/downloadedApkPath,
+                    // and whichever download happens to finish first would stamp its file with
+                    // whatever version is currently in prefs.pendingUpdateVersion at that moment
+                    // (already overwritten below to the new version) — a real file/version
+                    // mismatch, not just a display glitch. Cancel the stale one first.
+                    if (uiState.downloadPhase == DownloadPhase.DOWNLOADING &&
+                        prefs.pendingUpdateVersion != null &&
+                        prefs.pendingUpdateVersion != info.versionName
+                    ) {
+                        withContext(Dispatchers.IO) {
+                            UpdateDownloader.cancelDownload(this@UpdatesActivity, prefs.activeDownloadId)
+                        }
+                        prefs.activeDownloadId = -1L
+                    }
                     pendingInfo = info
                     prefs.pendingUpdateVersion = info.versionName
                     prefs.pendingUpdateUrl = info.downloadUrl
@@ -228,9 +245,14 @@ class UpdatesActivity : ActionBarActivity() {
         lifecycleScope.launch {
             val etaTracker = DownloadEtaTracker()
             while (true) {
+                // Another download may have superseded this one (see triggerManualCheck) since
+                // the last iteration — stop touching shared prefs/uiState for a download that
+                // isn't the one Impulse is tracking anymore.
+                if (prefs.activeDownloadId != id) return@launch
                 val progress = withContext(Dispatchers.IO) {
                     UpdateDownloader.queryProgress(this@UpdatesActivity, id)
                 }
+                if (prefs.activeDownloadId != id) return@launch
                 when (progress) {
                     is UpdateDownloader.DownloadProgress.InProgress -> {
                         // Only STATUS_RUNNING clears statusText to null — paused/queued states
