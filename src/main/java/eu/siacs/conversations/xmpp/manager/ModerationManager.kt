@@ -74,7 +74,7 @@ class ModerationManager(
             handleDirectRetraction(message, from)
             return
         }
-        if (from.isFullJid() || message.getType() != Message.Type.GROUPCHAT) {
+        if (message.getType() != Message.Type.GROUPCHAT) {
             Log.d(
                 Config.LOGTAG,
                 "received retraction from $from but retractions are only supported in MUC"
