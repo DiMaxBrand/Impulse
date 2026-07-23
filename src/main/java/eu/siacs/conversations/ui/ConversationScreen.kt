@@ -3001,7 +3001,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         }
     // File/image private messages never render a body (LinkifiedMessageText, where the
     // "whispered"/"to X" prefix normally lives, is skipped for those bubbles entirely) — put the
-    // same label here too so private photos/files are marked on both ends, not just private text.
+    // same label here too, right before the file size, so private photos/files are marked on
+    // both ends, not just private text.
     val privateLabel = if (!message.isPrivateMessage()) {
         null
     } else if (outgoing) {
@@ -3014,7 +3015,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
     ) {
         Text(
-            text = listOfNotNull(listenLabel, fileSize, timeText, privateLabel).joinToString(" · "),
+            text = listOfNotNull(listenLabel, privateLabel, fileSize, timeText).joinToString(" · "),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
