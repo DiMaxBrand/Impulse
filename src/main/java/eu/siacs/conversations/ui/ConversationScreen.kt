@@ -2999,12 +2999,22 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
             ) null
             else stringResource(R.string.listen_status_not_listened)
         }
+    // File/image private messages never render a body (LinkifiedMessageText, where the
+    // "whispered"/"to X" prefix normally lives, is skipped for those bubbles entirely) — put the
+    // same label here too so private photos/files are marked on both ends, not just private text.
+    val privateLabel = if (!message.isPrivateMessage()) {
+        null
+    } else if (outgoing) {
+        stringResource(R.string.private_message_to, message.counterpart?.resource ?: "")
+    } else {
+        stringResource(R.string.private_message)
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
     ) {
         Text(
-            text = listOfNotNull(listenLabel, fileSize, timeText).joinToString(" · "),
+            text = listOfNotNull(listenLabel, fileSize, timeText, privateLabel).joinToString(" · "),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
