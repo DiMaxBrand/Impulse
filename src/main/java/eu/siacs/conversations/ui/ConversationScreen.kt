@@ -2999,11 +2999,11 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
             ) null
             else stringResource(R.string.listen_status_not_listened)
         }
-    // File/image private messages never render a body (LinkifiedMessageText, where the
-    // "whispered"/"to X" prefix normally lives, is skipped for those bubbles entirely) — put the
-    // same label here too, right before the file size, so private photos/files are marked on
-    // both ends, not just private text.
-    val privateLabel = if (!message.isPrivateMessage()) {
+    // Private *text* messages already get the "whispered"/"to X" prefix inside the body
+    // (LinkifiedMessageText / buildAnnotatedBody) — only file/image ones skip that renderer
+    // entirely, so only those need the label repeated here. Gating on isFileOrImage (rather than
+    // just isPrivateMessage) avoids showing it twice for private text.
+    val privateLabel = if (!message.isPrivateMessage() || !message.isFileOrImage) {
         null
     } else if (outgoing) {
         stringResource(R.string.private_message_to, message.counterpart?.resource ?: "")
