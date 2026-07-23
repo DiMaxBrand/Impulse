@@ -32,7 +32,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/xmpp_address_help_scan_header"
+                    android:text="@string/xmpp_address_help_impulse_shortcut_header"
                     android:textColor="?attr/colorPrimary"
                     android:textAppearance="?attr/textAppearanceLabelLarge" />
 
@@ -40,14 +40,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="@string/xmpp_address_help_scan_body"
+                    android:text="@string/xmpp_address_help_impulse_shortcut_body"
                     android:textAppearance="?attr/textAppearanceBodySmall" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="@string/xmpp_address_help_show_header"
+                    android:text="@string/xmpp_address_help_impulse_qr_header"
                     android:textColor="?attr/colorPrimary"
                     android:textAppearance="?attr/textAppearanceLabelLarge" />
 
@@ -55,22 +55,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="@string/xmpp_address_help_show_body"
-                    android:textAppearance="?attr/textAppearanceBodySmall" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/xmpp_address_help_other_impulse_header"
-                    android:textColor="?attr/colorPrimary"
-                    android:textAppearance="?attr/textAppearanceLabelLarge" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/xmpp_address_help_other_impulse_body"
+                    android:text="@string/xmpp_address_help_impulse_qr_body"
                     android:textAppearance="?attr/textAppearanceBodySmall" />
 
                 <TextView
