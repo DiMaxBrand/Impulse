@@ -76,6 +76,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Scaffold
@@ -127,6 +128,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -524,6 +526,14 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             onDeleteForMyself = {
                 state.deleteTarget.value = null
                 listener.onDeleteForMyself(deleteTarget)
+            },
+            onModerate = {
+                state.deleteTarget.value = null
+                if (isModerationDisclaimerAcked()) {
+                    listener.onModerateMessage(deleteTarget)
+                } else {
+                    state.moderateTarget.value = deleteTarget
+                }
             },
             onDismiss = { state.deleteTarget.value = null },
         )
@@ -3361,34 +3371,9 @@ private fun MessageContextSheet(
                 })
             }
         }
-        // Moderate delete (XEP-0425): a moderator removing someone else's message for everyone.
-        // Distinct from the self-retraction "Delete" below — mirrors the gating the old
-        // ConversationFragment used: public/anonymous channel, room advertises moderation,
-        // we're a moderator, and the message has a real server-assigned stanza-id to target.
-        // Owners/admins are supposed to always hold at least moderator role per XEP-0045, but
-        // that depends on the client's role tracking being fresh — OR in the affiliation directly
-        // (ranks(ADMIN) also covers OWNER, since owner outranks admin) so an owner isn't blocked
-        // by stale role state.
-        val mucOptions = conversation?.mucOptions
-        val canModerate = message.status != Message.STATUS_SEND_FAILED
-                && !deleted
-                && conversation?.getMode() == Conversational.MODE_MULTI
-                && mucOptions != null
-                && !mucOptions.isPrivateAndNonAnonymous()
-                && mucOptions.moderation()
-                && (mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Role.MODERATOR)
-                    || mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Affiliation.ADMIN))
-                && message.serverMsgId != null
-        if (canModerate) {
-            add(SheetAction(R.drawable.ic_delete_24dp, stringResource(R.string.moderate_delete)) {
-                if (isModerationDisclaimerAcked()) {
-                    listener.onModerateMessage(message)
-                } else {
-                    state.moderateTarget.value = message
-                }
-            })
-        }
-        // Delete
+        // Delete — DeleteMessageSheet itself decides, per message, whether the "everyone" button
+        // is a self-retraction or (for someone else's message, when we're a moderator) a XEP-0425
+        // moderation request instead. See DeleteMessageSheet for that gating.
         val deleteLabel = when {
             deleted -> stringResource(R.string.delete_leftover_message)
             message.isFileOrImage -> stringResource(R.string.delete_x_file, fileDescription)
@@ -3487,8 +3472,12 @@ private fun DeleteMessageSheet(
     message: Message,
     onDeleteForEveryone: () -> Unit,
     onDeleteForMyself: () -> Unit,
+    onModerate: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val conversation = message.conversation as? Conversation
+    val isMuc = conversation?.getMode() == Conversational.MODE_MULTI
+    val isOwnMessage = message.status != Message.STATUS_RECEIVED
     // XEP-0424 retraction in a MUC must reference the room's own server-assigned stanza-id
     // (XEP-0359) — the sender's local UUID means nothing to other occupants or the room's
     // archive. That id only exists once the room has echoed this message back to us, which can
@@ -3496,8 +3485,24 @@ private fun DeleteMessageSheet(
     // urn:xmpp:sid:0. Offering (and silently no-op'ing) "delete for everyone" without it would
     // wipe the local copy while doing nothing for anyone else — disabled until it's genuinely
     // possible instead.
-    val isMuc = (message.conversation as? Conversation)?.getMode() == Conversational.MODE_MULTI
-    val canRetract = message.status != Message.STATUS_RECEIVED && (!isMuc || message.serverMsgId != null)
+    val canRetract = isOwnMessage && (!isMuc || message.serverMsgId != null)
+    // XEP-0425: a moderator can remove someone ELSE's message for everyone, even though they
+    // can't self-retract it. Applies in any MUC room the server advertises moderation support
+    // for — public channel or private group chat alike, since that's a real server capability
+    // check, not something tied to the room's privacy/anonymity settings. Owners/admins are
+    // supposed to always hold at least moderator role per XEP-0045, but OR in the affiliation
+    // directly (ranks(ADMIN) also covers OWNER) in case the client's tracked role lags.
+    val mucOptions = conversation?.mucOptions
+    val canModerate = !isOwnMessage
+            && !message.isDeleted
+            && message.status != Message.STATUS_SEND_FAILED
+            && isMuc
+            && mucOptions != null
+            && mucOptions.moderation()
+            && (mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Role.MODERATOR)
+                || mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Affiliation.ADMIN))
+            && message.serverMsgId != null
+    val moderateInstead = canModerate && !canRetract
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
@@ -3506,7 +3511,11 @@ private fun DeleteMessageSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
             )
-            val everyoneLabel = stringResource(R.string.delete_for_everyone)
+            val everyoneLabel = if (moderateInstead) {
+                stringResource(R.string.moderate_delete)
+            } else {
+                stringResource(R.string.delete_for_everyone)
+            }
             val myselfLabel = stringResource(R.string.delete_for_myself)
             val cancelLabel = stringResource(R.string.cancel)
             val everyoneInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -3523,15 +3532,26 @@ private fun DeleteMessageSheet(
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
-                            onClick = onDeleteForEveryone,
+                            onClick = { if (moderateInstead) onModerate() else onDeleteForEveryone() },
                             shapes = androidx.compose.material3.ButtonShapes(
                                 shape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShape,
                                 pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonPressShape,
                             ),
-                            enabled = canRetract,
+                            enabled = canRetract || canModerate,
                             interactionSource = everyoneInteractionSource,
                             modifier = Modifier.animateWidth(everyoneInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding),
-                        ) { Text(text = everyoneLabel, maxLines = 1) }
+                        ) {
+                            // The moderator label ("Delete as moderator" / "Удалить как модератор")
+                            // runs longer than "Delete for everyone" in this same slim third-of-
+                            // the-row button — allow it to wrap to a second line instead of
+                            // truncating, rather than reflowing the whole sheet's layout for it.
+                            Text(
+                                text = everyoneLabel,
+                                maxLines = if (moderateInstead) 2 else 1,
+                                textAlign = TextAlign.Center,
+                                style = if (moderateInstead) MaterialTheme.typography.labelMedium else LocalTextStyle.current,
+                            )
+                        }
                     },
                     menuContent = {},
                 )

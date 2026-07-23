@@ -1186,7 +1186,7 @@
     <string name="moderate_delete">Delete as moderator</string>
     <string name="could_not_moderate_message">Could not moderate message</string>
     <string name="delete_message">Delete message</string>
-    <string name="moderation_explained">This message will be deleted for you and every participant of this public channel.</string>
+    <string name="moderation_explained">This message will be deleted for you and every participant of this chat.</string>
     <string name="do_not_show_this_warning_again">Don’t show this warning again.</string>
     <string name="last_seen">last seen %s</string>
     <string name="last_seen_feminine">last seen %s</string>
