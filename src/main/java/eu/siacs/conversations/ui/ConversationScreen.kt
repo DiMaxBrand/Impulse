@@ -123,6 +123,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -2999,25 +3000,45 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
             ) null
             else stringResource(R.string.listen_status_not_listened)
         }
-    // Private *text* messages already get the "whispered"/"to X" prefix inside the body
-    // (LinkifiedMessageText / buildAnnotatedBody) — only file/image ones skip that renderer
-    // entirely, so only those need the label repeated here. Gating on isFileOrImage (rather than
-    // just isPrivateMessage) avoids showing it twice for private text.
-    val privateLabel = if (!message.isPrivateMessage() || !message.isFileOrImage) {
+    // The "whispered"/"to X" label lives only here now (not inline in the body) so it reads the
+    // same way for every private message, text or file/image, without crowding the message text.
+    val privateLabel = if (!message.isPrivateMessage()) {
         null
     } else if (outgoing) {
         stringResource(R.string.private_message_to, message.counterpart?.resource ?: "")
     } else {
         stringResource(R.string.private_message)
     }
+    val privateLabelColor = privateLabel?.let { Color(UIHelper.getColorForName(it)) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
     ) {
+        val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+        val footerText = remember(listenLabel, privateLabel, privateLabelColor, fileSize, timeText, onSurfaceVariant) {
+            val segments = buildList<Pair<String, Color?>> {
+                listenLabel?.let { add(it to null) }
+                privateLabel?.let { add(it to privateLabelColor) }
+                fileSize?.let { add(it to null) }
+                add(timeText to null)
+            }
+            buildAnnotatedString {
+                segments.forEachIndexed { index, (text, color) ->
+                    if (index > 0) append(" · ")
+                    if (color != null) {
+                        withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
+                            append(text)
+                        }
+                    } else {
+                        append(text)
+                    }
+                }
+            }
+        }
         Text(
-            text = listOfNotNull(listenLabel, privateLabel, fileSize, timeText).joinToString(" · "),
+            text = footerText,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = onSurfaceVariant,
         )
         if (message.edited()) {
             Spacer(Modifier.width(4.dp))
@@ -3766,24 +3787,10 @@ private fun buildAnnotatedBody(
                 android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
             )
         } else {
+            // The "whispered"/"to X" label lives only in MessageFooter now — shown there for
+            // every private message (text and file/image alike) instead of inline here, so it
+            // doesn't crowd the message text itself.
             body.append(rawBody)
-            if (message.isPrivateMessage()) {
-                val prefix = if (message.status <= eu.siacs.conversations.entities.Message.STATUS_RECEIVED) {
-                    context.getString(eu.siacs.conversations.R.string.private_message) + " "
-                } else {
-                    val cp = message.counterpart
-                    context.getString(eu.siacs.conversations.R.string.private_message_to, cp?.resource ?: "") + " "
-                }
-                body.insert(0, prefix)
-                body.setSpan(
-                    android.text.style.ForegroundColorSpan(eu.siacs.conversations.utils.UIHelper.getColorForName(prefix)),
-                    0, prefix.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
-                body.setSpan(
-                    android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
-                    0, prefix.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
-            }
         }
         val emojiMatcher = eu.siacs.conversations.utils.Emoticons.getEmojiPattern(body).matcher(body)
         while (emojiMatcher.find()) {
