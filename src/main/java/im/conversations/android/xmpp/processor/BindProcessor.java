@@ -21,6 +21,7 @@ import eu.siacs.conversations.xmpp.manager.NickManager;
 import eu.siacs.conversations.xmpp.manager.OfflineMessagesManager;
 import eu.siacs.conversations.xmpp.manager.PresenceManager;
 import eu.siacs.conversations.xmpp.manager.RosterManager;
+import eu.siacs.conversations.xmpp.manager.VCardManager;
 
 public class BindProcessor extends XmppConnection.Delegate implements Runnable {
 
@@ -56,7 +57,16 @@ public class BindProcessor extends XmppConnection.Delegate implements Runnable {
         // of when it was created, then never again (including not re-joining if the user later
         // leaves the channel, same one-shot-flag pattern as loggedInSuccessfully itself).
         final boolean joinNewsChannel = account.setOption(Account.OPTION_NEWS_CHANNEL_JOINED, true);
-        if (loggedInSuccessfully || gainedFeature || sosModified || joinNewsChannel) {
+        // The phone-number field (and publishing it to this account's vCard) has been removed —
+        // this fires once, ever, per account (same pattern as joinNewsChannel above) to unpublish
+        // any TEL entry a build that still had the field may have already put on the server.
+        final boolean clearPhoneNumber =
+                account.setOption(Account.OPTION_PHONE_NUMBER_CLEARED, true);
+        if (loggedInSuccessfully
+                || gainedFeature
+                || sosModified
+                || joinNewsChannel
+                || clearPhoneNumber) {
             service.databaseBackend.updateAccount(account);
         }
 
@@ -76,6 +86,9 @@ public class BindProcessor extends XmppConnection.Delegate implements Runnable {
                     service.findOrCreateConversation(
                             account, Config.NEWS_CHANNEL, true, true, false);
             getManager(BookmarkManager.class).ensureBookmarkIsAutoJoin(newsConversation);
+        }
+        if (clearPhoneNumber) {
+            getManager(VCardManager.class).publishPhoneNumber(null);
         }
 
         getManager(PresenceManager.class).clear();

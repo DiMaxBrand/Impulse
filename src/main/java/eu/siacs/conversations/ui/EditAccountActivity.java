@@ -29,16 +29,11 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.IntentSenderRequest;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.lifecycle.Lifecycle;
-import com.google.android.gms.auth.api.identity.GetPhoneNumberHintIntentRequest;
-import com.google.android.gms.auth.api.identity.Identity;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
@@ -171,54 +166,7 @@ public class EditAccountActivity extends OmemoActivity
     private boolean mSavedInstanceInit = false;
     private MiniUri.Xmpp pendingUri = null;
     private boolean mUseTor;
-    private String mLastKnownPhoneNumber;
-    private boolean mPhoneNumberHintOfferedOnCreation = false;
     private ActivityEditAccountBinding binding;
-
-    /**
-     * Used by the single "Edit" action on an already-created account: on a picked number, publishes
-     * it right away; on dismiss/failure, falls back to manual entry.
-     */
-    private final ActivityResultLauncher<IntentSenderRequest> phoneNumberHintLauncherForEdit =
-            registerForActivityResult(
-                    new ActivityResultContracts.StartIntentSenderForResult(),
-                    result -> {
-                        final Intent data = result.getData();
-                        if (data == null) {
-                            openPhoneNumberQuickEdit();
-                            return;
-                        }
-                        try {
-                            final String phoneNumber =
-                                    Identity.getSignInClient(this).getPhoneNumberFromIntent(data);
-                            setPhoneNumber(phoneNumber);
-                        } catch (final Exception e) {
-                            Log.d(Config.LOGTAG, "could not read phone number hint result", e);
-                            openPhoneNumberQuickEdit();
-                        }
-                    });
-
-    /**
-     * Used only by the account-creation-time field: a picked number just fills the input, since
-     * there is nothing to publish to yet; on dismiss/failure it does nothing, leaving the field
-     * focused for manual typing.
-     */
-    private final ActivityResultLauncher<IntentSenderRequest> phoneNumberHintLauncherForCreation =
-            registerForActivityResult(
-                    new ActivityResultContracts.StartIntentSenderForResult(),
-                    result -> {
-                        final Intent data = result.getData();
-                        if (data == null) {
-                            return;
-                        }
-                        try {
-                            final String phoneNumber =
-                                    Identity.getSignInClient(this).getPhoneNumberFromIntent(data);
-                            binding.phoneNumberInput.setText(phoneNumber);
-                        } catch (final Exception e) {
-                            Log.d(Config.LOGTAG, "could not read phone number hint result", e);
-                        }
-                    });
 
     private final OnClickListener mSaveButtonClickListener =
             new OnClickListener() {
@@ -390,7 +338,6 @@ public class EditAccountActivity extends OmemoActivity
                         binding.accountJidLayout.setError(null);
                         mAccount.setPassword(password);
                         mAccount.setOption(Account.OPTION_REGISTER, registerNewAccount);
-                        stashPendingPhoneNumber(mAccount);
                         if (!xmppConnectionService.updateAccount(mAccount)) {
                             Toast.makeText(
                                             EditAccountActivity.this,
@@ -411,7 +358,6 @@ public class EditAccountActivity extends OmemoActivity
                         mAccount.setPort(numericPort);
                         mAccount.setHostname(hostname);
                         mAccount.setOption(Account.OPTION_REGISTER, registerNewAccount);
-                        stashPendingPhoneNumber(mAccount);
                         xmppConnectionService.createAccount(mAccount);
                     }
                     binding.hostnameLayout.setError(null);
@@ -764,14 +710,6 @@ public class EditAccountActivity extends OmemoActivity
             this.binding.accountRegisterNew.setVisibility(View.GONE);
         }
         this.binding.actionEditYourName.setOnClickListener(this::onEditYourNameClicked);
-        this.binding.actionEditPhoneNumber.setOnClickListener(this::onEditPhoneNumberClicked);
-        this.binding.phoneNumberInput.setOnFocusChangeListener(
-                (v, hasFocus) -> {
-                    if (hasFocus && !mPhoneNumberHintOfferedOnCreation) {
-                        mPhoneNumberHintOfferedOnCreation = true;
-                        offerPhoneNumberHint(phoneNumberHintLauncherForCreation);
-                    }
-                });
         this.binding.scanButton.setOnClickListener(
                 (v) -> {
                     requestPermissionAndScanQrCode();
@@ -791,104 +729,6 @@ public class EditAccountActivity extends OmemoActivity
                     return null;
                 },
                 true);
-    }
-
-    /**
-     * The one "Edit" action for an already-created account's phone number: offers the dismissible
-     * device-number picker first, falling back to manual entry if it's dismissed or unavailable.
-     */
-    private void onEditPhoneNumberClicked(View view) {
-        offerPhoneNumberHint(phoneNumberHintLauncherForEdit);
-    }
-
-    private void openPhoneNumberQuickEdit() {
-        quickEdit(
-                mLastKnownPhoneNumber,
-                R.string.your_phone_number,
-                value -> {
-                    final String phoneNumber = value.trim();
-                    setPhoneNumber(phoneNumber);
-                    return null;
-                },
-                true);
-    }
-
-    private void offerPhoneNumberHint(final ActivityResultLauncher<IntentSenderRequest> launcher) {
-        final var request = GetPhoneNumberHintIntentRequest.builder().build();
-        Identity.getSignInClient(this)
-                .getPhoneNumberHintIntent(request)
-                .addOnSuccessListener(
-                        result ->
-                                launcher.launch(
-                                        new IntentSenderRequest.Builder(result.getIntentSender())
-                                                .build()))
-                .addOnFailureListener(
-                        e -> {
-                            Log.d(Config.LOGTAG, "could not get phone number hint intent", e);
-                            if (launcher == phoneNumberHintLauncherForEdit) {
-                                openPhoneNumberQuickEdit();
-                            }
-                        });
-    }
-
-    /**
-     * Sets, publishes and displays a new (or, when blank, cleared) phone number. There is no
-     * verification of any kind here — it is purely an optional, self-reported vCard field.
-     */
-    private void setPhoneNumber(final String phoneNumber) {
-        updatePhoneNumber(phoneNumber);
-        mLastKnownPhoneNumber = phoneNumber;
-        Futures.addCallback(
-                xmppConnectionService.publishPhoneNumber(mAccount, phoneNumber),
-                new FutureCallback<>() {
-                    @Override
-                    public void onSuccess(final Void result) {
-                        Log.d(
-                                Config.LOGTAG,
-                                mAccount.getJid().asBareJid() + ": published phone number");
-                    }
-
-                    @Override
-                    public void onFailure(@NonNull final Throwable t) {
-                        Log.d(Config.LOGTAG, "could not publish phone number", t);
-                    }
-                },
-                MoreExecutors.directExecutor());
-    }
-
-    /**
-     * Stashes the phone number typed into the account-creation-only field as a pending value on the
-     * account itself, since there is no connection yet to publish it over. {@link
-     * im.conversations.android.xmpp.processor.AccountStateProcessor} publishes it for real (and
-     * clears the pending value) the moment this account first reaches {@link Account.State#ONLINE}.
-     */
-    private void stashPendingPhoneNumber(final Account account) {
-        if (!mInitMode) {
-            return;
-        }
-        final String phoneNumber =
-                CharMatcher.whitespace().trimFrom(binding.phoneNumberInput.getText().toString());
-        if (!phoneNumber.isEmpty()) {
-            account.setKey(Account.KEY_PENDING_PHONE_NUMBER, phoneNumber);
-        }
-    }
-
-    private void fetchAndDisplayPhoneNumber() {
-        Futures.addCallback(
-                xmppConnectionService.fetchOwnPhoneNumber(mAccount),
-                new FutureCallback<>() {
-                    @Override
-                    public void onSuccess(final String phoneNumber) {
-                        mLastKnownPhoneNumber = phoneNumber;
-                        updatePhoneNumber(phoneNumber);
-                    }
-
-                    @Override
-                    public void onFailure(@NonNull final Throwable t) {
-                        Log.d(Config.LOGTAG, "could not fetch own phone number", t);
-                    }
-                },
-                ContextCompat.getMainExecutor(this));
     }
 
     private void refreshAvatar() {
@@ -1364,14 +1204,6 @@ public class EditAccountActivity extends OmemoActivity
             this.binding.port.setText("");
             this.binding.port.getEditableText().append(String.valueOf(this.mAccount.getPort()));
             this.binding.namePort.setVisibility(mShowOptions ? View.VISIBLE : View.GONE);
-            // Lets the phone number be typed in right on the account-creation screen, before
-            // there's even a connection to publish it over — see mSaveButtonClickListener, which
-            // stashes it as a pending value published automatically on first successful connect.
-            // Once the account exists (mInitMode false from here on), this field is redundant
-            // with the "Phone number" row further down, which talks to the vCard directly.
-            this.binding.phoneNumberLayout.setVisibility(mInitMode ? View.VISIBLE : View.GONE);
-            updatePhoneNumber(mLastKnownPhoneNumber);
-            fetchAndDisplayPhoneNumber();
         }
 
         final boolean editable =
@@ -1686,22 +1518,6 @@ public class EditAccountActivity extends OmemoActivity
             this.binding.yourName.setTextColor(
                     MaterialColors.getColor(
                             binding.yourName,
-                            com.google.android.material.R.attr.colorOnSurfaceVariant));
-        }
-    }
-
-    private void updatePhoneNumber(String phoneNumber) {
-        if (TextUtils.isEmpty(phoneNumber)) {
-            this.binding.phoneNumber.setText(R.string.no_phone_number_set_instructions);
-            this.binding.phoneNumber.setTextColor(
-                    MaterialColors.getColor(
-                            binding.phoneNumber,
-                            com.google.android.material.R.attr.colorOnSurfaceVariant));
-        } else {
-            this.binding.phoneNumber.setText(phoneNumber);
-            this.binding.phoneNumber.setTextColor(
-                    MaterialColors.getColor(
-                            binding.phoneNumber,
                             com.google.android.material.R.attr.colorOnSurfaceVariant));
         }
     }

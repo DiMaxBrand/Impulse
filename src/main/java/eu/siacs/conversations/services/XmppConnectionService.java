@@ -4058,24 +4058,6 @@ public class XmppConnectionService extends Service {
                 MoreExecutors.directExecutor());
     }
 
-    public ListenableFuture<Void> publishPhoneNumber(
-            final Account account, final String phoneNumber) {
-        final var connection = account.getXmppConnection();
-        return connection.getManager(VCardManager.class).publishPhoneNumber(phoneNumber);
-    }
-
-    public ListenableFuture<String> fetchOwnPhoneNumber(final Account account) {
-        final var connection = account.getXmppConnection();
-        final var address = account.getJid().asBareJid();
-        return Futures.transform(
-                connection.getManager(VCardManager.class).retrieve(address),
-                vCard -> {
-                    final var tel = vCard == null ? null : vCard.getTel();
-                    return tel == null ? null : tel.getNumber();
-                },
-                MoreExecutors.directExecutor());
-    }
-
     public void changeStatus(
             final Account account, final PresenceTemplate template, final String signature) {
         if (!template.getStatusMessage().isEmpty()) {

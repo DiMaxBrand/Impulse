@@ -47,17 +47,6 @@ public class AccountStateProcessor extends XmppConnection.Delegate
             if (account.setShowErrorNotification(true)) {
                 this.service.databaseBackend.updateAccount(account);
             }
-            // A phone number typed in during account creation — before this account had ever
-            // connected, so it couldn't be published yet — sits here as a pending value. The
-            // first successful ONLINE transition after that is the earliest point a vCard publish
-            // can actually reach the server, so fire it now and clear the pending value; presence
-            // of the key alone is what makes this "once", no separate flag needed.
-            final String pendingPhoneNumber = account.getKey(Account.KEY_PENDING_PHONE_NUMBER);
-            if (pendingPhoneNumber != null) {
-                account.setKey(Account.KEY_PENDING_PHONE_NUMBER, null);
-                this.service.databaseBackend.updateAccount(account);
-                this.service.publishPhoneNumber(account, pendingPhoneNumber);
-            }
             final var csiManager = getManager(ClientStateIndicationManager.class);
             if (csiManager.hasFeature()) {
                 if (this.service.checkListeners()) {

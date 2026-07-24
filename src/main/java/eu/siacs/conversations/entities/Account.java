@@ -66,13 +66,17 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
     public static final int OPTION_QUICKSTART_AVAILABLE = 10;
     public static final int OPTION_SOFT_DISABLED = 11;
     public static final int OPTION_NEWS_CHANNEL_JOINED = 12;
+    // One-shot flag: fires exactly once per account (new or pre-existing) the first time it binds
+    // after this cleanup shipped, to unpublish any phone number a build with the now-removed
+    // phone-number field may have already published to this account's vCard. Same
+    // never-set-again pattern as OPTION_NEWS_CHANNEL_JOINED.
+    public static final int OPTION_PHONE_NUMBER_CLEARED = 13;
 
     private static final String KEY_PGP_SIGNATURE = "pgp_signature";
     private static final String KEY_PGP_ID = "pgp_id";
     private static final String KEY_PINNED_MECHANISM = "pinned_mechanism";
     public static final String KEY_SOS_URL = "sos_url";
     public static final String KEY_PRE_AUTH_REGISTRATION_TOKEN = "pre_auth_registration";
-    public static final String KEY_PENDING_PHONE_NUMBER = "pending_phone_number";
     protected final JSONObject keys;
     protected Jid jid;
     protected String password;

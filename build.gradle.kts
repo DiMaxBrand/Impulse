@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42378
-val appVersion = "1.12.0-rc.106+2.20.0"
+val baseVersionCode = 42379
+val appVersion = "1.12.0-rc.107+2.20.0"
 
 @Suppress("DEPRECATION")
 android {
@@ -200,10 +200,6 @@ dependencies {
     implementation("androidx.viewpager:viewpager:1.1.0")
     implementation("androidx.work:work-runtime:2.11.2")
     implementation("com.github.open-keychain.open-keychain:openpgp-api:v5.7.1")
-    // Phone Number Hint API only — lets the profile screen offer to fill in the device's own
-    // number without any dangerous permission. Purely optional: absent Play Services, the
-    // auto-fill button's request just fails and the field stays a plain manual text entry.
-    implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.google.android.material:material:1.14.0")
     implementation("com.google.guava:guava:33.6.0-android")
     implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta5")

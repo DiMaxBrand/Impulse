@@ -883,9 +883,6 @@
     <string name="your_name">Your name</string>
     <string name="enter_your_name">Enter your name</string>
     <string name="no_name_set_instructions">Use the edit button to set your name.</string>
-    <string name="your_phone_number">Phone number</string>
-    <string name="no_phone_number_set_instructions">Phone number, optional</string>
-    <string name="edit_phone_number">Edit phone number</string>
     <string name="reject_request">Reject request</string>
     <string name="install_orbot">Install Orbot</string>
     <string name="start_orbot">Start Orbot</string>
