@@ -157,6 +157,11 @@ class UpdatesActivity : ActionBarActivity() {
                     uiState = uiState.copy(checkStatus = CheckStatus.CHANNEL_BEHIND)
                 is UpdateChecker.CheckResult.UpdateAvailable -> {
                     val info = result.info
+                    // The exact version already actively downloading — nothing to cancel or
+                    // restart, just refresh the check status/notes below and let it keep going.
+                    val alreadyDownloadingThisVersion =
+                        uiState.downloadPhase == DownloadPhase.DOWNLOADING &&
+                            prefs.pendingUpdateVersion == info.versionName
                     // A different version's download can still be in flight in the background
                     // (e.g. downloaded rc.104, then Check Now found rc.105 before it finished) —
                     // starting a second download without cancelling the first would leave two
@@ -184,6 +189,17 @@ class UpdatesActivity : ActionBarActivity() {
                         uiState = uiState.copy(
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,
                             downloadPhase = DownloadPhase.READY,
+                            pendingVersion = info.versionName,
+                            releaseNotes = info.releaseNotes,
+                            releaseTitle = info.releaseTitle,
+                            showUpdateSheet = true,
+                        )
+                    } else if (alreadyDownloadingThisVersion) {
+                        // Don't touch downloadPhase/downloadProgress here — pollDownload is still
+                        // running and owns those; restarting would just reset it to 0% for no
+                        // reason.
+                        uiState = uiState.copy(
+                            checkStatus = CheckStatus.UPDATE_AVAILABLE,
                             pendingVersion = info.versionName,
                             releaseNotes = info.releaseNotes,
                             releaseTitle = info.releaseTitle,
