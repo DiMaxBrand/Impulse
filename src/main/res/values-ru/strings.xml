@@ -238,6 +238,8 @@
     <string name="unblock_contact">Разблокировать контакт</string>
     <string name="create">Создать</string>
     <string name="select">Выбрать</string>
+    <string name="close_selection">Закрыть выбор</string>
+    <string name="messages_selected_count">Выбрано: %d</string>
     <string name="contact_already_exists">Контакт уже существует</string>
     <string name="join">Присоединиться</string>
     <string name="channel_full_jid_example">канал@конференция.пример.com/имя</string>

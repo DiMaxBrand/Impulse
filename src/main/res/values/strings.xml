@@ -255,6 +255,8 @@
     <string name="unblock_contact">Unblock contact</string>
     <string name="create">Create</string>
     <string name="select">Select</string>
+    <string name="close_selection">Close selection</string>
+    <string name="messages_selected_count">%d selected</string>
     <string name="contact_already_exists">The contact already exists</string>
     <string name="join">Join</string>
     <string name="channel_full_jid_example">channel@conference.example.com/nick</string>

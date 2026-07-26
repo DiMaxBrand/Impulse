@@ -106,9 +106,73 @@ object ShareUtil {
         activity.startActivity(intent)
     }
 
+    /** Batch forward for multi-select. File/image messages become one ACTION_SEND_MULTIPLE (the
+     * same mechanism ShareWithActivity already handles for multi-file shares arriving from other
+     * apps); a text-only selection is joined into a single forwarded message instead, since
+     * ShareWithActivity has no concept of "several separate text messages" to forward as. A mixed
+     * selection forwards only the files — keeping this simple beats guessing at how to interleave
+     * text and attachments into one forward.
+     */
+    @JvmStatic
+    fun forward(activity: XmppActivity, messages: List<Message>) {
+        if (messages.isEmpty()) return
+        if (messages.size == 1) {
+            forward(activity, messages[0])
+            return
+        }
+        val fileMessages = messages.filter { it.isFileOrImage }
+        val intent: Intent
+        if (fileMessages.isNotEmpty()) {
+            val uris = ArrayList<android.net.Uri>()
+            for (m in fileMessages) {
+                val file = activity.xmppConnectionService.fileBackend.getFile(m)
+                val uri = try {
+                    FileBackend.getUriForFile(activity, file)
+                        .buildUpon()
+                        .appendQueryParameter("uuid", m.getUuid())
+                        .build()
+                } catch (e: SecurityException) {
+                    continue
+                }
+                uris.add(uri)
+            }
+            if (uris.isEmpty()) return
+            intent = Intent(Intent.ACTION_SEND_MULTIPLE)
+            intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            intent.type = "*/*"
+        } else {
+            val text = messages.mapNotNull { it.body }.filter { it.isNotBlank() }.joinToString("\n\n")
+            if (text.isBlank()) return
+            intent = Intent(Intent.ACTION_SEND)
+            intent.putExtra(Intent.EXTRA_TEXT, text)
+            intent.type = "text/plain"
+        }
+        intent.setClass(activity, ShareWithActivity::class.java)
+        activity.startActivity(intent)
+    }
+
     @JvmStatic
     fun copyToClipboard(activity: XmppActivity, message: Message) {
         if (activity.copyTextToClipboard(message.body, R.string.message)
+            && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+        ) {
+            Toast.makeText(activity, R.string.message_copied_to_clipboard, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** Batch copy for multi-select: joins each selected message's text (skipping file/image
+     * messages, which have no meaningful body) in chronological order onto one clipboard entry. */
+    @JvmStatic
+    fun copyToClipboard(activity: XmppActivity, messages: List<Message>) {
+        if (messages.isEmpty()) return
+        if (messages.size == 1) {
+            copyToClipboard(activity, messages[0])
+            return
+        }
+        val text = messages.mapNotNull { it.body }.filter { it.isNotBlank() }.joinToString("\n\n")
+        if (text.isBlank()) return
+        if (activity.copyTextToClipboard(text, R.string.message)
             && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
         ) {
             Toast.makeText(activity, R.string.message_copied_to_clipboard, Toast.LENGTH_SHORT).show()

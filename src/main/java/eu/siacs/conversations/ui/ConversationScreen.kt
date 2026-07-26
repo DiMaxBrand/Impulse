@@ -3,6 +3,7 @@ package eu.siacs.conversations.ui
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.text.Editable
+import androidx.activity.compose.BackHandler
 import android.text.InputType
 import android.text.TextWatcher
 import android.text.format.DateUtils
@@ -38,6 +39,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -302,6 +304,10 @@ interface ConversationScreenListener {
     fun onRetryAsP2P(message: Message)
     fun onPinMessage(message: Message)
     fun onUnpinMessage(message: Message)
+
+    fun onDeleteSelectedMessages(messages: List<Message>)
+    fun onCopySelectedMessages(messages: List<Message>)
+    fun onForwardSelectedMessages(messages: List<Message>)
 }
 
 object ConversationScreenHelper {
@@ -470,12 +476,34 @@ private fun buildChatItems(
 fun ConversationScreen(state: ConversationScreenState, listener: ConversationScreenListener) {
     val conversation = state.conversation.value
     var menuTarget by remember { mutableStateOf<Message?>(null) }
+    // Multi-select is pure screen-local UI state — nothing here has a business-logic effect
+    // until one of the batch actions in the top bar actually fires, so (like menuTarget above)
+    // it lives as local Compose state rather than in ConversationScreenState.
+    val selectedUuids = remember { androidx.compose.runtime.mutableStateListOf<String>() }
+    var deleteSelectedConfirm by remember { mutableStateOf(false) }
+    // Back press while a selection is active should clear the selection first, not leave the
+    // conversation — same "back backs out of the mode before backing out of the screen" pattern
+    // as e.g. exiting search.
+    BackHandler(enabled = selectedUuids.isNotEmpty()) { selectedUuids.clear() }
     Scaffold(
         topBar = {
             ConversationTopBar(
                 conversation = conversation,
                 revision = state.revision.intValue,
                 listener = listener,
+                selectedCount = selectedUuids.size,
+                onExitSelection = { selectedUuids.clear() },
+                onForwardSelected = {
+                    val selected = state.messages.value.filter { it.getUuid() in selectedUuids }
+                    selectedUuids.clear()
+                    if (selected.isNotEmpty()) listener.onForwardSelectedMessages(selected)
+                },
+                onCopySelected = {
+                    val selected = state.messages.value.filter { it.getUuid() in selectedUuids }
+                    selectedUuids.clear()
+                    if (selected.isNotEmpty()) listener.onCopySelectedMessages(selected)
+                },
+                onDeleteSelected = { deleteSelectedConfirm = true },
             )
         },
         containerColor = MaterialTheme.colorScheme.surface,
@@ -500,6 +528,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     state = state,
                     listener = listener,
                     onLongPress = { menuTarget = it },
+                    selectedUuids = selectedUuids,
+                    onToggleSelected = { uuid ->
+                        if (!selectedUuids.remove(uuid)) selectedUuids.add(uuid)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -512,7 +544,20 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             message = target,
             state = state,
             listener = listener,
+            onSelect = { it.getUuid()?.let { uuid -> selectedUuids.add(uuid) } },
             onDismiss = { menuTarget = null },
+        )
+    }
+    if (deleteSelectedConfirm) {
+        val selected = state.messages.value.filter { it.getUuid() in selectedUuids }
+        DeleteSelectedMessagesDialog(
+            count = selected.size,
+            onConfirm = {
+                deleteSelectedConfirm = false
+                selectedUuids.clear()
+                if (selected.isNotEmpty()) listener.onDeleteSelectedMessages(selected)
+            },
+            onDismiss = { deleteSelectedConfirm = false },
         )
     }
     val deleteTarget = state.deleteTarget.value
@@ -657,6 +702,11 @@ private fun ConversationTopBar(
     conversation: Conversation?,
     revision: Int,
     listener: ConversationScreenListener,
+    selectedCount: Int,
+    onExitSelection: () -> Unit,
+    onForwardSelected: () -> Unit,
+    onCopySelected: () -> Unit,
+    onDeleteSelected: () -> Unit,
 ) {
     val context = LocalContext.current
     val isSingle = conversation?.getMode() == Conversational.MODE_SINGLE
@@ -752,16 +802,41 @@ private fun ConversationTopBar(
 
     var menuOpen by remember { mutableStateOf(false) }
 
+    val inSelectionMode = selectedCount > 0
     TopAppBar(
         navigationIcon = {
-            IconButton(onClick = listener::onBackPressed) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_back_24dp),
-                    contentDescription = stringResource(R.string.back),
-                )
+            // Crossfade + scale rather than a shared-path morph (there's no natural arrow→X path
+            // morph the way the FAB's plus→cross rotation trick works) — still reads as one
+            // continuous transition rather than an abrupt swap.
+            androidx.compose.animation.AnimatedContent(
+                targetState = inSelectionMode,
+                transitionSpec = {
+                    (fadeIn(tween(180)) + scaleIn(initialScale = 0.7f, animationSpec = tween(180))) togetherWith
+                        (fadeOut(tween(120)) + scaleOut(targetScale = 0.7f, animationSpec = tween(120)))
+                },
+                label = "conversationTopBarNavIcon",
+            ) { selecting ->
+                IconButton(onClick = if (selecting) onExitSelection else listener::onBackPressed) {
+                    Icon(
+                        painter = painterResource(
+                            if (selecting) R.drawable.ic_close_24dp else R.drawable.ic_arrow_back_24dp
+                        ),
+                        contentDescription = stringResource(
+                            if (selecting) R.string.close_selection else R.string.back
+                        ),
+                    )
+                }
             }
         },
-        title = {
+        title = if (inSelectionMode) {
+            {
+                Text(
+                    text = stringResource(R.string.messages_selected_count, selectedCount),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        } else {
+            {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
@@ -863,8 +938,39 @@ private fun ConversationTopBar(
                     }
                 }
             }
+            }
         },
         actions = {
+            if (inSelectionMode) {
+                var selectionOverflowOpen by remember { mutableStateOf(false) }
+                IconButton(onClick = onForwardSelected) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_forward_24dp),
+                        contentDescription = stringResource(R.string.forward_message),
+                    )
+                }
+                IconButton(onClick = onDeleteSelected) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_delete_24dp),
+                        contentDescription = stringResource(R.string.delete_message),
+                    )
+                }
+                IconButton(onClick = { selectionOverflowOpen = true }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_more_horiz_24dp),
+                        contentDescription = stringResource(R.string.more_options),
+                    )
+                }
+                ExpressiveDropdownMenu(
+                    expanded = selectionOverflowOpen,
+                    onDismissRequest = { selectionOverflowOpen = false },
+                ) {
+                    ExpressiveMenuItem(R.drawable.ic_check_24dp, stringResource(android.R.string.copy)) {
+                        selectionOverflowOpen = false
+                        onCopySelected()
+                    }
+                }
+            } else {
             if (isSingle) {
                 IconButton(onClick = { listener.onCall(false) }) {
                     Icon(
@@ -997,6 +1103,7 @@ private fun ConversationTopBar(
                     dismissThen(listener::onArchiveConversation),
                 )
             }
+            }
         },
         colors =
             TopAppBarDefaults.topAppBarColors(
@@ -1035,6 +1142,8 @@ private fun MessageList(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
+    selectedUuids: List<String>,
+    onToggleSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val revision = state.revision.intValue
@@ -1382,6 +1491,11 @@ private fun MessageList(
                             onLongPress = onLongPress,
                             resolveReply = resolveReply,
                             onReplyCardClick = onReplyCardClick,
+                            selectionActive = selectedUuids.isNotEmpty(),
+                            selected = selectedUuids.contains(item.message.getUuid()),
+                            onToggleSelected = {
+                                item.message.getUuid()?.let { uuid -> onToggleSelected(uuid) }
+                            },
                             modifier = itemModifier,
                         )
                 }
@@ -1701,6 +1815,9 @@ private fun MessageRow(
     onLongPress: (Message) -> Unit,
     resolveReply: (String) -> Message?,
     onReplyCardClick: (Message) -> Unit,
+    selectionActive: Boolean,
+    selected: Boolean,
+    onToggleSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val message = item.message
@@ -1742,12 +1859,20 @@ private fun MessageRow(
     // The tail of a group's last bubble pokes into the screen margin so bubble bodies stay
     // aligned with the grouped bubbles above.
     val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
+    Box(modifier = modifier.fillMaxWidth()) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (selected) {
+                    Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+                } else {
+                    Modifier
+                }
+            )
             .combinedClickable(
-                onClick = {},
-                onLongClick = { onLongPress(message) },
+                onClick = { if (selectionActive) onToggleSelected() },
+                onLongClick = { if (selectionActive) onToggleSelected() else onLongPress(message) },
                 indication = null,
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
             ),
@@ -1774,6 +1899,16 @@ private fun MessageRow(
                     },
             horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
         ) {
+            AnimatedVisibility(
+                visible = selectionActive,
+                enter = fadeIn(tween(180)) + androidx.compose.animation.expandHorizontally(tween(180)),
+                exit = fadeOut(tween(120)) + androidx.compose.animation.shrinkHorizontally(tween(120)),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SelectionCheckCircle(selected = selected)
+                    Spacer(Modifier.width(6.dp))
+                }
+            }
             if (showAvatarSlot) {
                 val bm = avatarBitmap?.value
                 Box(
@@ -1844,6 +1979,55 @@ private fun MessageRow(
                     end = if (outgoing) 10.dp else 48.dp,
                 ),
         )
+    }
+    if (selectionActive) {
+        // The row's own combinedClickable above only wins hit-testing where nothing else claims
+        // the tap — images, links, reply cards, file rows etc. all have their own clickables
+        // further down that would otherwise still fire their normal single-message action while
+        // selecting. This transparent overlay sits on top of everything and claims every tap
+        // itself instead.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .combinedClickable(
+                    onClick = onToggleSelected,
+                    onLongClick = onToggleSelected,
+                    indication = null,
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                ),
+        )
+    }
+    }
+}
+
+@Composable
+private fun SelectionCheckCircle(selected: Boolean, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(22.dp)
+            .then(
+                if (selected) {
+                    Modifier.background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape)
+                } else {
+                    Modifier
+                        .background(MaterialTheme.colorScheme.surface, androidx.compose.foundation.shape.CircleShape)
+                        .border(
+                            1.5.dp,
+                            MaterialTheme.colorScheme.outline,
+                            androidx.compose.foundation.shape.CircleShape,
+                        )
+                }
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) {
+            Icon(
+                painter = painterResource(R.drawable.ic_check_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(14.dp),
+            )
+        }
     }
 }
 
@@ -3158,6 +3342,7 @@ private fun MessageContextSheet(
     message: Message,
     state: ConversationScreenState,
     listener: ConversationScreenListener,
+    onSelect: (Message) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -3178,6 +3363,13 @@ private fun MessageContextSheet(
             SheetAction(R.drawable.ic_reply_24dp, stringResource(R.string.reply)) {
                 state.correcting.value = null
                 state.replyingTo.value = message
+            }
+        )
+        // Enters multi-select with this message already checked; further selection happens by
+        // tapping messages directly, no more long-presses needed.
+        add(
+            SheetAction(R.drawable.ic_check_circle_24dp, stringResource(R.string.select)) {
+                onSelect(message)
             }
         )
         // Message privately — reach the sender of a group/channel message directly, without
@@ -3626,6 +3818,36 @@ private fun ModerationDisclaimerDialog(
         confirmButton = {
             androidx.compose.material3.TextButton(onClick = { onConfirm(doNotShowAgain) }) {
                 Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+/** Batch delete is local-only (same as the plain single-message "Delete for myself") — it never
+ * attempts per-message retraction/moderation, since a mixed selection could have wildly different
+ * eligibility per message. A confirmation is worth it here specifically because, unlike a single
+ * delete, there's no per-item undo affordance once several go at once. */
+@Composable
+private fun DeleteSelectedMessagesDialog(
+    count: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                androidx.compose.ui.res.pluralStringResource(R.plurals.delete_n_messages, count, count)
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.delete))
             }
         },
         dismissButton = {

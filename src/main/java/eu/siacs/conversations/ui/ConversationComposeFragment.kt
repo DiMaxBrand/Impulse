@@ -1143,6 +1143,42 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
+    // Batch delete is local-only for every message in the selection (same semantics as the
+    // single-message "Delete for myself") — deliberately not attempting per-message retraction
+    // or moderation here, since a mixed selection could have wildly different eligibility per
+    // item. Inlines deleteMessageLocally's per-item work instead of calling it in a loop so this
+    // does one refreshMessages() at the end instead of one per message.
+    override fun onDeleteSelectedMessages(messages: List<Message>) {
+        val service = getXmppConnectionService() ?: return
+        for (message in messages) {
+            if (message.isFileOrImage && !message.isDeleted && message.getRelativeFilePath() != null) {
+                if (service.fileBackend.deleteFile(message)) {
+                    message.setDeleted(true)
+                    service.evictPreview(message.getUuid())
+                    service.updateMessage(message, false)
+                }
+                continue
+            }
+            val c = message.conversation as? Conversation ?: continue
+            if (message.isFileOrImage && message.getRelativeFilePath() != null) {
+                service.fileBackend.deleteFile(message)
+                service.evictPreview(message.getUuid())
+            }
+            c.remove(message)
+            service.databaseBackend.deleteMessage(message.getUuid())
+            service.getNotificationService().clear(message)
+        }
+        refreshMessages()
+    }
+
+    override fun onCopySelectedMessages(messages: List<Message>) {
+        eu.siacs.conversations.ui.util.ShareUtil.copyToClipboard(requireXmppActivity(), messages)
+    }
+
+    override fun onForwardSelectedMessages(messages: List<Message>) {
+        eu.siacs.conversations.ui.util.ShareUtil.forward(requireXmppActivity(), messages)
+    }
+
     override fun onEditingStarted(message: Message) {
         sendEditingStanza(message, "start")
     }
