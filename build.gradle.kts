@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42383
-val appVersion = "1.12.0-rc.111+2.20.0"
+val baseVersionCode = 42384
+val appVersion = "1.12.0-rc.112+2.20.0"
 
 @Suppress("DEPRECATION")
 android {
@@ -181,6 +181,9 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.lifecycle:lifecycle-process:2.9.2")
+    // Pinch-zoom + pan for the full-screen media viewer. Plain "zoomable" artifact (not
+    // "zoomable-image-coil") since this app decodes bitmaps itself and has no image loader.
+    implementation("me.saket.telephoto:zoomable:1.0.0-alpha02")
 
     annotationProcessor("org.immutables:value:2.12.1")
     implementation("org.immutables:value-annotations:2.12.1")

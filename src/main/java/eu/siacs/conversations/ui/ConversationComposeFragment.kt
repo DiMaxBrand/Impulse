@@ -159,6 +159,25 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
         }
 
+    private val mediaViewerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                val uuid = result.data?.getStringExtra(MediaViewerActivity.EXTRA_RESULT_SHOW_UUID)
+                if (uuid != null) showMessageInChat(uuid)
+            }
+        }
+
+    private fun showMessageInChat(uuid: String) {
+        val service = getXmppConnectionService() ?: return
+        val c = conversation ?: return
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val message = service.databaseBackend.getMessage(c, uuid)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (message != null) onScrollToMessage(message)
+            }
+        }
+    }
+
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (pendingSharedUris.isNotEmpty()) {
@@ -874,6 +893,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                         .show()
                 }
             }
+            isMediaCell(message) -> {
+                val file = service.fileBackend.getFile(message)
+                if (file.exists()) {
+                    mediaViewerLauncher.launch(MediaViewerActivity.launch(requireContext(), message))
+                }
+                // else: download is in progress or pending — the bubble UI handles it
+            }
             message.isFileOrImage && !message.isDeleted -> {
                 val file = service.fileBackend.getFile(message)
                 if (file.exists()) {
@@ -883,6 +909,14 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
             message.treatAsDownloadable() -> onDownloadMessage(message)
         }
+    }
+
+    override fun onOpenMediaGroup(messages: List<Message>, tapped: Message) {
+        val service = getXmppConnectionService() ?: return
+        val file = service.fileBackend.getFile(tapped)
+        if (!file.exists()) return // download in progress/pending — the bubble UI handles it
+        val batchUuids = messages.mapNotNull { it.getUuid() }
+        mediaViewerLauncher.launch(MediaViewerActivity.launch(requireContext(), tapped, batchUuids))
     }
 
     override fun onDownloadMessage(message: Message) {

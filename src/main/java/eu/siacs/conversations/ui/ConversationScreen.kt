@@ -241,6 +241,9 @@ interface ConversationScreenListener {
 
     fun onOpenMessage(message: Message)
 
+    /** Grid tile tapped — [messages] is the whole batch, [tapped] the specific cell. */
+    fun onOpenMediaGroup(messages: List<Message>, tapped: Message)
+
     fun onDownloadMessage(message: Message)
 
     fun onLoadMoreMessages()
@@ -404,7 +407,7 @@ private sealed interface ChatItem {
 }
 
 /** Would render as its own photo/video thumbnail — the unit media grouping operates on. */
-private fun isMediaCell(message: Message): Boolean =
+internal fun isMediaCell(message: Message): Boolean =
     message.isFileOrImage &&
         !message.isDeleted &&
         message.encryption != Message.ENCRYPTION_PGP &&
@@ -646,7 +649,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
 
 /** M3 Expressive floating menu: large rounded container on surfaceContainer. */
 @Composable
-private fun ExpressiveDropdownMenu(
+internal fun ExpressiveDropdownMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
@@ -661,7 +664,7 @@ private fun ExpressiveDropdownMenu(
 }
 
 @Composable
-private fun ExpressiveMenuItem(iconRes: Int, label: String, onClick: () -> Unit) {
+internal fun ExpressiveMenuItem(iconRes: Int, label: String, onClick: () -> Unit) {
     DropdownMenuItem(
         text = { Text(label) },
         leadingIcon = {
@@ -2161,7 +2164,10 @@ private fun MediaGroupRow(
                 ) {
                     // Edge-to-edge, clipped only by the Surface's own bubble shape above — no
                     // separate per-cell rounding, so the grid never mismatches the tail corner.
-                    MediaGridContent(messages = messages, onCellTap = { listener.onOpenMessage(it) })
+                    MediaGridContent(
+                        messages = messages,
+                        onCellTap = { tapped -> listener.onOpenMediaGroup(messages, tapped) },
+                    )
                     Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp)) {
                         MessageFooter(message = messages.last(), outgoing = outgoing, revision = revision)
                     }

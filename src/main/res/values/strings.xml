@@ -780,6 +780,7 @@
     <string name="title_activity_share_location">Share location</string>
     <string name="title_activity_show_location">Show location</string>
     <string name="share">Share</string>
+    <string name="show_in_chat">Show in chat</string>
     <string name="unable_to_start_recording">Could not start recording</string>
     <string name="please_wait">Please wait…</string>
     <string name="no_microphone_permission">Grant %1$s access to the microphone</string>

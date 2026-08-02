@@ -1475,6 +1475,63 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         return list;
     }
 
+    /**
+     * Messages strictly newer than {@code timestamp}, oldest-first — the symmetric counterpart to
+     * {@link #getMessages(Conversation, int, long)}, which only goes older. Used by the media
+     * viewer's pager to extend its window forward as the user swipes toward newer content.
+     */
+    public ArrayList<Message> getMessagesAfter(
+            Conversation conversation, int limit, long timestamp) {
+        ArrayList<Message> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        String[] selectionArgs = {conversation.getUuid(), Long.toString(timestamp)};
+        Cursor cursor =
+                db.query(
+                        Message.TABLENAME,
+                        null,
+                        Message.CONVERSATION + "=? and " + Message.TIME_SENT + ">?",
+                        selectionArgs,
+                        null,
+                        null,
+                        Message.TIME_SENT + " ASC",
+                        String.valueOf(limit));
+        CursorUtils.upgradeCursorWindowSize(cursor);
+        while (cursor.moveToNext()) {
+            try {
+                list.add(Message.fromCursor(context, cursor, conversation));
+            } catch (final Exception e) {
+                Log.e(Config.LOGTAG, "unable to restore message", e);
+            }
+        }
+        cursor.close();
+        return list;
+    }
+
+    public Message getMessage(Conversation conversation, String uuid) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String[] selectionArgs = {conversation.getUuid(), uuid};
+        Cursor cursor =
+                db.query(
+                        Message.TABLENAME,
+                        null,
+                        Message.CONVERSATION + "=? and " + Message.UUID + "=?",
+                        selectionArgs,
+                        null,
+                        null,
+                        null);
+        Message message = null;
+        try {
+            if (cursor.moveToFirst()) {
+                message = Message.fromCursor(context, cursor, conversation);
+            }
+        } catch (final Exception e) {
+            Log.e(Config.LOGTAG, "unable to restore message", e);
+        } finally {
+            cursor.close();
+        }
+        return message;
+    }
+
     public Cursor getMessageSearchCursor(final List<String> term, final String uuid) {
         final SQLiteDatabase db = this.getReadableDatabase();
         final StringBuilder SQL = new StringBuilder();
