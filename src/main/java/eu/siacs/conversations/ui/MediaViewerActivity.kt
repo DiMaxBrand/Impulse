@@ -3,7 +3,6 @@ package eu.siacs.conversations.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
@@ -17,17 +16,23 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -311,40 +316,47 @@ private fun MediaViewerScreen(
     // A "batch" of 1 (a lone bubble, not a grid tile) never counts as being "in the batch" —
     // there's nothing distinct from whole-history to show for a single photo.
     val inBatch = batchUuids.size > 1 && currentMessage.getUuid() in batchUuids
+    var chromeVisible by remember { mutableStateOf(true) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-            MediaViewerPage(service = service, message = items[page], onOpenExternally = onOpenExternally)
+            MediaViewerPage(
+                service = service,
+                message = items[page],
+                onOpenExternally = onOpenExternally,
+                onTap = { chromeVisible = !chromeVisible },
+            )
         }
-        MediaViewerTopBar(
-            message = currentMessage,
-            conversation = conversation,
-            onBack = onClose,
-            onShare = { onShare(currentMessage) },
-            onSave = { onSave(currentMessage) },
-            onShowInChat = { onShowInChat(currentMessage) },
-        )
-        val timeText = remember(currentMessage.getUuid()) {
-            android.text.format.DateFormat.format("HH:mm", currentMessage.timeSent).toString()
+        androidx.compose.animation.AnimatedVisibility(
+            visible = chromeVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopStart),
+        ) {
+            MediaViewerTopBar(
+                message = currentMessage,
+                conversation = conversation,
+                onBack = onClose,
+                onShare = { onShare(currentMessage) },
+                onSave = { onSave(currentMessage) },
+                onShowInChat = { onShowInChat(currentMessage) },
+            )
         }
-        Text(
-            text = timeText,
-            color = Color.White,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 12.dp, bottom = 78.dp)
-                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                .padding(horizontal = 9.dp, vertical = 4.dp),
-        )
-        MediaViewerFilmstrip(
-            service = service,
-            items = items,
-            currentIndex = pagerState.currentPage,
-            batchUuids = batchUuids,
-            inBatch = inBatch,
-            onSelect = { idx -> scope.launch { pagerState.animateScrollToPage(idx) } },
-        )
+        androidx.compose.animation.AnimatedVisibility(
+            visible = chromeVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomStart),
+        ) {
+            MediaViewerFilmstrip(
+                service = service,
+                items = items,
+                currentIndex = pagerState.currentPage,
+                batchUuids = batchUuids,
+                inBatch = inBatch,
+                onSelect = { idx -> scope.launch { pagerState.animateScrollToPage(idx) } },
+            )
+        }
     }
 }
 
@@ -358,15 +370,21 @@ private fun MediaViewerTopBar(
     onShowInChat: () -> Unit,
 ) {
     val context = LocalContext.current
-    val dateText = remember(message.getUuid()) {
-        DateUtils.formatDateTime(context, message.timeSent, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME)
+    // Same "Today / Yesterday / weekday-if-within-7-days / full date" convention as the chat's
+    // own date pills — a bare weekday name (e.g. "Sunday") is only unambiguous for a recent
+    // message; anything older needs the actual date, which formatDatePill already handles.
+    val day = formatDatePill(context, message.timeSent)
+    val time = remember(message.getUuid()) {
+        android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(message.timeSent))
     }
+    val dateText = "$day · $time"
     var menuExpanded by remember { mutableStateOf(false) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.Black.copy(alpha = 0.4f))
+            .windowInsetsPadding(WindowInsets.statusBars)
             .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp),
     ) {
         ViewerChipButton(iconRes = R.drawable.ic_arrow_back_24dp, contentDescription = stringResource(R.string.back), onClick = onBack)
@@ -429,6 +447,7 @@ private fun MediaViewerPage(
     service: XmppConnectionService,
     message: Message,
     onOpenExternally: (Message) -> Unit,
+    onTap: () -> Unit,
 ) {
     val uuid = message.getUuid()
     val isVideo = message.mimeType?.startsWith("video/") == true
@@ -451,7 +470,7 @@ private fun MediaViewerPage(
                 bitmap = bitmap,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().zoomable(zoomableState),
+                modifier = Modifier.fillMaxSize().zoomable(zoomableState, onClick = { onTap() }),
             )
             if (isVideo) {
                 // Inline playback isn't built for the full-screen viewer yet — tapping the play
@@ -479,7 +498,7 @@ private fun MediaViewerPage(
 }
 
 @Composable
-private fun androidx.compose.foundation.layout.BoxScope.MediaViewerFilmstrip(
+private fun MediaViewerFilmstrip(
     service: XmppConnectionService,
     items: List<Message>,
     currentIndex: Int,
@@ -489,8 +508,8 @@ private fun androidx.compose.foundation.layout.BoxScope.MediaViewerFilmstrip(
 ) {
     Box(
         modifier = Modifier
-            .align(Alignment.BottomStart)
             .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.navigationBars)
             .background(Color.Black.copy(alpha = 0.46f)),
     ) {
         AnimatedContent(
@@ -512,6 +531,7 @@ private fun androidx.compose.foundation.layout.BoxScope.MediaViewerFilmstrip(
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
                     .padding(10.dp),
             ) {
                 strip.forEach { message ->

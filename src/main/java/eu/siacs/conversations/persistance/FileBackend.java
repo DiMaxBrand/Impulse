@@ -983,7 +983,14 @@ public class FileBackend {
             Message message, int size, boolean cacheOnly, boolean drawVideoPlayOverlay)
             throws IOException {
         final String uuid = message.getUuid();
-        final String cacheKey = drawVideoPlayOverlay ? uuid : uuid + "#no-video-overlay";
+        // Size is part of the key: callers request very different sizes for the same message
+        // (a ~120px grid/filmstrip thumbnail vs. a ~1600px full-screen viewer image), and without
+        // it here, whichever size was decoded first "wins" the cache slot for every later
+        // request regardless of what size was actually asked for — e.g. the full-screen viewer
+        // silently getting back a small, blurry thumbnail because the chat bubble already primed
+        // the cache with one.
+        final String cacheKey =
+                uuid + "#" + size + (drawVideoPlayOverlay ? "" : "#no-video-overlay");
         final LruCache<String, Bitmap> cache = mXmppConnectionService.getBitmapCache();
         Bitmap thumbnail = cache.get(cacheKey);
         if ((thumbnail == null) && (!cacheOnly)) {

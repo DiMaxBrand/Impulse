@@ -1699,7 +1699,7 @@ private fun LocalTimeForContactRow(
 }
 
 @Composable
-private fun formatDatePill(context: android.content.Context, timestamp: Long): String {
+internal fun formatDatePill(context: android.content.Context, timestamp: Long): String {
     val now = java.util.Calendar.getInstance()
     val then = java.util.Calendar.getInstance().also { it.timeInMillis = timestamp }
     val todayStart = now.clone() as java.util.Calendar
