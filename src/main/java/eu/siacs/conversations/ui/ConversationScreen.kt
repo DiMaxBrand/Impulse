@@ -1550,6 +1550,7 @@ private fun MessageList(
                         val groupUuids = item.messages.mapNotNull { it.getUuid() }
                         MediaGroupRow(
                             item = item,
+                            revision = revision,
                             listener = listener,
                             onLongPress = onLongPress,
                             selectionActive = selectedUuids.isNotEmpty(),
@@ -2080,6 +2081,7 @@ private const val MEDIA_GRID_MAX_CELLS = 4
 @Composable
 private fun MediaGroupRow(
     item: ChatItem.MediaGroup,
+    revision: Int,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
     selectionActive: Boolean,
@@ -2145,21 +2147,25 @@ private fun MediaGroupRow(
                 }
                 Spacer(Modifier.width(6.dp))
             }
-            Box(
-                modifier = Modifier
-                    .width(MEDIA_GRID_WIDTH)
-                    .clip(shape)
-                    .background(
-                        if (outgoing) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                    .padding(3.dp)
-                    .combinedClickable(
+            Surface(
+                shape = shape,
+                color = if (outgoing) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.width(MEDIA_GRID_WIDTH),
+            ) {
+                Column(
+                    modifier = Modifier.combinedClickable(
                         onClick = { if (selectionActive) onToggleSelected() },
                         onLongClick = { if (selectionActive) onToggleSelected() else onLongPress(first) },
                     ),
-            ) {
-                MediaGridContent(messages = messages, onCellTap = { listener.onOpenMessage(it) })
+                ) {
+                    // Edge-to-edge, clipped only by the Surface's own bubble shape above — no
+                    // separate per-cell rounding, so the grid never mismatches the tail corner.
+                    MediaGridContent(messages = messages, onCellTap = { listener.onOpenMessage(it) })
+                    Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp)) {
+                        MessageFooter(message = messages.last(), outgoing = outgoing, revision = revision)
+                    }
+                }
             }
         }
         if (selectionActive) {
@@ -2179,55 +2185,45 @@ private fun MediaGroupRow(
 
 @Composable
 private fun MediaGridContent(messages: List<Message>, onCellTap: (Message) -> Unit) {
-    val cellShape = RoundedCornerShape(3.dp)
+    // No per-cell clip/rounding here — the parent Surface's bubble shape (tail included) is the
+    // only thing that shapes the tile's outer silhouette. Cells are plain rects; only the 2dp
+    // gaps between them reveal the container color, as deliberate "grout lines", not a mismatch.
     when (messages.size) {
         2 -> Row(
             modifier = Modifier.height(MEDIA_GRID_SINGLE_HEIGHT),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            MediaGridCell(messages[0], Modifier.weight(1f).fillMaxHeight().clip(cellShape), onCellTap)
-            MediaGridCell(messages[1], Modifier.weight(1f).fillMaxHeight().clip(cellShape), onCellTap)
+            MediaGridCell(messages[0], Modifier.weight(1f).fillMaxHeight(), onCellTap)
+            MediaGridCell(messages[1], Modifier.weight(1f).fillMaxHeight(), onCellTap)
         }
         3 -> Row(
             modifier = Modifier.height(MEDIA_GRID_HERO_HEIGHT),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            MediaGridCell(messages[0], Modifier.weight(1.3f).fillMaxHeight().clip(cellShape), onCellTap)
+            MediaGridCell(messages[0], Modifier.weight(1.3f).fillMaxHeight(), onCellTap)
             Column(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                MediaGridCell(messages[1], Modifier.weight(1f).fillMaxWidth().clip(cellShape), onCellTap)
-                MediaGridCell(messages[2], Modifier.weight(1f).fillMaxWidth().clip(cellShape), onCellTap)
+                MediaGridCell(messages[1], Modifier.weight(1f).fillMaxWidth(), onCellTap)
+                MediaGridCell(messages[2], Modifier.weight(1f).fillMaxWidth(), onCellTap)
             }
         }
         else -> {
             val overflow = messages.size - 3
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    MediaGridCell(
-                        messages[0],
-                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(cellShape),
-                        onCellTap,
-                    )
-                    MediaGridCell(
-                        messages[1],
-                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(cellShape),
-                        onCellTap,
-                    )
+                    MediaGridCell(messages[0], Modifier.weight(1f).aspectRatio(4f / 5f), onCellTap)
+                    MediaGridCell(messages[1], Modifier.weight(1f).aspectRatio(4f / 5f), onCellTap)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    MediaGridCell(
-                        messages[2],
-                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(cellShape),
-                        onCellTap,
-                    )
+                    MediaGridCell(messages[2], Modifier.weight(1f).aspectRatio(4f / 5f), onCellTap)
                     // The 4th cell is a real message (still tappable — it's genuinely visible,
                     // just dimmed), not a synthetic "more" tile. "+N" counts everything not
                     // fully visible: this dimmed cell plus whatever isn't shown at all.
                     MediaGridCell(
                         messages[3],
-                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(cellShape),
+                        Modifier.weight(1f).aspectRatio(4f / 5f),
                         onCellTap,
                         overlayCount = if (overflow > 0) overflow + 1 else null,
                     )
