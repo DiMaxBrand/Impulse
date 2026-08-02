@@ -391,7 +391,26 @@ private sealed interface ChatItem {
         override val key: String
             get() = "new-messages"
     }
+
+    /** A run of 2+ consecutive same-sender photos/videos, rendered as one grid tile. */
+    data class MediaGroup(
+        val messages: List<Message>,
+        val firstOfGroup: Boolean,
+        val lastOfGroup: Boolean,
+    ) : ChatItem {
+        override val key: String
+            get() = messages.first().getUuid() ?: messages.hashCode().toString()
+    }
 }
+
+/** Would render as its own photo/video thumbnail — the unit media grouping operates on. */
+private fun isMediaCell(message: Message): Boolean =
+    message.isFileOrImage &&
+        !message.isDeleted &&
+        message.encryption != Message.ENCRYPTION_PGP &&
+        message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
+        message.fileParams.width > 0 &&
+        message.fileParams.height > 0
 
 private fun sameDay(a: Long, b: Long): Boolean {
     return UIHelper.sameDay(a, b)
@@ -453,10 +472,10 @@ private fun buildChatItems(
 ): List<ChatItem> {
     val chronological = ArrayList<ChatItem>(messages.size + 8)
     var pillInserted = newMessagesBoundaryUuid == null
-    for (i in messages.indices) {
+    var i = 0
+    while (i < messages.size) {
         val message = messages[i]
         val previous = messages.getOrNull(i - 1)
-        val next = messages.getOrNull(i + 1)
         if (previous == null || !sameDay(previous.timeSent, message.timeSent)) {
             chronological.add(ChatItem.DatePill(message.timeSent))
         }
@@ -464,10 +483,39 @@ private fun buildChatItems(
             chronological.add(ChatItem.NewMessagesPill(newMessagesCount))
             pillInserted = true
         }
+        // Collect a run of consecutive, groupable, media-only messages so they can render as one
+        // grid tile — but never merge across the new-messages boundary, so the pill always lands
+        // between two items rather than mid-group.
+        if (isMediaCell(message)) {
+            val run = ArrayList<Message>()
+            run.add(message)
+            var j = i + 1
+            while (j < messages.size) {
+                val candidate = messages[j]
+                if (candidate.getUuid() == newMessagesBoundaryUuid) break
+                if (isMediaCell(candidate) && groupable(run.last(), candidate)) {
+                    run.add(candidate)
+                    j++
+                } else {
+                    break
+                }
+            }
+            if (run.size >= 2) {
+                val next = messages.getOrNull(j)
+                val firstOfGroup = previous == null || !groupable(previous, message)
+                val lastOfGroup =
+                    next == null || !groupable(run.last(), next) || !sameDay(run.last().timeSent, next.timeSent)
+                chronological.add(ChatItem.MediaGroup(run, firstOfGroup, lastOfGroup))
+                i = j
+                continue
+            }
+        }
+        val next = messages.getOrNull(i + 1)
         val firstOfGroup = previous == null || !groupable(previous, message)
         val lastOfGroup =
             next == null || !groupable(message, next) || !sameDay(message.timeSent, next.timeSent)
         chronological.add(ChatItem.Msg(message, firstOfGroup, lastOfGroup))
+        i++
     }
     return chronological.asReversed()
 }
@@ -1498,6 +1546,24 @@ private fun MessageList(
                             },
                             modifier = itemModifier,
                         )
+                    is ChatItem.MediaGroup -> {
+                        val groupUuids = item.messages.mapNotNull { it.getUuid() }
+                        MediaGroupRow(
+                            item = item,
+                            listener = listener,
+                            onLongPress = onLongPress,
+                            selectionActive = selectedUuids.isNotEmpty(),
+                            selected = groupUuids.isNotEmpty() && groupUuids.all { selectedUuids.contains(it) },
+                            onToggleSelected = {
+                                val allSelected = groupUuids.all { selectedUuids.contains(it) }
+                                groupUuids.forEach { uuid ->
+                                    val isSelected = selectedUuids.contains(uuid)
+                                    if (allSelected == isSelected) onToggleSelected(uuid)
+                                }
+                            },
+                            modifier = itemModifier,
+                        )
+                    }
                 }
             }
         }
@@ -1997,6 +2063,237 @@ private fun MessageRow(
                 ),
         )
     }
+    }
+}
+
+private val MEDIA_GRID_WIDTH: Dp = 234.dp
+private val MEDIA_GRID_SINGLE_HEIGHT: Dp = 176.dp
+private val MEDIA_GRID_HERO_HEIGHT: Dp = 132.dp
+private const val MEDIA_GRID_MAX_CELLS = 4
+
+/**
+ * A run of 2+ consecutive same-sender photos/videos collapsed into one grid tile, instead of a
+ * separate bubble per message. Layout adapts to the count (see the design mockup this mirrors):
+ * 2 side by side at single-photo height, 3 as a hero + two stacked, 4+ as an even 2x2 with the
+ * 4th cell flat-dimmed and carrying a "+N" count once there are more than [MEDIA_GRID_MAX_CELLS].
+ */
+@Composable
+private fun MediaGroupRow(
+    item: ChatItem.MediaGroup,
+    listener: ConversationScreenListener,
+    onLongPress: (Message) -> Unit,
+    selectionActive: Boolean,
+    selected: Boolean,
+    onToggleSelected: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val messages = item.messages
+    val first = messages.first()
+    val outgoing = first.status != Message.STATUS_RECEIVED
+    val isGroupChat = first.getConversation().getMode() == Conversational.MODE_MULTI
+    val showAvatarSlot = !outgoing && isGroupChat
+    val context = LocalContext.current
+    val avatarBitmap = if (showAvatarSlot && item.lastOfGroup) {
+        val avatarState = remember(item.key) { mutableStateOf<ImageBitmap?>(null) }
+        val avatarSizePx = with(LocalDensity.current) { 32.dp.toPx() }.toInt()
+        LaunchedEffect(item.key) {
+            val activity = context as? XmppActivity ?: return@LaunchedEffect
+            val bm = withContext(Dispatchers.IO) {
+                try { activity.avatarService().get(first, avatarSizePx, false) }
+                catch (_: Exception) { null }
+            }
+            if (bm != null) avatarState.value = bm.asImageBitmap()
+        }
+        avatarState
+    } else null
+    val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
+    val shape = rememberBubbleShape(item.firstOfGroup, item.lastOfGroup, outgoing)
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp else 12.dp - tailInset,
+                    end = if (outgoing) 12.dp - tailInset else 48.dp,
+                    top = if (item.firstOfGroup) 6.dp else 1.dp,
+                    bottom = 1.dp,
+                ),
+            horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
+        ) {
+            AnimatedVisibility(
+                visible = selectionActive,
+                enter = fadeIn(tween(180)) + androidx.compose.animation.expandHorizontally(tween(180)),
+                exit = fadeOut(tween(120)) + androidx.compose.animation.shrinkHorizontally(tween(120)),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SelectionCheckCircle(selected = selected)
+                    Spacer(Modifier.width(6.dp))
+                }
+            }
+            if (showAvatarSlot) {
+                val bm = avatarBitmap?.value
+                Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                    if (bm != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = bm,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape),
+                        )
+                    }
+                }
+                Spacer(Modifier.width(6.dp))
+            }
+            Box(
+                modifier = Modifier
+                    .width(MEDIA_GRID_WIDTH)
+                    .clip(shape)
+                    .background(
+                        if (outgoing) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                    .padding(3.dp)
+                    .combinedClickable(
+                        onClick = { if (selectionActive) onToggleSelected() },
+                        onLongClick = { if (selectionActive) onToggleSelected() else onLongPress(first) },
+                    ),
+            ) {
+                MediaGridContent(messages = messages, onCellTap = { listener.onOpenMessage(it) })
+            }
+        }
+        if (selectionActive) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .combinedClickable(
+                        onClick = onToggleSelected,
+                        onLongClick = onToggleSelected,
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MediaGridContent(messages: List<Message>, onCellTap: (Message) -> Unit) {
+    val cellShape = RoundedCornerShape(3.dp)
+    when (messages.size) {
+        2 -> Row(
+            modifier = Modifier.height(MEDIA_GRID_SINGLE_HEIGHT),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            MediaGridCell(messages[0], Modifier.weight(1f).fillMaxHeight().clip(cellShape), onCellTap)
+            MediaGridCell(messages[1], Modifier.weight(1f).fillMaxHeight().clip(cellShape), onCellTap)
+        }
+        3 -> Row(
+            modifier = Modifier.height(MEDIA_GRID_HERO_HEIGHT),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            MediaGridCell(messages[0], Modifier.weight(1.3f).fillMaxHeight().clip(cellShape), onCellTap)
+            Column(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                MediaGridCell(messages[1], Modifier.weight(1f).fillMaxWidth().clip(cellShape), onCellTap)
+                MediaGridCell(messages[2], Modifier.weight(1f).fillMaxWidth().clip(cellShape), onCellTap)
+            }
+        }
+        else -> {
+            val overflow = messages.size - 3
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    MediaGridCell(
+                        messages[0],
+                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(cellShape),
+                        onCellTap,
+                    )
+                    MediaGridCell(
+                        messages[1],
+                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(cellShape),
+                        onCellTap,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    MediaGridCell(
+                        messages[2],
+                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(cellShape),
+                        onCellTap,
+                    )
+                    // The 4th cell is a real message (still tappable — it's genuinely visible,
+                    // just dimmed), not a synthetic "more" tile. "+N" counts everything not
+                    // fully visible: this dimmed cell plus whatever isn't shown at all.
+                    MediaGridCell(
+                        messages[3],
+                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(cellShape),
+                        onCellTap,
+                        overlayCount = if (overflow > 0) overflow + 1 else null,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaGridCell(
+    message: Message,
+    modifier: Modifier,
+    onTap: (Message) -> Unit,
+    overlayCount: Int? = null,
+) {
+    val context = LocalContext.current
+    val activity = context as? XmppActivity
+    val fileBackend = activity?.xmppConnectionService?.fileBackend
+    val uuid = message.getUuid()
+    val isVideo = message.mimeType?.startsWith("video/") == true
+    val cachedBitmap = ThumbnailCache.get(uuid)
+    if (cachedBitmap == null && fileBackend != null) {
+        val sizePx = with(LocalDensity.current) { MEDIA_GRID_WIDTH.toPx() / 2 }.toInt()
+        LaunchedEffect(uuid) {
+            val bm = withContext(Dispatchers.IO) {
+                try { fileBackend.getThumbnail(message, sizePx, false, false) } catch (_: Exception) { null }
+            }
+            if (bm != null) ThumbnailCache.put(uuid, bm.asImageBitmap())
+        }
+    }
+    Box(
+        modifier = modifier.clickable { onTap(message) },
+        contentAlignment = Alignment.Center,
+    ) {
+        val bitmap = ThumbnailCache.get(uuid)
+        if (bitmap != null) {
+            androidx.compose.foundation.Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        } else {
+            Box(modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceContainerHighest))
+        }
+        if (isVideo) {
+            Icon(
+                painter = painterResource(R.drawable.ic_play_circle_24dp),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        if (overlayCount != null) {
+            Box(
+                modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "+$overlayCount",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
     }
 }
 
