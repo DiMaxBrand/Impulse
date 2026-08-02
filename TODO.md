@@ -12,6 +12,14 @@
 
 - [ ] Merge `java-to-kotlin` branch into `dev` (277 Java → Kotlin conversions).
 
+## Developer Options
+
+- [ ] **Shape catalog screen** — new button in Developer Options opens a screen for browsing the `MaterialShapes` set (`MaterialShapeHelpers.java` already exposes `circle`/`pill`/`semiCircle`/`diamond`/`gem`/`ghostish`/`softBurst`/`slanted`/`arrow`).
+  - Big hero shape pinned at the top, ~1/3 of screen height; stays fixed, does not scroll away.
+  - Below it, the rest of the shapes render as small selectable buttons (shape-as-icon). This catalog area scrolls **vertically only** — no horizontal scrolling — while the hero above it stays put; the activity itself doesn't scroll as a whole.
+  - Tapping a catalog shape selects it with an expressive selection state.
+  - The hero shape then **morphs** into the newly selected shape using `androidx.graphics.shapes.Morph` (the official shape-morph API), same mechanism already used for the morphing send button — reuse it, don't reimplement.
+
 ## General
 
 - [ ] **Voice message transcription** — on-demand, on-device via ML Kit Speech Recognition (`com.google.mlkit:speech-recognition`). Tap a "transcribe" button on the audio bubble → POST the downloaded `.ogg`/`.m4a` to the on-device model → store result in a new `transcript TEXT` column on the message → display below the waveform. Model (~80 MB) is downloaded on demand, no API key needed. Same ML Kit family as subject segmentation already used for 3D avatars.
