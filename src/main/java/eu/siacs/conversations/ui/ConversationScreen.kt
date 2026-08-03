@@ -309,6 +309,14 @@ interface ConversationScreenListener {
     fun onUnpinMessage(message: Message)
 
     fun onDeleteSelectedMessages(messages: List<Message>)
+
+    /** "Delete for everyone" on a whole grid tile — every message must be uniformly
+     * retractable (checked by the caller); loops the same per-message retraction the
+     * single-message flow uses. */
+    fun onDeleteMediaGroupForEveryone(messages: List<Message>)
+
+    /** XEP-0425 moderation of every message in a grid tile, when uniformly moderatable. */
+    fun onModerateMediaGroup(messages: List<Message>)
     fun onCopySelectedMessages(messages: List<Message>)
     fun onForwardSelectedMessages(messages: List<Message>)
 }
@@ -527,6 +535,11 @@ private fun buildChatItems(
 fun ConversationScreen(state: ConversationScreenState, listener: ConversationScreenListener) {
     val conversation = state.conversation.value
     var menuTarget by remember { mutableStateOf<Message?>(null) }
+    // Set alongside menuTarget when the long-press originated on a grid tile — lets the context
+    // sheet's Delete action operate on the whole batch instead of silently acting on just the
+    // first message it happens to represent.
+    var menuTargetGroup by remember { mutableStateOf<List<Message>?>(null) }
+    var deleteGroupTarget by remember { mutableStateOf<List<Message>?>(null) }
     // Multi-select is pure screen-local UI state — nothing here has a business-logic effect
     // until one of the batch actions in the top bar actually fires, so (like menuTarget above)
     // it lives as local Compose state rather than in ConversationScreenState.
@@ -578,7 +591,14 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 MessageList(
                     state = state,
                     listener = listener,
-                    onLongPress = { menuTarget = it },
+                    onLongPress = {
+                        menuTarget = it
+                        menuTargetGroup = null
+                    },
+                    onLongPressGroup = { messages ->
+                        menuTarget = messages.firstOrNull()
+                        menuTargetGroup = messages
+                    },
                     selectedUuids = selectedUuids,
                     onToggleSelected = { uuid ->
                         if (!selectedUuids.remove(uuid)) selectedUuids.add(uuid)
@@ -593,10 +613,34 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     if (target != null) {
         MessageContextSheet(
             message = target,
+            groupMessages = menuTargetGroup,
             state = state,
             listener = listener,
             onSelect = { it.getUuid()?.let { uuid -> selectedUuids.add(uuid) } },
-            onDismiss = { menuTarget = null },
+            onDeleteGroup = { deleteGroupTarget = it },
+            onDismiss = {
+                menuTarget = null
+                menuTargetGroup = null
+            },
+        )
+    }
+    val groupToDelete = deleteGroupTarget
+    if (groupToDelete != null) {
+        DeleteGroupSheet(
+            messages = groupToDelete,
+            onDeleteForEveryone = {
+                deleteGroupTarget = null
+                listener.onDeleteMediaGroupForEveryone(groupToDelete)
+            },
+            onDeleteForMyself = {
+                deleteGroupTarget = null
+                listener.onDeleteSelectedMessages(groupToDelete)
+            },
+            onModerate = {
+                deleteGroupTarget = null
+                listener.onModerateMediaGroup(groupToDelete)
+            },
+            onDismiss = { deleteGroupTarget = null },
         )
     }
     if (deleteSelectedConfirm) {
@@ -1193,6 +1237,7 @@ private fun MessageList(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
+    onLongPressGroup: (List<Message>) -> Unit,
     selectedUuids: List<String>,
     onToggleSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -1569,7 +1614,7 @@ private fun MessageList(
                             revision = revision,
                             highlighted = highlightKey != null && groupUuids.contains(highlightKey),
                             listener = listener,
-                            onLongPress = onLongPress,
+                            onLongPress = { onLongPressGroup(item.messages) },
                             selectionActive = selectedUuids.isNotEmpty(),
                             selected = groupUuids.isNotEmpty() && groupUuids.all { selectedUuids.contains(it) },
                             onToggleSelected = {
@@ -3667,9 +3712,11 @@ private fun markModerationDisclaimerAcked() {
 @Composable
 private fun MessageContextSheet(
     message: Message,
+    groupMessages: List<Message>? = null,
     state: ConversationScreenState,
     listener: ConversationScreenListener,
     onSelect: (Message) -> Unit,
+    onDeleteGroup: (List<Message>) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -3893,13 +3940,20 @@ private fun MessageContextSheet(
         // Delete — DeleteMessageSheet itself decides, per message, whether the "everyone" button
         // is a self-retraction or (for someone else's message, when we're a moderator) a XEP-0425
         // moderation request instead. See DeleteMessageSheet for that gating.
+        //
+        // When this sheet represents a whole grid tile (groupMessages != null), delete must act
+        // on every message in the batch, not just the single representative message it was
+        // opened with — a fixed "Delete files" label, not a per-type singular name that only
+        // describes the one message this sheet happens to hold.
+        val group = groupMessages
         val deleteLabel = when {
+            group != null -> stringResource(R.string.delete_files)
             deleted -> stringResource(R.string.delete_leftover_message)
             message.isFileOrImage -> stringResource(R.string.delete_x_file, fileDescription)
             else -> stringResource(R.string.delete_message)
         }
         add(SheetAction(R.drawable.ic_delete_24dp, deleteLabel) {
-            state.deleteTarget.value = message
+            if (group != null) onDeleteGroup(group) else state.deleteTarget.value = message
         })
     }
 
@@ -3985,6 +4039,42 @@ private fun MessageContextSheet(
     }
 }
 
+// XEP-0424 retraction in a MUC must reference the room's own server-assigned stanza-id
+// (XEP-0359) — the sender's local UUID means nothing to other occupants or the room's
+// archive. That id only exists once the room has echoed this message back to us, which can
+// lag a moment behind sending, or never happen at all if the room doesn't advertise
+// urn:xmpp:sid:0. Offering (and silently no-op'ing) "delete for everyone" without it would
+// wipe the local copy while doing nothing for anyone else — disabled until it's genuinely
+// possible instead.
+internal fun isRetractable(message: Message): Boolean {
+    val conversation = message.conversation as? Conversation
+    val isMuc = conversation?.getMode() == Conversational.MODE_MULTI
+    val isOwnMessage = message.status != Message.STATUS_RECEIVED
+    return isOwnMessage && (!isMuc || message.serverMsgId != null)
+}
+
+// XEP-0425: a moderator can remove someone ELSE's message for everyone, even though they
+// can't self-retract it. Applies in any MUC room the server advertises moderation support
+// for — public channel or private group chat alike, since that's a real server capability
+// check, not something tied to the room's privacy/anonymity settings. Owners/admins are
+// supposed to always hold at least moderator role per XEP-0045, but OR in the affiliation
+// directly (ranks(ADMIN) also covers OWNER) in case the client's tracked role lags.
+internal fun isModeratable(message: Message): Boolean {
+    val conversation = message.conversation as? Conversation
+    val isMuc = conversation?.getMode() == Conversational.MODE_MULTI
+    val isOwnMessage = message.status != Message.STATUS_RECEIVED
+    val mucOptions = conversation?.mucOptions
+    return !isOwnMessage
+            && !message.isDeleted
+            && message.status != Message.STATUS_SEND_FAILED
+            && isMuc
+            && mucOptions != null
+            && mucOptions.moderation()
+            && (mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Role.MODERATOR)
+                || mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Affiliation.ADMIN))
+            && message.serverMsgId != null
+}
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 internal fun DeleteMessageSheet(
@@ -3994,33 +4084,8 @@ internal fun DeleteMessageSheet(
     onModerate: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val conversation = message.conversation as? Conversation
-    val isMuc = conversation?.getMode() == Conversational.MODE_MULTI
-    val isOwnMessage = message.status != Message.STATUS_RECEIVED
-    // XEP-0424 retraction in a MUC must reference the room's own server-assigned stanza-id
-    // (XEP-0359) — the sender's local UUID means nothing to other occupants or the room's
-    // archive. That id only exists once the room has echoed this message back to us, which can
-    // lag a moment behind sending, or never happen at all if the room doesn't advertise
-    // urn:xmpp:sid:0. Offering (and silently no-op'ing) "delete for everyone" without it would
-    // wipe the local copy while doing nothing for anyone else — disabled until it's genuinely
-    // possible instead.
-    val canRetract = isOwnMessage && (!isMuc || message.serverMsgId != null)
-    // XEP-0425: a moderator can remove someone ELSE's message for everyone, even though they
-    // can't self-retract it. Applies in any MUC room the server advertises moderation support
-    // for — public channel or private group chat alike, since that's a real server capability
-    // check, not something tied to the room's privacy/anonymity settings. Owners/admins are
-    // supposed to always hold at least moderator role per XEP-0045, but OR in the affiliation
-    // directly (ranks(ADMIN) also covers OWNER) in case the client's tracked role lags.
-    val mucOptions = conversation?.mucOptions
-    val canModerate = !isOwnMessage
-            && !message.isDeleted
-            && message.status != Message.STATUS_SEND_FAILED
-            && isMuc
-            && mucOptions != null
-            && mucOptions.moderation()
-            && (mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Role.MODERATOR)
-                || mucOptions.self.ranks(im.conversations.android.xmpp.model.muc.Affiliation.ADMIN))
-            && message.serverMsgId != null
+    val canRetract = isRetractable(message)
+    val canModerate = isModeratable(message)
     val moderateInstead = canModerate && !canRetract
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -4070,6 +4135,98 @@ internal fun DeleteMessageSheet(
                                 textAlign = TextAlign.Center,
                                 style = if (moderateInstead) MaterialTheme.typography.labelMedium else LocalTextStyle.current,
                             )
+                        }
+                    },
+                    menuContent = {},
+                )
+                customItem(
+                    buttonGroupContent = {
+                        androidx.compose.material3.Button(
+                            onClick = onDeleteForMyself,
+                            shapes = androidx.compose.material3.ButtonShapes(
+                                shape = RoundedCornerShape(CORNER_SMALL),
+                                pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonPressShape,
+                            ),
+                            interactionSource = myselfInteractionSource,
+                            modifier = Modifier.animateWidth(myselfInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding),
+                        ) { Text(text = myselfLabel, maxLines = 1) }
+                    },
+                    menuContent = {},
+                )
+                customItem(
+                    buttonGroupContent = {
+                        androidx.compose.material3.Button(
+                            onClick = onDismiss,
+                            shapes = androidx.compose.material3.ButtonShapes(
+                                shape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShape,
+                                pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonPressShape,
+                            ),
+                            interactionSource = cancelInteractionSource,
+                            modifier = Modifier.animateWidth(cancelInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding),
+                        ) { Text(text = cancelLabel, maxLines = 1) }
+                    },
+                    menuContent = {},
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Same shape as [DeleteMessageSheet] but for a whole grid tile's worth of messages at once.
+ * "Everyone" only lights up when every message is uniformly eligible for the same path
+ * (all self-retractable, or all moderatable) — a mixed batch only gets local delete, same
+ * reasoning as the multi-select batch delete.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun DeleteGroupSheet(
+    messages: List<Message>,
+    onDeleteForEveryone: () -> Unit,
+    onDeleteForMyself: () -> Unit,
+    onModerate: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val canRetract = messages.isNotEmpty() && messages.all(::isRetractable)
+    val canModerate = messages.isNotEmpty() && messages.all(::isModeratable)
+    val moderateInstead = canModerate && !canRetract
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                text = stringResource(R.string.delete_files),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
+            )
+            val everyoneLabel = if (moderateInstead) {
+                stringResource(R.string.moderate_delete)
+            } else {
+                stringResource(R.string.delete_for_everyone)
+            }
+            val myselfLabel = stringResource(R.string.delete_for_myself)
+            val cancelLabel = stringResource(R.string.cancel)
+            val everyoneInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val myselfInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val cancelInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            androidx.compose.material3.ButtonGroup(
+                overflowIndicator = {},
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                customItem(
+                    buttonGroupContent = {
+                        androidx.compose.material3.Button(
+                            onClick = { if (moderateInstead) onModerate() else onDeleteForEveryone() },
+                            shapes = androidx.compose.material3.ButtonShapes(
+                                shape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShape,
+                                pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonPressShape,
+                            ),
+                            enabled = canRetract || canModerate,
+                            interactionSource = everyoneInteractionSource,
+                            modifier = Modifier.animateWidth(everyoneInteractionSource, androidx.compose.material3.ButtonDefaults.ContentPadding),
+                        ) {
+                            Text(text = everyoneLabel, maxLines = if (moderateInstead) 2 else 1)
                         }
                     },
                     menuContent = {},

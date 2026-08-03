@@ -1205,6 +1205,50 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         refreshMessages()
     }
 
+    // Reachable only when isRetractable() held true for every message in the group (Compose's
+    // DeleteGroupSheet gates the button on that). Fire-and-forget per message, same as the
+    // single-message flow — no artificial delay, one refreshMessages() at the end rather than
+    // per-item.
+    override fun onDeleteMediaGroupForEveryone(messages: List<Message>) {
+        val service = getXmppConnectionService() ?: return
+        for (message in messages) {
+            val c = message.conversation as? Conversation ?: continue
+            val packet = service.getMessageGenerator().generateRetraction(message)
+            service.sendMessagePacket(c.getAccount(), packet)
+            if (message.isFileOrImage && message.getRelativeFilePath() != null) {
+                service.fileBackend.deleteFile(message)
+                service.evictPreview(message.getUuid())
+            }
+            c.remove(message)
+            service.databaseBackend.deleteMessage(message.getUuid())
+            service.getNotificationService().clear(message)
+        }
+        refreshMessages()
+    }
+
+    // Reachable only when isModeratable() held true for every message in the group. Each
+    // ModerationManager.moderate() call does its own local removal + updateConversationUi() on
+    // success — successfulAsList so one failed IQ among the batch doesn't stop the rest from
+    // completing; a single toast covers however many came back null.
+    override fun onModerateMediaGroup(messages: List<Message>) {
+        val account = (messages.firstOrNull()?.conversation as? Conversation)?.getAccount() ?: return
+        val manager = account.getXmppConnection().getManager(ModerationManager::class.java)
+        val futures = messages.map { manager.moderate(it) }
+        val combined = Futures.successfulAsList(futures)
+        Futures.addCallback(combined, object : FutureCallback<List<Void?>> {
+            override fun onSuccess(result: List<Void?>) {
+                if (result.any { it == null }) {
+                    val ctx = context ?: return
+                    Toast.makeText(ctx, R.string.could_not_moderate_message, Toast.LENGTH_LONG).show()
+                }
+            }
+            override fun onFailure(t: Throwable) {
+                val ctx = context ?: return
+                Toast.makeText(ctx, R.string.could_not_moderate_message, Toast.LENGTH_LONG).show()
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
+    }
+
     override fun onCopySelectedMessages(messages: List<Message>) {
         eu.siacs.conversations.ui.util.ShareUtil.copyToClipboard(requireXmppActivity(), messages)
     }
