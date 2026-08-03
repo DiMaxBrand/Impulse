@@ -746,6 +746,9 @@
     <string name="title_activity_show_location">Показать местоположение</string>
     <string name="share">Поделиться</string>
     <string name="show_in_chat">Показать в чате</string>
+    <string name="delete_images">Удалить изображения</string>
+    <string name="delete_files">Удалить файлы</string>
+    <string name="deleting">Удаление…</string>
     <string name="unable_to_start_recording">Невозможно начать запись</string>
     <string name="please_wait">Подождите…</string>
     <string name="no_microphone_permission">Предоставить %1$s разрешение на использование микрофона</string>

@@ -1445,12 +1445,32 @@ private fun MessageList(
         onDispose { AudioPlaybackController.onCompletion = null }
     }
 
-    // Scroll to a specific message when requested (e.g. from pinned banner tap).
+    var highlightKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(highlightKey) {
+        if (highlightKey != null) {
+            kotlinx.coroutines.delay(1500)
+            highlightKey = null
+        }
+    }
+
+    // Scroll to a specific message when requested (e.g. from pinned banner tap, or "Show in
+    // chat" in the media viewer). Must also match ChatItem.MediaGroup — a message that's part of
+    // a grid tile is never a standalone ChatItem.Msg, so a Msg-only lookup silently finds nothing
+    // for the common case of a grouped photo.
     val scrollToUuid = state.requestScrollToUuid.value
     LaunchedEffect(scrollToUuid) {
         if (scrollToUuid != null) {
-            val idx = items.indexOfFirst { it is ChatItem.Msg && it.message.getUuid() == scrollToUuid }
-            if (idx >= 0) listState.animateScrollToItem(idx)
+            val idx = items.indexOfFirst { item ->
+                when (item) {
+                    is ChatItem.Msg -> item.message.getUuid() == scrollToUuid
+                    is ChatItem.MediaGroup -> item.messages.any { it.getUuid() == scrollToUuid }
+                    else -> false
+                }
+            }
+            if (idx >= 0) {
+                listState.animateScrollToItem(idx)
+                highlightKey = scrollToUuid
+            }
             state.requestScrollToUuid.value = null
         }
     }
@@ -1465,13 +1485,6 @@ private fun MessageList(
             }
         }
 
-    var highlightKey by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(highlightKey) {
-        if (highlightKey != null) {
-            kotlinx.coroutines.delay(1500)
-            highlightKey = null
-        }
-    }
     val onReplyCardClick: (Message) -> Unit = { original ->
         val key = original.getUuid() ?: ""
         val index = items.indexOfFirst { it.key == key }
@@ -1554,6 +1567,7 @@ private fun MessageList(
                         MediaGroupRow(
                             item = item,
                             revision = revision,
+                            highlighted = highlightKey != null && groupUuids.contains(highlightKey),
                             listener = listener,
                             onLongPress = onLongPress,
                             selectionActive = selectedUuids.isNotEmpty(),
@@ -2085,6 +2099,7 @@ private const val MEDIA_GRID_MAX_CELLS = 4
 private fun MediaGroupRow(
     item: ChatItem.MediaGroup,
     revision: Int,
+    highlighted: Boolean = false,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
     selectionActive: Boolean,
@@ -2150,10 +2165,15 @@ private fun MediaGroupRow(
                 }
                 Spacer(Modifier.width(6.dp))
             }
+            val baseColor = if (outgoing) MaterialTheme.colorScheme.primaryContainer
+                             else MaterialTheme.colorScheme.surfaceContainerHigh
+            val containerColor by androidx.compose.animation.animateColorAsState(
+                targetValue = if (highlighted) MaterialTheme.colorScheme.tertiaryContainer else baseColor,
+                label = "mediaGroupHighlight",
+            )
             Surface(
                 shape = shape,
-                color = if (outgoing) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = containerColor,
                 modifier = Modifier.width(MEDIA_GRID_WIDTH),
             ) {
                 Column(
@@ -2162,13 +2182,19 @@ private fun MediaGroupRow(
                         onLongClick = { if (selectionActive) onToggleSelected() else onLongPress(first) },
                     ),
                 ) {
-                    // Edge-to-edge, clipped only by the Surface's own bubble shape above — no
-                    // separate per-cell rounding, so the grid never mismatches the tail corner.
-                    MediaGridContent(
-                        messages = messages,
-                        onCellTap = { tapped -> listener.onOpenMediaGroup(messages, tapped) },
-                    )
-                    Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp)) {
+                    // A small margin on every side keeps the container visible as a frame around
+                    // the grid (not just below it, near the footer) — each cell gets its own
+                    // modest, uniform rounding. Since cells no longer touch the Surface's own
+                    // edge directly, this can't reproduce the earlier bug where a cell's flat
+                    // radius fought the bubble's real shape (20dp corners / the curved tail) —
+                    // there's a real gap between the two now, so the two roundings never collide.
+                    Box(modifier = Modifier.padding(4.dp)) {
+                        MediaGridContent(
+                            messages = messages,
+                            onCellTap = { tapped -> listener.onOpenMediaGroup(messages, tapped) },
+                        )
+                    }
+                    Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 8.dp)) {
                         MessageFooter(message = messages.last(), outgoing = outgoing, revision = revision)
                     }
                 }
@@ -2189,47 +2215,49 @@ private fun MediaGroupRow(
     }
 }
 
+private val MEDIA_CELL_SHAPE = RoundedCornerShape(10.dp)
+
 @Composable
 private fun MediaGridContent(messages: List<Message>, onCellTap: (Message) -> Unit) {
-    // No per-cell clip/rounding here — the parent Surface's bubble shape (tail included) is the
-    // only thing that shapes the tile's outer silhouette. Cells are plain rects; only the 2dp
-    // gaps between them reveal the container color, as deliberate "grout lines", not a mismatch.
+    // Every cell gets its own modest, uniform rounding — safe now that MediaGroupRow insets the
+    // whole grid from the Surface's real edge with a margin, so a cell's corner never coincides
+    // with (and can't mismatch) the bubble's own shape.
     when (messages.size) {
         2 -> Row(
             modifier = Modifier.height(MEDIA_GRID_SINGLE_HEIGHT),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            MediaGridCell(messages[0], Modifier.weight(1f).fillMaxHeight(), onCellTap)
-            MediaGridCell(messages[1], Modifier.weight(1f).fillMaxHeight(), onCellTap)
+            MediaGridCell(messages[0], Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE), onCellTap)
+            MediaGridCell(messages[1], Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE), onCellTap)
         }
         3 -> Row(
             modifier = Modifier.height(MEDIA_GRID_HERO_HEIGHT),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            MediaGridCell(messages[0], Modifier.weight(1.3f).fillMaxHeight(), onCellTap)
+            MediaGridCell(messages[0], Modifier.weight(1.3f).fillMaxHeight().clip(MEDIA_CELL_SHAPE), onCellTap)
             Column(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                MediaGridCell(messages[1], Modifier.weight(1f).fillMaxWidth(), onCellTap)
-                MediaGridCell(messages[2], Modifier.weight(1f).fillMaxWidth(), onCellTap)
+                MediaGridCell(messages[1], Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE), onCellTap)
+                MediaGridCell(messages[2], Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE), onCellTap)
             }
         }
         else -> {
             val overflow = messages.size - 3
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    MediaGridCell(messages[0], Modifier.weight(1f).aspectRatio(4f / 5f), onCellTap)
-                    MediaGridCell(messages[1], Modifier.weight(1f).aspectRatio(4f / 5f), onCellTap)
+                    MediaGridCell(messages[0], Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE), onCellTap)
+                    MediaGridCell(messages[1], Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE), onCellTap)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    MediaGridCell(messages[2], Modifier.weight(1f).aspectRatio(4f / 5f), onCellTap)
+                    MediaGridCell(messages[2], Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE), onCellTap)
                     // The 4th cell is a real message (still tappable — it's genuinely visible,
                     // just dimmed), not a synthetic "more" tile. "+N" counts everything not
                     // fully visible: this dimmed cell plus whatever isn't shown at all.
                     MediaGridCell(
                         messages[3],
-                        Modifier.weight(1f).aspectRatio(4f / 5f),
+                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
                         onCellTap,
                         overlayCount = if (overflow > 0) overflow + 1 else null,
                     )
@@ -3959,7 +3987,7 @@ private fun MessageContextSheet(
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun DeleteMessageSheet(
+internal fun DeleteMessageSheet(
     message: Message,
     onDeleteForEveryone: () -> Unit,
     onDeleteForMyself: () -> Unit,

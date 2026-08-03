@@ -72,6 +72,7 @@ import eu.siacs.conversations.services.XmppConnectionService
 import eu.siacs.conversations.ui.util.ShareUtil
 import eu.siacs.conversations.ui.util.ViewUtil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.saket.telephoto.zoomable.ZoomSpec
@@ -132,6 +133,9 @@ class MediaViewerActivity : XmppActivity() {
                             val file = xmppConnectionService.fileBackend.getFile(message)
                             if (file.exists()) ViewUtil.view(this@MediaViewerActivity, file, message.getUuid() ?: "")
                         },
+                        onDeleteForEveryone = { message -> retractMessage(message) },
+                        onDeleteForMyself = { message -> deleteMessageLocally(message) },
+                        onModerate = { message -> moderateMessage(message) },
                     )
                 } else {
                     Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
@@ -142,6 +146,59 @@ class MediaViewerActivity : XmppActivity() {
                 }
             }
         }
+    }
+
+    // Mirrors ConversationComposeFragment's retractMessage/deleteMessageLocally/onModerateMessage
+    // exactly — same primitives, just triggered from this separate Activity. updateConversationUi()
+    // is what makes the chat behind us reflect the change without needing this Activity to know
+    // anything about the Fragment's own state: it's the same OnConversationUpdate -> refreshUi()
+    // -> refresh() -> refreshMessages() chain that already runs for every other local/remote delete.
+    private fun retractMessage(message: Message) {
+        val conversation = message.conversation as? Conversation ?: return
+        val packet = xmppConnectionService.getMessageGenerator().generateRetraction(message)
+        xmppConnectionService.sendMessagePacket(conversation.getAccount(), packet)
+        deleteMessageEntirely(message)
+    }
+
+    private fun deleteMessageLocally(message: Message) {
+        if (message.isFileOrImage && !message.isDeleted && message.getRelativeFilePath() != null) {
+            if (xmppConnectionService.fileBackend.deleteFile(message)) {
+                message.setDeleted(true)
+                xmppConnectionService.evictPreview(message.getUuid())
+                xmppConnectionService.updateMessage(message, false)
+                xmppConnectionService.updateConversationUi()
+            }
+            return
+        }
+        deleteMessageEntirely(message)
+    }
+
+    private fun deleteMessageEntirely(message: Message) {
+        val conversation = message.conversation as? Conversation ?: return
+        if (message.isFileOrImage && message.getRelativeFilePath() != null) {
+            xmppConnectionService.fileBackend.deleteFile(message)
+            xmppConnectionService.evictPreview(message.getUuid())
+        }
+        conversation.remove(message)
+        xmppConnectionService.databaseBackend.deleteMessage(message.getUuid())
+        xmppConnectionService.getNotificationService().clear(message)
+        xmppConnectionService.updateConversationUi()
+    }
+
+    private fun moderateMessage(message: Message) {
+        val account = (message.conversation as? Conversation)?.getAccount() ?: return
+        val manager = account.getXmppConnection().getManager(eu.siacs.conversations.xmpp.manager.ModerationManager::class.java)
+        val future = manager.moderate(message)
+        Futures.addCallback(
+            future,
+            object : FutureCallback<Void?> {
+                override fun onSuccess(result: Void?) {}
+                override fun onFailure(t: Throwable) {
+                    Toast.makeText(this@MediaViewerActivity, R.string.could_not_moderate_message, Toast.LENGTH_LONG).show()
+                }
+            },
+            ContextCompat.getMainExecutor(this),
+        )
     }
 
     private fun saveToDevice(message: Message) {
@@ -248,6 +305,9 @@ private fun MediaViewerScreen(
     onSave: (Message) -> Unit,
     onShowInChat: (Message) -> Unit,
     onOpenExternally: (Message) -> Unit,
+    onDeleteForEveryone: (Message) -> Unit,
+    onDeleteForMyself: (Message) -> Unit,
+    onModerate: (Message) -> Unit,
 ) {
     val items = remember { mutableStateListOf<Message>() }
     var initialIndex by remember { mutableIntStateOf(0) }
@@ -317,6 +377,21 @@ private fun MediaViewerScreen(
     // there's nothing distinct from whole-history to show for a single photo.
     val inBatch = batchUuids.size > 1 && currentMessage.getUuid() in batchUuids
     var chromeVisible by remember { mutableStateOf(true) }
+    var deleteTarget by remember { mutableStateOf<Message?>(null) }
+    var deleting by remember { mutableStateOf(false) }
+
+    fun confirmDelete(action: (Message) -> Unit) {
+        val target = deleteTarget ?: return
+        deleteTarget = null
+        scope.launch {
+            // Brief, non-cancelable grace period — just enough to register that the tap landed
+            // and something is about to happen, not a real undo window.
+            deleting = true
+            delay(600)
+            action(target)
+            onClose()
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
@@ -340,6 +415,7 @@ private fun MediaViewerScreen(
                 onShare = { onShare(currentMessage) },
                 onSave = { onSave(currentMessage) },
                 onShowInChat = { onShowInChat(currentMessage) },
+                onDelete = { deleteTarget = currentMessage },
             )
         }
         androidx.compose.animation.AnimatedVisibility(
@@ -357,8 +433,37 @@ private fun MediaViewerScreen(
                 onSelect = { idx -> scope.launch { pagerState.animateScrollToPage(idx) } },
             )
         }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = deleting,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center),
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+            ) {
+                Text(text = stringResource(R.string.deleting), color = Color.White, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+    val target = deleteTarget
+    if (target != null) {
+        DeleteMessageSheet(
+            message = target,
+            onDeleteForEveryone = { confirmDelete(onDeleteForEveryone) },
+            onDeleteForMyself = { confirmDelete(onDeleteForMyself) },
+            onModerate = { confirmDelete(onModerate) },
+            onDismiss = { deleteTarget = null },
+        )
     }
 }
+
+private enum class MediaKind { IMAGE, FILE }
+
+private fun mediaKindOf(message: Message): MediaKind =
+    if (message.mimeType?.startsWith("video/") == true) MediaKind.FILE else MediaKind.IMAGE
 
 @Composable
 private fun MediaViewerTopBar(
@@ -368,6 +473,7 @@ private fun MediaViewerTopBar(
     onShare: () -> Unit,
     onSave: () -> Unit,
     onShowInChat: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val context = LocalContext.current
     // Same "Today / Yesterday / weekday-if-within-7-days / full date" convention as the chat's
@@ -415,6 +521,19 @@ private fun MediaViewerTopBar(
                         onClick = {
                             menuExpanded = false
                             onShowInChat()
+                        },
+                    )
+                    val deleteLabel = if (mediaKindOf(message) == MediaKind.IMAGE) {
+                        stringResource(R.string.delete_images)
+                    } else {
+                        stringResource(R.string.delete_files)
+                    }
+                    ExpressiveMenuItem(
+                        iconRes = R.drawable.ic_delete_24dp,
+                        label = deleteLabel,
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
                         },
                     )
                 }
