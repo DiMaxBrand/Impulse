@@ -1320,6 +1320,9 @@
     <string name="developer_options_pick_version_empty">No versions found</string>
     <string name="developer_options_change_language">Change app language</string>
     <string name="developer_options_change_language_summary">Opens the system language picker for this app</string>
+    <string name="developer_options_shape_catalog">Shape catalog</string>
+    <string name="developer_options_shape_catalog_summary">Browse the MaterialShapes set with a live morph preview</string>
+    <string name="shape_catalog_title">Shape catalog</string>
     <!-- Voice message listen status -->
     <string name="listen_status_not_listened">Not listened</string>
     <string name="listen_status_listening">Listening</string>

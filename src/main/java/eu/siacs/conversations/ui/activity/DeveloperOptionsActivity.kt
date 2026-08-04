@@ -192,6 +192,28 @@ class DeveloperOptionsActivity : ActionBarActivity() {
 
                                 Spacer(Modifier.height(6.dp))
 
+                                ExpressiveGroupRow(GroupPosition.SINGLE) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_shape_catalog))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_shape_catalog_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            startActivity(
+                                                Intent(
+                                                    this@DeveloperOptionsActivity,
+                                                    ShapeCatalogActivity::class.java,
+                                                )
+                                            )
+                                        },
+                                    )
+                                }
+
+                                Spacer(Modifier.height(6.dp))
+
                                 // Version picker row — source of the row→card container transform
                                 AnimatedVisibility(
                                     visible = !pickerExpanded,

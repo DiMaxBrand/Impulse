@@ -1388,4 +1388,7 @@
     <string name="developer_options_pick_version_empty">Версии не найдены</string>
     <string name="developer_options_change_language">Изменить язык приложения</string>
     <string name="developer_options_change_language_summary">Открывает системный выбор языка для этого приложения</string>
+    <string name="developer_options_shape_catalog">Каталог форм</string>
+    <string name="developer_options_shape_catalog_summary">Просмотр набора MaterialShapes с живым превью морфинга</string>
+    <string name="shape_catalog_title">Каталог форм</string>
 </resources>

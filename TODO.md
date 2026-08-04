@@ -93,7 +93,7 @@ Currently implemented: reset update-sheet pause timer. Backlog:
   - [ ] One-tap "copy debug info" (version name/code, DB schema version, device model, Android version) for bug reports
 - [ ] **Storage**
   - [ ] Cache/media size breakdown with a clear button per category (avatars, attachments, etc.)
-- [ ] **Shape catalog screen** — browse the `MaterialShapes` set (`MaterialShapeHelpers.java` already exposes `circle`/`pill`/`semiCircle`/`diamond`/`gem`/`ghostish`/`softBurst`/`slanted`/`arrow`).
+- [x] **Shape catalog screen** — browse the `MaterialShapes` set (`MaterialShapeHelpers.java` already exposes `circle`/`pill`/`semiCircle`/`diamond`/`gem`/`ghostish`/`softBurst`/`slanted`/`arrow`).
   - Big hero shape pinned at the top, ~1/3 of screen height; stays fixed, does not scroll away.
   - Below it, the rest of the shapes render as small selectable buttons (shape-as-icon). This catalog area scrolls **vertically only** — no horizontal scrolling — while the hero above it stays put; the activity itself doesn't scroll as a whole.
   - Tapping a catalog shape selects it with an expressive selection state.
