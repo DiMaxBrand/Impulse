@@ -2302,6 +2302,7 @@ private fun MediaGroupRow(
                     Box(modifier = Modifier.padding(4.dp)) {
                         MediaGridContent(
                             messages = messages,
+                            revision = revision,
                             selectionActive = selectionActive,
                             selectedUuids = selectedUuids,
                             onCellTap = { tapped ->
@@ -2329,6 +2330,7 @@ private val MEDIA_CELL_SHAPE = RoundedCornerShape(10.dp)
 @Composable
 private fun MediaGridContent(
     messages: List<Message>,
+    revision: Int,
     selectionActive: Boolean,
     selectedUuids: List<String>,
     onCellTap: (Message) -> Unit,
@@ -2348,6 +2350,7 @@ private fun MediaGridContent(
                 Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE),
                 onCellTap,
                 onCellLongTap,
+                revision = revision,
                 selectionActive = selectionActive,
                 selected = messages[0].getUuid() in selectedUuids,
             )
@@ -2356,6 +2359,7 @@ private fun MediaGridContent(
                 Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE),
                 onCellTap,
                 onCellLongTap,
+                revision = revision,
                 selectionActive = selectionActive,
                 selected = messages[1].getUuid() in selectedUuids,
             )
@@ -2369,6 +2373,7 @@ private fun MediaGridContent(
                 Modifier.weight(1.3f).fillMaxHeight().clip(MEDIA_CELL_SHAPE),
                 onCellTap,
                 onCellLongTap,
+                revision = revision,
                 selectionActive = selectionActive,
                 selected = messages[0].getUuid() in selectedUuids,
             )
@@ -2381,6 +2386,7 @@ private fun MediaGridContent(
                     Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE),
                     onCellTap,
                     onCellLongTap,
+                    revision = revision,
                     selectionActive = selectionActive,
                     selected = messages[1].getUuid() in selectedUuids,
                 )
@@ -2389,6 +2395,7 @@ private fun MediaGridContent(
                     Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE),
                     onCellTap,
                     onCellLongTap,
+                    revision = revision,
                     selectionActive = selectionActive,
                     selected = messages[2].getUuid() in selectedUuids,
                 )
@@ -2403,6 +2410,7 @@ private fun MediaGridContent(
                         Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
                         onCellTap,
                         onCellLongTap,
+                        revision = revision,
                         selectionActive = selectionActive,
                         selected = messages[0].getUuid() in selectedUuids,
                     )
@@ -2411,6 +2419,7 @@ private fun MediaGridContent(
                         Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
                         onCellTap,
                         onCellLongTap,
+                        revision = revision,
                         selectionActive = selectionActive,
                         selected = messages[1].getUuid() in selectedUuids,
                     )
@@ -2421,6 +2430,7 @@ private fun MediaGridContent(
                         Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
                         onCellTap,
                         onCellLongTap,
+                        revision = revision,
                         selectionActive = selectionActive,
                         selected = messages[2].getUuid() in selectedUuids,
                     )
@@ -2435,6 +2445,7 @@ private fun MediaGridContent(
                         Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
                         onCellTap,
                         onCellLongTap,
+                        revision = revision,
                         selectionActive = selectionActive,
                         selected = messages[3].getUuid() in selectedUuids,
                         overlayCount = if (overflow > 0) overflow + 1 else null,
@@ -2447,12 +2458,14 @@ private fun MediaGridContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MediaGridCell(
     message: Message,
     modifier: Modifier,
     onTap: (Message) -> Unit,
     onLongTap: (Message) -> Unit,
+    revision: Int,
     selectionActive: Boolean,
     selected: Boolean,
     overlayCount: Int? = null,
@@ -2474,6 +2487,15 @@ private fun MediaGridCell(
             if (bm != null) ThumbnailCache.put(uuid, bm.asImageBitmap())
         }
     }
+    // transferable.getProgress() mutates in place; reading `revision` re-triggers this read —
+    // same pattern MessageContent uses for the single-bubble upload/download indicator.
+    val transferable = message.transferable
+    val transferableProgress = remember(revision) { transferable?.getProgress() }
+    val animatedProgress by animateFloatAsState(
+        targetValue = (transferableProgress ?: 0) / 100f,
+        animationSpec = tween(durationMillis = 300),
+        label = "gridCellTransferProgress",
+    )
     val handleTap = { if (selectionActive && isOverflow) onOverflowSelect() else onTap(message) }
     Box(
         modifier = modifier.combinedClickable(
@@ -2493,7 +2515,26 @@ private fun MediaGridCell(
                 modifier = Modifier.matchParentSize(),
             )
         } else {
+            // No decoded thumbnail yet — either it's still being uploaded/downloaded (real
+            // progress available from `transferable`) or it's simply mid-decode from an
+            // already-local file (indeterminate). Either way this cell is currently visible, so
+            // it gets the same wavy spinner treatment as a single-message media bubble instead of
+            // sitting as a flat, silent placeholder.
             Box(modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceContainerHighest))
+            if (transferableProgress != null && transferableProgress > 0) {
+                CircularWavyProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier.size(28.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                )
+            } else {
+                CircularWavyProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                )
+            }
         }
         if (isVideo) {
             Icon(
