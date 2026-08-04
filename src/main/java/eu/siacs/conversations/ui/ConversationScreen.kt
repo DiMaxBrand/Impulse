@@ -568,6 +568,9 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 revision = state.revision.intValue,
                 listener = listener,
                 selectedCount = selectedUuids.size,
+                copyEnabled = state.messages.value.any {
+                    it.getUuid() in selectedUuids && !it.isFileOrImage && !it.body.isNullOrBlank()
+                },
                 onExitSelection = { selectedUuids.clear() },
                 onForwardSelected = {
                     val selected = state.messages.value.filter { it.getUuid() in selectedUuids }
@@ -838,6 +841,11 @@ private fun ConversationTopBar(
     revision: Int,
     listener: ConversationScreenListener,
     selectedCount: Int,
+    // Whether the current selection has anything actually copyable — a photo/file message's
+    // `body` is its upload URL, not text meant to be copied, so a selection of only photos has
+    // nothing to offer here. See ShareUtil.copyToClipboard(List<Message>) for the matching filter
+    // on the copy side itself.
+    copyEnabled: Boolean,
     onExitSelection: () -> Unit,
     onForwardSelected: () -> Unit,
     onCopySelected: () -> Unit,
@@ -1090,19 +1098,25 @@ private fun ConversationTopBar(
                         contentDescription = stringResource(R.string.delete_message),
                     )
                 }
-                IconButton(onClick = { selectionOverflowOpen = true }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_more_horiz_24dp),
-                        contentDescription = stringResource(R.string.more_options),
-                    )
-                }
-                ExpressiveDropdownMenu(
-                    expanded = selectionOverflowOpen,
-                    onDismissRequest = { selectionOverflowOpen = false },
-                ) {
-                    ExpressiveMenuItem(R.drawable.ic_check_24dp, stringResource(android.R.string.copy)) {
-                        selectionOverflowOpen = false
-                        onCopySelected()
+                // Copy is currently the overflow menu's only item — nothing copyable in the
+                // selection (e.g. only photos, whose "body" is an upload URL, not text) means
+                // there's nothing this button would open, so it's hidden entirely rather than
+                // opening onto an empty menu.
+                if (copyEnabled) {
+                    IconButton(onClick = { selectionOverflowOpen = true }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_more_horiz_24dp),
+                            contentDescription = stringResource(R.string.more_options),
+                        )
+                    }
+                    ExpressiveDropdownMenu(
+                        expanded = selectionOverflowOpen,
+                        onDismissRequest = { selectionOverflowOpen = false },
+                    ) {
+                        ExpressiveMenuItem(R.drawable.ic_check_24dp, stringResource(android.R.string.copy)) {
+                            selectionOverflowOpen = false
+                            onCopySelected()
+                        }
                     }
                 }
             } else {

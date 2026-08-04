@@ -162,15 +162,18 @@ object ShareUtil {
     }
 
     /** Batch copy for multi-select: joins each selected message's text (skipping file/image
-     * messages, which have no meaningful body) in chronological order onto one clipboard entry. */
+     * messages — their `body` is the upload URL, not anything meant to be read as text, and
+     * copying that silently under a "Copy" action is exactly the wrong thing) in chronological
+     * order onto one clipboard entry. */
     @JvmStatic
     fun copyToClipboard(activity: XmppActivity, messages: List<Message>) {
-        if (messages.isEmpty()) return
-        if (messages.size == 1) {
-            copyToClipboard(activity, messages[0])
+        val textMessages = messages.filterNot { it.isFileOrImage }
+        if (textMessages.isEmpty()) return
+        if (textMessages.size == 1) {
+            copyToClipboard(activity, textMessages[0])
             return
         }
-        val text = messages.mapNotNull { it.body }.filter { it.isNotBlank() }.joinToString("\n\n")
+        val text = textMessages.mapNotNull { it.body }.filter { it.isNotBlank() }.joinToString("\n\n")
         if (text.isBlank()) return
         if (activity.copyTextToClipboard(text, R.string.message)
             && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
