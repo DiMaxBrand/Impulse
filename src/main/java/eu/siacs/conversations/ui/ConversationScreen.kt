@@ -2196,6 +2196,39 @@ private val MEDIA_GRID_HERO_HEIGHT: Dp = 132.dp
 private const val MEDIA_GRID_MAX_CELLS = 4
 
 /**
+ * Picks which single message in a grid tile's batch should drive the tile's shared status icon —
+ * the "weakest link", so the tile reads as one batch instead of just echoing whatever message
+ * happens to occupy a fixed position in the group:
+ * - Any genuine failure (not a user cancel) wins outright — the tile shows failed even if every
+ *   other photo in it went through fine.
+ * - Otherwise, anything still in flight (waiting/uploading/offered) keeps the whole tile showing
+ *   "uploading" — one photo finishing first doesn't make the batch look done.
+ * - Only once every message has actually sent does the tile show delivered/read, and even then
+ *   only once *every* message has reached that level (the least-progressed one still gates it).
+ */
+private fun groupStatusRepresentative(messages: List<Message>): Message {
+    val failed = messages.firstOrNull {
+        it.status == Message.STATUS_SEND_FAILED && it.errorMessage != Message.ERROR_MESSAGE_CANCELLED
+    }
+    if (failed != null) return failed
+    val inFlight = messages.firstOrNull {
+        it.status == Message.STATUS_UNSEND ||
+            it.status == Message.STATUS_WAITING ||
+            it.status == Message.STATUS_OFFERED
+    }
+    if (inFlight != null) return inFlight
+    val statusRank = { status: Int ->
+        when (status) {
+            Message.STATUS_SEND -> 0
+            Message.STATUS_SEND_RECEIVED -> 1
+            Message.STATUS_SEND_DISPLAYED -> 2
+            else -> 0
+        }
+    }
+    return messages.minByOrNull { statusRank(it.status) } ?: messages.last()
+}
+
+/**
  * A run of 2+ consecutive same-sender photos/videos collapsed into one grid tile, instead of a
  * separate bubble per message. Layout adapts to the count (see the design mockup this mirrors):
  * 2 side by side at single-photo height, 3 as a hero + two stacked, 4+ as an even 2x2 with the
@@ -2331,7 +2364,12 @@ private fun MediaGroupRow(
                         )
                     }
                     Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 8.dp)) {
-                        MessageFooter(message = messages.last(), outgoing = outgoing, revision = revision)
+                        MessageFooter(
+                            message = messages.last(),
+                            outgoing = outgoing,
+                            revision = revision,
+                            statusMessage = remember(revision) { groupStatusRepresentative(messages) },
+                        )
                     }
                 }
             }
@@ -3745,10 +3783,16 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     message: Message,
     outgoing: Boolean,
     revision: Int,
+    // Drives the status icon/checkmark only — [message] itself still drives the time/size text.
+    // Defaults to [message] so every single-message call site is unaffected; a grid tile passes
+    // in its own "weakest link" representative instead (see groupStatusRepresentative) so the
+    // tile's status reflects the whole batch rather than whichever message the footer happens to
+    // be attached to.
+    statusMessage: Message = message,
 ) {
     // Message is a mutated-in-place Java entity; reading `revision` here is what
     // makes Compose re-read message.status after an in-place status change.
-    val status = remember(revision) { message.status }
+    val status = remember(revision) { statusMessage.status }
     val context = LocalContext.current
     // Mirrors the legacy MessageAdapter footer, which joined the file size into the same
     // time/status line (e.g. "1.2 MiB · 14:03") instead of only showing it on the download row.
@@ -3848,27 +3892,27 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                 modifier = Modifier.size(12.dp),
             )
         }
-        if (outgoing && message.type != Message.TYPE_RTP_SESSION) {
-            val transferable = message.transferable
+        if (outgoing && statusMessage.type != Message.TYPE_RTP_SESSION) {
+            val transferable = statusMessage.transferable
             // Waiting/uploading/p2p-offered/sent/delivered/read all morph into each other
             // continuously — see MessageStatusIcon for the choreography (including how
             // STATUS_UNSEND is split between "still sending text" and "file genuinely
             // mid-upload", and how only a user-initiated cancel joins the morph story, not a
             // generic send/upload error). Only that generic error glyph falls through to a plain
             // crossfade below.
-            val checkmarkPhase = checkmarkPhaseForStatus(status, transferable, message.errorMessage)
+            val checkmarkPhase = checkmarkPhaseForStatus(status, transferable, statusMessage.errorMessage)
             if (checkmarkPhase != null) {
                 Spacer(Modifier.width(4.dp))
                 MessageStatusIcon(
                     status = status,
                     transferable = transferable,
-                    errorMessage = message.errorMessage,
+                    errorMessage = statusMessage.errorMessage,
                     grayColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     successColor = LocalSuccessColors.current.success,
                     modifier = Modifier.size(14.dp),
                 )
             } else {
-                val statusDrawable = MessageAdapter.getMessageStatusAsDrawable(message, status)
+                val statusDrawable = MessageAdapter.getMessageStatusAsDrawable(statusMessage, status)
                 if (statusDrawable != null) {
                     Spacer(Modifier.width(4.dp))
                     // Upload/failed/p2p icons aren't part of that story — a dots-to-checkmark
@@ -3902,6 +3946,35 @@ private class SheetAction(
     val label: String,
     val onClick: () -> Unit,
 )
+
+/** The send-failure detail banner at the top of the context sheet — one per distinct error, used
+ * both for a single failed message and, per distinct error, for a batch's failures. */
+@Composable
+private fun ErrorBanner(text: String) {
+    Surface(
+        shape = RoundedCornerShape(CORNER_LARGE),
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_error_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
+    }
+}
 
 // Mirrors the old ConversationFragment's static ackModeration field: once the user confirms the
 // "this deletes for everyone" disclaimer, skip it for the next 5 minutes rather than showing it
@@ -4210,33 +4283,35 @@ private fun MessageContextSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
             )
-            // Show send-failure error detail at the top of the sheet
-            val errorMessage = if (message.status == Message.STATUS_SEND_FAILED) {
-                message.errorMessage
-            } else null
-            if (!errorMessage.isNullOrBlank()) {
-                Surface(
-                    shape = RoundedCornerShape(CORNER_LARGE),
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_error_24dp),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = errorMessage,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
+            // Show send-failure error detail at the top of the sheet. For a whole grid tile this
+            // has to look at every message in the batch, not just whichever one was tapped to
+            // open the sheet — a photo can fail while its neighbors succeed (each upload runs
+            // independently; one failing never stops the rest), so the sheet groups failures by
+            // identical error text and lists which photo numbers (1-based, batch order) hit each
+            // one, rather than only ever surfacing the tapped photo's own status.
+            if (group != null) {
+                val failuresByError = group.withIndex()
+                    .filter { (_, m) ->
+                        m.status == Message.STATUS_SEND_FAILED &&
+                            m.errorMessage != Message.ERROR_MESSAGE_CANCELLED &&
+                            !m.errorMessage.isNullOrBlank()
                     }
+                    .groupBy({ it.value.errorMessage!! }) { it.index + 1 }
+                failuresByError.forEach { (error, photoNumbers) ->
+                    ErrorBanner(
+                        text = stringResource(
+                            R.string.photo_n_failed,
+                            photoNumbers.joinToString(", "),
+                            error,
+                        ),
+                    )
+                }
+            } else {
+                val errorMessage = if (message.status == Message.STATUS_SEND_FAILED) {
+                    message.errorMessage
+                } else null
+                if (!errorMessage.isNullOrBlank()) {
+                    ErrorBanner(text = errorMessage)
                 }
             }
             actions.forEachIndexed { index, action ->

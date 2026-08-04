@@ -243,6 +243,7 @@
     <string name="all_photos">Все фото</string>
     <string name="select_photos">Выбрать фото</string>
     <string name="select_to_delete">Выбрать для удаления</string>
+    <string name="photo_n_failed">Фото %1$s: %2$s</string>
     <string name="contact_already_exists">Контакт уже существует</string>
     <string name="join">Присоединиться</string>
     <string name="channel_full_jid_example">канал@конференция.пример.com/имя</string>
