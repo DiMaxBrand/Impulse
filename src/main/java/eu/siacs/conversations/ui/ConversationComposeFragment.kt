@@ -178,6 +178,39 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
     }
 
+    // MediaSelectionActivity's result only ever reaches this Fragment, never the Compose tree
+    // directly — the two outcomes below (merge into the ongoing chat selection, or open a delete
+    // sheet scoped to the picked subset) are pushed back in through ConversationScreenState, the
+    // same channel used for the media viewer's own results.
+    private val mediaSelectionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != AppCompatActivity.RESULT_OK) return@registerForActivityResult
+            val data = result.data ?: return@registerForActivityResult
+            val uuids = data.getStringArrayListExtra(MediaSelectionActivity.EXTRA_RESULT_UUIDS) ?: return@registerForActivityResult
+            val forDelete = data.getBooleanExtra(MediaSelectionActivity.EXTRA_RESULT_FOR_DELETE, false)
+            if (forDelete) {
+                val service = getXmppConnectionService() ?: return@registerForActivityResult
+                val c = conversation ?: return@registerForActivityResult
+                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val messages = uuids.mapNotNull { service.databaseBackend.getMessage(c, it) }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (messages.isNotEmpty()) state.deleteGroupTarget.value = messages
+                    }
+                }
+            } else {
+                state.pendingSelectionMerge.value = uuids
+            }
+        }
+
+    override fun onOpenMediaSelector(messages: List<Message>, forDelete: Boolean) {
+        val c = conversation ?: return
+        val uuids = messages.mapNotNull { it.getUuid() }
+        if (uuids.isEmpty()) return
+        mediaSelectionLauncher.launch(
+            MediaSelectionActivity.launch(requireContext(), c.getUuid(), uuids, forDelete)
+        )
+    }
+
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (pendingSharedUris.isNotEmpty()) {

@@ -195,6 +195,10 @@ class ConversationScreenState {
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
     internal val deleteTarget = mutableStateOf<Message?>(null)
     internal val moderateTarget = mutableStateOf<Message?>(null)
+    // Both set by the Fragment after MediaSelectionActivity returns a result — Compose can't be
+    // handed a result directly (the picker is a separate Activity), so these are the drop box.
+    internal val deleteGroupTarget = mutableStateOf<List<Message>?>(null)
+    internal val pendingSelectionMerge = mutableStateOf<List<String>?>(null)
     // message UUIDs that a remote peer is actively editing right now
     internal val remoteEditingIds = mutableStateOf<Set<String>>(emptySet())
 
@@ -319,6 +323,12 @@ interface ConversationScreenListener {
     fun onModerateMediaGroup(messages: List<Message>)
     fun onCopySelectedMessages(messages: List<Message>)
     fun onForwardSelectedMessages(messages: List<Message>)
+
+    /** Opens [MediaSelectionActivity] to hand-pick a subset of [messages] — the "+N" overflow
+     * cell of an in-progress selection, or the "Select Photos"/"Select to delete" grid actions.
+     * [forDelete] tells the caller which sheet to open with the picked result: merge into the
+     * ongoing chat selection (false), or [DeleteGroupSheet] scoped to exactly that subset (true). */
+    fun onOpenMediaSelector(messages: List<Message>, forDelete: Boolean)
 }
 
 object ConversationScreenHelper {
@@ -539,7 +549,9 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // sheet's Delete action operate on the whole batch instead of silently acting on just the
     // first message it happens to represent.
     var menuTargetGroup by remember { mutableStateOf<List<Message>?>(null) }
-    var deleteGroupTarget by remember { mutableStateOf<List<Message>?>(null) }
+    // Bottom sheet offering "All Photos" vs "Select Photos" when "Select" is tapped on a grid
+    // tile's context sheet — set to the tapped tile's whole batch, null when not showing.
+    var selectPopupGroup by remember { mutableStateOf<List<Message>?>(null) }
     // Multi-select is pure screen-local UI state — nothing here has a business-logic effect
     // until one of the batch actions in the top bar actually fires, so (like menuTarget above)
     // it lives as local Compose state rather than in ConversationScreenState.
@@ -595,10 +607,11 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                         menuTarget = it
                         menuTargetGroup = null
                     },
-                    onLongPressGroup = { messages ->
-                        menuTarget = messages.firstOrNull()
+                    onLongPressGroupCell = { tapped, messages ->
+                        menuTarget = tapped
                         menuTargetGroup = messages
                     },
+                    onOpenSelector = { messages -> listener.onOpenMediaSelector(messages, false) },
                     selectedUuids = selectedUuids,
                     onToggleSelected = { uuid ->
                         if (!selectedUuids.remove(uuid)) selectedUuids.add(uuid)
@@ -609,6 +622,17 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             InputBar(state = state, listener = listener)
         }
     }
+    // A picker-screen result to merge into the ongoing chat selection — set by the hosting
+    // Fragment (which can't reach this Compose-local selectedUuids list directly, since
+    // MediaSelectionActivity's result only ever reaches it, not this composable) via
+    // ConversationScreenState, the one channel that crosses that boundary.
+    LaunchedEffect(state.pendingSelectionMerge.value) {
+        val toMerge = state.pendingSelectionMerge.value
+        if (toMerge != null) {
+            toMerge.forEach { uuid -> if (uuid !in selectedUuids) selectedUuids.add(uuid) }
+            state.pendingSelectionMerge.value = null
+        }
+    }
     val target = menuTarget
     if (target != null) {
         MessageContextSheet(
@@ -617,30 +641,46 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             state = state,
             listener = listener,
             onSelect = { it.getUuid()?.let { uuid -> selectedUuids.add(uuid) } },
-            onDeleteGroup = { deleteGroupTarget = it },
+            onSelectGroup = { selectPopupGroup = it },
+            onSelectToDelete = { listener.onOpenMediaSelector(it, true) },
+            onDeleteGroup = { state.deleteGroupTarget.value = it },
             onDismiss = {
                 menuTarget = null
                 menuTargetGroup = null
             },
         )
     }
-    val groupToDelete = deleteGroupTarget
+    val popupGroup = selectPopupGroup
+    if (popupGroup != null) {
+        SelectModePopupSheet(
+            onAllPhotos = {
+                selectPopupGroup = null
+                popupGroup.forEach { it.getUuid()?.let { uuid -> if (uuid !in selectedUuids) selectedUuids.add(uuid) } }
+            },
+            onSelectPhotos = {
+                selectPopupGroup = null
+                listener.onOpenMediaSelector(popupGroup, false)
+            },
+            onDismiss = { selectPopupGroup = null },
+        )
+    }
+    val groupToDelete = state.deleteGroupTarget.value
     if (groupToDelete != null) {
         DeleteGroupSheet(
             messages = groupToDelete,
             onDeleteForEveryone = {
-                deleteGroupTarget = null
+                state.deleteGroupTarget.value = null
                 listener.onDeleteMediaGroupForEveryone(groupToDelete)
             },
             onDeleteForMyself = {
-                deleteGroupTarget = null
+                state.deleteGroupTarget.value = null
                 listener.onDeleteSelectedMessages(groupToDelete)
             },
             onModerate = {
-                deleteGroupTarget = null
+                state.deleteGroupTarget.value = null
                 listener.onModerateMediaGroup(groupToDelete)
             },
-            onDismiss = { deleteGroupTarget = null },
+            onDismiss = { state.deleteGroupTarget.value = null },
         )
     }
     if (deleteSelectedConfirm) {
@@ -1237,7 +1277,11 @@ private fun MessageList(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
-    onLongPressGroup: (List<Message>) -> Unit,
+    // The specific cell that was long-pressed, plus the whole group it belongs to — the sheet
+    // tailors Reply/Open/Share/Forward to that one message, while Reaction/Pin/Delete still act
+    // on the whole group.
+    onLongPressGroupCell: (Message, List<Message>) -> Unit,
+    onOpenSelector: (List<Message>) -> Unit,
     selectedUuids: List<String>,
     onToggleSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -1614,8 +1658,10 @@ private fun MessageList(
                             revision = revision,
                             highlighted = highlightKey != null && groupUuids.contains(highlightKey),
                             listener = listener,
-                            onLongPress = { onLongPressGroup(item.messages) },
+                            onLongPressCell = { tapped, messages -> onLongPressGroupCell(tapped, messages) },
+                            onOpenSelector = onOpenSelector,
                             selectionActive = selectedUuids.isNotEmpty(),
+                            selectedUuids = selectedUuids,
                             selected = groupUuids.isNotEmpty() && groupUuids.all { selectedUuids.contains(it) },
                             onToggleSelected = {
                                 val allSelected = groupUuids.all { selectedUuids.contains(it) }
@@ -1624,6 +1670,7 @@ private fun MessageList(
                                     if (allSelected == isSelected) onToggleSelected(uuid)
                                 }
                             },
+                            onToggleSingle = onToggleSelected,
                             modifier = itemModifier,
                         )
                     }
@@ -2146,10 +2193,18 @@ private fun MediaGroupRow(
     revision: Int,
     highlighted: Boolean = false,
     listener: ConversationScreenListener,
-    onLongPress: (Message) -> Unit,
+    // The specific cell that was long-pressed, plus the whole group it belongs to — the sheet
+    // tailors Reply/Open/Share/Forward to that one message, while Reaction/Pin/Delete still act
+    // on the whole group.
+    onLongPressCell: (Message, List<Message>) -> Unit,
+    // "+N" tile tapped while a selection is already in progress (from this group or elsewhere) —
+    // hands off to the picker screen rather than the viewer, since you can't select from inside it.
+    onOpenSelector: (List<Message>) -> Unit,
     selectionActive: Boolean,
+    selectedUuids: List<String>,
     selected: Boolean,
     onToggleSelected: () -> Unit,
+    onToggleSingle: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val messages = item.messages
@@ -2192,7 +2247,17 @@ private fun MediaGroupRow(
                 enter = fadeIn(tween(180)) + androidx.compose.animation.expandHorizontally(tween(180)),
                 exit = fadeOut(tween(120)) + androidx.compose.animation.shrinkHorizontally(tween(120)),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // The outer whole-tile combinedClickable is gone now that selection is per-cell —
+                // this leading checkmark is the one remaining whole-group toggle, so it needs its
+                // own click handler.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable(
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        onClick = onToggleSelected,
+                    ),
+                ) {
                     SelectionCheckCircle(selected = selected)
                     Spacer(Modifier.width(6.dp))
                 }
@@ -2221,22 +2286,33 @@ private fun MediaGroupRow(
                 color = containerColor,
                 modifier = Modifier.width(MEDIA_GRID_WIDTH),
             ) {
-                Column(
-                    modifier = Modifier.combinedClickable(
-                        onClick = { if (selectionActive) onToggleSelected() },
-                        onLongClick = { if (selectionActive) onToggleSelected() else onLongPress(first) },
-                    ),
-                ) {
+                Column {
                     // A small margin on every side keeps the container visible as a frame around
                     // the grid (not just below it, near the footer) — each cell gets its own
                     // modest, uniform rounding. Since cells no longer touch the Surface's own
                     // edge directly, this can't reproduce the earlier bug where a cell's flat
                     // radius fought the bubble's real shape (20dp corners / the curved tail) —
                     // there's a real gap between the two now, so the two roundings never collide.
+                    //
+                    // Selection is per-cell here, not whole-tile: while selecting, tapping a
+                    // specific photo selects just that one; the leading checkmark above is the
+                    // only whole-group toggle left. The "+N" cell is the exception — selecting
+                    // from it hands off to the picker screen instead, since a dimmed placeholder
+                    // cell has no single message of its own to toggle.
                     Box(modifier = Modifier.padding(4.dp)) {
                         MediaGridContent(
                             messages = messages,
-                            onCellTap = { tapped -> listener.onOpenMediaGroup(messages, tapped) },
+                            selectionActive = selectionActive,
+                            selectedUuids = selectedUuids,
+                            onCellTap = { tapped ->
+                                if (selectionActive) {
+                                    tapped.getUuid()?.let { onToggleSingle(it) }
+                                } else {
+                                    listener.onOpenMediaGroup(messages, tapped)
+                                }
+                            },
+                            onCellLongTap = { tapped -> onLongPressCell(tapped, messages) },
+                            onOverflowSelect = { onOpenSelector(messages) },
                         )
                     }
                     Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 8.dp)) {
@@ -2245,25 +2321,20 @@ private fun MediaGroupRow(
                 }
             }
         }
-        if (selectionActive) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .combinedClickable(
-                        onClick = onToggleSelected,
-                        onLongClick = onToggleSelected,
-                        indication = null,
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                    ),
-            )
-        }
     }
 }
 
 private val MEDIA_CELL_SHAPE = RoundedCornerShape(10.dp)
 
 @Composable
-private fun MediaGridContent(messages: List<Message>, onCellTap: (Message) -> Unit) {
+private fun MediaGridContent(
+    messages: List<Message>,
+    selectionActive: Boolean,
+    selectedUuids: List<String>,
+    onCellTap: (Message) -> Unit,
+    onCellLongTap: (Message) -> Unit,
+    onOverflowSelect: () -> Unit,
+) {
     // Every cell gets its own modest, uniform rounding — safe now that MediaGroupRow insets the
     // whole grid from the Surface's real edge with a margin, so a cell's corner never coincides
     // with (and can't mismatch) the bubble's own shape.
@@ -2272,39 +2343,103 @@ private fun MediaGridContent(messages: List<Message>, onCellTap: (Message) -> Un
             modifier = Modifier.height(MEDIA_GRID_SINGLE_HEIGHT),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            MediaGridCell(messages[0], Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE), onCellTap)
-            MediaGridCell(messages[1], Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE), onCellTap)
+            MediaGridCell(
+                messages[0],
+                Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE),
+                onCellTap,
+                onCellLongTap,
+                selectionActive = selectionActive,
+                selected = messages[0].getUuid() in selectedUuids,
+            )
+            MediaGridCell(
+                messages[1],
+                Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE),
+                onCellTap,
+                onCellLongTap,
+                selectionActive = selectionActive,
+                selected = messages[1].getUuid() in selectedUuids,
+            )
         }
         3 -> Row(
             modifier = Modifier.height(MEDIA_GRID_HERO_HEIGHT),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            MediaGridCell(messages[0], Modifier.weight(1.3f).fillMaxHeight().clip(MEDIA_CELL_SHAPE), onCellTap)
+            MediaGridCell(
+                messages[0],
+                Modifier.weight(1.3f).fillMaxHeight().clip(MEDIA_CELL_SHAPE),
+                onCellTap,
+                onCellLongTap,
+                selectionActive = selectionActive,
+                selected = messages[0].getUuid() in selectedUuids,
+            )
             Column(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                MediaGridCell(messages[1], Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE), onCellTap)
-                MediaGridCell(messages[2], Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE), onCellTap)
+                MediaGridCell(
+                    messages[1],
+                    Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE),
+                    onCellTap,
+                    onCellLongTap,
+                    selectionActive = selectionActive,
+                    selected = messages[1].getUuid() in selectedUuids,
+                )
+                MediaGridCell(
+                    messages[2],
+                    Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE),
+                    onCellTap,
+                    onCellLongTap,
+                    selectionActive = selectionActive,
+                    selected = messages[2].getUuid() in selectedUuids,
+                )
             }
         }
         else -> {
             val overflow = messages.size - 3
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    MediaGridCell(messages[0], Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE), onCellTap)
-                    MediaGridCell(messages[1], Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE), onCellTap)
+                    MediaGridCell(
+                        messages[0],
+                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
+                        onCellTap,
+                        onCellLongTap,
+                        selectionActive = selectionActive,
+                        selected = messages[0].getUuid() in selectedUuids,
+                    )
+                    MediaGridCell(
+                        messages[1],
+                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
+                        onCellTap,
+                        onCellLongTap,
+                        selectionActive = selectionActive,
+                        selected = messages[1].getUuid() in selectedUuids,
+                    )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    MediaGridCell(messages[2], Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE), onCellTap)
+                    MediaGridCell(
+                        messages[2],
+                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
+                        onCellTap,
+                        onCellLongTap,
+                        selectionActive = selectionActive,
+                        selected = messages[2].getUuid() in selectedUuids,
+                    )
                     // The 4th cell is a real message (still tappable — it's genuinely visible,
                     // just dimmed), not a synthetic "more" tile. "+N" counts everything not
-                    // fully visible: this dimmed cell plus whatever isn't shown at all.
+                    // fully visible: this dimmed cell plus whatever isn't shown at all. While a
+                    // selection is in progress, tapping it hands off to the picker screen instead
+                    // of toggling — a dimmed placeholder cell has no single message of its own to
+                    // meaningfully "select" on its own.
                     MediaGridCell(
                         messages[3],
                         Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
                         onCellTap,
+                        onCellLongTap,
+                        selectionActive = selectionActive,
+                        selected = messages[3].getUuid() in selectedUuids,
                         overlayCount = if (overflow > 0) overflow + 1 else null,
+                        isOverflow = overflow > 0,
+                        onOverflowSelect = onOverflowSelect,
                     )
                 }
             }
@@ -2317,7 +2452,12 @@ private fun MediaGridCell(
     message: Message,
     modifier: Modifier,
     onTap: (Message) -> Unit,
+    onLongTap: (Message) -> Unit,
+    selectionActive: Boolean,
+    selected: Boolean,
     overlayCount: Int? = null,
+    isOverflow: Boolean = false,
+    onOverflowSelect: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? XmppActivity
@@ -2334,8 +2474,14 @@ private fun MediaGridCell(
             if (bm != null) ThumbnailCache.put(uuid, bm.asImageBitmap())
         }
     }
+    val handleTap = { if (selectionActive && isOverflow) onOverflowSelect() else onTap(message) }
     Box(
-        modifier = modifier.clickable { onTap(message) },
+        modifier = modifier.combinedClickable(
+            onClick = handleTap,
+            onLongClick = { if (selectionActive) handleTap() else onLongTap(message) },
+            indication = null,
+            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+        ),
         contentAlignment = Alignment.Center,
     ) {
         val bitmap = ThumbnailCache.get(uuid)
@@ -2369,11 +2515,21 @@ private fun MediaGridCell(
                 )
             }
         }
+        // Per-cell selection affordance while selecting is in progress — the leading checkmark
+        // before the grid toggles the whole group, this one toggles just this specific photo.
+        if (selectionActive && !isOverflow) {
+            Box(modifier = Modifier.matchParentSize().padding(4.dp), contentAlignment = Alignment.TopEnd) {
+                SelectionCheckCircle(selected = selected)
+            }
+            if (selected) {
+                Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.25f)))
+            }
+        }
     }
 }
 
 @Composable
-private fun SelectionCheckCircle(selected: Boolean, modifier: Modifier = Modifier) {
+internal fun SelectionCheckCircle(selected: Boolean, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(22.dp)
@@ -3716,6 +3872,13 @@ private fun MessageContextSheet(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
     onSelect: (Message) -> Unit,
+    // Group-tile "Select" tap — shows the "All Photos" vs "Select Photos" popup instead of
+    // selecting immediately, since a single tap can't disambiguate "the whole batch" from "let me
+    // pick which ones."
+    onSelectGroup: (List<Message>) -> Unit = {},
+    // "Select to delete" — opens the picker directly (no popup first; "Delete Files" below already
+    // covers "delete everything", so this item exists specifically for picking a subset).
+    onSelectToDelete: (List<Message>) -> Unit = {},
     onDeleteGroup: (List<Message>) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
@@ -3731,6 +3894,14 @@ private fun MessageContextSheet(
             || message.status == Message.STATUS_OFFERED
     val cancelable = (transferable != null && !deleted) || (waitingOrOffered && message.needsUploading())
     val fileDescription = UIHelper.getFileDescriptionString(context, message)
+    // Reply/Open/Share/Forward below are tailored to [message] — the specific cell that was
+    // long-pressed, per-cell long-press being how this sheet is reached for a grid tile at all.
+    // Reaction/Pin have no per-photo meaning (a reaction/pin attaches to one stanza, and the tile
+    // only ever renders one footer, on its last message) so those act on the group's last message
+    // instead when this sheet represents a whole tile — same message whose reaction chips and pin
+    // state the tile actually displays.
+    val group = groupMessages
+    val groupRepresentative = group?.last() ?: message
     val actions = buildList {
         // Reply
         add(
@@ -3739,11 +3910,12 @@ private fun MessageContextSheet(
                 state.replyingTo.value = message
             }
         )
-        // Enters multi-select with this message already checked; further selection happens by
-        // tapping messages directly, no more long-presses needed.
+        // Enters multi-select. For a single message that's immediate (checked right away, further
+        // selection happens by tapping messages directly). For a grid tile it's ambiguous whether
+        // "Select" means the whole batch or just some of it, so it defers to a small popup instead.
         add(
             SheetAction(R.drawable.ic_check_circle_24dp, stringResource(R.string.select)) {
-                onSelect(message)
+                if (groupMessages != null) onSelectGroup(groupMessages) else onSelect(message)
             }
         )
         // Message privately — reach the sender of a group/channel message directly, without
@@ -3881,13 +4053,13 @@ private fun MessageContextSheet(
             })
         }
         // Add reaction
-        if (message.status != Message.STATUS_SEND_FAILED
-            && !deleted
-            && Restrictions.reactionsPerUserRemaining(message)
+        if (groupRepresentative.status != Message.STATUS_SEND_FAILED
+            && !groupRepresentative.isDeleted
+            && Restrictions.reactionsPerUserRemaining(groupRepresentative)
         ) {
             add(
                 SheetAction(R.drawable.ic_add_reaction_24dp, stringResource(R.string.add_reaction)) {
-                    listener.onAddReaction(message)
+                    listener.onAddReaction(groupRepresentative)
                 }
             )
         }
@@ -3926,16 +4098,28 @@ private fun MessageContextSheet(
             })
         }
         // Pin / Unpin
-        if (message.type != Message.TYPE_STATUS && message.type != Message.TYPE_RTP_SESSION && !deleted) {
-            if (message.isPinned) {
+        if (groupRepresentative.type != Message.TYPE_STATUS
+            && groupRepresentative.type != Message.TYPE_RTP_SESSION
+            && !groupRepresentative.isDeleted
+        ) {
+            if (groupRepresentative.isPinned) {
                 add(SheetAction(R.drawable.ic_push_pin_24dp, stringResource(R.string.unpin_message)) {
-                    listener.onUnpinMessage(message)
+                    listener.onUnpinMessage(groupRepresentative)
                 })
             } else {
                 add(SheetAction(R.drawable.ic_push_pin_24dp, stringResource(R.string.pin_message)) {
-                    listener.onPinMessage(message)
+                    listener.onPinMessage(groupRepresentative)
                 })
             }
+        }
+        // Select to delete — a whole grid tile only, hands off to the picker screen directly (no
+        // "All Photos" popup first, since "Delete Files" right below already covers that case).
+        if (group != null) {
+            add(
+                SheetAction(R.drawable.ic_check_circle_24dp, stringResource(R.string.select_to_delete)) {
+                    onSelectToDelete(group)
+                }
+            )
         }
         // Delete — DeleteMessageSheet itself decides, per message, whether the "everyone" button
         // is a self-retraction or (for someone else's message, when we're a moderator) a XEP-0425
@@ -3945,7 +4129,6 @@ private fun MessageContextSheet(
         // on every message in the batch, not just the single representative message it was
         // opened with — a fixed "Delete files" label, not a per-type singular name that only
         // describes the one message this sheet happens to hold.
-        val group = groupMessages
         val deleteLabel = when {
             group != null -> stringResource(R.string.delete_files)
             deleted -> stringResource(R.string.delete_leftover_message)
@@ -4261,6 +4444,40 @@ internal fun DeleteGroupSheet(
                 )
             }
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Small popup shown before "Select" actually enters selection mode on a grid tile — "All Photos"
+ * selects the whole batch right away (same as tapping the tile's leading checkmark), "Select
+ * Photos" opens [MediaSelectionActivity] to hand-pick a subset instead.
+ */
+@Composable
+private fun SelectModePopupSheet(
+    onAllPhotos: () -> Unit,
+    onSelectPhotos: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)) {
+            Text(
+                text = stringResource(R.string.select),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 12.dp, bottom = 10.dp),
+            )
+            ExpressiveMenuItem(
+                iconRes = R.drawable.ic_check_circle_24dp,
+                label = stringResource(R.string.all_photos),
+                onClick = onAllPhotos,
+            )
+            ExpressiveMenuItem(
+                iconRes = R.drawable.ic_image_24dp,
+                label = stringResource(R.string.select_photos),
+                onClick = onSelectPhotos,
+            )
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
