@@ -832,6 +832,23 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Rebuilds an already-showing notification's content from scratch (silently — same notify=false
+     * as clear() above) if, and only if, [message] is actually part of it right now. Used when a
+     * message's own displayed text changes without the message itself being added or removed from
+     * the notification list — e.g. entering/leaving "being edited" state, where
+     * UIHelper.getMessagePreview() needs to be re-evaluated to show "Editing…" or revert away from
+     * it. A no-op for a message that isn't currently in the shade at all.
+     */
+    public void refreshMessage(final Message message) {
+        synchronized (this.notifications) {
+            final var list = this.notifications.get(message.getConversation().getUuid());
+            if (list != null && list.contains(message)) {
+                updateNotification(false);
+            }
+        }
+    }
+
     public void clearMessages() {
         synchronized (notifications) {
             for (ArrayList<Message> messages : notifications.values()) {

@@ -584,6 +584,13 @@
     <string name="this_field_is_required">This field is required</string>
     <string name="correct_message">Edit</string>
     <string name="send_corrected_message">Send edited message</string>
+    <string name="message_being_edited">Editing…</string>
+    <string name="onboarding_edit_title">About editing messages</string>
+    <string name="onboarding_edit_body">You can change a sent message at any time — there\'s no time limit. While you\'re editing, the message shows as blurred on the other person\'s device, so they can\'t see the earlier version until you\'re done.</string>
+    <string name="onboarding_delete_title">Did you know?</string>
+    <string name="onboarding_delete_body">When you delete a message for everyone, it\'s also removed from the other person\'s notification shade — not just from the chat.</string>
+    <string name="onboarding_got_it">Got it</string>
+    <string name="reaction_picker_hint">Don\'t forget the three dots — they open a screen with virtually any emoji. Or tap the keyboard icon to pick one straight from your own keyboard\'s emoji picker.</string>
     <string name="editing">editing…</string>
     <string name="no_keys_just_confirm">You have already trusted this persons fingerprint. By selecting “Done” you are just confirming that %s is part of this group chat.</string>
     <string name="this_account_is_disabled">You have disabled this account</string>

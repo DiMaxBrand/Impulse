@@ -544,6 +544,7 @@ private fun buildChatItems(
 @Composable
 fun ConversationScreen(state: ConversationScreenState, listener: ConversationScreenListener) {
     val conversation = state.conversation.value
+    val context = LocalContext.current
     var menuTarget by remember { mutableStateOf<Message?>(null) }
     // Set alongside menuTarget when the long-press originated on a grid tile — lets the context
     // sheet's Delete action operate on the whole batch instead of silently acting on just the
@@ -552,6 +553,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // Bottom sheet offering "All Photos" vs "Select Photos" when "Select" is tapped on a grid
     // tile's context sheet — set to the tapped tile's whole batch, null when not showing.
     var selectPopupGroup by remember { mutableStateOf<List<Message>?>(null) }
+    // First-time edit/delete explainer — set by MessageContextSheet's onNeedsOnboarding, run
+    // once MessageActionOnboardingSheet is dismissed (Got it), never again for that action.
+    var pendingOnboarding by remember { mutableStateOf<OnboardingKind?>(null) }
+    var onboardingContinuation by remember { mutableStateOf<(() -> Unit)?>(null) }
     // Multi-select is pure screen-local UI state — nothing here has a business-logic effect
     // until one of the batch actions in the top bar actually fires, so (like menuTarget above)
     // it lives as local Compose state rather than in ConversationScreenState.
@@ -647,9 +652,30 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             onSelectGroup = { selectPopupGroup = it },
             onSelectToDelete = { listener.onOpenMediaSelector(it, true) },
             onDeleteGroup = { state.deleteGroupTarget.value = it },
+            onNeedsOnboarding = { kind, action ->
+                pendingOnboarding = kind
+                onboardingContinuation = action
+            },
             onDismiss = {
                 menuTarget = null
                 menuTargetGroup = null
+            },
+        )
+    }
+    val onboardingKind = pendingOnboarding
+    if (onboardingKind != null) {
+        MessageActionOnboardingSheet(
+            kind = onboardingKind,
+            onDismiss = {
+                val prefs = eu.siacs.conversations.utils.OnboardingPreferences(context)
+                when (onboardingKind) {
+                    OnboardingKind.EDIT -> prefs.hasSeenEditOnboarding = true
+                    OnboardingKind.DELETE -> prefs.hasSeenDeleteOnboarding = true
+                }
+                pendingOnboarding = null
+                val action = onboardingContinuation
+                onboardingContinuation = null
+                action?.invoke()
             },
         )
     }
@@ -3953,6 +3979,70 @@ private class SheetAction(
     val onClick: () -> Unit,
 )
 
+/** Which one-shot explainer MessageActionOnboardingSheet is showing — each maps to its own
+ * OnboardingPreferences flag and its own title/body copy. */
+private enum class OnboardingKind { EDIT, DELETE }
+
+/**
+ * Small explainer shown the first time a user edits or deletes a message — gated per-kind on
+ * eu.siacs.conversations.utils.OnboardingPreferences so it only ever appears once per action.
+ * A full-width "Got it" button is the only dismissal, deliberately more obvious than relying on
+ * a swipe-down some users won't discover on their own.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun MessageActionOnboardingSheet(kind: OnboardingKind, onDismiss: () -> Unit) {
+    val iconRes = when (kind) {
+        OnboardingKind.EDIT -> R.drawable.ic_edit_24dp
+        OnboardingKind.DELETE -> R.drawable.ic_info_outline_24dp
+    }
+    val titleRes = when (kind) {
+        OnboardingKind.EDIT -> R.string.onboarding_edit_title
+        OnboardingKind.DELETE -> R.string.onboarding_delete_title
+    }
+    val bodyRes = when (kind) {
+        OnboardingKind.EDIT -> R.string.onboarding_edit_body
+        OnboardingKind.DELETE -> R.string.onboarding_delete_body
+    }
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(40.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(titleRes),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(bodyRes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(20.dp))
+            androidx.compose.material3.Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.onboarding_got_it))
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
 /** The send-failure detail banner at the top of the context sheet — one per distinct error, used
  * both for a single failed message and, per distinct error, for a batch's failures. */
 @Composable
@@ -4014,9 +4104,14 @@ private fun MessageContextSheet(
     // covers "delete everything", so this item exists specifically for picking a subset).
     onSelectToDelete: (List<Message>) -> Unit = {},
     onDeleteGroup: (List<Message>) -> Unit = {},
+    // First time editing/deleting: instead of running the action immediately, hand off to
+    // ConversationScreen() to show MessageActionOnboardingSheet, then run [action] once that's
+    // dismissed. Every later edit/delete for that user runs [action] straight away.
+    onNeedsOnboarding: (kind: OnboardingKind, action: () -> Unit) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val onboardingPrefs = remember(context) { eu.siacs.conversations.utils.OnboardingPreferences(context) }
     val conversation = state.conversation.value
     val deleted = message.isDeleted
     val transferable = message.transferable
@@ -4120,10 +4215,17 @@ private fun MessageContextSheet(
         if (message.isEditable && !message.isFileOrImage && !deleted) {
             add(
                 SheetAction(R.drawable.ic_edit_24dp, stringResource(R.string.correct_message)) {
-                    state.replyingTo.value = null
-                    state.correcting.value = message
-                    state.setInput(message.body ?: "")
-                    listener.onEditingStarted(message)
+                    val startEditing = {
+                        state.replyingTo.value = null
+                        state.correcting.value = message
+                        state.setInput(message.body ?: "")
+                        listener.onEditingStarted(message)
+                    }
+                    if (onboardingPrefs.hasSeenEditOnboarding) {
+                        startEditing()
+                    } else {
+                        onNeedsOnboarding(OnboardingKind.EDIT, startEditing)
+                    }
                 }
             )
         }
@@ -4270,7 +4372,14 @@ private fun MessageContextSheet(
             else -> stringResource(R.string.delete_message)
         }
         add(SheetAction(R.drawable.ic_delete_24dp, deleteLabel) {
-            if (group != null) onDeleteGroup(group) else state.deleteTarget.value = message
+            val startDelete = {
+                if (group != null) onDeleteGroup(group) else state.deleteTarget.value = message
+            }
+            if (onboardingPrefs.hasSeenDeleteOnboarding) {
+                startDelete()
+            } else {
+                onNeedsOnboarding(OnboardingKind.DELETE, startDelete)
+            }
         })
     }
 

@@ -3576,16 +3576,23 @@ public class XmppConnectionService extends Service {
     public void updateRemoteEditingIndicator(final String messageId, final boolean active) {
         if (active) {
             remoteEditingIndicators.put(messageId, true);
-            // Dismiss the notification for this message — content is about to change
-            for (final Conversation conversation : getConversations()) {
-                final Message message = conversation.findMessageWithUuid(messageId);
-                if (message != null) {
-                    getNotificationService().clear(message);
-                    break;
-                }
-            }
         } else {
             remoteEditingIndicators.remove(messageId);
+        }
+        // Keep the live in-memory Message in sync too, not just the DB column — this is what
+        // UIHelper.getMessagePreview() actually reads to show "Editing…" instead of the stale
+        // pre-edit text, both in an already-showing notification and the conversation list's own
+        // last-message preview.
+        for (final Conversation conversation : getConversations()) {
+            final Message message = conversation.findMessageWithUuid(messageId);
+            if (message != null) {
+                message.setRemoteEditing(active);
+                // Refresh (not dismiss) any notification currently showing this message, so its
+                // preview text reflects the edit in progress instead of either vanishing outright
+                // or sitting stale with the pre-edit text until the correction lands.
+                getNotificationService().refreshMessage(message);
+                break;
+            }
         }
         databaseBackend.updateMessageEditingState(messageId, active);
         updateConversationUi();

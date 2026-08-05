@@ -175,6 +175,12 @@ public class UIHelper {
             final Message message,
             final @Nullable @ColorInt Integer textColor,
             @Nullable final Character separator) {
+        // Takes priority over every other case below — a correction in flight means the body
+        // shown here would be stale (the pre-edit text) either way, so this always wins rather
+        // than being just one more branch among the type-specific ones.
+        if (message.isRemoteEditing()) {
+            return new Pair<>(context.getString(R.string.message_being_edited), true);
+        }
         final Transferable d = message.getTransferable();
         if (d != null) {
             final int status = d.getStatus();

@@ -1336,6 +1336,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         packet.setFrom(c.getAccount().jid)
         if (c.getMode() == eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {
             packet.setTo(message.counterpart.asBareJid())
+        } else if (message.isPrivateMessage()) {
+            // A private message's counterpart is the occupant's full room@service/Nickname JID —
+            // the *resource* is the only thing that routes to that one specific occupant instead
+            // of the room itself, so this must NOT be reduced to a bare JID the way the plain MUC
+            // broadcast case below is. Same routing MessageGenerator.generateRetraction() already
+            // uses for a private message's own retraction.
+            packet.setTo(message.counterpart)
         } else {
             packet.setTo(c.getAddress().asBareJid())
         }

@@ -550,6 +550,13 @@
     <string name="this_field_is_required">Незаполненное поле</string>
     <string name="correct_message">Изменить</string>
     <string name="send_corrected_message">Отправить изменённое сообщение</string>
+    <string name="message_being_edited">Редактируется…</string>
+    <string name="onboarding_edit_title">О редактировании сообщений</string>
+    <string name="onboarding_edit_body">Отправленное сообщение можно изменить в любой момент — ограничений по времени нет. Пока вы редактируете, у собеседника сообщение показывается размытым, и прежний текст ему не виден, пока вы не закончите.</string>
+    <string name="onboarding_delete_title">Кстати</string>
+    <string name="onboarding_delete_body">Когда вы удаляете сообщение для всех, оно также исчезает из шторки уведомлений собеседника — а не только из чата.</string>
+    <string name="onboarding_got_it">Понятно</string>
+    <string name="reaction_picker_hint">Не забывайте про три точки — они открывают экран с практически любыми эмодзи. Или нажмите значок клавиатуры, чтобы выбрать эмодзи прямо со своей клавиатуры.</string>
     <string name="no_keys_just_confirm">Вы уже пометили отпечаток этого человека как доверенный. Выбрав \"Готово\", вы только подтвердите, что %s является участником конференции.</string>
     <string name="this_account_is_disabled">Вы отключили этот аккаунт</string>
     <string name="security_error_invalid_file_access">Ошибка безопасности: доступ к файлу невозможен!</string>
