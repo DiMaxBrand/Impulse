@@ -1501,7 +1501,13 @@ private fun MessageList(
     // below the visible fold and just sit there unseen until something else happens to scroll.
     val newestKey = items.firstOrNull()?.key
     LaunchedEffect(newestKey, isTyping) {
-        if (hasPositioned.value && listState.firstVisibleItemIndex <= 1) {
+        // A message that's also the first of a new day inserts *two* leading items — itself and
+        // a fresh DatePill right after it — not just one, so the "still near the bottom"
+        // tolerance needs to widen by one in that case. Without this, auto-scroll only ever
+        // worked for a same-day arrival: the previous newest message's index shifts to 2, not 1,
+        // and silently failed the plain `<= 1` check every time a message crossed midnight.
+        val extraForDatePill = if (items.getOrNull(1) is ChatItem.DatePill) 1 else 0
+        if (hasPositioned.value && listState.firstVisibleItemIndex <= 1 + extraForDatePill) {
             requestScroll(0, 0f)
         }
     }
