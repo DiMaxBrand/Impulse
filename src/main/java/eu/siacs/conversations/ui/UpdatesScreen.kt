@@ -13,6 +13,7 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -21,6 +22,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -54,7 +56,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -63,9 +64,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,6 +76,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
@@ -81,6 +87,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp as lerpDp
+import androidx.graphics.shapes.Morph
 import eu.siacs.conversations.R
 import eu.siacs.conversations.update.UpdateChannel
 import kotlinx.coroutines.launch
@@ -983,11 +990,67 @@ private fun CancelingCircle() {
         modifier = Modifier.size(64.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            LoadingIndicator(
-                modifier = Modifier.size(40.dp),
+            CancelMorphIndicator(
                 color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(40.dp),
             )
         }
+    }
+}
+
+// The requested loop, specifically — not the stock M3 LoadingIndicator (which cycles through its
+// own built-in shape set, not this one), and not a reusable everyday spinner either: fan -> arrow
+// -> semi-circle -> arrow -> fan, repeating for as long as CANCELING is shown. Arrow sitting
+// between the two rounder shapes is what gives the whole loop its "turning" read — an inherent
+// property of how Morph interpolates between these three vertex sets, not an added rotation
+// transform. Same Morph/MaterialShapes technique as the Developer Options shape catalog, but a
+// dedicated, self-contained implementation here rather than a shared component: this one drives
+// itself on a timer in a fixed loop, not from taps, so reusing ShapeCatalogActivity's
+// tap-queueing MorphingShape would be the wrong shape (no pun intended) for this job.
+private val CANCEL_MORPH_SEQUENCE: List<androidx.graphics.shapes.RoundedPolygon> by lazy {
+    listOf(
+        MaterialShapeHelpers.fan(),
+        MaterialShapeHelpers.arrow(),
+        MaterialShapeHelpers.semiCircle(),
+        MaterialShapeHelpers.arrow(),
+    )
+}
+
+@Composable
+private fun CancelMorphIndicator(color: Color, modifier: Modifier = Modifier) {
+    var index by remember { mutableIntStateOf(0) }
+    val morphProgress = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            morphProgress.snapTo(0f)
+            morphProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 650),
+            )
+            index = (index + 1) % CANCEL_MORPH_SEQUENCE.size
+        }
+    }
+
+    val fromShape = CANCEL_MORPH_SEQUENCE[(index - 1 + CANCEL_MORPH_SEQUENCE.size) % CANCEL_MORPH_SEQUENCE.size]
+    val toShape = CANCEL_MORPH_SEQUENCE[index]
+    val morph = remember(fromShape, toShape) { Morph(fromShape, toShape) }
+    val reusedPath = remember { Path() }
+    val reusedMatrix = remember { android.graphics.Matrix() }
+
+    Canvas(modifier = modifier) {
+        // Same 78%-scale-with-margin treatment as the shape catalog — Morph interpolation between
+        // very different silhouettes can bulge past both endpoints' own [0,1] bounds mid-transition,
+        // and filling the canvas edge-to-edge means that overshoot gets clipped by the canvas
+        // itself instead of just breathing into the margin.
+        val drawScale = 0.78f
+        val margin = (1f - drawScale) / 2f
+        reusedMatrix.reset()
+        reusedMatrix.postScale(size.width * drawScale, size.height * drawScale)
+        reusedMatrix.postTranslate(size.width * margin, size.height * margin)
+        morph.toPath(morphProgress.value, reusedPath)
+        reusedPath.asAndroidPath().transform(reusedMatrix)
+        clipPath(reusedPath) { drawRect(color) }
     }
 }
 
