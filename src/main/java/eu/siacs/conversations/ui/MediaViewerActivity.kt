@@ -67,6 +67,7 @@ import com.google.common.util.concurrent.Futures
 import eu.siacs.conversations.Config
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
+import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.services.XmppConnectionService
 import eu.siacs.conversations.ui.util.ShareUtil
@@ -155,6 +156,18 @@ class MediaViewerActivity : XmppActivity() {
     // -> refresh() -> refreshMessages() chain that already runs for every other local/remote delete.
     private fun retractMessage(message: Message) {
         val conversation = message.conversation as? Conversation ?: return
+        // Same belt-and-suspenders guard as ConversationComposeFragment.retractMessage(): without
+        // a real server-assigned stanza-id, a MUC retraction only matches the sender's own local
+        // uuid and is a no-op for everyone else. Private messages are exempt — they're relayed
+        // directly and never get a serverMsgId in the first place; generateRetraction() already
+        // falls back to the message's own uuid correctly for that case.
+        if (conversation.getMode() == Conversational.MODE_MULTI &&
+            !message.isPrivateMessage() &&
+            message.serverMsgId == null
+        ) {
+            Toast.makeText(this, R.string.cannot_delete_for_everyone_yet, Toast.LENGTH_SHORT).show()
+            return
+        }
         val packet = xmppConnectionService.getMessageGenerator().generateRetraction(message)
         xmppConnectionService.sendMessagePacket(conversation.getAccount(), packet)
         deleteMessageEntirely(message)

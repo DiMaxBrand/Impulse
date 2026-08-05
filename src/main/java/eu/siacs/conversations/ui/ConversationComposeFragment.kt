@@ -1364,8 +1364,15 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         // Belt-and-suspenders backstop for DeleteMessageSheet's own canRetract gate: without a
         // real server-assigned stanza-id, a MUC retraction only matches the sender's own local
         // UUID and is a no-op for everyone else — refuse rather than wipe the local copy while
-        // silently doing nothing for other occupants.
-        if (c.getMode() == Conversational.MODE_MULTI && message.serverMsgId == null) {
+        // silently doing nothing for other occupants. Private messages are exempt from this the
+        // same way isRetractable() (ConversationScreen.kt) already is — they're relayed as a
+        // direct type='chat' stanza and never get a serverMsgId in the first place, so this guard
+        // was blocking every private-message retraction outright, even though generateRetraction()
+        // already has a correct uuid fallback for exactly this case.
+        if (c.getMode() == Conversational.MODE_MULTI &&
+            !message.isPrivateMessage() &&
+            message.serverMsgId == null
+        ) {
             Toast.makeText(activity, R.string.cannot_delete_for_everyone_yet, Toast.LENGTH_SHORT).show()
             return
         }
