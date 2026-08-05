@@ -273,6 +273,28 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         // after it runs so backgrounding mid-listen still sends a best-effort "paused" stanza.
         AudioPlaybackController.pauseForBackground()
         AudioPlaybackController.onTransition = null
+        // Safety net for reInit()'s own save: this covers backgrounding the whole app (home
+        // button, app switcher, screen off) without ever switching to a different conversation,
+        // which reInit() never sees.
+        storeNextMessage()
+    }
+
+    /** Persists whatever's currently in the composer as this conversation's draft (XMPP
+     * concept: Conversation.setNextMessage — an in-DB attribute, not just in-memory state, so it
+     * survives the app being killed) so leaving without sending doesn't silently lose it. Mirrors
+     * the old ConversationFragment.storeNextMessage(): skipped for archived conversations and for
+     * a MUC room not yet joined, since a draft has nothing meaningful to attach to there. Returns
+     * whether anything actually changed, purely so callers can skip a pointless DB write. */
+    private fun storeNextMessage(): Boolean {
+        val c = conversation ?: return false
+        val service = getXmppConnectionService() ?: return false
+        val msg = state.getInput()
+        val participating = c.getMode() == Conversational.MODE_SINGLE || c.mucOptions.participating()
+        if (c.getStatus() != Conversation.STATUS_ARCHIVED && participating && c.setNextMessage(msg)) {
+            service.updateConversation(c)
+            return true
+        }
+        return false
     }
 
     private fun handleListenTransition(uuid: String, wireState: String) {
@@ -320,9 +342,18 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     fun reInit(conversation: Conversation, extras: Bundle) {
         if (this.conversation !== conversation) {
+            // Persist whatever was sitting unsent in the composer against the conversation we're
+            // leaving (this.conversation, still the old one at this point) before switching away
+            // from it — otherwise navigating away silently threw the draft out.
+            storeNextMessage()
             state.replyingTo.value = null
             state.correcting.value = null
-            state.setInput("")
+            val participating = conversation.getMode() == Conversational.MODE_SINGLE ||
+                conversation.mucOptions.participating()
+            // Restore whatever draft the conversation we're switching *to* was holding, instead
+            // of always starting blank — same "participating" guard as the draft's own display in
+            // the chat list (a MUC you haven't joined has nothing meaningful to draft into).
+            state.setInput(if (participating) conversation.getNextMessage() else "")
         }
         this.conversation = conversation
         this.pendingConversationUuid = null
