@@ -481,9 +481,17 @@ private fun SharedTransitionScope.ChannelInfoPage(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(16.dp))
+            // Deliberately a static `shape=`, not the animated `shapes = ButtonDefaults.shapes()`
+            // press-morph used elsewhere in this screen. This button's very first composition
+            // happens while its container (the Surface above) is still mid shared-element
+            // transition from the channel row — the press-morph's shape state seems to capture
+            // that transient moment as its resting value, rendering fully square until the first
+            // press/release cycle nudges it into the correct rounded shape. A fixed shape has no
+            // such first-composition state to get stuck on, at the cost of losing the squish
+            // animation on this one button.
             FilledTonalButton(
                 onClick = onBack,
-                shapes = ButtonDefaults.shapes(),
+                shape = ButtonDefaults.filledTonalShape,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(android.R.string.ok))
