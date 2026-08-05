@@ -25,7 +25,14 @@ object UpdateDownloader {
     const val UPDATES_SUBDIR = "impulse_updates"
 
     fun startDownload(context: Context, info: UpdateInfo): Long {
-        wipeUpdatesDir(context)
+        // Only drops the stale "downloaded and ready" *pointer* from prefs — not the files
+        // themselves (ApkCleanupWorker's nightly run owns that, and does it safely: skipped
+        // while a download's active, and never touching a still-valid not-yet-installed apk).
+        // Versioned filenames (below) never collide with an old leftover, so there's nothing this
+        // needs to delete just to start a new download. Deleting here used to also mean clearing
+        // pendingReleaseTitle/pendingReleaseNotes moments after the caller had just set them for
+        // *this* download — clearDownloadedApk() only touches the stale pointer, not those.
+        UpdatePreferences(context).clearDownloadedApk()
         val subPath = "$UPDATES_SUBDIR/impulse-update-${info.versionName}.apk"
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.downloadUrl))
@@ -36,18 +43,6 @@ object UpdateDownloader {
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(false)
         return dm.enqueue(request)
-    }
-
-    // Wipes every file in the dedicated updates subfolder before starting a new download — the
-    // folder holds nothing but our own APKs, so a full wipe is always safe. Only drops the stale
-    // "downloaded and ready" pointer from prefs (clearDownloadedApk(), not the full
-    // clearDownload()) — the caller is about to set pendingReleaseTitle/pendingReleaseNotes (or
-    // just did) for the download this call is starting, and a full clearDownload() here would
-    // wipe those right back out before they're ever shown.
-    private fun wipeUpdatesDir(context: Context) {
-        val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), UPDATES_SUBDIR)
-        dir.listFiles()?.forEach { it.delete() }
-        UpdatePreferences(context).clearDownloadedApk()
     }
 
     fun cancelDownload(context: Context, downloadId: Long) {
