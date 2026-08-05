@@ -1,25 +1,25 @@
 package eu.siacs.conversations.worker
 
 import android.content.Context
-import android.net.Uri
 import android.os.Environment
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import eu.siacs.conversations.update.UpdateChecker
 import eu.siacs.conversations.update.UpdateDownloader
 import eu.siacs.conversations.update.UpdatePreferences
 import java.io.File
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
-/** Nightly cleanup of the dedicated update-APK subfolder. That folder holds nothing but our own
- * downloaded update APKs — never shared with received attachments or anything else — but a full,
- * *unconditional* wipe is NOT always safe: a download can be actively writing into it at exactly
- * this moment, and a legitimately downloaded, not-yet-installed update (the user just hasn't
- * gotten to it yet) is not an orphaned leftover. This only ever deletes files that are neither. */
+/** Nightly wipe of the dedicated update-APK subfolder. That folder holds nothing but our own
+ * downloaded update APKs — never shared with received attachments or anything else. Deliberately
+ * unconditional whenever nothing is actively downloading: a downloaded-but-not-yet-installed
+ * update doesn't get to sit around indefinitely just because the user hasn't gotten to it —
+ * leaving an update uninstalled is on them, not a reason to keep it (and its title/notes) around
+ * forever. The one thing this must never do is touch the folder while DownloadManager is actively
+ * writing into it. */
 class ApkCleanupWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
@@ -33,21 +33,14 @@ class ApkCleanupWorker(context: Context, params: WorkerParameters) : Worker(cont
             applicationContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
             UpdateDownloader.UPDATES_SUBDIR,
         )
-        // A downloaded update that's still newer than what's installed is worth keeping — the user
-        // simply hasn't tapped install yet, not something to wipe out from under them.
-        val keepValid = prefs.downloadedApkPath != null &&
-            prefs.downloadedApkExists() &&
-            UpdateChecker.isNewerThanInstalled(prefs.downloadedVersion)
-        val keepPath = if (keepValid) {
-            File(Uri.parse(prefs.downloadedApkPath).path ?: prefs.downloadedApkPath!!).canonicalPath
-        } else null
-        dir.listFiles()?.forEach { file ->
-            if (file.canonicalPath != keepPath) file.delete()
-        }
-        // Only reconcile prefs if what they point to is actually gone/stale now — the same
-        // self-heal UpdateSheetFragment.initState() already does on open, not a blind wipe that
-        // would erase a still-valid pending install's title/notes along with everything else.
-        if (prefs.downloadedApkPath != null && !keepValid) {
+        dir.listFiles()?.forEach { it.delete() }
+        // downloadedApkPath being non-null and the file now being gone is exactly what
+        // clearDownload() is for — also drops downloadedVersion and the now-meaningless
+        // title/notes describing a build that no longer exists on disk. A merely-pending
+        // (not-yet-downloaded) update is untouched: there's no file for it to begin with, and
+        // clearDownload() doesn't clear pendingUpdateVersion/Url/NoWifi (that's clearPending()'s
+        // job, not called here).
+        if (prefs.downloadedApkPath != null) {
             prefs.clearDownload()
         }
         return Result.success()

@@ -26,14 +26,22 @@ object UpdateDownloader {
 
     fun startDownload(context: Context, info: UpdateInfo): Long {
         // Only drops the stale "downloaded and ready" *pointer* from prefs — not the files
-        // themselves (ApkCleanupWorker's nightly run owns that, and does it safely: skipped
-        // while a download's active, and never touching a still-valid not-yet-installed apk).
-        // Versioned filenames (below) never collide with an old leftover, so there's nothing this
-        // needs to delete just to start a new download. Deleting here used to also mean clearing
-        // pendingReleaseTitle/pendingReleaseNotes moments after the caller had just set them for
-        // *this* download — clearDownloadedApk() only touches the stale pointer, not those.
+        // themselves (ApkCleanupWorker's nightly run owns that). Deleting here used to also mean
+        // clearing pendingReleaseTitle/pendingReleaseNotes moments after the caller had just set
+        // them for *this* download — clearDownloadedApk() only touches the stale pointer, not
+        // those.
         UpdatePreferences(context).clearDownloadedApk()
         val subPath = "$UPDATES_SUBDIR/impulse-update-${info.versionName}.apk"
+        // Versioned filenames mean a different version never collides — but re-fetching the exact
+        // same version (nightly cleanup hasn't run yet since an earlier download of it) could
+        // land on a file that's already there. Rather than lean on DownloadManager's own
+        // overwrite behavior at an existing destination — not something worth trusting blindly
+        // across every Android version/storage mode — just clear that one file explicitly first.
+        val destination = File(
+            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+            subPath,
+        )
+        if (destination.exists()) destination.delete()
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.downloadUrl))
             .setTitle("Impulse ${info.versionName}")
