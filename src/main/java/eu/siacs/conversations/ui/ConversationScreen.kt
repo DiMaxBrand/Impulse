@@ -4358,18 +4358,25 @@ private fun MessageContextSheet(
     }
 }
 
-// XEP-0424 retraction in a MUC must reference the room's own server-assigned stanza-id
-// (XEP-0359) — the sender's local UUID means nothing to other occupants or the room's
-// archive. That id only exists once the room has echoed this message back to us, which can
-// lag a moment behind sending, or never happen at all if the room doesn't advertise
-// urn:xmpp:sid:0. Offering (and silently no-op'ing) "delete for everyone" without it would
-// wipe the local copy while doing nothing for anyone else — disabled until it's genuinely
+// XEP-0424 retraction of a broadcast groupchat message must reference the room's own
+// server-assigned stanza-id (XEP-0359) — the sender's local UUID means nothing to other
+// occupants or the room's archive. That id only exists once the room has echoed this message
+// back to us, which can lag a moment behind sending, or never happen at all if the room doesn't
+// advertise urn:xmpp:sid:0. Offering (and silently no-op'ing) "delete for everyone" without it
+// would wipe the local copy while doing nothing for anyone else — disabled until it's genuinely
 // possible instead.
+//
+// A private message sent *within* a MUC is exempt from that requirement: it's relayed as a
+// direct type='chat' stanza straight to the recipient (see MessageGenerator.generateRetraction),
+// never reflected back through the room's own archive, so it never gets a serverMsgId — that
+// generator already falls back to the message's own uuid for exactly this case, since nothing
+// re-stamps a whisper's id in transit the way the room does for a real broadcast message. Without
+// this carve-out, private messages could never be retracted at all.
 internal fun isRetractable(message: Message): Boolean {
     val conversation = message.conversation as? Conversation
     val isMuc = conversation?.getMode() == Conversational.MODE_MULTI
     val isOwnMessage = message.status != Message.STATUS_RECEIVED
-    return isOwnMessage && (!isMuc || message.serverMsgId != null)
+    return isOwnMessage && (!isMuc || message.isPrivateMessage() || message.serverMsgId != null)
 }
 
 // XEP-0425: a moderator can remove someone ELSE's message for everyone, even though they
