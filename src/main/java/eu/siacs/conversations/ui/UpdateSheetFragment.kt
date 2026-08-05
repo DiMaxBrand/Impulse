@@ -213,6 +213,7 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
             cancelConfirmVisible = false,
         )
         lifecycleScope.launch {
+            val enteredCancelingAt = SystemClock.elapsedRealtime()
             if (id != -1L) {
                 withContext(Dispatchers.IO) {
                     UpdateDownloader.cancelDownload(requireContext(), id)
@@ -220,13 +221,23 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
             }
             prefs.activeDownloadId = -1L
             prefs.clearPending()
-            delay(600)
+            // DownloadManager.remove() above doesn't wait on anything — the actual cancel work is
+            // near-instant, so without a floor here the CANCELING phase (and its LoadingIndicator
+            // shape-morph) would flash for a fraction of a second and dismiss before it's even
+            // legible. Only ever adds delay, never cuts short — if cancellation genuinely took
+            // longer than the floor on its own, this is a no-op.
+            val elapsed = SystemClock.elapsedRealtime() - enteredCancelingAt
+            val remaining = MIN_CANCELING_DISPLAY_MS - elapsed
+            if (remaining > 0) delay(remaining)
             dismiss()
         }
     }
 
     companion object {
         const val TAG = "update_sheet"
+
+        // Floor for how long DownloadPhase.CANCELING stays visible — see cancelDownload().
+        private const val MIN_CANCELING_DISPLAY_MS = 3000L
 
         @JvmStatic
         fun shouldShow(context: Context): Boolean {

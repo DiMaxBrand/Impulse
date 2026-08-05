@@ -328,6 +328,7 @@ class UpdatesActivity : ActionBarActivity() {
             cancelConfirmVisible = false,
         )
         lifecycleScope.launch {
+            val enteredCancelingAt = SystemClock.elapsedRealtime()
             if (id != -1L) {
                 withContext(Dispatchers.IO) {
                     UpdateDownloader.cancelDownload(this@UpdatesActivity, id)
@@ -335,8 +336,17 @@ class UpdatesActivity : ActionBarActivity() {
             }
             prefs.activeDownloadId = -1L
             prefs.clearPending()
-            delay(600)
+            // Same floor as UpdateSheetFragment.cancelDownload() — the cancel work above is
+            // near-instant, so without this the CANCELING phase's shape-morph LoadingIndicator
+            // would flash and vanish before it's legible. Only ever adds delay, never cuts short.
+            val elapsed = SystemClock.elapsedRealtime() - enteredCancelingAt
+            val remaining = MIN_CANCELING_DISPLAY_MS - elapsed
+            if (remaining > 0) delay(remaining)
             finish()
         }
+    }
+
+    companion object {
+        private const val MIN_CANCELING_DISPLAY_MS = 3000L
     }
 }

@@ -38,6 +38,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -184,25 +186,48 @@ private fun ShapeHero(shape: RoundedPolygon, name: String, modifier: Modifier = 
 }
 
 /** Same Morph-driven redraw as the chat list's presence-shaped avatar frame — animates a spring
- * from whatever shape was showing to [targetShape] every time it changes. */
+ * from whatever shape was showing to [targetShape] every time it changes. Rapid taps (e.g. three
+ * different catalog shapes in a row before the first transition finishes) are queued rather than
+ * interrupting whatever's already mid-flight: the naive "restart the LaunchedEffect on every new
+ * targetShape" approach snaps the visible shape straight to its equilibrium the instant a newer
+ * tap lands, discarding however far the in-progress morph had actually gotten — every queued
+ * shape is guaranteed to play out its own full transition, in order, before the next one starts. */
 @Composable
 private fun MorphingShape(targetShape: RoundedPolygon, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
     val morphProgress = remember { Animatable(1f) }
     val fromShape = remember { mutableStateOf(targetShape) }
     val toShape = remember { mutableStateOf(targetShape) }
+    val queue = remember { androidx.compose.runtime.mutableStateListOf<RoundedPolygon>() }
 
+    // Producer: only enqueues. Dedupes against whatever's already queued (or the current target,
+    // if the queue happens to be empty) so tapping the same shape repeatedly doesn't pile up
+    // redundant transitions.
     LaunchedEffect(targetShape) {
-        if (toShape.value === targetShape) return@LaunchedEffect
-        fromShape.value = toShape.value
-        toShape.value = targetShape
-        morphProgress.snapTo(0f)
-        morphProgress.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow,
-            ),
-        )
+        val alreadyQueuedOrCurrent = queue.lastOrNull() ?: toShape.value
+        if (alreadyQueuedOrCurrent !== targetShape) queue.add(targetShape)
+    }
+
+    // Consumer: a single long-lived loop, never restarted/cancelled by a new tap the way the
+    // producer effect above is — animateTo() below always runs to completion before the next
+    // queued shape is even looked at.
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (queue.isEmpty()) {
+                snapshotFlow { queue.size }.first { it > 0 }
+            }
+            val next = queue.removeAt(0)
+            if (next === toShape.value) continue
+            fromShape.value = toShape.value
+            toShape.value = next
+            morphProgress.snapTo(0f)
+            morphProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow,
+                ),
+            )
+        }
     }
 
     val morph = remember(fromShape.value, toShape.value) { Morph(fromShape.value, toShape.value) }
