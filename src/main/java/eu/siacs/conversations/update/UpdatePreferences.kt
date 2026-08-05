@@ -71,6 +71,22 @@ class UpdatePreferences(context: Context) {
         return file.exists()
     }
 
+    /** Narrower than [clearDownload]: drops only the stale "already downloaded and ready to
+     * install" pointer, not the pending release title/notes — those describe whatever's about to
+     * be fetched next, not the download this is cleaning up after. Used right before a fresh
+     * download starts (see UpdateDownloader.wipeUpdatesDir()), where the caller has *just* set
+     * title/notes for the version it's about to download; clearDownload()'s full wipe there was
+     * erasing them again a couple lines later, which is why an automatic background download
+     * (no live Fragment/uiState to fall back on and mask the loss) ended up showing the sheet
+     * with no title or release notes once it finished — a manual download only ever looked fine
+     * because the already-open sheet's in-memory state never noticed the prefs got wiped under it. */
+    fun clearDownloadedApk() {
+        prefs.edit {
+            remove(KEY_DOWNLOADED_APK)
+            remove(KEY_DOWNLOADED_VERSION)
+        }
+    }
+
     fun clearDownload() {
         prefs.edit {
             remove(KEY_DOWNLOADED_APK)

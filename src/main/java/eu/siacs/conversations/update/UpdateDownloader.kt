@@ -39,11 +39,15 @@ object UpdateDownloader {
     }
 
     // Wipes every file in the dedicated updates subfolder before starting a new download — the
-    // folder holds nothing but our own APKs, so a full wipe is always safe.
+    // folder holds nothing but our own APKs, so a full wipe is always safe. Only drops the stale
+    // "downloaded and ready" pointer from prefs (clearDownloadedApk(), not the full
+    // clearDownload()) — the caller is about to set pendingReleaseTitle/pendingReleaseNotes (or
+    // just did) for the download this call is starting, and a full clearDownload() here would
+    // wipe those right back out before they're ever shown.
     private fun wipeUpdatesDir(context: Context) {
         val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), UPDATES_SUBDIR)
         dir.listFiles()?.forEach { it.delete() }
-        UpdatePreferences(context).clearDownload()
+        UpdatePreferences(context).clearDownloadedApk()
     }
 
     fun cancelDownload(context: Context, downloadId: Long) {
