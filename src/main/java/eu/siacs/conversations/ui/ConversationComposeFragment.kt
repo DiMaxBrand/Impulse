@@ -347,6 +347,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             // from it — otherwise navigating away silently threw the draft out.
             storeNextMessage()
             state.replyingTo.value = null
+            // Abandoning an edit by switching conversations (rather than explicitly cancelling or
+            // sending it) still needs its own "stop" sent — otherwise the peer's copy of this
+            // message is left marked as remotely-being-edited forever, since nothing else will
+            // ever tell them we stopped.
+            state.correcting.value?.let(::onEditingStopped)
             state.correcting.value = null
             val participating = conversation.getMode() == Conversational.MODE_SINGLE ||
                 conversation.mucOptions.participating()
@@ -1336,6 +1341,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         packet.setFrom(c.getAccount().jid)
         if (c.getMode() == eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {
             packet.setTo(message.counterpart.asBareJid())
+            packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.CHAT)
         } else if (message.isPrivateMessage()) {
             // A private message's counterpart is the occupant's full room@service/Nickname JID —
             // the *resource* is the only thing that routes to that one specific occupant instead
@@ -1343,8 +1349,16 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             // broadcast case below is. Same routing MessageGenerator.generateRetraction() already
             // uses for a private message's own retraction.
             packet.setTo(message.counterpart)
+            packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.CHAT)
         } else {
+            // Without an explicit type='groupchat', this isn't a valid MUC broadcast per XEP-0045
+            // — same mistake the retraction/regular-chat generators avoid via
+            // MessageGenerator.preparePacket()/generateRetraction(). Some servers are lenient
+            // enough to still reflect a type-less stanza back to its own sender (which the
+            // MessageParser-side self-reflection guard now also defends against on its own), but
+            // this shouldn't rely on that leniency to reach OTHER occupants at all.
             packet.setTo(c.getAddress().asBareJid())
+            packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.GROUPCHAT)
         }
         val editing = eu.siacs.conversations.xml.Element("editing", eu.siacs.conversations.xml.Namespace.IMPULSE_EDITING)
         // For already-edited messages, the current UUID is a replacement UUID — the receiver

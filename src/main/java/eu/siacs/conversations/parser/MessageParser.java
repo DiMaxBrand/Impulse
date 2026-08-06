@@ -865,13 +865,30 @@ public class MessageParser extends AbstractParser
         if (editingEl != null) {
             final String editingId = editingEl.getAttribute("id");
             final String editingAction = editingEl.getAttribute("action");
-            if (editingId != null && editingAction != null) {
-                // editingId is the sender's remoteMsgId. Resolve it to the local UUID so the
-                // receiver's UI can look it up by its own message UUID.
-                String localUuid = editingId;
-                if (from != null) {
-                    final eu.siacs.conversations.entities.Conversation conv =
-                            mXmppConnectionService.find(account, from.asBareJid());
+            if (editingId != null && editingAction != null && from != null) {
+                final eu.siacs.conversations.entities.Conversation conv =
+                        mXmppConnectionService.find(account, from.asBareJid());
+                // A MUC room reflects a broadcast message back to its own sender the same way it
+                // does for everyone else's — without this check, that reflection of OUR OWN
+                // "editing" indicator gets mistaken for a genuine notification about our own
+                // message (findMessageWithRemoteId below fails to match it, since our own sent
+                // messages never populate remoteMsgId, so it silently falls back to using
+                // editingId itself — which happens to already equal our own message's local
+                // UUID), permanently marking our own outgoing message as remotely-being-edited.
+                // That hides its footer (including the read/delivered checkmark) until a "stop"
+                // reflection happens to be processed too, which isn't guaranteed — e.g. abandoning
+                // an edit by navigating away instead of explicitly cancelling never sends one.
+                final boolean isOwnReflection =
+                        conv != null
+                                && conv.getMode()
+                                        == eu.siacs.conversations.entities.Conversation.MODE_MULTI
+                                && getManager(MultiUserChatManager.class)
+                                        .getOrCreateState(conv)
+                                        .isSelf(from);
+                if (!isOwnReflection) {
+                    // editingId is the sender's remoteMsgId. Resolve it to the local UUID so the
+                    // receiver's UI can look it up by its own message UUID.
+                    String localUuid = editingId;
                     if (conv != null) {
                         final eu.siacs.conversations.entities.Message found =
                                 conv.findMessageWithRemoteId(editingId, from);
@@ -879,9 +896,9 @@ public class MessageParser extends AbstractParser
                             localUuid = found.getUuid();
                         }
                     }
+                    mXmppConnectionService.updateRemoteEditingIndicator(
+                            localUuid, "start".equals(editingAction));
                 }
-                mXmppConnectionService.updateRemoteEditingIndicator(
-                        localUuid, "start".equals(editingAction));
             }
             return;
         }
