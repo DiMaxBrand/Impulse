@@ -585,9 +585,18 @@ public class MessageParser extends AbstractParser
                             final String uuid = replacedMessage.getUuid();
                             replacedMessage.setUuid(UUID.randomUUID().toString());
                             replacedMessage.setBody(message.getBody());
-                            // we store the IDs of the replacing message. This is essentially unused
-                            // today (only the fact that there are _some_ edits causes the edit icon
-                            // to appear)
+                            // Deliberately NOT updating remoteMsgId here: the sender's <replace>
+                            // (and our own "editing" indicator, see sendEditingStanza()) always
+                            // references editedIdWireFormat — the very first, pre-edit id — for
+                            // every subsequent edit too, and
+                            // findMessageWithRemoteIdAndCounterpart()
+                            // above matches the *next* correction against this exact field. Once
+                            // our own "displayed"/receipt marker for this message is sent, it goes
+                            // out tagged with this same original id — the sender's own
+                            // findSentMessageWithUuidOrRemoteId() falls back to checking whether
+                            // that id was *ever* one of their message's ids (Message.edits, via
+                            // wasEverKnownAs()), which it always is (edits[0]), so their checkmark
+                            // still resolves correctly without this needing to track the latest id.
                             replacedMessage.putEdited(
                                     message.getRemoteMsgId(), message.getServerMsgId());
 

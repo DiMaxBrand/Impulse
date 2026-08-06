@@ -618,6 +618,19 @@ public class Message extends AbstractEntity
         return !this.edits.isEmpty();
     }
 
+    /**
+     * Whether {@code id} is any wire id this message has ever been sent/received under — its
+     * current one or an earlier pre-edit one. A read/delivered marker referencing an edited message
+     * can legitimately arrive tagged with a stale id (e.g. the other party's client is slow to
+     * update which id it tracks a corrected message under, or simply read an earlier version before
+     * a later edit caught up) — {@link #getUuid()} alone only matches the *current* id, so callers
+     * resolving an incoming marker to a local message should fall back to this once a direct
+     * uuid/remoteMsgId match fails.
+     */
+    public boolean wasEverKnownAs(final String id) {
+        return id != null && Edit.wasPreviouslyEditedRemoteMsgId(this.edits, id);
+    }
+
     public void setTrueCounterpart(Jid trueCounterpart) {
         this.trueCounterpart = trueCounterpart;
     }
