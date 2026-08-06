@@ -35,6 +35,7 @@ import eu.siacs.conversations.update.UpdateInfo
 import eu.siacs.conversations.update.UpdatePreferences
 import eu.siacs.conversations.update.formatSpeedAndEta
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,6 +44,13 @@ import okhttp3.OkHttpClient
 class UpdatesActivity : ActionBarActivity() {
 
     private val prefs by lazy { UpdatePreferences(this) }
+    // At most one poll loop alive at a time — resumeActiveDownload() (onCreate) and
+    // startUserDownload() (a later user tap, including via triggerManualCheck()) both call
+    // pollDownload(); without this, a second call while the first is still looping starts a
+    // genuine duplicate — two coroutines both polling the same download and writing uiState, one
+    // of which can keep looping (and overwriting uiState back to DOWNLOADING with a stale
+    // progress read) even after the other already reached Complete/READY and quit cleanly.
+    private var pollJob: Job? = null
     private var uiState by mutableStateOf(UpdatesUiState())
     private var pendingInfo: UpdateInfo? = null
 
@@ -258,17 +266,30 @@ class UpdatesActivity : ActionBarActivity() {
     }
 
     private fun pollDownload(id: Long) {
-        lifecycleScope.launch {
+        val trackedVersion = prefs.pendingUpdateVersion
+        pollJob?.cancel()
+        pollJob = lifecycleScope.launch {
             val etaTracker = DownloadEtaTracker()
             while (true) {
-                // Another download may have superseded this one (see triggerManualCheck) since
-                // the last iteration — stop touching shared prefs/uiState for a download that
-                // isn't the one Impulse is tracking anymore.
-                if (prefs.activeDownloadId != id) return@launch
+                // activeDownloadId no longer pointing at this id has two different causes, not
+                // one: a genuinely different download superseded this one (see triggerManualCheck)
+                // — nothing to show, just stop; or this *exact* download simply finished via a
+                // concurrent watcher instead of this loop (UpdateCheckHelper.awaitDownload(),
+                // which the beta/alpha on-launch background check runs independently and can race
+                // this one to the same id's completion). Silently bailing out either way used to
+                // leave the screen stuck showing DOWNLOADING with a frozen progress/ETA forever in
+                // the second case, since nothing else was left to move it on to READY.
+                if (prefs.activeDownloadId != id) {
+                    resolveIfFinishedElsewhere(trackedVersion)
+                    return@launch
+                }
                 val progress = withContext(Dispatchers.IO) {
                     UpdateDownloader.queryProgress(this@UpdatesActivity, id)
                 }
-                if (prefs.activeDownloadId != id) return@launch
+                if (prefs.activeDownloadId != id) {
+                    resolveIfFinishedElsewhere(trackedVersion)
+                    return@launch
+                }
                 when (progress) {
                     is UpdateDownloader.DownloadProgress.InProgress -> {
                         // Only STATUS_RUNNING clears statusText to null — paused/queued states
@@ -321,12 +342,36 @@ class UpdatesActivity : ActionBarActivity() {
         }
     }
 
+    /** Same reasoning as UpdateSheetFragment's twin — see its doc comment. */
+    private fun resolveIfFinishedElsewhere(trackedVersion: String?) {
+        if (trackedVersion != null &&
+            trackedVersion == prefs.downloadedVersion &&
+            prefs.downloadedApkExists()
+        ) {
+            uiState = uiState.copy(
+                downloadPhase = DownloadPhase.READY,
+                downloadStatusText = null,
+                downloadSpeedText = null,
+            )
+        }
+    }
+
     private fun cancelDownload() {
         val id = prefs.activeDownloadId
         uiState = uiState.copy(
             downloadPhase = DownloadPhase.CANCELING,
             cancelConfirmVisible = false,
+            // Otherwise the last-seen speed/ETA line lingers underneath the cancel animation
+            // instead of disappearing the moment cancellation starts.
+            downloadStatusText = null,
+            downloadSpeedText = null,
         )
+        // Mark this id as no longer active *before* doing the actual (I/O, non-instant) cancel
+        // work below, not after — see UpdateSheetFragment.cancelDownload()'s doc comment for the
+        // exact race this closes (pollDownload's own in-flight poll otherwise overwriting
+        // CANCELING back to DOWNLOADING for a moment).
+        prefs.activeDownloadId = -1L
+        prefs.clearPending()
         lifecycleScope.launch {
             val enteredCancelingAt = SystemClock.elapsedRealtime()
             if (id != -1L) {
@@ -334,11 +379,9 @@ class UpdatesActivity : ActionBarActivity() {
                     UpdateDownloader.cancelDownload(this@UpdatesActivity, id)
                 }
             }
-            prefs.activeDownloadId = -1L
-            prefs.clearPending()
             // Same floor as UpdateSheetFragment.cancelDownload() — the cancel work above is
-            // near-instant, so without this the CANCELING phase's shape-morph LoadingIndicator
-            // would flash and vanish before it's legible. Only ever adds delay, never cuts short.
+            // near-instant, so without this the CANCELING phase's shape-morph would flash and
+            // vanish before it's legible. Only ever adds delay, never cuts short.
             val elapsed = SystemClock.elapsedRealtime() - enteredCancelingAt
             val remaining = MIN_CANCELING_DISPLAY_MS - elapsed
             if (remaining > 0) delay(remaining)

@@ -12,12 +12,15 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -37,7 +40,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -63,7 +65,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,6 +81,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -523,6 +525,11 @@ fun UpdateSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            // The whole sheet scrolls as one unit now — release notes no longer carry their own
+            // capped-height inner scroll (see ReleaseNotesSection), so without this an expanded
+            // "What's new" panel could push content taller than the sheet's own bounds with no
+            // way to reach the rest of it.
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
             .padding(bottom = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -577,29 +584,85 @@ fun UpdateSheetContent(
 // sections plus dev notes per this project's release-notes convention), plain text rather than
 // rendered Markdown (the body is Markdown source; a real renderer is more than this needs right
 // now — showing the raw text at least answers "why update" instead of showing nothing).
+//
+// A full-width Expressive "reveal" button, not a plain TextButton: expanding it flattens its own
+// bottom corners down to the same 8dp the channel/settings rows use for a TOP-positioned
+// ExpressiveGroupRow, and the revealed panel below picks up the matching BOTTOM shape (28dp) —
+// same connected-group language already established for those rows, just two pieces instead of a
+// whole column of them. Deliberately a separate Surface with its own small gap (not one seamless
+// merged shape) — the *panel* is what's being revealed here, not something inside the button.
 @Composable
 private fun ReleaseNotesSection(releaseNotes: String?, modifier: Modifier = Modifier) {
     if (releaseNotes.isNullOrBlank()) return
     var expanded by remember(releaseNotes) { mutableStateOf(false) }
-    Column(modifier = modifier.fillMaxWidth()) {
-        TextButton(onClick = { expanded = !expanded }) {
-            Text(
-                stringResource(
-                    if (expanded) R.string.updates_hide_whats_new else R.string.updates_whats_new
+    val spatialSpring = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
+    val bottomCorner by animateDpAsState(
+        targetValue = if (expanded) 8.dp else 28.dp,
+        animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
+        label = "whats_new_bottom_corner",
+    )
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = spatialSpring,
+        label = "whats_new_arrow",
+    )
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(
+                topStart = 28.dp,
+                topEnd = 28.dp,
+                bottomStart = bottomCorner,
+                bottomEnd = bottomCorner,
+            ),
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            onClick = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth().height(64.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.updates_whats_new),
+                    style = MaterialTheme.typography.bodyLarge,
                 )
-            )
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    painter = painterResource(R.drawable.ic_expand_more_24dp),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp).rotate(arrowRotation),
+                )
+            }
         }
-        if (expanded) {
-            Text(
-                text = releaseNotes,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 240.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-            )
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) + fadeIn(),
+            exit = shrinkVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) + fadeOut(),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(
+                    topStart = 8.dp,
+                    topEnd = 8.dp,
+                    bottomStart = 28.dp,
+                    bottomEnd = 28.dp,
+                ),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                // No heightIn()/verticalScroll() of its own anymore — the whole sheet
+                // (UpdateSheetContent's outer Column) scrolls as one unit instead, so this just
+                // takes whatever height its text naturally needs.
+                Text(
+                    text = releaseNotes,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                )
+            }
         }
     }
 }
