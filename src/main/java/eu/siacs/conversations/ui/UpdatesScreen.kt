@@ -11,9 +11,9 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -1026,7 +1026,14 @@ private fun CancelMorphIndicator(color: Color, modifier: Modifier = Modifier) {
             morphProgress.snapTo(0f)
             morphProgress.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 650),
+                // A little overshoot, not the catalog's full bounce — this loop repeats
+                // continuously for as long as the cancel screen is up, so DampingRatioMediumBouncy
+                // (the catalog's feel) would read as jittery on repeat. LowBouncy gives just enough
+                // spring to feel alive; StiffnessMedium keeps each step brisk across the loop.
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMedium,
+                ),
             )
             index = (index + 1) % CANCEL_MORPH_SEQUENCE.size
         }
