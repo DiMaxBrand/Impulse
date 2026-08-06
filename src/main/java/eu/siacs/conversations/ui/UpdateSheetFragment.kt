@@ -120,6 +120,15 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
             downloadPhase = restoredPhase,
             canInstallDirectly = canInstallDirectly,
             isFirstUpdate = !prefs.hasInstalledUpdate,
+            // restoredPhase is never DOWNLOADING here (only resumeActiveDownload() sets that, and
+            // its own poll loop refreshes these within moments) — so these two are always stale
+            // leftovers from whatever the *previous* DOWNLOADING stretch last wrote, on any call
+            // into initState()/refresh(). Without this, dismissing the sheet mid-download and
+            // reopening it (e.g. via Check Now) could show a correct "ready to install" button
+            // with a frozen "1.8 MB/s · 3s left" line still sitting above it forever, since
+            // nothing else was left to clear text fields this function never otherwise touches.
+            downloadStatusText = null,
+            downloadSpeedText = null,
         )
     }
 
@@ -149,6 +158,10 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         uiState = uiState.copy(
             downloadPhase = DownloadPhase.DOWNLOADING,
             downloadProgress = 0f,
+            // A fresh download start shouldn't briefly show whatever speed/ETA text a previous
+            // attempt left behind before the first poll tick overwrites it.
+            downloadStatusText = null,
+            downloadSpeedText = null,
         )
         pollDownload(id)
     }

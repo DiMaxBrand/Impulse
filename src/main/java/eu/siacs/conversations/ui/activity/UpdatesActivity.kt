@@ -141,6 +141,13 @@ class UpdatesActivity : ActionBarActivity() {
             canInstallDirectly = canInstallDirectly,
             isFirstUpdate = !prefs.hasInstalledUpdate,
             showUpdateSheet = restoredPhase != DownloadPhase.IDLE,
+            // restoredPhase is never DOWNLOADING here (only resumeActiveDownload() sets that, and
+            // its own poll loop refreshes these within moments) — so these two are always stale
+            // leftovers from whatever the *previous* DOWNLOADING stretch last wrote. Without this,
+            // a correct "ready to install" button could sit next to a frozen "1.8 MB/s · 3s left"
+            // line forever, since nothing else here touches these fields.
+            downloadStatusText = null,
+            downloadSpeedText = null,
         )
     }
 
@@ -194,6 +201,11 @@ class UpdatesActivity : ActionBarActivity() {
                     prefs.pendingReleaseTitle = info.releaseTitle
                     if (info.versionName == prefs.downloadedVersion && prefs.downloadedApkExists()) {
                         // Already downloaded in full — go straight to install, don't refetch.
+                        // downloadStatusText/downloadSpeedText cleared explicitly: this is exactly
+                        // the "dismiss the sheet mid-download, hit Check Now again" path — without
+                        // this the correct READY button would sit next to whatever stale
+                        // "1.8 MB/s · 3s left" text pollDownload last wrote before this download
+                        // finished (possibly via a path this screen wasn't watching).
                         uiState = uiState.copy(
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,
                             downloadPhase = DownloadPhase.READY,
@@ -201,6 +213,8 @@ class UpdatesActivity : ActionBarActivity() {
                             releaseNotes = info.releaseNotes,
                             releaseTitle = info.releaseTitle,
                             showUpdateSheet = true,
+                            downloadStatusText = null,
+                            downloadSpeedText = null,
                         )
                     } else if (alreadyDownloadingThisVersion) {
                         // Don't touch downloadPhase/downloadProgress here — pollDownload is still
@@ -232,6 +246,8 @@ class UpdatesActivity : ActionBarActivity() {
                             releaseNotes = info.releaseNotes,
                             releaseTitle = info.releaseTitle,
                             showUpdateSheet = true,
+                            downloadStatusText = null,
+                            downloadSpeedText = null,
                         )
                     }
                 }
@@ -261,6 +277,10 @@ class UpdatesActivity : ActionBarActivity() {
             downloadPhase = DownloadPhase.DOWNLOADING,
             downloadProgress = 0f,
             showUpdateSheet = true,
+            // A fresh download start shouldn't briefly show whatever speed/ETA text a previous
+            // attempt left behind before the first poll tick overwrites it.
+            downloadStatusText = null,
+            downloadSpeedText = null,
         )
         pollDownload(id)
     }

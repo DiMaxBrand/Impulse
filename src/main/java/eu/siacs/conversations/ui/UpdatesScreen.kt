@@ -1092,10 +1092,14 @@ private fun CancelMorphIndicator(color: Color, modifier: Modifier = Modifier) {
                 // A little overshoot, not the catalog's full bounce — this loop repeats
                 // continuously for as long as the cancel screen is up, so DampingRatioMediumBouncy
                 // (the catalog's feel) would read as jittery on repeat. LowBouncy gives just enough
-                // spring to feel alive; StiffnessMedium keeps each step brisk across the loop.
+                // spring to feel alive without that jitter. StiffnessMedium (1500) was a mistake
+                // here, not a "brisk" version of the catalog's StiffnessLow (200) — at that
+                // stiffness the spring settles almost instantly regardless of damping ratio, so
+                // the overshoot was never actually visible; this needs to be *at least* as
+                // unhurried as the catalog, just less bouncy, not faster.
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMedium,
+                    stiffness = Spring.StiffnessLow,
                 ),
             )
             index = (index + 1) % CANCEL_MORPH_SEQUENCE.size
