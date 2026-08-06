@@ -277,6 +277,12 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         // button, app switcher, screen off) without ever switching to a different conversation,
         // which reInit() never sees.
         storeNextMessage()
+        // Same gap reInit() had for switching conversations mid-edit (see its own comment) applies
+        // here too: backgrounding the app without explicitly cancelling or sending an in-progress
+        // edit never sent a "stop", leaving the peer's copy of that message marked as
+        // remotely-being-edited forever.
+        state.correcting.value?.let(::onEditingStopped)
+        state.correcting.value = null
     }
 
     /** Persists whatever's currently in the composer as this conversation's draft (XMPP
