@@ -327,6 +327,8 @@ fun MessageStatusIcon(
                     coroutineScope {
                         launch {
                             bounceScale.animateTo(1.32f, tween(160, easing = StandardEasing))
+                            // Spatial spring: this is the part that actually moves/scales, so it's
+                            // the one allowed to bounce.
                             bounceScale.animateTo(
                                 1f,
                                 spring(
@@ -335,7 +337,16 @@ fun MessageStatusIcon(
                                 ),
                             )
                         }
-                        launch { colorProgress.animateTo(1f, tween(600, easing = StandardEasing)) }
+                        // Effect spring: was a plain tween, the odd one out next to bounceScale's
+                        // real physics spring above. Color has no business overshooting (a
+                        // "bouncing" tint just reads as flicker), but it should still be a spring —
+                        // matching the no-bounce "effects" convention already used elsewhere in the
+                        // app (see UpdatesScreen.kt's `effects = spring(stiffness = 1600f,
+                        // dampingRatio = 1.0f)`) so the spatial and effect halves of this one
+                        // transition are actually the same motion language, not spring + tween.
+                        launch {
+                            colorProgress.animateTo(1f, spring(stiffness = 1600f, dampingRatio = 1.0f))
+                        }
                     }
                 }
                 else -> {

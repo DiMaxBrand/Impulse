@@ -8,6 +8,25 @@
 
 - [ ] README rebrand — remove upstream store links, update issue tracker URL, add roadmap section.
 
+## Typography & UI refresh — future branch, not started
+
+Transition the app's font to **Google Sans Flex**.
+
+- [ ] **Developer Options font demo** — same spirit as the shape catalog: a screen to preview Google Sans Flex, switch between it and other options live, with a few presets and something interactive to play with the variable-font axes.
+- [ ] **New Welcome Screen** — full Expressive rebuild using the new font, morphing shapes animating in the background.
+
+## Headphones listening-status indicator — ship as its own stable-track RC, not a patch
+
+Needs full testing given the scope, so bundle it into a dedicated RC once
+we're going stable rather than slipping it into a patch release. Prep now:
+download the **rounded** variant of the "headphones" Material Symbol.
+
+- [ ] Replace the current listening badge with a headphone icon, states:
+  - **Trigger**: appears once someone is listening to a message you sent — usually after its checkmark has already gone green (read).
+  - **Active listening**: black headphone icon, animated (moving/pulsing) to read as "live" rather than static.
+  - **Listened**: icon turns green and bounces, matching the checkmark's own bounce-to-green animation.
+  - **Unknown / not-listened fallback**: scales in and back out with a bouncy spring (tune the damping ratio), turns red; color transition uses an effect spring (not a tween) to match the spatial spring driving the scale.
+
 ## Video circles (round video messages) — plan only, not started
 
 `ic_videocam_24dp` (currently the video-*call* icon; visually it's
