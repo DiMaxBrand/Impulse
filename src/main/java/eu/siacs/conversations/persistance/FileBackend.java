@@ -689,7 +689,16 @@ public class FileBackend {
                     extension = extensionFromUri;
                 }
             }
-            setupRelativeFilePath(message, String.format("%s.%s", message.getUuid(), extension));
+            // file.isPresent() here means the source already resolved to a real file that isn't
+            // one of our own cache-staging files above — almost always a pre-existing item in the
+            // user's own gallery/downloads picked to send. Force internal storage so sending it
+            // doesn't create a second, redundant public copy of something that's already public;
+            // only genuinely new content (no resolvable local file at all) is still eligible for
+            // the shared-storage "auto-save" location.
+            setupRelativeFilePath(
+                    message,
+                    String.format("%s.%s", message.getUuid(), extension),
+                    file.isPresent());
         }
         copyFileToPrivateStorage(mXmppConnectionService.getFileBackend().getFile(message), uri);
     }
@@ -831,21 +840,44 @@ public class FileBackend {
                         case WEBP -> String.format("%s.%s", message.getUuid(), "webp");
                         default -> throw new IllegalStateException("Unknown image format");
                     };
-            setupRelativeFilePath(message, filename);
+            // file.isPresent() here means the source already resolved to a real file that isn't
+            // one of our own cache-staging files above — almost always a photo picked from the
+            // user's own gallery. Force internal storage so sending it doesn't create a second,
+            // redundant public copy (usually a recompressed one, at that) of something that's
+            // already public.
+            setupRelativeFilePath(message, filename, file.isPresent());
         }
         copyImageToPrivateStorage(getFile(message), image);
         updateFileParams(message);
     }
 
     public void setupRelativeFilePath(final Message message, final String filename) {
+        setupRelativeFilePath(message, filename, false);
+    }
+
+    /**
+     * @param forceInternal Skip the shared-storage ("automatically save to gallery") location
+     *     entirely, even if the setting is on. Used by the outgoing/send path when the source
+     *     content already exists as a real file somewhere we don't manage — e.g. a photo picked
+     *     from the user's own gallery — so we don't create a second public copy of something that's
+     *     already public. See copyImageToPrivateStorage(Message, Uri) and
+     *     copyFileToPrivateStorage(Message, Uri, String) for where this is decided.
+     */
+    public void setupRelativeFilePath(
+            final Message message, final String filename, final boolean forceInternal) {
         final String extension = MimeUtils.extractRelevantExtension(filename);
         final String mime = MimeUtils.guessMimeTypeFromExtension(extension);
-        setupRelativeFilePath(message, filename, mime);
+        setupRelativeFilePath(message, filename, mime, forceInternal);
     }
 
     public Message.StorageLocation getStorageLocation(final String filename, final String mime) {
+        return getStorageLocation(filename, mime, false);
+    }
+
+    public Message.StorageLocation getStorageLocation(
+            final String filename, final String mime, final boolean forceInternal) {
         final var appSettings = new AppSettings(mXmppConnectionService.getApplicationContext());
-        if (appSettings.isUseSharedStorage()) {
+        if (!forceInternal && appSettings.isUseSharedStorage()) {
             final var file = getSharedStorageLocation(filename, mime);
             return new Message.StorageLocation(file, true);
         } else {
@@ -916,7 +948,15 @@ public class FileBackend {
 
     public void setupRelativeFilePath(
             final Message message, final String filename, final String mime) {
-        final var storageLocation = getStorageLocation(filename, mime);
+        setupRelativeFilePath(message, filename, mime, false);
+    }
+
+    public void setupRelativeFilePath(
+            final Message message,
+            final String filename,
+            final String mime,
+            final boolean forceInternal) {
+        final var storageLocation = getStorageLocation(filename, mime, forceInternal);
         Log.d(Config.LOGTAG, storageLocation.toString());
         message.setRelativeFilePath(storageLocation);
     }
