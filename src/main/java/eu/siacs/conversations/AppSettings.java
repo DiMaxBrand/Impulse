@@ -510,6 +510,17 @@ public class AppSettings {
                     .apply();
         }
 
+        if (!prefs.getBoolean("pref_migrated_use_shared_storage", false)) {
+            // "Automatically save to gallery" is switching to on-by-default — a one-time flip for
+            // anyone who already has the old (off) default persisted, same reasoning as
+            // last_activity_default below: R.bool.use_shared_storage only helps fresh installs,
+            // since the preference screen persists the shown default the first time it's opened.
+            prefs.edit()
+                    .putBoolean(USE_SHARED_STORAGE, true)
+                    .putBoolean("pref_migrated_use_shared_storage", true)
+                    .apply();
+        }
+
         if (!prefs.getBoolean("pref_migrated_last_activity_default", false)) {
             // "Show last seen" is switching to on-by-default — a one-time flip for anyone who
             // already has the old (off) default persisted, not just a new default for fresh
