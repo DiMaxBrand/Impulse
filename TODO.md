@@ -21,11 +21,12 @@ Needs full testing given the scope, so bundle it into a dedicated RC once
 we're going stable rather than slipping it into a patch release. Prep now:
 download the **rounded** variant of the "headphones" Material Symbol.
 
-- [ ] Replace the current listening badge with a headphone icon, states:
-  - **Trigger**: appears once someone is listening to a message you sent — usually after its checkmark has already gone green (read).
-  - **Active listening**: black headphone icon, animated (moving/pulsing) to read as "live" rather than static.
-  - **Listened**: icon turns green and bounces, matching the checkmark's own bounce-to-green animation.
-  - **Unknown / not-listened fallback**: scales in and back out with a bouncy spring (tune the damping ratio), turns red; color transition uses an effect spring (not a tween) to match the spatial spring driving the scale.
+- [ ] Replace the current listening badge with a headphone icon. `ListenStatusManager.State` has five values — mapping per state, confirmed:
+  - **`LISTENING`** (active listening): black headphone icon, animated/moving to read as "live" rather than static. Appears once someone starts listening to a message you sent — usually after its checkmark has already gone green (read).
+  - **`LISTENED`**: icon turns green and bounces, matching the checkmark's own bounce-to-green animation (spatial spring for the bounce, effect spring for the color — see the checkmark's own `MessageStatusIcon.kt` for the pattern).
+  - **`UNKNOWN`**: headphone icon appears, one-time scale-in-then-back with a bouncy spring (tune the damping ratio) — not a continuous/looping pulse — and turns red; color transition uses an effect spring (not a tween), same reasoning as `LISTENED`.
+  - **`NOT_LISTENED`**: no headphone icon at all — falls back to the plain checkmark, same as any other message.
+  - **`PAUSED`**: unchanged — keep the existing text label, no headphone icon treatment for this state.
 
 ## Video circles (round video messages) — plan only, not started
 
