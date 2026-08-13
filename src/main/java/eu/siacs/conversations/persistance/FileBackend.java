@@ -689,22 +689,35 @@ public class FileBackend {
                     extension = extensionFromUri;
                 }
             }
+            // Neither the mime nor the source URI's own filename yielded an extension (both null)
+            // — genuinely unknown, not worth guessing further. String.format("%s.%s", uuid, null)
+            // would silently name the file "<uuid>.null", which is worse than no extension at all
+            // (confuses MIME lookups on the resulting file later, e.g. re-opening/sharing it).
+            final String filename =
+                    extension == null
+                            ? message.getUuid()
+                            : String.format("%s.%s", message.getUuid(), extension);
             // file.isPresent() here means the source already resolved to a real file that isn't
             // one of our own cache-staging files above — almost always a pre-existing item in the
             // user's own gallery/downloads picked to send. Force internal storage so sending it
             // doesn't create a second, redundant public copy of something that's already public;
             // only genuinely new content (no resolvable local file at all) is still eligible for
             // the shared-storage "auto-save" location.
-            setupRelativeFilePath(
-                    message,
-                    String.format("%s.%s", message.getUuid(), extension),
-                    file.isPresent());
+            setupRelativeFilePath(message, filename, file.isPresent());
         }
         copyFileToPrivateStorage(mXmppConnectionService.getFileBackend().getFile(message), uri);
     }
 
     private String getExtensionFromUri(final Uri uri) {
         final String filename = getFilenameFromUri(uri);
+        // getFilenameFromUri() legitimately returns null — an empty/null MediaStore DATA column
+        // (seen on some devices' content providers, e.g. MIUI's) or a URI with no path segments
+        // at all falls through to this. Splitter.split(null) doesn't handle that — it NPEs deep
+        // inside Guava rather than returning something we could check, so guard before ever
+        // calling it instead of after.
+        if (filename == null) {
+            return null;
+        }
         return Iterables.getLast(Splitter.on('.').split(filename), null);
     }
 
