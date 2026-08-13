@@ -28,6 +28,36 @@ download the **rounded** variant of the "headphones" Material Symbol.
   - **`NOT_LISTENED`**: no headphone icon at all — falls back to the plain checkmark, same as any other message.
   - **`PAUSED`**: unchanged — keep the existing text label, no headphone icon treatment for this state.
 
+## Bug-report tracking ID + fix notification — same category as headphones, needs stable to exist first
+
+Only makes sense once stable releases (and the post-stable hotfix branching
+rule in `CLAUDE.md`) are real — a report's fix might land as a hotfix on the
+stable channel specifically, not through the reporter's next regular update,
+so "did this ship yet" can't just mean "is there a newer version."
+
+- [ ] Every report sent via `ExceptionHelper.checkForCrash()` /
+  `reportCaughtException()` gets a short random tracking ID generated at
+  send time (format: `BUG-XXXX`, e.g. `BUG-7F3K` — short enough to hand-type
+  into a release description, distinctive enough not to false-match
+  unrelated numbers already in release notes like version/RC numbers).
+  - [ ] Report text includes the ID plus a line aimed at whoever reads it in
+    the support chat (the dev, not the reporter): "Include this ID in the
+    release description to notify the reporting user when it ships."
+  - [ ] Report text also includes the reporter's current update channel
+    (`UpdatePreferences.selectedChannel` or equivalent) — the fix needs to
+    be targeted and verified against the right channel.
+  - [ ] Both report dialogs (`crash_report_message` and
+    `error_report_message`) get an added line telling the *reporter*:
+    something like "If fixed, you'll be notified here — please don't switch
+    update channels until then," since the fix ships to whichever channel
+    they were on when they reported it.
+  - [ ] App persists every ID it has ever sent locally (reasonable
+    cap/expiry so this doesn't grow unbounded).
+  - [ ] After each update check (already fetches release notes/changelog
+    text), scan the new release's notes for any locally-stored ID. On a
+    match, fire a notification: the reported issue was fixed in this
+    release.
+
 ## Video circles (round video messages) — plan only, not started
 
 `ic_videocam_24dp` (currently the video-*call* icon; visually it's
