@@ -73,6 +73,8 @@
     <string name="ok">OK</string>
     <string name="crash_report_title">%1$s has crashed</string>
     <string name="crash_report_message">Using your XMPP account to send in stack traces helps the ongoing development of %1$s.</string>
+    <string name="error_report_title">%1$s ran into an issue</string>
+    <string name="error_report_message">This didn\'t crash %1$s, but something went wrong. Sending a report helps track it down.</string>
     <string name="send_now">Send now</string>
     <string name="send_never">Never ask again</string>
     <string name="problem_connecting_to_account">Could not connect to account</string>

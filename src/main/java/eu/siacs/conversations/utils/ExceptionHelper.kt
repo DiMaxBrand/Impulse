@@ -70,6 +70,43 @@ object ExceptionHelper {
         return true
     }
 
+    /**
+     * For exceptions the app already caught and recovered from — a failed attachment, a background
+     * task that threw — where nothing actually crashed, so there's no restart for checkForCrash()
+     * to catch it on next launch. Offers to send it right away instead, through the same
+     * isSendCrashReports preference and support-chat destination as a real crash, just with
+     * distinct, non-alarming copy since the app is still running fine. Returns false (does nothing)
+     * if reporting is off, there's no account to send from, or [activity] isn't available.
+     */
+    @JvmStatic
+    fun reportCaughtException(activity: XmppActivity?, throwable: Throwable): Boolean {
+        val service = activity?.xmppConnectionService ?: return false
+        val appSettings = AppSettings(activity)
+        if (!appSettings.isSendCrashReports || Config.BUG_REPORTS == null) {
+            return false
+        }
+        val account = AccountUtils.getFirstEnabled(service) ?: return false
+        val report = ExceptionHandler.buildReport(throwable)
+        val builder = MaterialAlertDialogBuilder(activity)
+        builder.setTitle(
+            activity.getString(R.string.error_report_title, activity.getString(R.string.app_name))
+        )
+        builder.setMessage(
+            activity.getString(R.string.error_report_message, activity.getString(R.string.app_name))
+        )
+        builder.setPositiveButton(activity.getText(R.string.send_now)) { _, _ ->
+            val conversation: Conversation =
+                service.findOrCreateConversation(account, Config.BUG_REPORTS, false, true)
+            val message = Message(conversation, report, Message.ENCRYPTION_NONE)
+            service.sendMessage(message)
+        }
+        builder.setNegativeButton(activity.getText(R.string.send_never)) { _, _ ->
+            appSettings.setSendCrashReports(false)
+        }
+        builder.create().show()
+        return true
+    }
+
     @JvmStatic
     internal fun writeToStacktraceFile(context: Context, msg: String) {
         try {

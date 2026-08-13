@@ -22,29 +22,38 @@ class ExceptionHandler internal constructor(private val context: Context) : Unca
 
     override fun uncaughtException(@NonNull thread: Thread, throwable: Throwable) {
         NotificationService.cancelIncomingCallNotification(context)
-        val stacktrace: String
-        try {
-            val stringWriter = StringWriter()
-            val printWriter = PrintWriter(stringWriter)
-            throwable.printStackTrace(printWriter)
-            printWriter.close()
-            stringWriter.close()
-            stacktrace = stringWriter.toString()
+        val report = try {
+            buildReport(throwable)
         } catch (e: IOException) {
             return
         }
-        val report = ImmutableList.of(
-            String.format("Version: %s %s", BuildConfig.APP_NAME, BuildConfig.VERSION_NAME),
-            String.format("Manufacturer: %s", Strings.nullToEmpty(Build.MANUFACTURER)),
-            String.format("Device: %s", Strings.nullToEmpty(Build.DEVICE)),
-            String.format("Timestamp: %s", DATE_FORMAT.format(Date())),
-            stacktrace
-        )
-        ExceptionHelper.writeToStacktraceFile(context, Joiner.on("\n").join(report))
+        ExceptionHelper.writeToStacktraceFile(context, report)
         this.defaultHandler?.uncaughtException(thread, throwable)
     }
 
     companion object {
         private val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z", Locale.ENGLISH)
+
+        /**
+         * Shared by the fatal (uncaughtException, above) and non-fatal
+         * (ExceptionHelper.reportCaughtException) paths, so a manually-reported caught exception
+         * carries the same version/device/timestamp header the support inbox already expects from
+         * a real crash report.
+         */
+        fun buildReport(throwable: Throwable): String {
+            val stringWriter = StringWriter()
+            val printWriter = PrintWriter(stringWriter)
+            throwable.printStackTrace(printWriter)
+            printWriter.close()
+            stringWriter.close()
+            val report = ImmutableList.of(
+                String.format("Version: %s %s", BuildConfig.APP_NAME, BuildConfig.VERSION_NAME),
+                String.format("Manufacturer: %s", Strings.nullToEmpty(Build.MANUFACTURER)),
+                String.format("Device: %s", Strings.nullToEmpty(Build.DEVICE)),
+                String.format("Timestamp: %s", DATE_FORMAT.format(Date())),
+                stringWriter.toString()
+            )
+            return Joiner.on("\n").join(report)
+        }
     }
 }

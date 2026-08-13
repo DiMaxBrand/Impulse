@@ -745,6 +745,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                         runOnUiThread {
                             val ctx = getContext() ?: return@runOnUiThread
                             Toast.makeText(ctx, t.message, Toast.LENGTH_LONG).show()
+                            // This is caught here, not an uncaught crash — ExceptionHandler's
+                            // Thread.UncaughtExceptionHandler (and the "send crash report?" prompt
+                            // it queues for next launch) never sees it, so it silently never
+                            // reaches support unless we report it ourselves right here.
+                            eu.siacs.conversations.utils.ExceptionHelper.reportCaughtException(
+                                activity as? eu.siacs.conversations.ui.XmppActivity, t,
+                            )
                         }
                     }
                 },

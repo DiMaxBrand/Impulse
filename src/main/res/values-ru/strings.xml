@@ -68,6 +68,8 @@
     <string name="ok">ОК</string>
     <string name="crash_report_title">В %1$s произошёл сбой</string>
     <string name="crash_report_message">Отправляя отчёты об ошибках, вы помогаете совершенствованию %1$s.</string>
+    <string name="error_report_title">В %1$s возникла проблема</string>
+    <string name="error_report_message">Сбоя не произошло, но что-то пошло не так. Отчёт поможет это исправить.</string>
     <string name="send_now">Отправить сейчас</string>
     <string name="send_never">Больше не спрашивать</string>
     <string name="problem_connecting_to_account">Невозможно подключиться к аккаунту</string>
