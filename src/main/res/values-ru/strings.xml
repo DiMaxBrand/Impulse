@@ -72,6 +72,7 @@
     <string name="error_report_message">Сбоя не произошло, но что-то пошло не так. Большинство проблем исправляется в течение суток — отчёт поможет разобраться и с этой.</string>
     <string name="send_now">Отправить сейчас</string>
     <string name="send_never">Больше не спрашивать</string>
+    <string name="not_now">Не сейчас</string>
     <string name="problem_connecting_to_account">Невозможно подключиться к аккаунту</string>
     <string name="problem_connecting_to_accounts">Невозможно подключиться к аккаунтам</string>
     <string name="touch_to_fix">Нажмите, чтобы настроить аккаунт</string>

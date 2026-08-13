@@ -63,9 +63,11 @@ object ExceptionHelper {
             val message = Message(conversation, report, Message.ENCRYPTION_NONE)
             service.sendMessage(message)
         }
-        builder.setNegativeButton(activity.getText(R.string.send_never)) { _, _ ->
-            appSettings.setSendCrashReports(false)
-        }
+        // Plain dismiss, not "never again" — a one-tap permanent opt-out is too easy to hit by
+        // accident for what it costs (every future report, silently). Turning reports off for
+        // good is still possible, just moved to a deliberate Settings toggle instead of a dialog
+        // button — appSettings.isSendCrashReports is the same preference either way.
+        builder.setNegativeButton(activity.getText(R.string.not_now), null)
         builder.create().show()
         return true
     }
@@ -100,9 +102,11 @@ object ExceptionHelper {
             val message = Message(conversation, report, Message.ENCRYPTION_NONE)
             service.sendMessage(message)
         }
-        builder.setNegativeButton(activity.getText(R.string.send_never)) { _, _ ->
-            appSettings.setSendCrashReports(false)
-        }
+        // Plain dismiss, not "never again" — a one-tap permanent opt-out is too easy to hit by
+        // accident for what it costs (every future report, silently). Turning reports off for
+        // good is still possible, just moved to a deliberate Settings toggle instead of a dialog
+        // button — appSettings.isSendCrashReports is the same preference either way.
+        builder.setNegativeButton(activity.getText(R.string.not_now), null)
         builder.create().show()
         return true
     }

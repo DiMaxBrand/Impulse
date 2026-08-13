@@ -532,5 +532,17 @@ public class AppSettings {
                     .putBoolean("pref_migrated_last_activity_default", true)
                     .apply();
         }
+
+        if (!prefs.getBoolean("pref_migrated_reset_crash_reports", false)) {
+            // The crash/error report dialogs' old negative button permanently disabled reporting
+            // in one tap ("Never ask again") — easy to hit by accident, given the whole reason it
+            // was removed in favor of a plain dismiss ("Not now"). Anyone who already tripped that
+            // gets one fresh chance here; if they still want it off, that's now a deliberate
+            // Settings toggle instead of a dialog button.
+            prefs.edit()
+                    .putBoolean(SEND_CRASH_REPORTS, true)
+                    .putBoolean("pref_migrated_reset_crash_reports", true)
+                    .apply();
+        }
     }
 }
