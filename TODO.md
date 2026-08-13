@@ -51,12 +51,26 @@ so "did this ship yet" can't just mean "is there a newer version."
     something like "If fixed, you'll be notified here — please don't switch
     update channels until then," since the fix ships to whichever channel
     they were on when they reported it.
-  - [ ] App persists every ID it has ever sent locally (reasonable
-    cap/expiry so this doesn't grow unbounded).
+  - [ ] App persists every pending ID locally — DB table vs. a
+    `SharedPreferences`-backed class matching the existing
+    `UpdatePreferences`/`OnboardingPreferences` pattern is an open
+    implementation choice, not decided yet. Either way: store the ID,
+    channel, and timestamp sent; drop it once matched (or after the
+    long-pending cutoff below, whichever comes first) so this doesn't grow
+    unbounded.
   - [ ] After each update check (already fetches release notes/changelog
     text), scan the new release's notes for any locally-stored ID. On a
     match, fire a notification: the reported issue was fixed in this
-    release.
+    release, and drop the ID from local storage.
+  - [ ] Updates screen (`UpdatesScreen.kt`/`UpdatesActivity` — there's a lot
+    of empty space below the "Check Now" button already) gets a card,
+    visible only while at least one pending ID exists: "Waiting for a fix
+    from the developer" + the ID(s). If a report has been pending longer
+    than some reasonable cutoff (14 days? — pick a real number when this
+    gets built) without a matching release, the card's wording shifts to
+    suggest reaching out to support manually instead, in case the automatic
+    match never fires (dev forgot to include the ID, or it's a rarer case
+    that genuinely needs more attention than a routine hotfix).
 
 ## Video circles (round video messages) — plan only, not started
 
