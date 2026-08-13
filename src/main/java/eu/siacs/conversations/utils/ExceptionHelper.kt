@@ -46,7 +46,7 @@ object ExceptionHelper {
         if (file.delete()) {
             Log.d(Config.LOGTAG, "deleted crash report file")
         }
-        val builder = MaterialAlertDialogBuilder(activity)
+        val builder = MaterialAlertDialogBuilder(activity, R.style.ThemeOverlay_Impulse_FilledPositiveButton)
         builder.setTitle(
             activity.getString(R.string.crash_report_title, activity.getString(R.string.app_name))
         )
@@ -87,7 +87,7 @@ object ExceptionHelper {
         }
         val account = AccountUtils.getFirstEnabled(service) ?: return false
         val report = ExceptionHandler.buildReport(throwable)
-        val builder = MaterialAlertDialogBuilder(activity)
+        val builder = MaterialAlertDialogBuilder(activity, R.style.ThemeOverlay_Impulse_FilledPositiveButton)
         builder.setTitle(
             activity.getString(R.string.error_report_title, activity.getString(R.string.app_name))
         )
