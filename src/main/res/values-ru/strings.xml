@@ -66,6 +66,9 @@
     <string name="unblock">Разблокировать</string>
     <string name="save">Сохранить</string>
     <string name="ok">ОК</string>
+    <!-- "баг" (a colloquial loanword for "bug") was what phone keyboard autocomplete suggested
+         while typing about this feature — deliberately not used here. "сбой" (failure) and
+         "проблема" (problem) below read more neutral/native for the app's tone. -->
     <string name="crash_report_title">В %1$s произошёл сбой</string>
     <string name="crash_report_message">Отправляя отчёты об ошибках, вы помогаете совершенствованию %1$s — большинство проблем исправляется в течение суток.</string>
     <string name="error_report_title">В %1$s возникла проблема</string>
