@@ -424,14 +424,26 @@ private sealed interface ChatItem {
     }
 }
 
-/** Would render as its own photo/video thumbnail — the unit media grouping operates on. */
-internal fun isMediaCell(message: Message): Boolean =
-    message.isFileOrImage &&
+/** Would render as its own photo/video thumbnail — the unit media grouping operates on, and (via
+ * ConversationComposeFragment.onOpenMessage()) what decides whether a tap opens the in-app
+ * MediaViewerActivity instead of handing off to an external app. PDFs get fileParams.width/height
+ * populated too (needed for the page-render preview), so without the explicit mime check below
+ * they'd satisfy this the same as a real photo — landing in the in-app viewer's single-page,
+ * baked-in-icon preview instead of the user's own PDF app, which is wrong for a multi-page
+ * document (and unreadable for anything needing real fidelity, like a QR code). Restricted to
+ * genuinely visual media only; anything else with dimensions still falls through to the external
+ * "isFileOrImage" branch right below the isMediaCell() check at that call site. */
+internal fun isMediaCell(message: Message): Boolean {
+    val mime = message.mimeType
+    val isVisualMedia = mime?.startsWith("image/") == true || mime?.startsWith("video/") == true
+    return isVisualMedia &&
+        message.isFileOrImage &&
         !message.isDeleted &&
         message.encryption != Message.ENCRYPTION_PGP &&
         message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
         message.fileParams.width > 0 &&
         message.fileParams.height > 0
+}
 
 private fun sameDay(a: Long, b: Long): Boolean {
     return UIHelper.sameDay(a, b)

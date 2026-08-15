@@ -1031,6 +1031,11 @@ public class FileBackend {
     // ConversationScreen.kt), which already draws its own animated play affordance on top of the
     // thumbnail — every other consumer (notifications, reply/quote previews) has no overlay of
     // its own and still needs the baked-in one, so this only ever gets passed false from there.
+    // Also governs the PDF "open PDF" icon overlay (same reasoning, same call sites) — the
+    // full-screen viewer (MediaViewerActivity) already passes false for the video case, but
+    // getPdfDocumentPreview() never received the flag at all until now, so a PDF opened full-screen
+    // always got the small baked-in icon plastered across the actual page content regardless —
+    // exactly wrong for someone trying to read something (a QR code, fine print) at full size.
     // Cached separately from the overlaid version since they're genuinely different bitmaps.
     public Bitmap getThumbnail(
             Message message, int size, boolean cacheOnly, boolean drawVideoPlayOverlay)
@@ -1042,8 +1047,7 @@ public class FileBackend {
         // request regardless of what size was actually asked for — e.g. the full-screen viewer
         // silently getting back a small, blurry thumbnail because the chat bubble already primed
         // the cache with one.
-        final String cacheKey =
-                uuid + "#" + size + (drawVideoPlayOverlay ? "" : "#no-video-overlay");
+        final String cacheKey = uuid + "#" + size + (drawVideoPlayOverlay ? "" : "#no-overlay");
         final LruCache<String, Bitmap> cache = mXmppConnectionService.getBitmapCache();
         Bitmap thumbnail = cache.get(cacheKey);
         if ((thumbnail == null) && (!cacheOnly)) {
@@ -1055,7 +1059,7 @@ public class FileBackend {
                 final var file = getFile(message);
                 final String mime = MimeUtils.getMimeType(file);
                 if ("application/pdf".equals(mime)) {
-                    thumbnail = getPdfDocumentPreview(file, size);
+                    thumbnail = getPdfDocumentPreview(file, size, drawVideoPlayOverlay);
                 } else if (mime.startsWith("video/")) {
                     thumbnail = getVideoPreview(file, size, drawVideoPlayOverlay);
                 } else {
@@ -1190,17 +1194,20 @@ public class FileBackend {
         return frame;
     }
 
-    private Bitmap getPdfDocumentPreview(final File file, final int size) {
+    private Bitmap getPdfDocumentPreview(
+            final File file, final int size, final boolean drawOverlayIcon) {
         try {
             final ParcelFileDescriptor fileDescriptor =
                     ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
             final Bitmap rendered = renderPdfDocument(fileDescriptor, size, true);
-            drawOverlay(
-                    rendered,
-                    paintOverlayBlackPdf(rendered)
-                            ? R.drawable.open_pdf_black
-                            : R.drawable.open_pdf_white,
-                    0.75f);
+            if (drawOverlayIcon) {
+                drawOverlay(
+                        rendered,
+                        paintOverlayBlackPdf(rendered)
+                                ? R.drawable.open_pdf_black
+                                : R.drawable.open_pdf_white,
+                        0.75f);
+            }
             return rendered;
         } catch (final IOException | SecurityException e) {
             Log.d(Config.LOGTAG, "unable to render PDF document preview", e);
