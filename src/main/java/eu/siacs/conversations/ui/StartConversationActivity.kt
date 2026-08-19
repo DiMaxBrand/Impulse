@@ -37,6 +37,7 @@ import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
 import de.gultsch.common.MiniUri
 import eu.siacs.conversations.Config
+import eu.siacs.conversations.FeatureFlag
 import eu.siacs.conversations.R
 import eu.siacs.conversations.databinding.ActivityStartConversationBinding
 import eu.siacs.conversations.entities.Account
@@ -45,6 +46,7 @@ import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.ListItem
 import eu.siacs.conversations.services.QuickConversationsService
 import eu.siacs.conversations.services.XmppConnectionService
+import eu.siacs.conversations.ui.activity.InviteActivity
 import eu.siacs.conversations.ui.interfaces.OnBackendConnected
 import eu.siacs.conversations.ui.util.JidDialog
 import eu.siacs.conversations.ui.util.MenuDoubleTabUtil
@@ -52,6 +54,7 @@ import eu.siacs.conversations.ui.util.PendingItem
 import eu.siacs.conversations.ui.util.SoftKeyboardUtils
 import eu.siacs.conversations.utils.AccountUtils
 import eu.siacs.conversations.utils.CharSequences
+import eu.siacs.conversations.utils.FeatureFlagPreferences
 import eu.siacs.conversations.xmpp.Jid
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist
 import eu.siacs.conversations.xmpp.manager.BookmarkManager
@@ -303,6 +306,7 @@ class StartConversationActivity :
             startConversationScreenListener,
             !AbstractQuickConversationsService.isPlayStoreFlavor(),
             AbstractQuickConversationsService.isQuicksy(),
+            FeatureFlagPreferences(this).isEnabled(FeatureFlag.INVITE_CONTACTS),
         )
 
         val preferences = getPreferences()
@@ -399,6 +403,10 @@ class StartConversationActivity :
 
             override fun onFabCreateContact() {
                 showCreateContactDialog(prefilledJidFromSearch(), null)
+            }
+
+            override fun onFabInvite() {
+                startActivity(Intent(this@StartConversationActivity, InviteActivity::class.java))
             }
 
             override fun onQuicksyRefresh() {

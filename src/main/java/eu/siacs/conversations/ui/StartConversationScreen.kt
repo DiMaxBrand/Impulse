@@ -119,6 +119,7 @@ interface StartConversationScreenListener {
     fun onFabJoinPublicChannel()
     fun onFabCreatePrivateGroupChat()
     fun onFabCreateContact()
+    fun onFabInvite()
     fun onQuicksyRefresh()
 }
 
@@ -130,11 +131,12 @@ object StartConversationListHelper {
         listener: StartConversationScreenListener,
         showChannelDiscovery: Boolean,
         isQuicksy: Boolean,
+        showInvite: Boolean,
     ) {
         composeView.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         composeView.setContent {
             ImpulseExpressiveTheme {
-                StartConversationScreen(state, listener, showChannelDiscovery, isQuicksy)
+                StartConversationScreen(state, listener, showChannelDiscovery, isQuicksy, showInvite)
             }
         }
     }
@@ -147,6 +149,7 @@ private fun StartConversationScreen(
     listener: StartConversationScreenListener,
     showChannelDiscovery: Boolean,
     isQuicksy: Boolean,
+    showInvite: Boolean,
 ) {
     val revision = state.revision.intValue
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -247,6 +250,16 @@ private fun StartConversationScreen(
                 icon = { Icon(painter = painterResource(R.drawable.ic_person_24dp), contentDescription = null) },
                 text = { Text(stringResource(R.string.add_contact)) },
             )
+            // Added last on purpose — this menu stacks upward from the FAB, so whatever's
+            // declared last in this list ends up at the top, and "Invite" reads best as the
+            // first item someone sees when the menu opens.
+            if (showInvite) {
+                FloatingActionButtonMenuItem(
+                    onClick = { fabExpanded = false; listener.onFabInvite() },
+                    icon = { Icon(painter = painterResource(R.drawable.ic_person_add_24dp), contentDescription = null) },
+                    text = { Text(stringResource(R.string.invite_title)) },
+                )
+            }
         }
     }
 }

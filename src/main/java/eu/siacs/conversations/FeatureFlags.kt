@@ -17,13 +17,13 @@ enum class FeatureFlag(
     val descriptionRes: Int,
     val defaultValue: Boolean,
 ) {
-    /** Proves the picker/registry/persistence machinery end to end. Doesn't gate any real
-     * behavior — remove once a genuine flag exists to replace it as the "does this screen still
-     * work" sanity check. */
-    EXAMPLE(
-        key = "example",
-        titleRes = R.string.feature_flag_example_title,
-        descriptionRes = R.string.feature_flag_example_description,
+    /** Gates the "Invite" entry in Start Chat's "+" menu (invite a contact by sharing a direct
+     * download link to the latest stable release's universal APK). Off by default: the link only
+     * resolves once a stable release actually exists — see [eu.siacs.conversations.ui.activity.InviteActivity]. */
+    INVITE_CONTACTS(
+        key = "invite_contacts",
+        titleRes = R.string.feature_flag_invite_contacts_title,
+        descriptionRes = R.string.feature_flag_invite_contacts_description,
         defaultValue = false,
     ),
 }

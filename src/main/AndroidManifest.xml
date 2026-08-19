@@ -387,6 +387,10 @@
             android:name=".ui.activity.FeatureFlagsActivity"
             android:parentActivityName=".ui.activity.DeveloperOptionsActivity" />
         <activity
+            android:name=".ui.activity.InviteActivity"
+            android:label="@string/invite_title"
+            android:parentActivityName=".ui.StartConversationActivity" />
+        <activity
             android:name=".ui.AboutActivity"
             android:parentActivityName=".ui.activity.SettingsActivity">
             <meta-data
