@@ -2,6 +2,8 @@ package eu.siacs.conversations.ui.activity
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,8 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -120,26 +127,66 @@ private fun FeatureFlagRow(flag: FeatureFlag) {
         stringResource(R.string.feature_flag_option_on),
         stringResource(R.string.feature_flag_option_off),
     )
+    // toggleableItem's label content silently doesn't render in material3 1.5.0-alpha21 (same
+    // bug documented on the delete-message sheet's ButtonGroup in ConversationScreen.kt) — the
+    // buttons lay out with the right size and spacing, just empty. customItem + a plain Button
+    // per slot, styled by hand, is the working substitute there and here.
+    val interactionSources = remember { List(labels.size) { MutableInteractionSource() } }
     ListItem(
         headlineContent = { Text(stringResource(flag.titleRes)) },
         supportingContent = {
             Column {
-Text(stringResource(flag.descriptionRes))
+                Text(stringResource(flag.descriptionRes))
                 Spacer(Modifier.height(10.dp))
-                ButtonGroup(modifier = Modifier.fillMaxWidth()) {
+                ButtonGroup(
+                    overflowIndicator = {},
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
                     labels.forEachIndexed { index, label ->
-                        toggleableItem(
-                            checked = index == selectedIndex,
-                            onCheckedChange = {
-                                val newOverride = when (index) {
-                                    1 -> true
-                                    2 -> false
-                                    else -> null
+                        val selected = index == selectedIndex
+                        customItem(
+                            buttonGroupContent = {
+                                Button(
+                                    onClick = {
+                                        val newOverride = when (index) {
+                                            1 -> true
+                                            2 -> false
+                                            else -> null
+                                        }
+                                        override = newOverride
+                                        prefs.setOverride(flag, newOverride)
+                                    },
+                                    shapes = ButtonShapes(
+                                        shape = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShape
+                                            labels.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShape
+                                            else -> RoundedCornerShape(5.dp)
+                                        },
+                                        pressedShape = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonPressShape
+                                            labels.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonPressShape
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonPressShape
+                                        },
+                                    ),
+                                    colors = if (selected) {
+                                        ButtonDefaults.buttonColors()
+                                    } else {
+                                        ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    },
+                                    interactionSource = interactionSources[index],
+                                    modifier = Modifier.animateWidth(
+                                        interactionSources[index],
+                                        ButtonDefaults.ContentPadding,
+                                    ),
+                                ) {
+                                    Text(text = label, maxLines = 1)
                                 }
-                                override = newOverride
-                                prefs.setOverride(flag, newOverride)
                             },
-                            label = label,
+                            menuContent = {},
                         )
                     }
                 }
