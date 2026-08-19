@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -18,9 +19,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -126,14 +124,13 @@ private fun FeatureFlagRow(flag: FeatureFlag) {
         headlineContent = { Text(stringResource(flag.titleRes)) },
         supportingContent = {
             Column {
-                Text(stringResource(flag.descriptionRes))
+Text(stringResource(flag.descriptionRes))
                 Spacer(Modifier.height(10.dp))
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                ButtonGroup(modifier = Modifier.fillMaxWidth()) {
                     labels.forEachIndexed { index, label ->
-                        SegmentedButton(
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = labels.size),
-                            selected = index == selectedIndex,
-                            onClick = {
+                        toggleableItem(
+                            checked = index == selectedIndex,
+                            onCheckedChange = {
                                 val newOverride = when (index) {
                                     1 -> true
                                     2 -> false
@@ -142,9 +139,8 @@ private fun FeatureFlagRow(flag: FeatureFlag) {
                                 override = newOverride
                                 prefs.setOverride(flag, newOverride)
                             },
-                        ) {
-                            Text(label)
-                        }
+                            label = label,
+                        )
                     }
                 }
             }
