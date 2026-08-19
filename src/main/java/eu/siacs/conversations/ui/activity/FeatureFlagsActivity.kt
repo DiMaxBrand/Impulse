@@ -173,8 +173,8 @@ private fun FeatureFlagRow(flag: FeatureFlag) {
                                         ButtonDefaults.buttonColors()
                                     } else {
                                         ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            containerColor = Color.Gray,
+                                            contentColor = Color.White,
                                         )
                                     },
                                     interactionSource = interactionSources[index],
