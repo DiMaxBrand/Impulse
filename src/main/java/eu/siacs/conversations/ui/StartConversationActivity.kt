@@ -46,7 +46,6 @@ import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.ListItem
 import eu.siacs.conversations.services.QuickConversationsService
 import eu.siacs.conversations.services.XmppConnectionService
-import eu.siacs.conversations.ui.activity.InviteActivity
 import eu.siacs.conversations.ui.interfaces.OnBackendConnected
 import eu.siacs.conversations.ui.util.JidDialog
 import eu.siacs.conversations.ui.util.MenuDoubleTabUtil
@@ -403,10 +402,6 @@ class StartConversationActivity :
 
             override fun onFabCreateContact() {
                 showCreateContactDialog(prefilledJidFromSearch(), null)
-            }
-
-            override fun onFabInvite() {
-                startActivity(Intent(this@StartConversationActivity, InviteActivity::class.java))
             }
 
             override fun onQuicksyRefresh() {

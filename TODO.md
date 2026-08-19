@@ -169,6 +169,17 @@ Currently implemented: reset update-sheet pause timer. Backlog:
 
 ## General
 
+- [ ] **Container transform on the rest of Start Chat's + menu items** — "Invite" now grows into
+  its destination via a shared-bounds transform inline in `StartConversationScreen.kt` (see
+  `inviteExpanded` there). The user wants every item in that FAB menu doing the same, including
+  Discover Channels (its own full-screen `ChannelDiscoveryActivity`, a real cross-Activity case —
+  true Compose shared-element continuity doesn't cross Activity boundaries, so this one specifically
+  either needs merging into `StartConversationActivity` too or a fallback like a clip-reveal
+  `ActivityOptions` transition) and Add Contact/Join Public Channel/Create Public Channel/Create
+  Private Group Chat (currently legacy `DialogFragment`s, not Compose — each needs individual
+  conversion before it can participate in a shared transform). Scoped out of the Invite work
+  itself since converting four more flows, one of them cross-Activity, is a much bigger job than
+  one flag-gated screen.
 - [ ] **Voice message transcription** — on-demand, on-device via ML Kit Speech Recognition (`com.google.mlkit:speech-recognition`). Tap a "transcribe" button on the audio bubble → POST the downloaded `.ogg`/`.m4a` to the on-device model → store result in a new `transcript TEXT` column on the message → display below the waveform. Model (~80 MB) is downloaded on demand, no API key needed. Same ML Kit family as subject segmentation already used for 3D avatars.
 - [ ] **Remove cache** — add a "Clear cached files" action in Settings (or under Settings → Storage) that deletes downloaded/cached media from the app's private cache directory. "Automatically save to gallery" is now on by default, so cached copies are redundant once files are saved to shared storage.
 

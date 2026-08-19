@@ -1,6 +1,17 @@
 package eu.siacs.conversations.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -119,7 +130,6 @@ interface StartConversationScreenListener {
     fun onFabJoinPublicChannel()
     fun onFabCreatePrivateGroupChat()
     fun onFabCreateContact()
-    fun onFabInvite()
     fun onQuicksyRefresh()
 }
 
@@ -142,7 +152,11 @@ object StartConversationListHelper {
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalSharedTransitionApi::class,
+)
 @Composable
 private fun StartConversationScreen(
     state: StartConversationListState,
@@ -160,9 +174,21 @@ private fun StartConversationScreen(
     }
 
     var fabExpanded by state.fabExpanded
+    var inviteExpanded by remember { mutableStateOf(false) }
 
     BackHandler(enabled = fabExpanded) { fabExpanded = false }
+    BackHandler(enabled = inviteExpanded) { inviteExpanded = false }
 
+    // Same spring pairing DeveloperOptionsActivity's version-picker row→card transform uses:
+    // more bounce expanding out, a quicker settle collapsing back in.
+    val inviteBoundsTransform = BoundsTransform { _, _ ->
+        spring(
+            stiffness = 380f,
+            dampingRatio = if (inviteExpanded) Spring.DampingRatioMediumBouncy else 0.8f,
+        )
+    }
+
+    SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             val tabTitles = listOf(
@@ -253,14 +279,60 @@ private fun StartConversationScreen(
             // Added last on purpose — this menu stacks upward from the FAB, so whatever's
             // declared last in this list ends up at the top, and "Invite" reads best as the
             // first item someone sees when the menu opens.
+            // Its own AnimatedVisibility (rather than relying on the FAB menu's own item
+            // animation) so this item carries a real AnimatedVisibilityScope to hand to
+            // sharedBounds below — the source half of the transform into InviteScreenContent.
             if (showInvite) {
-                FloatingActionButtonMenuItem(
-                    onClick = { fabExpanded = false; listener.onFabInvite() },
-                    icon = { Icon(painter = painterResource(R.drawable.ic_person_add_24dp), contentDescription = null) },
-                    text = { Text(stringResource(R.string.invite_title)) },
-                )
+                AnimatedVisibility(
+                    visible = !inviteExpanded,
+                    enter = EnterTransition.None,
+                    exit = ExitTransition.None,
+                ) {
+                    FloatingActionButtonMenuItem(
+                        onClick = { fabExpanded = false; inviteExpanded = true },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_person_add_24dp),
+                                contentDescription = null,
+                            )
+                        },
+                        text = { Text(stringResource(R.string.invite_title)) },
+                        modifier = Modifier.sharedBounds(
+                            rememberSharedContentState("invite_card"),
+                            animatedVisibilityScope = this@AnimatedVisibility,
+                            enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                            exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                            boundsTransform = inviteBoundsTransform,
+                            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                        ),
+                    )
+                }
             }
         }
+
+        // Destination half of the transform — grows from the FAB item's position into a
+        // full-screen surface holding InviteScreenContent.
+        AnimatedVisibility(
+            visible = inviteExpanded,
+            enter = EnterTransition.None,
+            exit = ExitTransition.None,
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .sharedBounds(
+                        rememberSharedContentState("invite_card"),
+                        animatedVisibilityScope = this@AnimatedVisibility,
+                        enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        boundsTransform = inviteBoundsTransform,
+                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    ),
+            ) {
+                InviteScreenContent(onClose = { inviteExpanded = false })
+            }
+        }
+    }
     }
 }
 
