@@ -3105,11 +3105,15 @@ private fun MessageContent(
         (transferable != null &&
             (transferable.getStatus() == Transferable.STATUS_COMPRESSING ||
                 transferable.getStatus() == Transferable.STATUS_UPLOADING)) ||
-            (transferable == null &&
-                message.isFileOrImage &&
-                message.encryption != Message.ENCRYPTION_PGP &&
-                message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
-                message.fileParams.width > 0 && message.fileParams.height > 0) -> {
+            // Was its own hand-duplicated copy of isMediaCell()'s logic, minus the mime
+            // restriction that function gained — meaning it silently drifted back out of sync the
+            // moment that restriction was added, and PDFs kept rendering through this
+            // image/video-only bubble (MediaThumbnailBubble passes drawVideoPlayOverlay=false
+            // unconditionally, which — after threading that flag into the PDF preview too — meant
+            // a PDF's bubble thumbnail lost its only "this is a PDF" indicator entirely). Calling
+            // the real function instead of re-deriving the same condition keeps this one source of
+            // truth for what counts as in-app-viewable media.
+            (transferable == null && isMediaCell(message)) -> {
             val fp = message.fileParams
             val isVideo = message.mimeType?.startsWith("video/") == true
             val hasKnownDimensions = fp.width > 0 && fp.height > 0
