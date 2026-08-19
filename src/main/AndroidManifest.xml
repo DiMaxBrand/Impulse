@@ -384,6 +384,9 @@
             android:name=".ui.activity.ShapeCatalogActivity"
             android:parentActivityName=".ui.activity.DeveloperOptionsActivity" />
         <activity
+            android:name=".ui.activity.FeatureFlagsActivity"
+            android:parentActivityName=".ui.activity.DeveloperOptionsActivity" />
+        <activity
             android:name=".ui.AboutActivity"
             android:parentActivityName=".ui.activity.SettingsActivity">
             <meta-data

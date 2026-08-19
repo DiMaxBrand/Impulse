@@ -1407,4 +1407,13 @@
     <string name="developer_options_shape_catalog">Каталог форм</string>
     <string name="developer_options_shape_catalog_summary">Просмотр набора MaterialShapes с живым превью морфинга</string>
     <string name="shape_catalog_title">Каталог форм</string>
+    <string name="developer_options_feature_flags">Флаги функций</string>
+    <string name="developer_options_feature_flags_summary">Переопределение отдельных флагов функций для тестирования</string>
+    <string name="feature_flags_title">Флаги функций</string>
+    <string name="feature_flags_disclaimer">Даже значения, установленные вами вручную, могут быть изменены в процессе разработки, но это случается редко.</string>
+    <string name="feature_flag_option_default">По умолчанию</string>
+    <string name="feature_flag_option_on">Вкл.</string>
+    <string name="feature_flag_option_off">Выкл.</string>
+    <string name="feature_flag_example_title">Тестовый флаг</string>
+    <string name="feature_flag_example_description">Ничего не меняет — нужен, чтобы проверить работу этого экрана</string>
 </resources>

@@ -1336,6 +1336,16 @@
     <string name="developer_options_shape_catalog">Shape catalog</string>
     <string name="developer_options_shape_catalog_summary">Browse the MaterialShapes set with a live morph preview</string>
     <string name="shape_catalog_title">Shape catalog</string>
+    <string name="developer_options_feature_flags">Feature flags</string>
+    <string name="developer_options_feature_flags_summary">Override individual feature flags for testing</string>
+    <string name="feature_flags_title">Feature flags</string>
+    <string name="feature_flags_disclaimer">Even values you manually set here could be changed in the development process, but that happens rarely.</string>
+    <string name="feature_flag_option_default">Default</string>
+    <string name="feature_flag_option_on">On</string>
+    <string name="feature_flag_option_off">Off</string>
+    <!-- Sanity-check flag, gates no real behavior — proves the picker/registry/persistence machinery works end to end -->
+    <string name="feature_flag_example_title">Example flag</string>
+    <string name="feature_flag_example_description">Doesn\'t change anything — exists to verify this screen works</string>
     <!-- Voice message listen status -->
     <string name="listen_status_not_listened">Not listened</string>
     <string name="listen_status_listening">Listening</string>

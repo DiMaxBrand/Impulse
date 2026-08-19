@@ -214,6 +214,30 @@ class DeveloperOptionsActivity : ActionBarActivity() {
 
                                 Spacer(Modifier.height(6.dp))
 
+                                ExpressiveGroupRow(GroupPosition.SINGLE) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_feature_flags))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_feature_flags_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            // Plain activity switch, no container transform — this
+                                            // screen isn't part of the shared-element system above.
+                                            startActivity(
+                                                Intent(
+                                                    this@DeveloperOptionsActivity,
+                                                    FeatureFlagsActivity::class.java,
+                                                )
+                                            )
+                                        },
+                                    )
+                                }
+
+                                Spacer(Modifier.height(6.dp))
+
                                 // Version picker row — source of the row→card container transform
                                 AnimatedVisibility(
                                     visible = !pickerExpanded,
