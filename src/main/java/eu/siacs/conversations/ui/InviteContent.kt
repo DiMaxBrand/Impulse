@@ -8,9 +8,9 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,9 +20,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,69 +38,72 @@ const val INVITE_APK_URL =
     "https://github.com/DiMaxBrand/Impulse/releases/latest/download/Impulse_universal.apk"
 
 /**
- * The screen behind [eu.siacs.conversations.FeatureFlag.INVITE_CONTACTS]. Lives inline in
+ * The card behind [eu.siacs.conversations.FeatureFlag.INVITE_CONTACTS]. Lives inline in
  * [StartConversationScreen] (grown from the FAB's "Invite" item via a shared-bounds container
  * transform) rather than as its own Activity — that's what a cross-screen morph needs, since
  * true Compose shared-element continuity only works within one Activity's Compose tree.
+ *
+ * This is *content* for a floating elevated card, not a full screen — same "Add Contact"-style
+ * card treatment, not a Scaffold/TopAppBar takeover. The caller supplies the Surface/Card shell
+ * (see the destination half of the transform in StartConversationScreen.kt) so this stays
+ * reusable as just the inside of it.
  */
 @Composable
 fun InviteScreenContent(onClose: () -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.invite_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_back_24dp),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-        ) {
-            // Reassurance, not a warning — leads the screen so it's read before the link, not
-            // stumbled into mid-install on the invited person's end.
+    Column(
+        modifier = Modifier
+            .heightIn(max = 520.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.invite_play_protect_note),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp),
+                text = stringResource(R.string.invite_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f),
             )
-
-            InviteCard(inviteUrl = INVITE_APK_URL)
-
-            Spacer(Modifier.height(24.dp))
-
-            Text(
-                text = stringResource(R.string.invite_install_steps_title),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-            InstallStep(
-                title = stringResource(R.string.invite_install_chrome_title),
-                steps = stringResource(R.string.invite_install_chrome_steps),
-            )
-            Spacer(Modifier.height(12.dp))
-            InstallStep(
-                title = stringResource(R.string.invite_install_samsung_title),
-                steps = stringResource(R.string.invite_install_samsung_steps),
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.invite_install_unknown_sources),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            IconButton(onClick = onClose) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close_24dp),
+                    contentDescription = stringResource(R.string.cancel),
+                )
+            }
         }
+        Spacer(Modifier.height(8.dp))
+
+        // Reassurance, not a warning — leads the content so it's read before the link, not
+        // stumbled into mid-install on the invited person's end.
+        Text(
+            text = stringResource(R.string.invite_play_protect_note),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp),
+        )
+
+        InviteCard(inviteUrl = INVITE_APK_URL)
+
+        Spacer(Modifier.height(24.dp))
+
+        Text(
+            text = stringResource(R.string.invite_install_steps_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        InstallStep(
+            title = stringResource(R.string.invite_install_chrome_title),
+            steps = stringResource(R.string.invite_install_chrome_steps),
+        )
+        Spacer(Modifier.height(12.dp))
+        InstallStep(
+            title = stringResource(R.string.invite_install_samsung_title),
+            steps = stringResource(R.string.invite_install_samsung_steps),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.invite_install_unknown_sources),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

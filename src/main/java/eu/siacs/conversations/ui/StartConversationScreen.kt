@@ -9,11 +9,13 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -88,6 +90,7 @@ import eu.siacs.conversations.xmpp.manager.BlockingManager
 import im.conversations.android.model.Bookmark
 import im.conversations.android.model.DynamicTag
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -289,7 +292,16 @@ private fun StartConversationScreen(
                     exit = ExitTransition.None,
                 ) {
                     FloatingActionButtonMenuItem(
-                        onClick = { fabExpanded = false; inviteExpanded = true },
+                        onClick = {
+                            // inviteExpanded flips first so the growth transform reads this
+                            // item's bounds before anything else changes. Collapsing the FAB
+                            // menu itself is deferred — doing it in the same frame let the
+                            // menu's own built-in item-collapse animation race our transform on
+                            // this exact item, which is what made it look like the button just
+                            // closed instead of growing into the card.
+                            inviteExpanded = true
+                            scope.launch { delay(300); fabExpanded = false }
+                        },
                         icon = {
                             Icon(
                                 painter = painterResource(R.drawable.ic_person_add_24dp),
@@ -310,26 +322,56 @@ private fun StartConversationScreen(
             }
         }
 
-        // Destination half of the transform — grows from the FAB item's position into a
-        // full-screen surface holding InviteScreenContent.
-        AnimatedVisibility(
-            visible = inviteExpanded,
-            enter = EnterTransition.None,
-            exit = ExitTransition.None,
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .sharedBounds(
-                        rememberSharedContentState("invite_card"),
-                        animatedVisibilityScope = this@AnimatedVisibility,
-                        enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
-                        exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
-                        boundsTransform = inviteBoundsTransform,
-                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
-                    ),
+        if (showInvite) {
+            val inviteScrimAlpha by animateFloatAsState(
+                targetValue = if (inviteExpanded) 0.32f else 0f,
+                animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+                label = "invite_scrim",
+            )
+            if (inviteScrimAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = inviteScrimAlpha))
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) { inviteExpanded = false },
+                )
+            }
+
+            // Destination half of the transform — a floating elevated card, the same treatment
+            // as Add Contact, not a full-screen takeover — that grows from the FAB item's
+            // position rather than replacing the whole display.
+            AnimatedVisibility(
+                visible = inviteExpanded,
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
+                modifier = Modifier.align(Alignment.Center),
             ) {
-                InviteScreenContent(onClose = { inviteExpanded = false })
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp,
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .fillMaxWidth()
+                        .sharedBounds(
+                            rememberSharedContentState("invite_card"),
+                            animatedVisibilityScope = this@AnimatedVisibility,
+                            enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                            exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                            boundsTransform = inviteBoundsTransform,
+                            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                        )
+                        // Consume touches so taps inside don't fall through to the scrim.
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) {},
+                ) {
+                    InviteScreenContent(onClose = { inviteExpanded = false })
+                }
             }
         }
     }
