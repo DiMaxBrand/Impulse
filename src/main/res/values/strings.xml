@@ -1347,7 +1347,7 @@
     <string name="feature_flag_invite_contacts_description">Adds an "Invite" option to Start Chat\'s + menu — send someone a direct download link to the app</string>
     <string name="invite_title">Invite</string>
     <string name="invite_play_protect_note">Play Protect will pop up asking to verify the app before installing — that\'s expected, not a warning. It scans the file, confirms it\'s safe, and lets the install continue.</string>
-    <string name="invite_intro">Tell your friend to open this link in their phone\'s browser — it downloads the app automatically:</string>
+    <string name="invite_intro">Send this link to whoever you want to invite. Once they open it in their phone\'s browser, it downloads the app automatically:</string>
     <string name="invite_share_button">Share invite link</string>
     <string name="invite_share_message">Join me on Impulse! Open this link on your phone to download it: %1$s</string>
     <string name="invite_link_copied">Link copied to clipboard</string>
