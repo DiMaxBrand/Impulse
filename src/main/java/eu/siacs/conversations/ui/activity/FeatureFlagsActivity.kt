@@ -172,16 +172,21 @@ private fun FeatureFlagRow(flag: FeatureFlag) {
                                     colors = if (selected) {
                                         ButtonDefaults.buttonColors()
                                     } else {
-                                        // A fixed Color.Gray read as a stark hole punched in the
-                                        // row rather than an inactive control — it doesn't move
-                                        // with the theme. The disabled colors are a low-alpha
-                                        // onSurface tint blended over the real surface tone, so
-                                        // they stay a soft "inactive" gray relative to whatever
-                                        // the container actually is, light or dark theme alike.
-                                        val defaults = ButtonDefaults.buttonColors()
+                                        // Container: a fixed Color.Gray read as a stark hole
+                                        // punched in the row rather than an inactive control — it
+                                        // doesn't move with the theme. disabledContainerColor is a
+                                        // low-alpha onSurface tint over the real surface tone, so
+                                        // it stays a soft "inactive" gray relative to whatever the
+                                        // container actually is, light or dark theme alike.
+                                        //
+                                        // Content: NOT disabledContentColor — that's low-alpha by
+                                        // design, which reads as "this can't be clicked." These
+                                        // buttons are fully clickable, just currently unselected,
+                                        // so the label needs full-contrast text or the whole thing
+                                        // looks disabled when it isn't.
                                         ButtonDefaults.buttonColors(
-                                            containerColor = defaults.disabledContainerColor,
-                                            contentColor = defaults.disabledContentColor,
+                                            containerColor = ButtonDefaults.buttonColors().disabledContainerColor,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     },
                                     interactionSource = interactionSources[index],
