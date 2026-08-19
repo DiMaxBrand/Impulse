@@ -172,9 +172,16 @@ private fun FeatureFlagRow(flag: FeatureFlag) {
                                     colors = if (selected) {
                                         ButtonDefaults.buttonColors()
                                     } else {
+                                        // A fixed Color.Gray read as a stark hole punched in the
+                                        // row rather than an inactive control — it doesn't move
+                                        // with the theme. The disabled colors are a low-alpha
+                                        // onSurface tint blended over the real surface tone, so
+                                        // they stay a soft "inactive" gray relative to whatever
+                                        // the container actually is, light or dark theme alike.
+                                        val defaults = ButtonDefaults.buttonColors()
                                         ButtonDefaults.buttonColors(
-                                            containerColor = Color.Gray,
-                                            contentColor = Color.White,
+                                            containerColor = defaults.disabledContainerColor,
+                                            contentColor = defaults.disabledContentColor,
                                         )
                                     },
                                     interactionSource = interactionSources[index],
