@@ -445,6 +445,27 @@ internal fun isMediaCell(message: Message): Boolean {
         message.fileParams.height > 0
 }
 
+/** Would render with a real page/frame thumbnail in its own single bubble — a strictly broader
+ * set than [isMediaCell]: also true for PDFs, which get a rendered-first-page preview same as a
+ * photo, just with the baked-in "open PDF" icon watermarked on top so it's still obviously not a
+ * photo. Deliberately NOT used for grid-grouping eligibility or the in-app-viewer-vs-external-app
+ * tap decision — those stay on isMediaCell() specifically, since a PDF grouped into a multi-photo
+ * grid (whose tap handler always opens the in-app viewer, unconditionally) or opened in the
+ * single-page in-app viewer would still be wrong for the same reasons isMediaCell() excludes it.
+ * This only governs which composable draws the bubble's resting content. */
+internal fun hasBubbleThumbnailPreview(message: Message): Boolean {
+    val mime = message.mimeType
+    val isPreviewableMedia =
+        mime?.startsWith("image/") == true || mime?.startsWith("video/") == true || mime == "application/pdf"
+    return isPreviewableMedia &&
+        message.isFileOrImage &&
+        !message.isDeleted &&
+        message.encryption != Message.ENCRYPTION_PGP &&
+        message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
+        message.fileParams.width > 0 &&
+        message.fileParams.height > 0
+}
+
 private fun sameDay(a: Long, b: Long): Boolean {
     return UIHelper.sameDay(a, b)
 }
@@ -3105,15 +3126,13 @@ private fun MessageContent(
         (transferable != null &&
             (transferable.getStatus() == Transferable.STATUS_COMPRESSING ||
                 transferable.getStatus() == Transferable.STATUS_UPLOADING)) ||
-            // Was its own hand-duplicated copy of isMediaCell()'s logic, minus the mime
-            // restriction that function gained — meaning it silently drifted back out of sync the
-            // moment that restriction was added, and PDFs kept rendering through this
-            // image/video-only bubble (MediaThumbnailBubble passes drawVideoPlayOverlay=false
-            // unconditionally, which — after threading that flag into the PDF preview too — meant
-            // a PDF's bubble thumbnail lost its only "this is a PDF" indicator entirely). Calling
-            // the real function instead of re-deriving the same condition keeps this one source of
-            // truth for what counts as in-app-viewable media.
-            (transferable == null && isMediaCell(message)) -> {
+            // hasBubbleThumbnailPreview(), not isMediaCell() — this decides which composable draws
+            // the bubble's resting content, a broader question than "is this eligible for grid
+            // grouping / the in-app viewer" (isMediaCell()). A PDF still gets a real page preview
+            // here, same as a photo, just with its baked-in watermark icon so it doesn't read as
+            // one — tapping it still hands off externally regardless (that's onOpenMessage()'s own
+            // isMediaCell() check, untouched by this).
+            (transferable == null && hasBubbleThumbnailPreview(message)) -> {
             val fp = message.fileParams
             val isVideo = message.mimeType?.startsWith("video/") == true
             val hasKnownDimensions = fp.width > 0 && fp.height > 0
@@ -3653,12 +3672,14 @@ private fun MediaThumbnailBubble(
     val cachedBitmap = ThumbnailCache.get(uuid)
     if (cachedBitmap == null && fileBackend != null) {
         val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
+        // For video, this bubble draws its own animated play affordance below, so the baked-in
+        // overlay FileBackend normally adds would double up — suppressed. PDFs have no Compose-
+        // native overlay of their own here, so they still need the baked-in "open PDF" watermark
+        // to read as a document rather than a photo; only video opts out.
         LaunchedEffect(uuid) {
             val bm = withContext(Dispatchers.IO) {
-                // false: this bubble draws its own animated play affordance below, so the
-                // baked-in overlay FileBackend normally adds to video thumbnails would double up.
                 try {
-                    fileBackend.getThumbnail(message, sizePx, false, false)
+                    fileBackend.getThumbnail(message, sizePx, false, !isVideo)
                 } catch (_: Exception) {
                     null
                 }
