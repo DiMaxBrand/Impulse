@@ -1349,7 +1349,7 @@
     <string name="invite_play_protect_note">Play Protect will pop up asking to verify the app before installing — that\'s expected, not a warning. It scans the file, confirms it\'s safe, and lets the install continue.</string>
     <string name="invite_intro">Send this link to whoever you want to invite. Once they open it in their phone\'s browser, it downloads the app automatically:</string>
     <string name="invite_share_button">Share invite link</string>
-    <string name="invite_share_message">Join me on Impulse! It\'s a fast, private, open-source XMPP messenger with Material 3 Expressive design, based on Conversations. Open this link on your phone to download it: %1$s\n\nIf Google Play Protect asks to verify the app, that\'s normal — tap through it, it\'ll confirm the app is safe and let you continue.</string>
+    <string name="invite_share_message">Join me on Impulse! It\'s a fast, private, open-source XMPP messenger based on Conversations. Open this link on your phone to download it: %1$s\n\nAndroid may show a couple of security prompts during install (Play Protect verification, maybe a ~10-second wait on some phones) — that\'s all normal, just continue.</string>
     <string name="invite_link_copied">Link copied to clipboard</string>
     <string name="invite_install_steps_title">How to install</string>
     <string name="invite_install_chrome_title">Chrome</string>
