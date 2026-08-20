@@ -1356,7 +1356,8 @@
     <string name="invite_install_chrome_steps">Open the downloaded file (tap the notification, or Chrome\'s ⋮ menu → Downloads), then tap Install.</string>
     <string name="invite_install_samsung_title">Samsung Internet</string>
     <string name="invite_install_samsung_steps">Tap Open on the download banner, or ⋮ (bottom right) → Downloads → the file at the top, then tap Install.</string>
-    <string name="invite_install_unknown_sources">If Android blocks the install, allow it for your browser under Settings → Apps → Special access → Install unknown apps, then try again.</string>
+    <string name="invite_install_permission_heads_up">Android may ask to allow installs from your browser the first time — that\'s expected, just tap Allow. On some phones (Xiaomi especially), the confirm button stays greyed out for about 10 seconds first — that\'s a built-in safety delay, not a bug, so just wait it out.</string>
+    <string name="invite_install_unknown_sources">If Android blocks the install outright, allow it for your browser under Settings → Apps → Special access → Install unknown apps, then try again.</string>
     <!-- Voice message listen status -->
     <string name="listen_status_not_listened">Not listened</string>
     <string name="listen_status_listening">Listening</string>

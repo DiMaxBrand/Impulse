@@ -89,6 +89,15 @@ fun InviteScreenContent(onClose: () -> Unit) {
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 8.dp),
         )
+        // Sets expectations before the per-browser steps below: the "allow installs from this
+        // source" prompt (and on some phones, its greyed-out-for-10-seconds confirm button) is
+        // routine here, not something specific to Chrome or Samsung Internet individually.
+        Text(
+            text = stringResource(R.string.invite_install_permission_heads_up),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
         InstallStep(
             title = stringResource(R.string.invite_install_chrome_title),
             steps = stringResource(R.string.invite_install_chrome_steps),
