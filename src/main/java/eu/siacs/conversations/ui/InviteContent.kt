@@ -152,6 +152,19 @@ private fun InviteCard(inviteUrl: String) {
             ) {
                 Text(stringResource(R.string.invite_share_button))
             }
+            Spacer(Modifier.height(8.dp))
+            // Right below the button, on purpose — this is the moment someone's about to pick a
+            // share target, and it needs to be visible without scrolling. Deliberately not a
+            // hardcoded segment count: that number depends on the exact message text (locale,
+            // whichever non-ASCII character happens to be in it — even the EN string forces
+            // Unicode SMS encoding via a single em dash), which has already changed several
+            // times and will again; a stale specific number would be worse than a general one.
+            Text(
+                text = stringResource(R.string.invite_sms_warning),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }
