@@ -169,6 +169,11 @@ Currently implemented: reset update-sheet pause timer. Backlog:
 
 ## General
 
+- [ ] **Emergency mode, part 2** — `FeatureFlag.EMERGENCY_MODE` (see `XmppConnectionService.refreshEmergencyMode()`/`isEmergencyModeActive()`) currently only reuses `isDataSaverDisabled()` to skip new avatar fetches and disable media auto-download while any account is `SERVER_NOT_FOUND`/`CONNECTION_TIMEOUT`. Confirmed-but-not-yet-built for a second pass:
+  - [ ] Limit/skip MAM catch-up history sync while active
+  - [ ] Disable message carbons (XEP-0280) while active — less XML per message
+  - [ ] Longer connection/read timeouts while active, so a slow-but-working link doesn't get treated as dead and retried repeatedly
+  - [ ] Some visible indicator that it's active (a banner? — nothing currently surfaces this to the user beyond the behavior itself)
 - [ ] **Container transform on the rest of Start Chat's + menu items** — "Invite" now grows into
   its destination via a shared-bounds transform inline in `StartConversationScreen.kt` (see
   `inviteExpanded` there). The user wants every item in that FAB menu doing the same, including

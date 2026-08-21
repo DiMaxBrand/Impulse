@@ -1416,6 +1416,8 @@
     <string name="feature_flag_option_off">Выкл.</string>
     <string name="feature_flag_invite_contacts_title">Приглашение контактов</string>
     <string name="feature_flag_invite_contacts_description">Добавляет пункт «Пригласить» в меню + на экране «Начать чат» — отправьте другу прямую ссылку для скачивания приложения</string>
+    <string name="feature_flag_emergency_mode_title">Аварийный режим</string>
+    <string name="feature_flag_emergency_mode_description">При плохом соединении (сервер не найден / тайм-аут соединения) автоматически прекращает загрузку новых аватаров и медиафайлов — текстовые сообщения продолжают работать</string>
     <string name="invite_title">Пригласить</string>
     <string name="invite_play_protect_note">Play Protect предложит проверить приложение перед установкой — это ожидаемо, не предупреждение об опасности. Он проверит файл, подтвердит, что всё безопасно, и позволит продолжить установку.</string>
     <string name="invite_intro">Отправьте эту ссылку тому, кого хотите пригласить. Как только человек откроет её в браузере на телефоне, приложение скачается автоматически:</string>

@@ -19,11 +19,26 @@ enum class FeatureFlag(
 ) {
     /** Gates the "Invite" entry in Start Chat's "+" menu (invite a contact by sharing a direct
      * download link to the latest stable release's universal APK). Off by default: the link only
-     * resolves once a stable release actually exists — see [eu.siacs.conversations.ui.activity.InviteActivity]. */
+     * resolves once a stable release actually exists — see [eu.siacs.conversations.ui.InviteContent]. */
     INVITE_CONTACTS(
         key = "invite_contacts",
         titleRes = R.string.feature_flag_invite_contacts_title,
         descriptionRes = R.string.feature_flag_invite_contacts_description,
+        defaultValue = false,
+    ),
+
+    /** Auto-activates a reduced-data mode while any account is stuck at
+     * [eu.siacs.conversations.entities.Account.State.SERVER_NOT_FOUND] or
+     * [eu.siacs.conversations.entities.Account.State.CONNECTION_TIMEOUT] — reuses the existing
+     * `isDataSaverDisabled()` gate (already checked by avatar fetching and file auto-download), so
+     * activating this is equivalent to Android's own Data Saver being on, network-metered-or-not.
+     * Off by default: this is the first slice only (skip new avatar fetches, disable
+     * auto-download) — MAM catch-up limiting, disabling carbons, and longer timeouts are a
+     * follow-up, see TODO.md. */
+    EMERGENCY_MODE(
+        key = "emergency_mode",
+        titleRes = R.string.feature_flag_emergency_mode_title,
+        descriptionRes = R.string.feature_flag_emergency_mode_description,
         defaultValue = false,
     ),
 }

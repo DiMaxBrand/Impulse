@@ -61,6 +61,7 @@ import de.gultsch.common.MiniUri;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.Conversations;
+import eu.siacs.conversations.FeatureFlag;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.android.Device;
 import eu.siacs.conversations.android.JabberIdContact;
@@ -97,6 +98,7 @@ import eu.siacs.conversations.utils.AccountUtils;
 import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.ConversationsFileObserver;
 import eu.siacs.conversations.utils.CryptoHelper;
+import eu.siacs.conversations.utils.FeatureFlagPreferences;
 import eu.siacs.conversations.utils.MimeUtils;
 import eu.siacs.conversations.utils.NetworkManager;
 import eu.siacs.conversations.utils.PhoneHelper;
@@ -1074,6 +1076,12 @@ public class XmppConnectionService extends Service {
     }
 
     public boolean isDataSaverDisabled() {
+        // Emergency mode reuses this exact gate rather than adding parallel checks in
+        // AvatarManager/HttpDownloadConnection/JingleFileTransferConnection: activating it is
+        // equivalent to Android's own Data Saver being on, network-metered-or-not.
+        if (emergencyModeActive) {
+            return false;
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             return true;
         }
@@ -1081,6 +1089,37 @@ public class XmppConnectionService extends Service {
         return !Compatibility.isActiveNetworkMetered(connectivityManager)
                 || Compatibility.getRestrictBackgroundStatus(connectivityManager)
                         == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED;
+    }
+
+    // Feature-flagged (FeatureFlag.EMERGENCY_MODE, default off) — see that flag's doc comment for
+    // the full rationale and what's explicitly out of scope for this first slice (MAM catch-up
+    // limiting, disabling carbons, longer timeouts — see TODO.md).
+    private volatile boolean emergencyModeActive = false;
+
+    public boolean isEmergencyModeActive() {
+        return emergencyModeActive;
+    }
+
+    /**
+     * Re-evaluated on every account status change (see updateAccountUi()) rather than only on
+     * demand, so isDataSaverDisabled() above can stay a cheap volatile-field read instead of
+     * scanning every account's status on every avatar/download decision.
+     */
+    private void refreshEmergencyMode() {
+        if (!new FeatureFlagPreferences(this).isEnabled(FeatureFlag.EMERGENCY_MODE)) {
+            emergencyModeActive = false;
+            return;
+        }
+        boolean shouldBeActive = false;
+        for (final Account account : getAccounts()) {
+            final Account.State status = account.getStatus();
+            if (status == Account.State.SERVER_NOT_FOUND
+                    || status == Account.State.CONNECTION_TIMEOUT) {
+                shouldBeActive = true;
+                break;
+            }
+        }
+        emergencyModeActive = shouldBeActive;
     }
 
     private ListenableFuture<Void> directReply(
@@ -3625,6 +3664,10 @@ public class XmppConnectionService extends Service {
     }
 
     public void updateAccountUi() {
+        // Called on every account status transition already (see AccountStateProcessor) — the
+        // one central point to re-check whether any account just entered or left a
+        // SERVER_NOT_FOUND/CONNECTION_TIMEOUT state, rather than adding a second listener.
+        refreshEmergencyMode();
         for (final OnAccountUpdate listener : threadSafeList(this.mOnAccountUpdates)) {
             listener.onAccountUpdate();
         }

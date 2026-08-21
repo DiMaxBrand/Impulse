@@ -1345,6 +1345,8 @@
     <string name="feature_flag_option_off">Off</string>
     <string name="feature_flag_invite_contacts_title">Invite contacts</string>
     <string name="feature_flag_invite_contacts_description">Adds an "Invite" option to Start Chat\'s + menu — send someone a direct download link to the app</string>
+    <string name="feature_flag_emergency_mode_title">Emergency mode</string>
+    <string name="feature_flag_emergency_mode_description">On a bad connection (server not found / connection timeout), automatically stops fetching new avatars and auto-downloading media — text messages keep working</string>
     <string name="invite_title">Invite</string>
     <string name="invite_play_protect_note">Play Protect will pop up asking to verify the app before installing — that\'s expected, not a warning. It scans the file, confirms it\'s safe, and lets the install continue.</string>
     <string name="invite_intro">Send this link to whoever you want to invite. Once they open it in their phone\'s browser, it downloads the app automatically:</string>
