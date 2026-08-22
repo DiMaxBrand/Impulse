@@ -85,8 +85,21 @@ class DisplayedManager(
             val displayedMessage: Message? =
                 this.service.markMessage(account, from.asBareJid(), id, Message.STATUS_SEND_DISPLAYED)
             var message: Message? = if (displayedMessage == null) null else displayedMessage.prev()
+            // A "displayed" marker on the newest message implies the peer has seen everything
+            // chronologically before it too (that's the whole point of this backward walk) — but
+            // requiring each earlier message to *already* be STATUS_SEND_RECEIVED before
+            // continuing was too strict: on a flaky connection, XEP-0184 delivery receipts are
+            // small, easy-to-lose packets that don't reliably land for every single message, so a
+            // message stuck at plain STATUS_SEND (sent, no individual receipt applied yet) broke
+            // the chain and left it — and everything further back — stuck ungreened forever, even
+            // though the later "displayed" marker already proves the peer saw it. STATUS_SEND is
+            // just as catch-up-able as STATUS_SEND_RECEIVED here: both mean "successfully reached
+            // the server," which is all this needs. Deliberately still stops at STATUS_WAITING/
+            // STATUS_UNSEND (not confirmed sent yet — can't claim displayed), STATUS_SEND_FAILED,
+            // or an incoming STATUS_RECEIVED message (not ours to mark).
             while (message != null
-                && message.getStatus() == Message.STATUS_SEND_RECEIVED
+                && (message.getStatus() == Message.STATUS_SEND_RECEIVED
+                    || message.getStatus() == Message.STATUS_SEND)
                 && message.getTimeSent() < displayedMessage!!.getTimeSent()
             ) {
                 this.service.markMessage(message, Message.STATUS_SEND_DISPLAYED)
