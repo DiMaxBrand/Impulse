@@ -97,6 +97,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -1468,19 +1469,29 @@ private fun MessageList(
     // markedThroughIndex is a monotonic ratchet (lower index = newer, reverseLayout) so scrolling
     // back up never "unmarks" anything already confirmed seen.
     var markedThroughIndex by remember(conversation?.getUuid()) { mutableIntStateOf(Int.MAX_VALUE) }
+    // items is a plain val, rebuilt fresh on every recomposition (see the comment above its
+    // declaration — deliberately not remembered, so it reflects new messages as they arrive).
+    // LaunchedEffect(conversation?.getUuid()) below only restarts on a conversation switch, so
+    // without this, its coroutine would close over whatever `items` existed at the moment the
+    // conversation was opened and never see anything that arrived afterward — the effect would
+    // keep computing "lowest visible unread" against a permanently stale list, which is exactly
+    // why marking only ever seemed to happen via the separate onScrolledToBottom() path (that one
+    // never touches `items` at all) and never dynamically as new messages scrolled into view.
+    val latestItems = rememberUpdatedState(items)
     LaunchedEffect(conversation?.getUuid()) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.index } }
             .collect { visibleIndices ->
+                val currentItems = latestItems.value
                 val lowestVisibleUnread =
                     visibleIndices
                         .filter { idx ->
-                            (items.getOrNull(idx) as? ChatItem.Msg)?.message?.let {
+                            (currentItems.getOrNull(idx) as? ChatItem.Msg)?.message?.let {
                                 it.status == Message.STATUS_RECEIVED && !it.isRead()
                             } == true
                         }
                         .minOrNull()
                 if (lowestVisibleUnread != null && lowestVisibleUnread < markedThroughIndex) {
-                    val uuid = (items[lowestVisibleUnread] as ChatItem.Msg).message.getUuid()
+                    val uuid = (currentItems[lowestVisibleUnread] as ChatItem.Msg).message.getUuid()
                     if (uuid != null) {
                         markedThroughIndex = lowestVisibleUnread
                         listener.onMarkReadUpTo(uuid)
