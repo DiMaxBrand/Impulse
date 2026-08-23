@@ -1478,16 +1478,33 @@ private fun MessageList(
     // why marking only ever seemed to happen via the separate onScrolledToBottom() path (that one
     // never touches `items` at all) and never dynamically as new messages scrolled into view.
     val latestItems = rememberUpdatedState(items)
+    // The typing bubble and "it's late for them" row are declared as their own item(key = ...)
+    // entries ahead of itemsIndexed(items, ...) below, so whenever either is showing,
+    // visibleItemsInfo's raw .index runs ahead of items' own indices by however many of those
+    // leading rows are present right now — reading items[idx] directly was silently grabbing the
+    // wrong chat item (or nothing) exactly when one of those rows happened to be up, which is
+    // why marking looked like a coin flip rather than reliably working or reliably not.
+    // rememberUpdatedState (not a plain val) for the same reason items itself needs it above:
+    // this LaunchedEffect only restarts on a conversation switch, so isTyping/localTimeForContact
+    // — which can flip independently of that — would otherwise be frozen at whatever they were
+    // when the effect launched.
+    val latestLeadingCount = rememberUpdatedState(
+        (if (isTyping) 1 else 0) + (if (localTimeForContact != null) 1 else 0)
+    )
     LaunchedEffect(conversation?.getUuid()) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.index } }
+        snapshotFlow {
+            val leadingCount = latestLeadingCount.value
+            listState.layoutInfo.visibleItemsInfo.map { it.index - leadingCount }
+        }
             .collect { visibleIndices ->
                 val currentItems = latestItems.value
                 val lowestVisibleUnread =
                     visibleIndices
                         .filter { idx ->
-                            (currentItems.getOrNull(idx) as? ChatItem.Msg)?.message?.let {
-                                it.status == Message.STATUS_RECEIVED && !it.isRead()
-                            } == true
+                            idx >= 0 &&
+                                (currentItems.getOrNull(idx) as? ChatItem.Msg)?.message?.let {
+                                    it.status == Message.STATUS_RECEIVED && !it.isRead()
+                                } == true
                         }
                         .minOrNull()
                 if (lowestVisibleUnread != null && lowestVisibleUnread < markedThroughIndex) {
