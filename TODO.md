@@ -169,6 +169,23 @@ Currently implemented: reset update-sheet pause timer. Backlog:
 
 ## General
 
+- [ ] **In-app emoji picker — after the first stable release ships, not before.** Same idea as
+  WhatsApp/Telegram/most native Android and iOS messaging apps: tapping a trigger dismisses the
+  system keyboard and an in-app emoji grid takes over that same screen space instead — genuinely
+  useful on keyboards with weak/no native emoji support (people still generally prefer their
+  messaging app's own picker over the system IME's when the option exists). Emoji rendering
+  itself is already handled (`androidx.emoji2`/`emoji2-emojipicker` are existing dependencies —
+  worth checking whether `emoji2-emojipicker`'s own `EmojiPickerView` can be reused directly
+  rather than building a picker grid from scratch). Placement brainstorm, not decided yet:
+  - **Leading icon inside the text input pill** (WhatsApp/Telegram convention) — a smiley sits
+    inside the rounded `Surface` before the `EditText` starts, rather than as another icon in the
+    outer row. Most recognizable placement, keeps the composer's current 3-slot rhythm (attach /
+    field / mic-send) visually intact since it doesn't add a 4th top-level icon.
+  - **A dedicated icon in the outer composer row**, alongside attach and mic/send — simpler to
+    wire up structurally (no change to the text-field `Surface`'s internal layout) but crowds an
+    already-3-icon row, more of a problem on narrow screens.
+  - Swap-on-tap with the existing attach button (long-press or a secondary state) — rejected as a
+    starting idea, too undiscoverable for a first version.
 - [ ] **Emergency mode, part 2** — `FeatureFlag.EMERGENCY_MODE` (see `XmppConnectionService.refreshEmergencyMode()`/`isEmergencyModeActive()`) currently only reuses `isDataSaverDisabled()` to skip new avatar fetches and disable media auto-download while any account is `SERVER_NOT_FOUND`/`CONNECTION_TIMEOUT`. Confirmed-but-not-yet-built for a second pass:
   - [ ] Limit/skip MAM catch-up history sync while active
   - [ ] Disable message carbons (XEP-0280) while active — less XML per message
