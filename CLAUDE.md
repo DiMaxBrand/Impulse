@@ -30,8 +30,6 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 - **Stable release description**: summarize everything shipped since the **previous stable release** (not just the diff since the last RC). Exception: the **first-ever stable release** has no previous stable to diff against, so it collapses everything since the **first-ever alpha this app has cut** — the earliest alpha in git/release history, regardless of its version number.
 - **Language**: this applies to the title (see above) as well as the description, on every channel, not just stable. The description's user-facing highlights section goes **Russian first, then English** — both are written for regular (non-developer) users, since most people opening a release land on it via Russian. Only Russian and English — see "Localization" below. If technical detail is worth including for developers, put it in a separate **English-only "Developer notes"** section after the two user-facing ones.
 
-> **TEMPORARY — remove this note once the first stable release ships:** no stable release has been published for this app yet — 1.11.0 never reached stable before work moved on to 1.12.0. So the exception above applies right now: whichever version ends up shipping first stable, its description must reach all the way back to 1.11.0's first alpha, not restart at its own cycle's first alpha. Delete this whole callout after the first stable release goes out.
-
 ## Branches
 
 | Branch | Purpose |
