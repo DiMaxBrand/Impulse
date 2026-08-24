@@ -3900,31 +3900,37 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         } else null
     }
     val timeText = DateUtils.formatDateTime(context, message.timeSent, DateUtils.FORMAT_SHOW_TIME)
-    // Voice-message listen status, leftmost in the "status · size · time" line. Outgoing (1:1
-    // only): what the peer is doing with our message; LISTENED itself has no label — the fully
-    // tinted track is its indicator. Incoming: purely local "have I listened to this yet".
+    // Voice-message listen status, leftmost in the "status · size · time" line for the states
+    // that still use text (PAUSED, and the incoming "have I listened to this yet" case).
+    // LISTENING/LISTENED/UNKNOWN render the animated headphone badge (listenIconState below)
+    // instead of text — NOT_LISTENED gets neither: no badge, no label, falls back to the plain
+    // checkmark like any other outgoing message.
     val footerUuid = message.getUuid()
     val isAudio = message.mimeType?.startsWith("audio/") == true
+    val outgoingPeerState: ListenStatusManager.State? =
+        if (!isAudio || footerUuid == null || !outgoing ||
+            message.conversation.getMode() != Conversational.MODE_SINGLE
+        ) {
+            null
+        } else {
+            ListenStatusManager.peerStates[footerUuid]?.state
+                ?: if (message.listenStatus == Message.LISTEN_STATUS_LISTENED)
+                    ListenStatusManager.State.LISTENED
+                else null
+        }
+    val listenIconState: ListenStatusManager.State? = when (outgoingPeerState) {
+        ListenStatusManager.State.LISTENING,
+        ListenStatusManager.State.LISTENED,
+        ListenStatusManager.State.UNKNOWN -> outgoingPeerState
+        else -> null
+    }
     val listenLabel: String? =
         if (!isAudio || footerUuid == null) {
             null
         } else if (outgoing) {
-            val peerState =
-                ListenStatusManager.peerStates[footerUuid]?.state
-                    ?: if (message.listenStatus == Message.LISTEN_STATUS_LISTENED)
-                        ListenStatusManager.State.LISTENED
-                    else null
-            if (message.conversation.getMode() != Conversational.MODE_SINGLE) null
-            else when (peerState) {
-                null, ListenStatusManager.State.NOT_LISTENED ->
-                    stringResource(R.string.listen_status_not_listened)
-                ListenStatusManager.State.LISTENING ->
-                    stringResource(R.string.listen_status_listening)
-                ListenStatusManager.State.PAUSED -> stringResource(R.string.listen_status_paused)
-                ListenStatusManager.State.LISTENED -> null
-                ListenStatusManager.State.UNKNOWN ->
-                    stringResource(R.string.listen_status_unknown)
-            }
+            if (outgoingPeerState == ListenStatusManager.State.PAUSED)
+                stringResource(R.string.listen_status_paused)
+            else null
         } else {
             if (ListenStatusManager.localListened[footerUuid] == true ||
                 message.listenStatus == Message.LISTEN_STATUS_LISTENED
@@ -3946,6 +3952,16 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
     ) {
         val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+        if (listenIconState != null) {
+            ListenStatusIcon(
+                state = listenIconState,
+                grayColor = onSurfaceVariant,
+                listenedColor = LocalSuccessColors.current.success,
+                unknownColor = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+        }
         val footerText = remember(listenLabel, privateLabel, privateLabelColor, fileSize, timeText, onSurfaceVariant) {
             val segments = buildList<Pair<String, Color?>> {
                 listenLabel?.let { add(it to null) }

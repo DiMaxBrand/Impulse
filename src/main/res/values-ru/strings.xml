@@ -1391,6 +1391,7 @@
     <string name="listen_status_not_listened">Не прослушано</string>
     <string name="listen_status_listening">Слушает</string>
     <string name="listen_status_paused">Пауза</string>
+    <string name="listen_status_listened">Прослушано</string>
     <string name="listen_status_unknown">Неизвестно</string>
     <string name="developer_options_title">Параметры разработчика</string>
     <string name="developer_options_reset_pause_timer">Сбросить таймер паузы обновлений</string>

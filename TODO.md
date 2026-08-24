@@ -21,7 +21,7 @@ Needs full testing given the scope, so bundle it into a dedicated RC once
 we're going stable rather than slipping it into a patch release. Prep now:
 download the **rounded** variant of the "headphones" Material Symbol.
 
-- [ ] Replace the current listening badge with a headphone icon. `ListenStatusManager.State` has five values — mapping per state, confirmed:
+- [x] Replace the current listening badge with a headphone icon (`ListenStatusIcon.kt`, `ic_headphones_24dp`), wired into `ConversationScreen.kt`'s message footer. `ListenStatusManager.State` has five values — mapping per state, confirmed:
   - **`LISTENING`** (active listening): black headphone icon, animated/moving to read as "live" rather than static. Appears once someone starts listening to a message you sent — usually after its checkmark has already gone green (read).
   - **`LISTENED`**: icon turns green and bounces, matching the checkmark's own bounce-to-green animation (spatial spring for the bounce, effect spring for the color — see the checkmark's own `MessageStatusIcon.kt` for the pattern).
   - **`UNKNOWN`**: headphone icon appears, one-time scale-in-then-back with a bouncy spring (tune the damping ratio) — not a continuous/looping pulse — and turns red; color transition uses an effect spring (not a tween), same reasoning as `LISTENED`.

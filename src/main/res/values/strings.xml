@@ -1365,5 +1365,6 @@
     <string name="listen_status_not_listened">Not listened</string>
     <string name="listen_status_listening">Listening</string>
     <string name="listen_status_paused">Paused</string>
+    <string name="listen_status_listened">Listened</string>
     <string name="listen_status_unknown">Unknown</string>
 </resources>
