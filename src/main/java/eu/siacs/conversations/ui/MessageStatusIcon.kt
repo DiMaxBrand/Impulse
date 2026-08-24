@@ -2,7 +2,12 @@ package eu.siacs.conversations.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -50,7 +55,30 @@ private val StemRetractEasing = CubicBezierEasing(0.1f, 0.7f, 0.05f, 1f)
  * turning green; an upload turning into a cancel glyph if stopped. Appended OFFERED/CANCELLED
  * after READ on purpose — the WAITING..READ ordinal ordering is load-bearing for the `>=`
  * comparisons in the catch-all snap branch below, and these two aren't part of that chain. */
-enum class CheckmarkPhase { WAITING, UPLOADING, SENT, DELIVERED, READ, OFFERED, CANCELLED }
+// LISTENING/LISTENED/LISTEN_UNKNOWN appended after CANCELLED for the same reason OFFERED/
+// CANCELLED were: the WAITING..READ ordinal ordering is load-bearing for the `>=` comparisons in
+// the catch-all snap branch below, and none of these five are part of that chain.
+enum class CheckmarkPhase { WAITING, UPLOADING, SENT, DELIVERED, READ, OFFERED, CANCELLED, LISTENING, LISTENED, LISTEN_UNKNOWN }
+
+private fun CheckmarkPhase.isListenPhase() =
+    this == CheckmarkPhase.LISTENING || this == CheckmarkPhase.LISTENED || this == CheckmarkPhase.LISTEN_UNKNOWN
+
+/**
+ * Overrides [basePhase] with the voice-message listen-status phase once the peer has done
+ * anything with a voice message we sent — the headphone glyph takes over this exact slot, it
+ * isn't an extra icon bolted on next to the checkmark. PAUSED and NOT_LISTENED (or no listen
+ * status at all, i.e. [listenState] null) fall through to [basePhase] unchanged — the ordinary
+ * checkmark, same as any non-voice message.
+ */
+fun voiceCheckmarkPhase(
+    basePhase: CheckmarkPhase?,
+    listenState: ListenStatusManager.State?,
+): CheckmarkPhase? = when (listenState) {
+    ListenStatusManager.State.LISTENING -> CheckmarkPhase.LISTENING
+    ListenStatusManager.State.LISTENED -> CheckmarkPhase.LISTENED
+    ListenStatusManager.State.UNKNOWN -> CheckmarkPhase.LISTEN_UNKNOWN
+    else -> basePhase
+}
 
 fun checkmarkPhaseForStatus(
     status: Int,
@@ -139,6 +167,18 @@ private val CANCEL_TOP_RIGHT = Offset(15.6f, 8.4f)
 private val CANCEL_BOTTOM_LEFT = Offset(8.4f, 15.6f)
 private val CANCEL_BOTTOM_RIGHT = Offset(15.6f, 15.6f)
 
+// Headphone glyph, reachable only from the checkmark family (SENT/DELIVERED/READ) once a voice
+// message's listen status arrives. Bespoke to this file's drawing convention rather than measured
+// off a real Material Symbol — a stroke-only two-segment headband (same left/apex/right vee
+// technique the chevron already uses, just opening downward instead of up) plus two ear-cup
+// strokes growing straight down from its ends, same CHECK_STROKE_WIDTH as every other glyph here
+// so it reads as the same family, not a bolted-on icon in a different visual language.
+private val HEADBAND_LEFT = Offset(6f, 10f)
+private val HEADBAND_APEX = Offset(12f, 5f)
+private val HEADBAND_RIGHT = Offset(18f, 10f)
+private val EAR_LEFT_BOTTOM = Offset(6f, 16f)
+private val EAR_RIGHT_BOTTOM = Offset(18f, 16f)
+
 /**
  * Draws the waiting/sent/delivered/read sequence as one continuously-morphing glyph instead of
  * swapping between four unrelated icons:
@@ -164,23 +204,31 @@ private val CANCEL_BOTTOM_RIGHT = Offset(15.6f, 15.6f)
  * - Delivered → read: both strokes bounce (quick zoom in, bouncy spring back to rest) while
  *   tinting from gray to green, with the stroke going a bit heavier at the same time so the two
  *   states stay easy to tell apart even for someone not distinguishing the color.
+ * - Read → listening (voice messages only, once the peer starts playing one we sent): the
+ *   double-check (if showing) retracts back into a single checkmark — headphone is one glyph, not
+ *   two — any green fades back to gray, and that single checkmark's own 3 points slide onto a
+ *   headband's, then two ear-cup strokes grow straight down from its ends. Listening itself pulses
+ *   continuously so it reads as "live." Listening → listened bounces to green exactly like
+ *   delivered → read above; listening/listened → an extrapolation losing track bounces bouncier,
+ *   to red — same spatial+effect spring language throughout, just aimed at the headphone.
  */
 @Composable
 fun MessageStatusIcon(
-    status: Int,
-    transferable: Transferable?,
-    errorMessage: String?,
+    phase: CheckmarkPhase,
     grayColor: Color,
     successColor: Color,
+    listenedColor: Color = successColor,
+    unknownColor: Color = grayColor,
     modifier: Modifier = Modifier,
 ) {
-    val phase = checkmarkPhaseForStatus(status, transferable, errorMessage) ?: return
     var currentPhase by remember { mutableStateOf(phase) }
     // Only true while an actual morph is in flight. At rest — the vast majority of the time,
     // for every message that isn't mid-transition right now — this renders the real bundled
     // drawable instead of the Canvas, so any tiny residual mismatch between the measured
     // geometry and the true vector asset can't linger, and idle messages stop paying for a
-    // per-frame Canvas redraw they don't need.
+    // per-frame Canvas redraw they don't need. The listen phases have no bundled drawable
+    // equivalent (bespoke stroke glyph, see the headband constants above) and LISTENING needs a
+    // continuous pulse even "at rest," so they never take this shortcut.
     var isAnimating by remember { mutableStateOf(false) }
 
     val reposition = remember { Animatable(if (phase == CheckmarkPhase.WAITING) 0f else 1f) }
@@ -190,12 +238,26 @@ fun MessageStatusIcon(
         Animatable(if (phase == CheckmarkPhase.DELIVERED || phase == CheckmarkPhase.READ) 1f else 0f)
     }
     val bounceScale = remember { Animatable(1f) }
-    val colorProgress = remember { Animatable(if (phase == CheckmarkPhase.READ) 1f else 0f) }
+    val colorProgress = remember {
+        Animatable(
+            if (phase == CheckmarkPhase.READ ||
+                phase == CheckmarkPhase.LISTENED ||
+                phase == CheckmarkPhase.LISTEN_UNKNOWN
+            ) 1f else 0f,
+        )
+    }
     // Only ever driven by the waiting -> uploading transition below, so a plain 0f start is
     // always correct — unlike reposition/expand1/expand2 there's no later transition that reads
     // these while already at rest in some other phase.
     val stemProgress = remember { Animatable(0f) }
     val trayProgress = remember { Animatable(0f) }
+    // Only touched by (sent/delivered/read) -> listening: the checkmark's own 3 points sliding
+    // onto the headband's 3 points — same lerp-two-point-sets technique as chevronToCheck below,
+    // just aimed at the headband instead of the checkmark.
+    val checkToHeadband = remember { Animatable(if (phase.isListenPhase()) 1f else 0f) }
+    // Same transition: two ear-cup strokes growing straight down from the headband's two ends
+    // once it's finished forming — same "grow from an anchor" language as the upload icon's stem.
+    val earsProgress = remember { Animatable(if (phase.isListenPhase()) 1f else 0f) }
     // Only ever driven by the uploading -> sent transition below — slides the chevron's own
     // points directly onto the checkmark's, never passing back through the dot positions.
     val chevronToCheck = remember { Animatable(0f) }
@@ -212,6 +274,21 @@ fun MessageStatusIcon(
     // Only touched by uploading -> cancelled: the X's four strokes growing outward from that
     // merged center point once it's arrived.
     val cancelCrossGrow = remember { Animatable(0f) }
+
+    // Drives the headphone's continuous "this is live" pulse while at rest in LISTENING — the
+    // only phase in this whole file that keeps animating once settled rather than stopping dead.
+    // Always mounted (Compose composables must be called unconditionally); its value is only ever
+    // read down in the render section, guarded to the moments it actually applies.
+    val infiniteTransition = rememberInfiniteTransition(label = "listening-pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "listening-pulse-scale",
+    )
 
     // Keyed on `phase` this used to cancel and restart mid-animation on every status change —
     // status can flip more than once within a single morph's duration (e.g. an upload finishing
@@ -349,16 +426,92 @@ fun MessageStatusIcon(
                         }
                     }
                 }
+                (from == CheckmarkPhase.SENT ||
+                    from == CheckmarkPhase.DELIVERED ||
+                    from == CheckmarkPhase.READ) &&
+                    to == CheckmarkPhase.LISTENING -> {
+                    isAnimating = true
+                    // The double-check (if showing) retracts back into a single checkmark first —
+                    // headphone is one glyph, not two — while that single checkmark's own 3 points
+                    // slide onto the headband's, and any green from an already-landed read marker
+                    // fades back to gray at the same time, since arriving at LISTENING always
+                    // starts from the plain black/gray look.
+                    coroutineScope {
+                        launch { doubleSlide.animateTo(0f, tween(200, easing = StandardEasing)) }
+                        launch { checkToHeadband.animateTo(1f, tween(260, easing = StandardEasing)) }
+                        launch { colorProgress.animateTo(0f, tween(200, easing = StandardEasing)) }
+                    }
+                    earsProgress.animateTo(1f, tween(220, easing = StandardEasing))
+                }
+                from == CheckmarkPhase.LISTENING && to == CheckmarkPhase.LISTENED -> {
+                    isAnimating = true
+                    // Identical spatial+effect spring choreography as delivered -> read above —
+                    // same visual language, just aimed at the headphone instead of the checkmark.
+                    coroutineScope {
+                        launch {
+                            bounceScale.animateTo(1.32f, tween(160, easing = StandardEasing))
+                            bounceScale.animateTo(
+                                1f,
+                                spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow,
+                                ),
+                            )
+                        }
+                        launch {
+                            colorProgress.animateTo(1f, spring(stiffness = 1600f, dampingRatio = 1.0f))
+                        }
+                    }
+                }
+                (from == CheckmarkPhase.LISTENING || from == CheckmarkPhase.LISTENED) &&
+                    to == CheckmarkPhase.LISTEN_UNKNOWN -> {
+                    isAnimating = true
+                    // Bouncier than the listened kick — the extrapolation genuinely lost track, so
+                    // this should read more like an alert than a confirmation. Same effect-spring
+                    // color language, aimed at red instead of green.
+                    coroutineScope {
+                        launch {
+                            bounceScale.snapTo(0f)
+                            bounceScale.animateTo(
+                                1f,
+                                spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium),
+                            )
+                        }
+                        launch {
+                            colorProgress.snapTo(0f)
+                            colorProgress.animateTo(1f, spring(stiffness = 1600f, dampingRatio = 1.0f))
+                        }
+                    }
+                }
+                (from == CheckmarkPhase.LISTENED || from == CheckmarkPhase.LISTEN_UNKNOWN) &&
+                    to == CheckmarkPhase.LISTENING -> {
+                    isAnimating = true
+                    // A genuine resume — the peer re-opened the message after LISTENED/
+                    // LISTEN_UNKNOWN — settles straight back to the resting look; the continuous
+                    // pulse takes over from there.
+                    bounceScale.snapTo(1f)
+                    colorProgress.animateTo(0f, tween(200, easing = StandardEasing))
+                }
                 else -> {
                     // Any other jump (skipped a step, went backwards, or this composable just
                     // mounted mid-story) — snap straight to the target rather than replaying a
                     // multi-second morph the user never saw the start of. Never worth animating,
-                    // so isAnimating stays false and this renders the static drawable throughout.
+                    // so isAnimating stays false — which renders the static drawable for the
+                    // ordinary checkmark family, or the headphone glyph at its plain resting look
+                    // for the listen family (it has no static-drawable shortcut of its own).
                     reposition.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
                     expand1.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
                     expand2.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
                     doubleSlide.snapTo(if (to >= CheckmarkPhase.DELIVERED) 1f else 0f)
-                    colorProgress.snapTo(if (to == CheckmarkPhase.READ) 1f else 0f)
+                    bounceScale.snapTo(1f)
+                    checkToHeadband.snapTo(if (to.isListenPhase()) 1f else 0f)
+                    earsProgress.snapTo(if (to.isListenPhase()) 1f else 0f)
+                    colorProgress.snapTo(
+                        if (to == CheckmarkPhase.READ ||
+                            to == CheckmarkPhase.LISTENED ||
+                            to == CheckmarkPhase.LISTEN_UNKNOWN
+                        ) 1f else 0f,
+                    )
                 }
             }
             currentPhase = to
@@ -366,7 +519,7 @@ fun MessageStatusIcon(
         }
     }
 
-    if (!isAnimating) {
+    if (!isAnimating && !currentPhase.isListenPhase()) {
         val (staticDrawable, staticColor) = when (currentPhase) {
             CheckmarkPhase.WAITING -> R.drawable.ic_more_horiz_24dp to grayColor
             CheckmarkPhase.UPLOADING -> R.drawable.ic_upload_24dp to grayColor
@@ -375,6 +528,10 @@ fun MessageStatusIcon(
             CheckmarkPhase.READ -> R.drawable.ic_done_all_bold_24dp to successColor
             CheckmarkPhase.OFFERED -> R.drawable.ic_p2p_24dp to grayColor
             CheckmarkPhase.CANCELLED -> R.drawable.ic_cancel_24dp to grayColor
+            CheckmarkPhase.LISTENING, CheckmarkPhase.LISTENED, CheckmarkPhase.LISTEN_UNKNOWN ->
+                // Unreachable — excluded by the guard above — but the compiler wants an
+                // exhaustive `when`.
+                return
         }
         Icon(
             painter = painterResource(staticDrawable),
@@ -528,6 +685,63 @@ fun MessageStatusIcon(
                 drawLine(grayColor, CANCEL_CENTER * s, bl * s, armStrokeW, cap = StrokeCap.Round)
                 drawLine(grayColor, CANCEL_CENTER * s, br * s, armStrokeW, cap = StrokeCap.Round)
             }
+            }
+        }
+        return
+    }
+
+    // Same "check both, not just the incoming target" reasoning as inArrowFamily above — during
+    // read -> listening `phase` is already LISTENING while `currentPhase` is still READ for the
+    // whole transition.
+    val inHeadphoneFamily = phase.isListenPhase() || currentPhase.isListenPhase()
+    if (inHeadphoneFamily) {
+        Canvas(modifier = modifier) {
+            val s = size.minDimension / 24f
+            // Only ever reached once past the dots stage (checkmark family or later), so the
+            // stroke is always at its real final width — no thin-dot lerp needed here, and "as
+            // thick as the checkmark icons" falls out of reusing the exact same constant.
+            val strokeW = CHECK_STROKE_WIDTH
+
+            val basePos0 = androidx.compose.ui.geometry.lerp(DOT1, CHECK_P0, reposition.value)
+            val basePos1 = androidx.compose.ui.geometry.lerp(DOT2, CHECK_P1, reposition.value)
+            val basePos2 = androidx.compose.ui.geometry.lerp(DOT3, CHECK_P2, reposition.value)
+
+            // The checkmark's own 3 points sliding onto the headband's — same technique
+            // chevronToCheck uses above, different target shape.
+            val headPos0 = androidx.compose.ui.geometry.lerp(basePos0, HEADBAND_LEFT, checkToHeadband.value)
+            val headPos1 = androidx.compose.ui.geometry.lerp(basePos1, HEADBAND_APEX, checkToHeadband.value)
+            val headPos2 = androidx.compose.ui.geometry.lerp(basePos2, HEADBAND_RIGHT, checkToHeadband.value)
+
+            val listenTint = when (currentPhase) {
+                CheckmarkPhase.LISTENED -> androidx.compose.ui.graphics.lerp(grayColor, listenedColor, colorProgress.value)
+                CheckmarkPhase.LISTEN_UNKNOWN -> androidx.compose.ui.graphics.lerp(grayColor, unknownColor, colorProgress.value)
+                // LISTENING (or still mid-transition into it) — plain black/gray throughout.
+                else -> grayColor
+            }
+            // The continuous "this is live" pulse only applies once fully settled and idle in
+            // LISTENING — mid-transition or bouncing into LISTENED/LISTEN_UNKNOWN uses the
+            // one-shot bounceScale instead, same as the checkmark's own delivered -> read kick.
+            val appliedScale =
+                if (phase == CheckmarkPhase.LISTENING && currentPhase == CheckmarkPhase.LISTENING) {
+                    pulseScale
+                } else {
+                    bounceScale.value
+                }
+
+            scale(appliedScale) {
+                // Headband: same two-segment vee technique as the chevron/checkmark above, just
+                // opening downward instead of up.
+                drawLine(listenTint, headPos0 * s, headPos1 * s, strokeW * s, cap = StrokeCap.Round)
+                drawLine(listenTint, headPos1 * s, headPos2 * s, strokeW * s, cap = StrokeCap.Round)
+
+                // Ear cups: grow straight down from the headband's two ends once it's formed —
+                // same "grow from an anchor" language as the upload icon's stem.
+                if (earsProgress.value > 0f) {
+                    val earLeft = androidx.compose.ui.geometry.lerp(headPos0, EAR_LEFT_BOTTOM, earsProgress.value)
+                    val earRight = androidx.compose.ui.geometry.lerp(headPos2, EAR_RIGHT_BOTTOM, earsProgress.value)
+                    drawLine(listenTint, headPos0 * s, earLeft * s, strokeW * s, cap = StrokeCap.Round)
+                    drawLine(listenTint, headPos2 * s, earRight * s, strokeW * s, cap = StrokeCap.Round)
+                }
             }
         }
         return

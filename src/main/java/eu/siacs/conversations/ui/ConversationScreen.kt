@@ -3952,16 +3952,6 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
     ) {
         val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-        if (listenIconState != null) {
-            ListenStatusIcon(
-                state = listenIconState,
-                grayColor = onSurfaceVariant,
-                listenedColor = LocalSuccessColors.current.success,
-                unknownColor = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(14.dp),
-            )
-            Spacer(Modifier.width(4.dp))
-        }
         val footerText = remember(listenLabel, privateLabel, privateLabelColor, fileSize, timeText, onSurfaceVariant) {
             val segments = buildList<Pair<String, Color?>> {
                 listenLabel?.let { add(it to null) }
@@ -4008,20 +3998,27 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         if (outgoing && statusMessage.type != Message.TYPE_RTP_SESSION) {
             val transferable = statusMessage.transferable
             // Waiting/uploading/p2p-offered/sent/delivered/read all morph into each other
-            // continuously — see MessageStatusIcon for the choreography (including how
+            // continuously — and, for a voice message once the peer does anything with it
+            // (listening, listened, or extrapolation losing track), that same morph continues
+            // right on into the headphone glyph instead of a separate icon bolted on next to the
+            // checkmark. See MessageStatusIcon for the full choreography (including how
             // STATUS_UNSEND is split between "still sending text" and "file genuinely
             // mid-upload", and how only a user-initiated cancel joins the morph story, not a
             // generic send/upload error). Only that generic error glyph falls through to a plain
             // crossfade below.
-            val checkmarkPhase = checkmarkPhaseForStatus(status, transferable, statusMessage.errorMessage)
+            val checkmarkPhase =
+                voiceCheckmarkPhase(
+                    checkmarkPhaseForStatus(status, transferable, statusMessage.errorMessage),
+                    listenIconState,
+                )
             if (checkmarkPhase != null) {
                 Spacer(Modifier.width(4.dp))
                 MessageStatusIcon(
-                    status = status,
-                    transferable = transferable,
-                    errorMessage = statusMessage.errorMessage,
+                    phase = checkmarkPhase,
                     grayColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     successColor = LocalSuccessColors.current.success,
+                    listenedColor = LocalSuccessColors.current.success,
+                    unknownColor = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(14.dp),
                 )
             } else {
