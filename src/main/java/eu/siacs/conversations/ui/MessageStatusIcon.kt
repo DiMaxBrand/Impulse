@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.util.lerp
 import eu.siacs.conversations.R
@@ -207,8 +208,12 @@ private val EAR_RIGHT_BOTTOM = Offset(18f, 16f)
  * - Read → listening (voice messages only, once the peer starts playing one we sent): the
  *   double-check (if showing) retracts back into a single checkmark — headphone is one glyph, not
  *   two — any green fades back to gray, and that single checkmark's own 3 points slide onto a
- *   headband's, then two ear-cup strokes grow straight down from its ends. Listening itself pulses
- *   continuously so it reads as "live." Listening → listened bounces to green exactly like
+ *   headband's, then two ear-cup strokes grow straight down from its ends — a hand-drawn
+ *   approximation just for the motion; the instant it settles, this swaps to the real Google
+ *   Material Symbol headphone drawable, same as every other phase's own real bundled asset, so
+ *   the transition's first frame is the checkmark exactly as it already looked and its last frame
+ *   is the true icon exactly as it always renders at rest, pixel for pixel. Listening itself
+ *   pulses continuously so it reads as "live." Listening → listened bounces to green exactly like
  *   delivered → read above; listening/listened → an extrapolation losing track bounces bouncier,
  *   to red — same spatial+effect spring language throughout, just aimed at the headphone.
  */
@@ -224,11 +229,11 @@ fun MessageStatusIcon(
     var currentPhase by remember { mutableStateOf(phase) }
     // Only true while an actual morph is in flight. At rest — the vast majority of the time,
     // for every message that isn't mid-transition right now — this renders the real bundled
-    // drawable instead of the Canvas, so any tiny residual mismatch between the measured
-    // geometry and the true vector asset can't linger, and idle messages stop paying for a
-    // per-frame Canvas redraw they don't need. The listen phases have no bundled drawable
-    // equivalent (bespoke stroke glyph, see the headband constants above) and LISTENING needs a
-    // continuous pulse even "at rest," so they never take this shortcut.
+    // drawable (the actual Google Material Symbol for the headphone, same as every other phase's
+    // own real asset) instead of the Canvas, so any tiny residual mismatch between the measured/
+    // approximated morph geometry and the true vector asset can't linger, and idle messages stop
+    // paying for a per-frame Canvas redraw they don't need. LISTENING is the one exception that
+    // keeps animating even at rest (the continuous "this is live" pulse) — see pulseScale below.
     var isAnimating by remember { mutableStateOf(false) }
 
     val reposition = remember { Animatable(if (phase == CheckmarkPhase.WAITING) 0f else 1f) }
@@ -519,7 +524,7 @@ fun MessageStatusIcon(
         }
     }
 
-    if (!isAnimating && !currentPhase.isListenPhase()) {
+    if (!isAnimating) {
         val (staticDrawable, staticColor) = when (currentPhase) {
             CheckmarkPhase.WAITING -> R.drawable.ic_more_horiz_24dp to grayColor
             CheckmarkPhase.UPLOADING -> R.drawable.ic_upload_24dp to grayColor
@@ -528,16 +533,28 @@ fun MessageStatusIcon(
             CheckmarkPhase.READ -> R.drawable.ic_done_all_bold_24dp to successColor
             CheckmarkPhase.OFFERED -> R.drawable.ic_p2p_24dp to grayColor
             CheckmarkPhase.CANCELLED -> R.drawable.ic_cancel_24dp to grayColor
-            CheckmarkPhase.LISTENING, CheckmarkPhase.LISTENED, CheckmarkPhase.LISTEN_UNKNOWN ->
-                // Unreachable — excluded by the guard above — but the compiler wants an
-                // exhaustive `when`.
-                return
+            // The real Google Material Symbol (rounded, filled) — not the hand-drawn stroke
+            // approximation the Canvas block below uses while mid-morph. That approximation only
+            // has to get the *shape* of the transition right; the settled look, same as every
+            // other phase here, is the actual bundled asset, pixel-exact.
+            CheckmarkPhase.LISTENING -> R.drawable.ic_headphones_24dp to grayColor
+            CheckmarkPhase.LISTENED -> R.drawable.ic_headphones_24dp to listenedColor
+            CheckmarkPhase.LISTEN_UNKNOWN -> R.drawable.ic_headphones_24dp to unknownColor
+        }
+        // LISTENING alone keeps animating even at rest — the continuous "this is live" pulse —
+        // so it's the one phase in this whole file where !isAnimating doesn't mean "nothing is
+        // moving." pulseScale is itself a continuously-updating animation value, so reading it
+        // here keeps this Icon recomposing every frame without needing isAnimating to stay true.
+        val iconModifier = if (currentPhase == CheckmarkPhase.LISTENING) {
+            modifier.graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+        } else {
+            modifier
         }
         Icon(
             painter = painterResource(staticDrawable),
             contentDescription = null,
             tint = staticColor,
-            modifier = modifier,
+            modifier = iconModifier,
         )
         return
     }
@@ -718,17 +735,12 @@ fun MessageStatusIcon(
                 // LISTENING (or still mid-transition into it) — plain black/gray throughout.
                 else -> grayColor
             }
-            // The continuous "this is live" pulse only applies once fully settled and idle in
-            // LISTENING — mid-transition or bouncing into LISTENED/LISTEN_UNKNOWN uses the
-            // one-shot bounceScale instead, same as the checkmark's own delivered -> read kick.
-            val appliedScale =
-                if (phase == CheckmarkPhase.LISTENING && currentPhase == CheckmarkPhase.LISTENING) {
-                    pulseScale
-                } else {
-                    bounceScale.value
-                }
-
-            scale(appliedScale) {
+            // This block only ever runs while isAnimating is true — i.e. mid-morph — so the
+            // continuous idle pulse (which only applies once fully settled and idle in LISTENING)
+            // never actually applies here; it lives in the static-icon branch above instead. Any
+            // in-flight bounce (listening -> listened / -> listen_unknown) uses bounceScale, same
+            // as the checkmark's own delivered -> read kick; otherwise it's a plain 1f.
+            scale(bounceScale.value) {
                 // Headband: same two-segment vee technique as the chevron/checkmark above, just
                 // opening downward instead of up.
                 drawLine(listenTint, headPos0 * s, headPos1 * s, strokeW * s, cap = StrokeCap.Round)
