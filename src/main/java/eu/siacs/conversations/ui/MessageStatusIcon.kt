@@ -3,11 +3,7 @@ package eu.siacs.conversations.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -56,19 +52,25 @@ private val StemRetractEasing = CubicBezierEasing(0.1f, 0.7f, 0.05f, 1f)
  * turning green; an upload turning into a cancel glyph if stopped. Appended OFFERED/CANCELLED
  * after READ on purpose — the WAITING..READ ordinal ordering is load-bearing for the `>=`
  * comparisons in the catch-all snap branch below, and these two aren't part of that chain. */
-// LISTENING/LISTENED/LISTEN_UNKNOWN appended after CANCELLED for the same reason OFFERED/
-// CANCELLED were: the WAITING..READ ordinal ordering is load-bearing for the `>=` comparisons in
-// the catch-all snap branch below, and none of these five are part of that chain.
-enum class CheckmarkPhase { WAITING, UPLOADING, SENT, DELIVERED, READ, OFFERED, CANCELLED, LISTENING, LISTENED, LISTEN_UNKNOWN }
+// LISTENING/LISTENED/LISTEN_UNKNOWN/LISTEN_PAUSED appended after CANCELLED for the same reason
+// OFFERED/CANCELLED were: the WAITING..READ ordinal ordering is load-bearing for the `>=`
+// comparisons in the catch-all snap branch below, and none of these six are part of that chain.
+enum class CheckmarkPhase {
+    WAITING, UPLOADING, SENT, DELIVERED, READ, OFFERED, CANCELLED,
+    LISTENING, LISTENED, LISTEN_UNKNOWN, LISTEN_PAUSED,
+}
 
 private fun CheckmarkPhase.isListenPhase() =
-    this == CheckmarkPhase.LISTENING || this == CheckmarkPhase.LISTENED || this == CheckmarkPhase.LISTEN_UNKNOWN
+    this == CheckmarkPhase.LISTENING || this == CheckmarkPhase.LISTENED ||
+        this == CheckmarkPhase.LISTEN_UNKNOWN || this == CheckmarkPhase.LISTEN_PAUSED
 
 /**
  * Overrides [basePhase] with the voice-message listen-status phase once the peer has done
  * anything with a voice message we sent — the headphone glyph takes over this exact slot, it
- * isn't an extra icon bolted on next to the checkmark. PAUSED and NOT_LISTENED (or no listen
- * status at all, i.e. [listenState] null) fall through to [basePhase] unchanged — the ordinary
+ * isn't an extra icon bolted on next to the checkmark. LISTEN_PAUSED keeps the headphone showing,
+ * just frozen (see pulseScale below) rather than falling back to the checkmark — pausing doesn't
+ * mean "nothing is happening with this voice message anymore." Only NOT_LISTENED and no listen
+ * status at all (i.e. [listenState] null) fall through to [basePhase] unchanged — the ordinary
  * checkmark, same as any non-voice message.
  */
 fun voiceCheckmarkPhase(
@@ -78,6 +80,7 @@ fun voiceCheckmarkPhase(
     ListenStatusManager.State.LISTENING -> CheckmarkPhase.LISTENING
     ListenStatusManager.State.LISTENED -> CheckmarkPhase.LISTENED
     ListenStatusManager.State.UNKNOWN -> CheckmarkPhase.LISTEN_UNKNOWN
+    ListenStatusManager.State.PAUSED -> CheckmarkPhase.LISTEN_PAUSED
     else -> basePhase
 }
 
@@ -282,18 +285,27 @@ fun MessageStatusIcon(
 
     // Drives the headphone's continuous "this is live" pulse while at rest in LISTENING — the
     // only phase in this whole file that keeps animating once settled rather than stopping dead.
-    // Always mounted (Compose composables must be called unconditionally); its value is only ever
-    // read down in the render section, guarded to the moments it actually applies.
-    val infiniteTransition = rememberInfiniteTransition(label = "listening-pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "listening-pulse-scale",
-    )
+    // Deliberately its own Animatable + coroutine loop rather than rememberInfiniteTransition:
+    // pausing (LISTEN_PAUSED) needs to let whichever grow/shrink leg is currently in flight finish
+    // naturally and freeze exactly at the pulse's own low point (1f) instead of yanking it off
+    // mid-swing, and rememberInfiniteTransition has no way to ask for that — it only knows how to
+    // cancel immediately or keep going forever. A plain Animatable driven by a loop that always
+    // completes one full grow-then-shrink leg pair before re-checking whether to continue gets
+    // this for free: however mid-cycle the pause request lands, the loop still finishes both legs
+    // (ending back at 1f) before it ever idles, and resuming just means the loop starts driving
+    // pulseScale again from wherever it's sitting — which by construction is always 1f, the exact
+    // same "small scale" a fresh pulse would start from.
+    val pulseScale = remember { Animatable(1f) }
+    val shouldPulse = rememberUpdatedState(currentPhase == CheckmarkPhase.LISTENING)
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (!shouldPulse.value) {
+                snapshotFlow { shouldPulse.value }.first { it }
+            }
+            pulseScale.animateTo(1.15f, tween(600, easing = FastOutSlowInEasing))
+            pulseScale.animateTo(1f, tween(600, easing = FastOutSlowInEasing))
+        }
+    }
 
     // Keyed on `phase` this used to cancel and restart mid-animation on every status change —
     // status can flip more than once within a single morph's duration (e.g. an upload finishing
@@ -434,13 +446,15 @@ fun MessageStatusIcon(
                 (from == CheckmarkPhase.SENT ||
                     from == CheckmarkPhase.DELIVERED ||
                     from == CheckmarkPhase.READ) &&
-                    to == CheckmarkPhase.LISTENING -> {
+                    (to == CheckmarkPhase.LISTENING || to == CheckmarkPhase.LISTEN_PAUSED) -> {
                     isAnimating = true
                     // The double-check (if showing) retracts back into a single checkmark first —
                     // headphone is one glyph, not two — while that single checkmark's own 3 points
                     // slide onto the headband's, and any green from an already-landed read marker
                     // fades back to gray at the same time, since arriving at LISTENING always
-                    // starts from the plain black/gray look.
+                    // starts from the plain black/gray look. Also covers the rare case of arriving
+                    // already paused (e.g. this composable mounts fresh mid-pause) — same reveal
+                    // either way, just no pulse afterward if paused.
                     coroutineScope {
                         launch { doubleSlide.animateTo(0f, tween(200, easing = StandardEasing)) }
                         launch { checkToHeadband.animateTo(1f, tween(260, easing = StandardEasing)) }
@@ -448,7 +462,8 @@ fun MessageStatusIcon(
                     }
                     earsProgress.animateTo(1f, tween(220, easing = StandardEasing))
                 }
-                from == CheckmarkPhase.LISTENING && to == CheckmarkPhase.LISTENED -> {
+                (from == CheckmarkPhase.LISTENING || from == CheckmarkPhase.LISTEN_PAUSED) &&
+                    to == CheckmarkPhase.LISTENED -> {
                     isAnimating = true
                     // Identical spatial+effect spring choreography as delivered -> read above —
                     // same visual language, just aimed at the headphone instead of the checkmark.
@@ -540,13 +555,19 @@ fun MessageStatusIcon(
             CheckmarkPhase.LISTENING -> R.drawable.ic_headphones_24dp to grayColor
             CheckmarkPhase.LISTENED -> R.drawable.ic_headphones_24dp to listenedColor
             CheckmarkPhase.LISTEN_UNKNOWN -> R.drawable.ic_headphones_24dp to unknownColor
+            // Same gray look as LISTENING — the headphone doesn't disappear on pause, it just
+            // stops pulsing (pulseScale sits frozen at 1f, see above), so this shares LISTENING's
+            // color entirely and only differs in whether the graphicsLayer below is animating.
+            CheckmarkPhase.LISTEN_PAUSED -> R.drawable.ic_headphones_24dp to grayColor
         }
-        // LISTENING alone keeps animating even at rest — the continuous "this is live" pulse —
-        // so it's the one phase in this whole file where !isAnimating doesn't mean "nothing is
-        // moving." pulseScale is itself a continuously-updating animation value, so reading it
-        // here keeps this Icon recomposing every frame without needing isAnimating to stay true.
-        val iconModifier = if (currentPhase == CheckmarkPhase.LISTENING) {
-            modifier.graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+        // LISTENING (and, frozen, LISTEN_PAUSED) are the only phases in this whole file where
+        // !isAnimating doesn't mean "nothing is moving" — pulseScale is itself a continuously-
+        // updating value while active, so reading it here keeps this Icon recomposing every frame
+        // without needing isAnimating to stay true. Applying it while paused too is harmless: by
+        // construction pulseScale is always exactly 1f at that point (see the pulse loop above),
+        // so this is just an identity transform until the loop starts driving it again.
+        val iconModifier = if (currentPhase == CheckmarkPhase.LISTENING || currentPhase == CheckmarkPhase.LISTEN_PAUSED) {
+            modifier.graphicsLayer(scaleX = pulseScale.value, scaleY = pulseScale.value)
         } else {
             modifier
         }

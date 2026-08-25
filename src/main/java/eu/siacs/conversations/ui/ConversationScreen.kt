@@ -3900,11 +3900,12 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         } else null
     }
     val timeText = DateUtils.formatDateTime(context, message.timeSent, DateUtils.FORMAT_SHOW_TIME)
-    // Voice-message listen status, leftmost in the "status · size · time" line for the states
-    // that still use text (PAUSED, and the incoming "have I listened to this yet" case).
-    // LISTENING/LISTENED/UNKNOWN render the animated headphone badge (listenIconState below)
-    // instead of text — NOT_LISTENED gets neither: no badge, no label, falls back to the plain
-    // checkmark like any other outgoing message.
+    // Voice-message listen status, leftmost in the "status · size · time" line for the one state
+    // that still uses text (the incoming "have I listened to this yet" case) plus a "Paused"
+    // label alongside the (still-showing, just frozen) headphone badge. LISTENING/LISTENED/
+    // UNKNOWN/PAUSED all render the animated headphone badge (listenIconState below) instead of a
+    // checkmark — NOT_LISTENED gets neither badge nor label, falls back to the plain checkmark
+    // like any other outgoing message.
     val footerUuid = message.getUuid()
     val isAudio = message.mimeType?.startsWith("audio/") == true
     val outgoingPeerState: ListenStatusManager.State? =
@@ -3921,7 +3922,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     val listenIconState: ListenStatusManager.State? = when (outgoingPeerState) {
         ListenStatusManager.State.LISTENING,
         ListenStatusManager.State.LISTENED,
-        ListenStatusManager.State.UNKNOWN -> outgoingPeerState
+        ListenStatusManager.State.UNKNOWN,
+        ListenStatusManager.State.PAUSED -> outgoingPeerState
         else -> null
     }
     val listenLabel: String? =
