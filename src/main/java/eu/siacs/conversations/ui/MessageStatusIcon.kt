@@ -1,17 +1,11 @@
 package eu.siacs.conversations.ui
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -23,6 +17,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -39,7 +34,6 @@ import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.entities.Transferable
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
@@ -48,13 +42,15 @@ import kotlin.math.hypot
 /** Slow-fast-slow, never linear — linear motion on something this small reads as robotic. */
 private val StandardEasing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 
-/** Durations for the checkmark<->headphone crossfade (the one shape-changing headphone leg —
- * see the big comment above the transition table's SENT/DELIVERED/READ -> LISTENING branch).
- * Matches the fadeIn/scaleIn + fadeOut/scaleOut convention and exact numbers already established
- * for the other non-morphing icon crossfade in this app (ConversationScreen.kt's
- * messageStatusIconFallback), not invented fresh. */
-private const val HEADPHONE_CROSSFADE_ENTER_MS = 180
-private const val HEADPHONE_CROSSFADE_EXIT_MS = 120
+/** How long the one genuine shape-changing headphone leg (checkmark family -> headphone) takes to
+ * morph from the real checkmark outline into the real headphone outline — deliberately slower
+ * than every other transition in this file so the shape change itself reads clearly. */
+private const val HEADPHONE_MORPH_DURATION_MS = 1000
+
+/** Point count each closed outline (checkmark, double-check, headphone) gets resampled to via
+ * PathMeasure before morphing — high enough that the polygon these render as is indistinguishable
+ * from the true curves at this icon's on-screen size. */
+private const val MORPH_SAMPLE_COUNT = 72
 
 /** Fast start, hard deceleration into the last stretch — used only for the stem retracting back
  * up into the chevron, so the "eraser" visibly slows down right before it reaches the tip instead
@@ -238,17 +234,16 @@ private val CANCEL_BOTTOM_RIGHT = Offset(15.6f, 15.6f)
  * - Delivered → read: both strokes bounce (quick zoom in, bouncy spring back to rest) while
  *   tinting from gray to green, with the stroke going a bit heavier at the same time so the two
  *   states stay easy to tell apart even for someone not distinguishing the color.
- * - Read → listening (voice messages only, once the peer starts playing one we sent): the
- *   double-check (if showing) retracts back into a single checkmark — headphone is one glyph, not
- *   two — any green fades back to gray, and that single checkmark's own 3 points slide onto a
- *   headband's, then two ear-cup strokes grow straight down from its ends — a hand-drawn
- *   approximation just for the motion; the instant it settles, this swaps to the real Google
- *   Material Symbol headphone drawable, same as every other phase's own real bundled asset, so
- *   the transition's first frame is the checkmark exactly as it already looked and its last frame
- *   is the true icon exactly as it always renders at rest, pixel for pixel. Listening itself
- *   pulses continuously so it reads as "live." Listening → listened bounces to green exactly like
- *   delivered → read above; listening/listened → an extrapolation losing track bounces bouncier,
- *   to red — same spatial+effect spring language throughout, just aimed at the headphone.
+ * - Read → listening (voice messages only, once the peer starts playing one we sent): a real
+ *   point-to-point morph over a full second, not a crossfade — the checkmark's (or double-check's)
+ *   actual outline and the headphone's actual outline are each resampled to the same number of
+ *   points via PathMeasure and lerped index-for-index, so every in-between frame is a real blend
+ *   of the two real shapes, not an invented approximation of either one (see the "Checkmark <->
+ *   headphone morph" section at the bottom of this file). Listening itself pulses continuously so
+ *   it reads as "live." Listening → listened bounces to green exactly like delivered → read above,
+ *   just aimed at the (already fully-formed, never reshaping again) headphone glyph;
+ *   listening/listened → an extrapolation losing track bounces bouncier, to red — same
+ *   spatial+effect spring language, no further shape changes either.
  */
 @Composable
 fun MessageStatusIcon(
@@ -305,6 +300,13 @@ fun MessageStatusIcon(
     // Only touched by uploading -> cancelled: the X's four strokes growing outward from that
     // merged center point once it's arrived.
     val cancelCrossGrow = remember { Animatable(0f) }
+
+    // Only touched by (sent/delivered/read) -> listening: 0 = fully the checkmark's (or
+    // double-check's) real outline, 1 = fully the headphone's — see the point-morph section at
+    // the bottom of this file. Initialized to 1 on a cold mount already in the listen family so a
+    // fresh composition doesn't briefly render at the checkmark end of the morph before the
+    // catch-all snap corrects it.
+    val morphProgress = remember { Animatable(if (phase.isListenPhase()) 1f else 0f) }
 
     // Drives the headphone's continuous "this is live" pulse while at rest in LISTENING — the
     // only phase in this whole file that keeps animating once settled rather than stopping dead.
@@ -471,16 +473,15 @@ fun MessageStatusIcon(
                     from == CheckmarkPhase.READ) &&
                     (to == CheckmarkPhase.LISTENING || to == CheckmarkPhase.LISTEN_PAUSED) -> {
                     isAnimating = true
-                    // No path-morph API exists to reshape one arbitrary vector glyph into another,
-                    // so unlike every other leg in this file, this one doesn't drive any shape
-                    // Animatables at all — the render section below crossfades the two real
-                    // bundled drawables (whatever the checkmark currently looks like, straight into
-                    // the real headphone asset) instead of hand-drawing an in-between shape. This
-                    // delay just keeps isAnimating true for as long as that crossfade takes, so the
-                    // render logic doesn't hand off to the plain "at rest" branch mid-fade. Also
-                    // covers the rare case of arriving already paused (this composable mounting
-                    // fresh mid-pause) — same reveal either way, just no pulse afterward if paused.
-                    delay(HEADPHONE_CROSSFADE_ENTER_MS.toLong())
+                    // The real point-to-point morph — see the "Checkmark <-> headphone morph"
+                    // section at the bottom of this file for how singleCheckMorphPoints/
+                    // doubleCheckMorphPoints/headphoneOutlinePoints are built and aligned. Which
+                    // point list applies is decided at render time from `from` (SENT -> single,
+                    // DELIVERED/READ -> double), not here. Also covers the rare case of arriving
+                    // already paused (this composable mounting fresh mid-pause) — same morph
+                    // either way, just no pulse afterward if paused.
+                    morphProgress.snapTo(0f)
+                    morphProgress.animateTo(1f, tween(HEADPHONE_MORPH_DURATION_MS, easing = StandardEasing))
                 }
                 (from == CheckmarkPhase.LISTENING || from == CheckmarkPhase.LISTEN_PAUSED) &&
                     to == CheckmarkPhase.LISTENED -> {
@@ -543,6 +544,7 @@ fun MessageStatusIcon(
                     expand2.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
                     doubleSlide.snapTo(if (to >= CheckmarkPhase.DELIVERED) 1f else 0f)
                     bounceScale.snapTo(1f)
+                    morphProgress.snapTo(if (to.isListenPhase()) 1f else 0f)
                     colorProgress.snapTo(
                         if (to == CheckmarkPhase.READ ||
                             to == CheckmarkPhase.LISTENED ||
@@ -754,26 +756,25 @@ fun MessageStatusIcon(
 
         // A genuine shape change — the checkmark family arriving at the headphone (or, in
         // principle, leaving it, though nothing in ListenStatusManager's state machine actually
-        // does that once a listen event has fired). There's no API to morph one arbitrary vector
-        // path into another, so rather than hand-drawing an approximate in-between shape, this
-        // crossfades the two real bundled drawables directly — both endpoints stay pixel-exact to
-        // their official assets the entire time; only the blend between them is invented, not
-        // either shape itself. AnimatedContent keeps the outgoing content composed and animates it
-        // out while the incoming content fades/scales in, the same convention already used for the
-        // non-morphing status icons (see ConversationScreen.kt's messageStatusIconFallback).
-        AnimatedContent(
-            targetState = phase,
-            transitionSpec = {
-                (fadeIn(tween(HEADPHONE_CROSSFADE_ENTER_MS)) +
-                    scaleIn(initialScale = 0.7f, animationSpec = tween(HEADPHONE_CROSSFADE_ENTER_MS))) togetherWith
-                    (fadeOut(tween(HEADPHONE_CROSSFADE_EXIT_MS)) +
-                        scaleOut(targetScale = 0.7f, animationSpec = tween(HEADPHONE_CROSSFADE_EXIT_MS)))
-            },
-            label = "checkmarkToHeadphoneCrossfade",
-            modifier = modifier,
-        ) { targetPhase ->
-            val (drawable, color) = staticIconFor(targetPhase, grayColor, successColor, listenedColor, unknownColor)
-            Icon(painter = painterResource(drawable), contentDescription = null, tint = color)
+        // does that once a listen event has fired). A real point-to-point morph between the two
+        // real outlines (see the "Checkmark <-> headphone morph" section at the bottom of this
+        // file): whichever of singleCheckMorphPoints/doubleCheckMorphPoints matches what was
+        // actually showing lerps index-for-index into headphoneOutlinePoints as morphProgress
+        // advances — both endpoints are the real geometry the whole time, only the blend between
+        // them is invented.
+        val fromPoints = if (currentPhase == CheckmarkPhase.SENT) singleCheckMorphPoints else doubleCheckMorphPoints
+        val fromColor = if (currentPhase == CheckmarkPhase.READ) successColor else grayColor
+        val tintColor = androidx.compose.ui.graphics.lerp(fromColor, grayColor, morphProgress.value)
+        Canvas(modifier = modifier) {
+            val s = size.minDimension / 24f
+            val t = morphProgress.value
+            val morphPath = Path()
+            for (idx in 0 until MORPH_SAMPLE_COUNT) {
+                val p = androidx.compose.ui.geometry.lerp(fromPoints[idx], headphoneOutlinePoints[idx], t) * s
+                if (idx == 0) morphPath.moveTo(p.x, p.y) else morphPath.lineTo(p.x, p.y)
+            }
+            morphPath.close()
+            drawPath(morphPath, color = tintColor)
         }
         return
     }
@@ -829,7 +830,11 @@ fun MessageStatusIcon(
 }
 
 /** Union of two round-capped capsule shapes (P0→P1 and P1→P2) approximating the filled outline
- * a stroked checkmark would have — used only as a clip mask, never drawn directly. */
+ * a stroked checkmark would have — used as a clip mask for the double-check "trace" effect above,
+ * and (see the checkmark<->headphone morph section at the bottom of this file) as the real
+ * checkmark's own outline for point-sampling, since it's built from this file's own real,
+ * already-vetted checkmark geometry (CHECK_P0/P1/P2, CHECK_STROKE_WIDTH) rather than approximated
+ * separately for that purpose. */
 private fun checkmarkCoverage(a: Offset, b: Offset, c: Offset, halfWidth: Float, scale: Float): Path {
     val seg1 = capsulePath(a * scale, b * scale, halfWidth * scale)
     val seg2 = capsulePath(b * scale, c * scale, halfWidth * scale)
@@ -872,4 +877,132 @@ private fun capsulePath(start: Offset, end: Offset, halfWidth: Float): Path {
     )
     path.close()
     return path
+}
+
+// ─── Checkmark <-> headphone morph ──────────────────────────────────────────
+//
+// A real point-to-point morph between the two actual outlines, not a crossfade: the checkmark
+// side reuses this file's own exact stroke geometry (CHECK_P0/P1/P2, CHECK_STROKE_WIDTH,
+// DOUBLE_CHECK_OFFSET — the same numbers every other checkmark drawing in this file already uses,
+// via checkmarkCoverage above), and the headphone side is the real Google Material Symbols
+// Rounded "headphones" (fill1) path, transcribed command-for-command from the verified SVG
+// fetched from fonts.gstatic.com (see ic_headphones_24dp.xml's own header comment for the
+// verification) rather than approximated. Both get resampled to the same point count via
+// PathMeasure and lerped index-for-index each frame — the only invented part is the blend between
+// two real shapes, not either shape itself.
+
+/** The real headphone glyph, transcribed 1:1 from the same verified SVG command sequence as
+ * ic_headphones_24dp.xml (h/v -> relativeLineTo, q -> relativeQuadraticBezierTo, the T/t
+ * smooth-quadratic shorthand expanded to its reflected control point by hand ahead of time — SVG's
+ * T/t has no direct Compose Path equivalent) rather than parsed at runtime, so this is exactly as
+ * auditable against the source string as the XML file is. */
+private fun buildHeadphonePath(): Path = Path().apply {
+    moveTo(7.0000f, 21.0000f)
+    lineTo(5.0000f, 21.0000f)
+    quadraticBezierTo(4.1750f, 21.0000f, 3.5875f, 20.4125f)
+    quadraticBezierTo(3.0000f, 19.8250f, 3.0000f, 19.0000f)
+    lineTo(3.0000f, 12.0000f)
+    quadraticBezierTo(3.0000f, 10.1250f, 3.7125f, 8.4875f)
+    quadraticBezierTo(4.4250f, 6.8500f, 5.6375f, 5.6375f)
+    quadraticBezierTo(6.8500f, 4.4250f, 8.4875f, 3.7125f)
+    quadraticBezierTo(10.1250f, 3.0000f, 12.0000f, 3.0000f)
+    quadraticBezierTo(13.8750f, 3.0000f, 15.5125f, 3.7125f)
+    quadraticBezierTo(17.1500f, 4.4250f, 18.3625f, 5.6375f)
+    quadraticBezierTo(19.5750f, 6.8500f, 20.2875f, 8.4875f)
+    quadraticBezierTo(21.0000f, 10.1250f, 21.0000f, 12.0000f)
+    lineTo(21.0000f, 19.0000f)
+    quadraticBezierTo(21.0000f, 19.8250f, 20.4125f, 20.4125f)
+    quadraticBezierTo(19.8250f, 21.0000f, 19.0000f, 21.0000f)
+    lineTo(17.0000f, 21.0000f)
+    quadraticBezierTo(16.1750f, 21.0000f, 15.5875f, 20.4125f)
+    quadraticBezierTo(15.0000f, 19.8250f, 15.0000f, 19.0000f)
+    lineTo(15.0000f, 15.0000f)
+    quadraticBezierTo(15.0000f, 14.1750f, 15.5875f, 13.5875f)
+    quadraticBezierTo(16.1750f, 13.0000f, 17.0000f, 13.0000f)
+    lineTo(19.0000f, 13.0000f)
+    lineTo(19.0000f, 12.0000f)
+    quadraticBezierTo(19.0000f, 9.0750f, 16.9625f, 7.0375f)
+    quadraticBezierTo(14.9250f, 5.0000f, 12.0000f, 5.0000f)
+    quadraticBezierTo(9.0750f, 5.0000f, 7.0375f, 7.0375f)
+    quadraticBezierTo(5.0000f, 9.0750f, 5.0000f, 12.0000f)
+    lineTo(5.0000f, 13.0000f)
+    lineTo(7.0000f, 13.0000f)
+    quadraticBezierTo(7.8250f, 13.0000f, 8.4125f, 13.5875f)
+    quadraticBezierTo(9.0000f, 14.1750f, 9.0000f, 15.0000f)
+    lineTo(9.0000f, 19.0000f)
+    quadraticBezierTo(9.0000f, 19.8250f, 8.4125f, 20.4125f)
+    quadraticBezierTo(7.8250f, 21.0000f, 7.0000f, 21.0000f)
+    close()
+}
+
+/** Resamples [path]'s outline into [n] evenly-spaced points by arc length via Android's own
+ * PathMeasure (framework API, not a new dependency) — the same technique this file's `scale()`/
+ * `drawPath()` calls already lean on `asAndroidPath()` for elsewhere (see UpdatesScreen.kt's
+ * Matrix transform on a Compose Path for the same underlying reason). */
+private fun samplePathPoints(path: Path, n: Int): List<Offset> {
+    val measure = android.graphics.PathMeasure(path.asAndroidPath(), false)
+    val length = measure.length
+    val pos = FloatArray(2)
+    return (0 until n).map { i ->
+        measure.getPosTan(length * i / n, pos, null)
+        Offset(pos[0], pos[1])
+    }
+}
+
+/** Point-sampled outlines are just a list of N points walked in some direction starting somewhere
+ * arbitrary — naively lerping index-for-index between two independently-sampled shapes can make
+ * the morph visibly spin, if e.g. one starts at "3 o'clock" and the other at "9 o'clock," or one
+ * winds clockwise and the other counterclockwise. Tries every rotation of [candidate] against
+ * [reference], in both winding directions, and keeps whichever alignment minimizes total squared
+ * point-to-point distance — run once (see the `by lazy` properties below), not per frame, so an
+ * O(n²) search here is negligible. */
+private fun bestAlignment(reference: List<Offset>, candidate: List<Offset>): List<Offset> {
+    val n = reference.size
+    var bestScore = Float.MAX_VALUE
+    var best = candidate
+    for (base in listOf(candidate, candidate.asReversed())) {
+        for (rotation in 0 until n) {
+            var score = 0f
+            for (i in 0 until n) {
+                val c = base[(i + rotation) % n]
+                val r = reference[i]
+                score += (c.x - r.x) * (c.x - r.x) + (c.y - r.y) * (c.y - r.y)
+            }
+            if (score < bestScore) {
+                bestScore = score
+                best = List(n) { base[(it + rotation) % n] }
+            }
+        }
+    }
+    return best
+}
+
+/** Fixed reference outline every checkmark-family shape aligns to — computed once, not per
+ * composable instance, since none of these depend on any @Composable state. */
+private val headphoneOutlinePoints: List<Offset> by lazy {
+    samplePathPoints(buildHeadphonePath(), MORPH_SAMPLE_COUNT)
+}
+
+/** The single checkmark's real outline (SENT), aligned so index i already corresponds to
+ * headphoneOutlinePoints[i] — lerp the two lists directly, no further alignment needed at draw
+ * time. */
+private val singleCheckMorphPoints: List<Offset> by lazy {
+    val outline = checkmarkCoverage(CHECK_P0, CHECK_P1, CHECK_P2, CHECK_STROKE_WIDTH / 2f, 1f)
+    bestAlignment(headphoneOutlinePoints, samplePathPoints(outline, MORPH_SAMPLE_COUNT))
+}
+
+/** The double checkmark's real outline (DELIVERED/READ) — the union of both strokes' capsule
+ * shapes (front, at DOUBLE_CHECK_OFFSET, plus back, unshifted), same as how the double-check
+ * actually looks on screen, not just the front stroke alone. */
+private val doubleCheckMorphPoints: List<Offset> by lazy {
+    val front = checkmarkCoverage(
+        CHECK_P0 + DOUBLE_CHECK_OFFSET,
+        CHECK_P1 + DOUBLE_CHECK_OFFSET,
+        CHECK_P2 + DOUBLE_CHECK_OFFSET,
+        CHECK_STROKE_WIDTH / 2f,
+        1f,
+    )
+    val back = checkmarkCoverage(CHECK_P0, CHECK_P1, CHECK_P2, CHECK_STROKE_WIDTH / 2f, 1f)
+    val union = Path().apply { op(front, back, PathOperation.Union) }
+    bestAlignment(headphoneOutlinePoints, samplePathPoints(union, MORPH_SAMPLE_COUNT))
 }
