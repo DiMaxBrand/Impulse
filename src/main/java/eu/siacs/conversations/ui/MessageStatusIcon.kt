@@ -741,10 +741,26 @@ fun MessageStatusIcon(
             // in-flight bounce (listening -> listened / -> listen_unknown) uses bounceScale, same
             // as the checkmark's own delivered -> read kick; otherwise it's a plain 1f.
             scale(bounceScale.value) {
-                // Headband: same two-segment vee technique as the chevron/checkmark above, just
-                // opening downward instead of up.
-                drawLine(listenTint, headPos0 * s, headPos1 * s, strokeW * s, cap = StrokeCap.Round)
-                drawLine(listenTint, headPos1 * s, headPos2 * s, strokeW * s, cap = StrokeCap.Round)
+                // Headband: a real curve through the same 3 interpolated points the chevron/
+                // checkmark above uses two straight segments for — headPos1 is a Bézier control
+                // point here, not a vertex the line actually touches, so this reads as a rounded
+                // arch the whole way through the morph. Drawing it as two straight segments
+                // meeting at a hard point (the technique reused elsewhere in this file) reportedly
+                // reads as a peaked roof mid-transition instead of a headphone band, which two
+                // straight lines meeting at a point will always risk once the shape itself is
+                // trying to look organic/curved rather than mechanical.
+                val headbandPath = Path().apply {
+                    val p0 = headPos0 * s
+                    val p1 = headPos1 * s
+                    val p2 = headPos2 * s
+                    moveTo(p0.x, p0.y)
+                    quadraticBezierTo(p1.x, p1.y, p2.x, p2.y)
+                }
+                drawPath(
+                    path = headbandPath,
+                    color = listenTint,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeW * s, cap = StrokeCap.Round),
+                )
 
                 // Ear cups: grow straight down from the headband's two ends once it's formed —
                 // same "grow from an anchor" language as the upload icon's stem.
