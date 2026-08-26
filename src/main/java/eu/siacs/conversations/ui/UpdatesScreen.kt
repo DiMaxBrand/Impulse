@@ -581,9 +581,10 @@ fun UpdateSheetContent(
 }
 
 // The GitHub release body — collapsed by default (release descriptions run long: bilingual RU+EN
-// sections plus dev notes per this project's release-notes convention), plain text rather than
-// rendered Markdown (the body is Markdown source; a real renderer is more than this needs right
-// now — showing the raw text at least answers "why update" instead of showing nothing).
+// sections plus dev notes per this project's release-notes convention). Rendered via
+// markdownToAnnotatedString (MarkdownText.kt): headers/`code`/**bold**/*italic* — the styling this
+// project's own release descriptions actually use — instead of showing the raw Markdown source
+// with literal `#`/`*` characters.
 //
 // A full-width Expressive "reveal" button, not a plain TextButton: expanding it flattens its own
 // bottom corners down to the same 8dp the channel/settings rows use for a TOP-positioned
@@ -656,9 +657,14 @@ private fun ReleaseNotesSection(releaseNotes: String?, modifier: Modifier = Modi
                 // No heightIn()/verticalScroll() of its own anymore — the whole sheet
                 // (UpdateSheetContent's outer Column) scrolls as one unit instead, so this just
                 // takes whatever height its text naturally needs.
+                val bodyStyle = MaterialTheme.typography.bodySmall
+                val codeColor = MaterialTheme.colorScheme.primary
+                val codeBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 Text(
-                    text = releaseNotes,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = remember(releaseNotes, bodyStyle.fontSize, codeColor, codeBackground) {
+                        markdownToAnnotatedString(releaseNotes, bodyStyle.fontSize, codeColor, codeBackground)
+                    },
+                    style = bodyStyle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                 )
