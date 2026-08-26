@@ -2651,6 +2651,7 @@ private fun MediaGridCell(
         ),
         contentAlignment = Alignment.Center,
     ) {
+        val uploading = transferable?.getStatus() == Transferable.STATUS_UPLOADING
         val bitmap = ThumbnailCache.get(uuid)
         if (bitmap != null) {
             androidx.compose.foundation.Image(
@@ -2660,12 +2661,21 @@ private fun MediaGridCell(
                 modifier = Modifier.matchParentSize(),
             )
         } else {
-            // No decoded thumbnail yet — either it's still being uploaded/downloaded (real
-            // progress available from `transferable`) or it's simply mid-decode from an
-            // already-local file (indeterminate). Either way this cell is currently visible, so
-            // it gets the same wavy spinner treatment as a single-message media bubble instead of
-            // sitting as a flat, silent placeholder.
             Box(modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceContainerHighest))
+        }
+        // Progress overlay shows whenever there's no decoded thumbnail yet (downloading, or
+        // mid-decode of an already-local file) OR the file is actively uploading. A local
+        // thumbnail decodes instantly once the file exists on disk — true immediately for an
+        // outgoing message, before the upload itself even starts — so without the `uploading`
+        // check here the cell would just look finished the entire time a grouped photo is still
+        // uploading, same class of bug the single-message bubble's own upload scrim
+        // (MediaThumbnailBubble) already avoids. Scrim only darkens when a thumbnail is already
+        // showing underneath; a bare thumbnail-less cell just gets the spinner over its
+        // placeholder background.
+        if (uploading && bitmap != null) {
+            Box(modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f)))
+        }
+        if (bitmap == null || uploading) {
             if (transferableProgress != null && transferableProgress > 0) {
                 CircularWavyProgressIndicator(
                     progress = { animatedProgress },

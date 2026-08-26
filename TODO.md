@@ -167,6 +167,32 @@ Currently implemented: reset update-sheet pause timer. Backlog:
   - Tapping a catalog shape selects it with an expressive selection state.
   - The hero shape then **morphs** into the newly selected shape using `androidx.graphics.shapes.Morph` (the official shape-morph API), same mechanism already used for the morphing send button — reuse it, don't reimplement.
 
+## Media loading — grid/viewer progress fix (1.14.1) + progressive blur-up redesign (future)
+
+- [ ] **Grouped-photo grid missing upload progress** — root cause confirmed: `MediaGridCell` in
+  `ConversationScreen.kt` only draws the progress overlay when it has no decoded thumbnail yet.
+  True for downloads (no local file exists), false for uploads (local file already exists, so the
+  thumbnail decodes instantly and the cell just looks finished with zero indication anything's
+  still uploading) — hence "only downloading shows a spinner." Single (non-grouped) media bubbles
+  already do this correctly via `MediaThumbnailBubble`'s upload overlay; the grid path never had
+  the equivalent. Targeted for 1.14.1.
+- [ ] **In-app `MediaViewerActivity` has no real transfer progress** — confirmed: only bare
+  indeterminate `CircularProgressIndicator`s, no `transferable`/percentage wiring, no
+  upload-vs-download distinction. Targeted for 1.14.1.
+- [ ] **Progressive blur-up media loading (Telegram-style) — future, not a patch-sized fix.** Show
+  a pixelated/blurry placeholder instantly, stream the full-res version in behind it, blur the
+  low-quality intermediate render so the pixelation itself never shows (blur, not just downscale).
+  Applies both directions: the in-app viewer should show the blurry thumbnail (or nothing, if
+  nothing's loaded yet) while downloading, and the full/blurry version while uploading — same
+  progress indicator either way, direction doesn't matter to the visual. Open question of a
+  ChatGPT-image-gen-style dynamic reveal (sharp region growing in behind the blur) considered but
+  not settled on. Decided: **not gated to Emergency Mode** — apply everywhere, since Emergency Mode
+  is about reducing data use and blur-up costs nothing extra (the bytes are already streaming in;
+  this only changes how intermediate frames render). Animation note: when progress arrives in big
+  discontinuous jumps (e.g. 0% → 50% in one tick, not a smooth stream) the blur/reveal transition
+  should ease via a bouncy spring rather than snapping instantly — same spirit as the app's other
+  spring-based status transitions (see `MessageStatusIcon.kt`'s bounce-to-green), not a plain tween.
+
 ## General
 
 - [ ] **In-app emoji picker — after the first stable release ships, not before.** Same idea as

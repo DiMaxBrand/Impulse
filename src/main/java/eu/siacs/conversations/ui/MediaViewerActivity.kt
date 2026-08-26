@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -36,6 +37,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -69,6 +71,7 @@ import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
+import eu.siacs.conversations.entities.Transferable
 import eu.siacs.conversations.services.XmppConnectionService
 import eu.siacs.conversations.ui.util.ShareUtil
 import eu.siacs.conversations.ui.util.ViewUtil
@@ -107,6 +110,12 @@ class MediaViewerActivity : XmppActivity() {
 
     private val conversationState = mutableStateOf<Conversation?>(null)
     private val startMessageState = mutableStateOf<Message?>(null)
+    // Message.transferable's progress/status mutate in place — nothing about the Message
+    // reference itself changes, so Compose has no signal to recompose on a transfer tick without
+    // this. Bumped from refreshUiReal() (called whenever the rest of the app calls
+    // updateConversationUi(), which includes every transfer progress update), threaded down to
+    // MediaViewerPage the same way ConversationScreen.kt threads its own `revision` int.
+    private val revisionState = mutableIntStateOf(0)
     private var batchUuids: Set<String> = emptySet()
     private var failed = false
 
@@ -122,6 +131,7 @@ class MediaViewerActivity : XmppActivity() {
                         service = xmppConnectionService,
                         conversation = conversation,
                         startMessage = start,
+                        revision = revisionState.intValue,
                         batchUuids = batchUuids,
                         onClose = { finish() },
                         onShare = { message -> ShareUtil.share(this@MediaViewerActivity, message) },
@@ -238,7 +248,10 @@ class MediaViewerActivity : XmppActivity() {
     }
 
     override fun refreshUiReal() {
-        // No legacy (non-Compose) UI to refresh here.
+        // No legacy (non-Compose) UI to refresh, but this is still the app-wide signal that a
+        // Message's mutable state (transfer progress among it) may have changed — see
+        // revisionState's own comment.
+        revisionState.intValue++
     }
 
     override fun onBackendConnected() {
@@ -312,6 +325,7 @@ private fun MediaViewerScreen(
     service: XmppConnectionService,
     conversation: Conversation,
     startMessage: Message,
+    revision: Int,
     batchUuids: Set<String>,
     onClose: () -> Unit,
     onShare: (Message) -> Unit,
@@ -411,6 +425,7 @@ private fun MediaViewerScreen(
             MediaViewerPage(
                 service = service,
                 message = items[page],
+                revision = revision,
                 onOpenExternally = onOpenExternally,
                 onTap = { chromeVisible = !chromeVisible },
             )
@@ -578,6 +593,7 @@ private fun ViewerChipButton(iconRes: Int, contentDescription: String?, onClick:
 private fun MediaViewerPage(
     service: XmppConnectionService,
     message: Message,
+    revision: Int,
     onOpenExternally: (Message) -> Unit,
     onTap: () -> Unit,
 ) {
@@ -595,6 +611,21 @@ private fun MediaViewerPage(
         if (bm != null) bitmapState.value = bm.asImageBitmap()
     }
     val bitmap = bitmapState.value
+    // transferable.getProgress() mutates in place; reading `revision` re-triggers this read — same
+    // pattern MessageContent/MediaGridCell use for their own upload/download progress. A local
+    // thumbnail decodes instantly once the file exists on disk (true immediately for an outgoing
+    // message, before the upload itself even starts), so `uploading` has to be checked separately
+    // from "no bitmap yet" — otherwise this page would look finished the whole time it's uploading,
+    // same bug the grid cell had.
+    val transferable = message.transferable
+    val transferableProgress = remember(revision) { transferable?.getProgress() }
+    val uploading = transferable?.getStatus() == Transferable.STATUS_UPLOADING
+    val downloading = transferable?.getStatus() == Transferable.STATUS_DOWNLOADING
+    val animatedProgress by animateFloatAsState(
+        targetValue = (transferableProgress ?: 0) / 100f,
+        animationSpec = tween(durationMillis = 300),
+        label = "viewerTransferProgress",
+    )
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (bitmap != null) {
             val zoomableState = rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 5f))
@@ -604,7 +635,7 @@ private fun MediaViewerPage(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize().zoomable(zoomableState, onClick = { onTap() }),
             )
-            if (isVideo) {
+            if (isVideo && !uploading) {
                 // Inline playback isn't built for the full-screen viewer yet — tapping the play
                 // affordance falls back to the same external handoff other file types still use.
                 Box(
@@ -623,8 +654,18 @@ private fun MediaViewerPage(
                     )
                 }
             }
+            if (uploading) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)))
+                if ((transferableProgress ?: 0) > 0) {
+                    CircularWavyProgressIndicator(progress = { animatedProgress }, color = Color.White)
+                } else {
+                    CircularWavyProgressIndicator(color = Color.White)
+                }
+            }
+        } else if (downloading && (transferableProgress ?: 0) > 0) {
+            CircularWavyProgressIndicator(progress = { animatedProgress }, color = Color.White)
         } else {
-            CircularProgressIndicator(color = Color.White)
+            CircularWavyProgressIndicator(color = Color.White)
         }
     }
 }
