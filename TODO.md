@@ -169,16 +169,38 @@ Currently implemented: reset update-sheet pause timer. Backlog:
 
 ## Media loading — grid/viewer progress fix (1.14.1) + progressive blur-up redesign (future)
 
-- [ ] **Grouped-photo grid missing upload progress** — root cause confirmed: `MediaGridCell` in
-  `ConversationScreen.kt` only draws the progress overlay when it has no decoded thumbnail yet.
+- [x] **Grouped-photo grid missing upload progress** — root cause confirmed: `MediaGridCell` in
+  `ConversationScreen.kt` only drew the progress overlay when it had no decoded thumbnail yet.
   True for downloads (no local file exists), false for uploads (local file already exists, so the
-  thumbnail decodes instantly and the cell just looks finished with zero indication anything's
+  thumbnail decodes instantly and the cell just looked finished with zero indication anything's
   still uploading) — hence "only downloading shows a spinner." Single (non-grouped) media bubbles
-  already do this correctly via `MediaThumbnailBubble`'s upload overlay; the grid path never had
-  the equivalent. Targeted for 1.14.1.
-- [ ] **In-app `MediaViewerActivity` has no real transfer progress** — confirmed: only bare
-  indeterminate `CircularProgressIndicator`s, no `transferable`/percentage wiring, no
-  upload-vs-download distinction. Targeted for 1.14.1.
+  already did this correctly via `MediaThumbnailBubble`'s upload overlay; the grid path never had
+  the equivalent. Shipped 1.14.1-beta.1.
+- [x] **In-app `MediaViewerActivity` has no real transfer progress** — two bugs, not one. (1) No
+  wiring at all originally — fixed in 1.14.1-beta.1 via a `refreshUiReal()`-driven revision counter
+  threaded into `MediaViewerPage`, same pattern `ConversationScreen.kt` uses. (2) Fixed in
+  1.14.1-beta.2: the wiring from (1) still never showed anything, because every Message reaching
+  this screen came from a fresh `databaseBackend.getMessages*()` read — which always constructs a
+  brand-new object with no `transferable` attached, even for a message actively uploading right
+  now. `preferLive()` now substitutes the conversation's own in-memory `Message` (via
+  `findMessageWithUuid`) wherever one exists, in `collectMediaOlder`/`collectMediaNewer` and the
+  single-message `onBackendConnected()` fetch alike.
+- [x] **Media grid clipped by its own bubble tail** — `MediaGroupRow`'s outer Row padding already
+  discounted itself by `TAIL_WIDTH` on the tail side (anticipating a wider bubble), but the
+  `Surface` itself was still the plain fixed `MEDIA_GRID_WIDTH` — so the tail's curl carved into
+  (and clipped) the grid content instead of extending past it, on whichever side carries the tail
+  (right for outgoing, left for incoming — matches "clipped on the right when I send 3 photos,
+  clipped on the left on a received grid" exactly). Fixed the same way the single-message text
+  bubble already does it: widen the Surface by `TAIL_WIDTH` when `item.lastOfGroup`. Shipped
+  1.14.1-beta.2.
+- [x] **"Smart" group upload status** — the group's own status icon is a deliberate "weakest link"
+  (see `groupStatusRepresentative`) that stays pinned on the uploading glyph until every photo in
+  the batch has gone through, which alone just reads as one static spinner with no sense of
+  progress. Added a `groupSentCount` footer segment ("2 of 3 sent", new `group_upload_progress`
+  string, EN+RU) next to the existing icon, and a progress ring around the "+N" overflow tile's
+  own label (`CircularWavyProgressIndicator`, transparent so the "+N" text still renders through
+  it) driven by the aggregate progress of specifically the *hidden* photos (not the 4th, separately
+  visible dimmed cell — that already has its own ordinary per-cell overlay). Shipped 1.14.1-beta.2.
 - [ ] **Progressive blur-up media loading (Telegram-style) — future, not a patch-sized fix.** Show
   a pixelated/blurry placeholder instantly, stream the full-res version in behind it, blur the
   low-quality intermediate render so the pixelation itself never shows (blur, not just downscale).

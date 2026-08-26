@@ -268,7 +268,7 @@ class MediaViewerActivity : XmppActivity() {
             val message = xmppConnectionService.databaseBackend.getMessage(conversation, messageUuid)
             withContext(Dispatchers.Main) {
                 if (message != null) {
-                    startMessageState.value = message
+                    startMessageState.value = preferLive(conversation, message)
                 } else {
                     failed = true
                     finish()
@@ -280,6 +280,19 @@ class MediaViewerActivity : XmppActivity() {
 
 private const val WINDOW_BATCH = 12
 private const val VIEWER_IMAGE_SIZE_PX = 1600
+
+/** Prefers the conversation's own live in-memory Message over a fresh database read. A DB read
+ * (databaseBackend.getMessages*()) always constructs a brand-new Message object with no
+ * `transferable` attached, even for a message that's actively uploading/downloading right now —
+ * that field only ever lives on the instance the rest of the app is actively mutating, which is
+ * the one sitting in Conversation's own in-memory list. Without this, the viewer's real
+ * upload/download progress silently never showed for *any* message, including the exact one just
+ * tapped to open it, because every message reaching this screen came from one of the DB reads
+ * below. Falls back to the DB copy when the conversation has no in-memory copy (older history not
+ * currently loaded) — fine, since only recent, actively-transferring messages ever need this.
+ */
+private fun preferLive(conversation: Conversation, dbMessage: Message): Message =
+    conversation.findMessageWithUuid(dbMessage.getUuid()) ?: dbMessage
 
 /** Older-first collection of up to [needed] media messages strictly before [beforeTimestamp],
  * expanding the search further back until either enough are found or history is exhausted. */
@@ -295,7 +308,7 @@ private suspend fun collectMediaOlder(
         val batch = service.databaseBackend.getMessages(conversation, 100, cursor)
         if (batch.isEmpty()) break
         cursor = batch.first().timeSent
-        result.addAll(0, batch.filter { isMediaCell(it) })
+        result.addAll(0, batch.filter { isMediaCell(it) }.map { preferLive(conversation, it) })
         if (batch.size < 100) break
     }
     return if (result.size > needed) result.subList(result.size - needed, result.size) else result
@@ -314,7 +327,7 @@ private suspend fun collectMediaNewer(
         val batch = service.databaseBackend.getMessagesAfter(conversation, 100, cursor)
         if (batch.isEmpty()) break
         cursor = batch.last().timeSent
-        result.addAll(batch.filter { isMediaCell(it) })
+        result.addAll(batch.filter { isMediaCell(it) }.map { preferLive(conversation, it) })
         if (batch.size < 100) break
     }
     return if (result.size > needed) result.subList(0, needed) else result

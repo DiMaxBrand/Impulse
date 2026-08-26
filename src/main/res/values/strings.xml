@@ -374,6 +374,7 @@
     <string name="file">file</string>
     <string name="open_x_file">Open %s</string>
     <string name="sending_file">sending (%1$d%% completed)</string>
+    <string name="group_upload_progress">%1$d of %2$d sent</string>
     <string name="preparing_file">Getting ready to share file</string>
     <string name="x_file_offered_for_download">%s offered for download</string>
     <string name="x_file_offered_for_download_plural">%s offered for download</string>

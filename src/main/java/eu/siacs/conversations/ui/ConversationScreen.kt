@@ -2424,7 +2424,12 @@ private fun MediaGroupRow(
             Surface(
                 shape = shape,
                 color = containerColor,
-                modifier = Modifier.width(MEDIA_GRID_WIDTH),
+                // Widen to fit the tail curl, same as the single-message bubble's own
+                // `widthIn(max = 320.dp + TAIL_WIDTH)` — the outer Row's padding above already
+                // discounts itself by tailInset on this exact side in anticipation of this, but
+                // the Surface itself was still the plain fixed width, so the tail curl was
+                // carving into (and clipping) the grid content instead of extending past it.
+                modifier = Modifier.width(if (item.lastOfGroup) MEDIA_GRID_WIDTH + TAIL_WIDTH else MEDIA_GRID_WIDTH),
             ) {
                 Column {
                     // A small margin on every side keeps the container visible as a frame around
@@ -2457,11 +2462,23 @@ private fun MediaGroupRow(
                         )
                     }
                     Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 8.dp)) {
+                        // Downloading (incoming) media doesn't drive message.status the same way
+                        // uploading does — file.transferable carries that instead, status itself
+                        // stays STATUS_RECEIVED throughout — so this count is upload-specific,
+                        // scoped to outgoing groups only.
+                        val sentCount = remember(revision) {
+                            messages.count {
+                                it.status != Message.STATUS_UNSEND &&
+                                    it.status != Message.STATUS_WAITING &&
+                                    it.status != Message.STATUS_OFFERED
+                            }
+                        }
                         MessageFooter(
                             message = messages.last(),
                             outgoing = outgoing,
                             revision = revision,
                             statusMessage = remember(revision) { groupStatusRepresentative(messages) },
+                            groupSentCount = if (outgoing) sentCount to messages.size else null,
                         )
                     }
                 }
@@ -2596,6 +2613,10 @@ private fun MediaGridContent(
                         overlayCount = if (overflow > 0) overflow + 1 else null,
                         isOverflow = overflow > 0,
                         onOverflowSelect = onOverflowSelect,
+                        // Truly-hidden photos only (not messages[3] itself, which is a real,
+                        // separately-visible dimmed cell with its own ordinary upload overlay) —
+                        // drives the progress ring around the "+N" label below.
+                        hiddenMessages = if (overflow > 0) messages.drop(4) else emptyList(),
                     )
                 }
             }
@@ -2616,6 +2637,7 @@ private fun MediaGridCell(
     overlayCount: Int? = null,
     isOverflow: Boolean = false,
     onOverflowSelect: () -> Unit = {},
+    hiddenMessages: List<Message> = emptyList(),
 ) {
     val context = LocalContext.current
     val activity = context as? XmppActivity
@@ -2700,10 +2722,40 @@ private fun MediaGridCell(
             )
         }
         if (overlayCount != null) {
+            // Aggregate progress across the photos hidden behind this tile (not messages[3]
+            // itself — that's a real, separately-visible cell with its own ordinary upload
+            // overlay above). Finished ones count as 100 so one straggler doesn't drag the ring
+            // back down once the rest are already through.
+            val hiddenUploading = remember(revision) {
+                hiddenMessages.any { it.transferable?.getStatus() == Transferable.STATUS_UPLOADING }
+            }
+            val hiddenProgress = remember(revision) {
+                if (hiddenMessages.isEmpty()) {
+                    0f
+                } else {
+                    hiddenMessages.map { m ->
+                        val t = m.transferable
+                        if (t?.getStatus() == Transferable.STATUS_UPLOADING) t.getProgress() else 100
+                    }.average().toFloat() / 100f
+                }
+            }
+            val animatedHiddenProgress by animateFloatAsState(
+                targetValue = hiddenProgress,
+                animationSpec = tween(durationMillis = 300),
+                label = "hiddenOverflowProgress",
+            )
             Box(
                 modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center,
             ) {
+                if (hiddenUploading) {
+                    CircularWavyProgressIndicator(
+                        progress = { animatedHiddenProgress },
+                        modifier = Modifier.size(38.dp),
+                        color = Color.White,
+                        trackColor = Color.White.copy(alpha = 0.25f),
+                    )
+                }
                 Text(
                     text = "+$overlayCount",
                     color = Color.White,
@@ -3896,6 +3948,10 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     // tile's status reflects the whole batch rather than whichever message the footer happens to
     // be attached to.
     statusMessage: Message = message,
+    // (sentCount, total) for a grouped-media tile still in flight — e.g. "2 of 3 sent" while the
+    // group's weakest-link status keeps the checkmark itself pinned on "uploading". Null for every
+    // single-message call site and once the whole group has finished.
+    groupSentCount: Pair<Int, Int>? = null,
 ) {
     // Message is a mutated-in-place Java entity; reading `revision` here is what
     // makes Compose re-read message.status after an in-place status change.
@@ -3959,13 +4015,22 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         stringResource(R.string.private_message)
     }
     val privateLabelColor = privateLabel?.let { Color(UIHelper.getColorForName(it)) }
+    // "2 of 3 sent" — the group's own weakest-link checkmark stays pinned on "uploading" until
+    // *every* photo has gone through (see groupStatusRepresentative), which on its own just reads
+    // as one static spinner no matter how much of the batch has actually finished. Null once done.
+    val groupProgressLabel = groupSentCount?.let { (sent, total) ->
+        if (sent < total) stringResource(R.string.group_upload_progress, sent, total) else null
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
     ) {
         val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-        val footerText = remember(listenLabel, privateLabel, privateLabelColor, fileSize, timeText, onSurfaceVariant) {
+        val footerText = remember(
+            groupProgressLabel, listenLabel, privateLabel, privateLabelColor, fileSize, timeText, onSurfaceVariant,
+        ) {
             val segments = buildList<Pair<String, Color?>> {
+                groupProgressLabel?.let { add(it to null) }
                 listenLabel?.let { add(it to null) }
                 privateLabel?.let { add(it to privateLabelColor) }
                 fileSize?.let { add(it to null) }
