@@ -139,9 +139,3 @@ Pattern: write `.kt`, delete `.java`, keep the same package.
 Output APKs land in `build/outputs/apk/conversationsFree/release/`.
 
 AGP 9.2.1 has built-in Kotlin support — no separate Kotlin plugin needed.
-
-## Notes
-
-> Oh my god, I just gotta agree with my thoughts! They just don't come to me.
-
-(Couldn't find the "Ага, давай. Ещё 4 минуты осталось." section this was meant to go next to — checked this whole file, TODO.md, and git history, no match. Added here instead; move it if you find/remember where it was actually meant to live.)
