@@ -185,14 +185,28 @@ Currently implemented: reset update-sheet pause timer. Backlog:
   now. `preferLive()` now substitutes the conversation's own in-memory `Message` (via
   `findMessageWithUuid`) wherever one exists, in `collectMediaOlder`/`collectMediaNewer` and the
   single-message `onBackendConnected()` fetch alike.
-- [x] **Media grid clipped by its own bubble tail** — `MediaGroupRow`'s outer Row padding already
-  discounted itself by `TAIL_WIDTH` on the tail side (anticipating a wider bubble), but the
-  `Surface` itself was still the plain fixed `MEDIA_GRID_WIDTH` — so the tail's curl carved into
-  (and clipped) the grid content instead of extending past it, on whichever side carries the tail
-  (right for outgoing, left for incoming — matches "clipped on the right when I send 3 photos,
-  clipped on the left on a received grid" exactly). Fixed the same way the single-message text
-  bubble already does it: widen the Surface by `TAIL_WIDTH` when `item.lastOfGroup`. Shipped
-  1.14.1-beta.2.
+- [x] **Media grid clipped by its own bubble tail** — two-part bug, only half-fixed in
+  1.14.1-beta.2. Part 1 (fixed beta.2): `MediaGroupRow`'s outer Row padding already discounted
+  itself by `TAIL_WIDTH` on the tail side, but the `Surface` was still the plain fixed
+  `MEDIA_GRID_WIDTH` — widened it to match, same as the single-message text bubble. Part 2
+  (missed in beta.2, fixed beta.4, caught by user re-testing on both a self-sent and a received
+  batch): widening the *Surface* alone doesn't fix anything on its own — the grid content's own
+  padding was still uniform 4dp on every side, and 4dp < `TAIL_WIDTH` (8dp), so the content's edge
+  landed inside the tail's reserved region regardless of how wide the Surface got. The text
+  bubble's real pattern is two matching changes together (wider container **and** `+TAIL_WIDTH` on
+  the content's own tail-side padding) — only the first half got copied over originally. Confirmed
+  by the user's own test: appending a plain text message after a photo batch moves `lastOfGroup`
+  (and the tail) onto the new text bubble, and the grid stopped clipping the moment it lost the
+  tail — strong direct confirmation the tail interaction was the actual cause.
+  - Follow-up, not yet done: user also asked about the grid's own corner radius not quite matching
+    the container bubble's corner radius at the top corner. Current values: bubble corners are
+    `CORNER_LARGE` (20dp, first-of-group) / `CORNER_SMALL` (5dp, mid-group) vs. every grid cell's
+    fixed `MEDIA_CELL_SHAPE` (10dp) inset by a uniform 4dp margin — neither nests concentrically
+    with either bubble radius (16dp would nest with the 20dp case, ~1dp with the 5dp case; a single
+    fixed 10dp cell radius can't match both). True concentric nesting would need each outer cell's
+    corner shape to vary by position/`firstOfGroup` rather than one shared `MEDIA_CELL_SHAPE` for
+    every cell — a real (if small) design task, not a one-line tweak. Asked the user whether to
+    pursue exact nesting or just a closer manual number.
 - [x] **Media viewer only showed one photo from a tied-timestamp album** — real bug, root cause
   confirmed: `collectMediaOlder`/`collectMediaNewer` (and the DB layer they call,
   `getMessages`/`getMessagesAfter`) use strict `</>` on `timeSent`. A sibling message sharing the

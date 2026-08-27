@@ -2444,7 +2444,23 @@ private fun MediaGroupRow(
                     // only whole-group toggle left. The "+N" cell is the exception — selecting
                     // from it hands off to the picker screen instead, since a dimmed placeholder
                     // cell has no single message of its own to toggle.
-                    Box(modifier = Modifier.padding(4.dp)) {
+                    //
+                    // Widening the Surface above only grows the *bubble*; the content's own inset
+                    // from that edge was still the plain uniform 4dp everywhere, which is less
+                    // than TAIL_WIDTH (8dp) — so the content's edge still landed inside the tail's
+                    // reserved region regardless of how wide the Surface got, same clipping as
+                    // before. The tail side needs the same "+TAIL_WIDTH on top of the normal inset"
+                    // treatment the text bubble gives its own content padding, not just a wider
+                    // container.
+                    val tailPad = if (item.lastOfGroup) 4.dp + TAIL_WIDTH else 4.dp
+                    Box(
+                        modifier = Modifier.padding(
+                            start = if (item.lastOfGroup && !outgoing) tailPad else 4.dp,
+                            end = if (item.lastOfGroup && outgoing) tailPad else 4.dp,
+                            top = 4.dp,
+                            bottom = 4.dp,
+                        ),
+                    ) {
                         MediaGridContent(
                             messages = messages,
                             revision = revision,
