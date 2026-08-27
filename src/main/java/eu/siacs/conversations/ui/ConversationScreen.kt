@@ -4458,7 +4458,24 @@ private fun MessageContextSheet(
         // cancel just as much as a genuine error (both set this same status, only the error
         // message differs), so this and the P2P retry below are already available after a
         // cancel too, with no separate handling needed for that case.
-        if (message.status == Message.STATUS_SEND_FAILED && !deleted) {
+        //
+        // For a whole grid tile (group != null), this has to act on every failed photo in the
+        // batch, not just whichever cell happened to be long-pressed — a photo can fail while its
+        // neighbors succeed (each upload runs independently), so long-pressing the "+N" overflow
+        // tile specifically (or any other cell in the same group) previously only offered a retry
+        // when *that exact* message had failed, silently doing nothing about failures elsewhere in
+        // the same batch. The single-message P2P retry option is intentionally not offered here —
+        // its eligibility (peer online, upload availability) would need re-checking per photo.
+        if (group != null) {
+            val failedInGroup = group.filter { it.status == Message.STATUS_SEND_FAILED }
+            if (failedInGroup.isNotEmpty() && !deleted) {
+                add(
+                    SheetAction(R.drawable.ic_refresh_24dp, stringResource(R.string.retry_failed_photos)) {
+                        failedInGroup.forEach { listener.onResendMessage(it) }
+                    }
+                )
+            }
+        } else if (message.status == Message.STATUS_SEND_FAILED && !deleted) {
             add(SheetAction(R.drawable.ic_refresh_24dp, stringResource(R.string.send_again)) {
                 listener.onResendMessage(message)
             })

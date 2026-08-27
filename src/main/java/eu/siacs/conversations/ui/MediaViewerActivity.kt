@@ -363,11 +363,23 @@ private fun MediaViewerScreen(
         val newer = withContext(Dispatchers.IO) {
             collectMediaNewer(service, conversation, startMessage.timeSent, WINDOW_BATCH)
         }
+        // Siblings sharing startMessage's exact timestamp never show up in `older`/`newer` above
+        // — both use strict </> on timeSent, so a message tied with the anchor falls through
+        // both (see getMessagesAtTimestamp's own doc for why ties are common: a multi-photo album
+        // delivered together, especially via MAM/offline delivery, often lands on one timestamp).
+        // Without this, opening the viewer on any photo from such an album showed only that one
+        // photo with nothing to swipe to — every sibling silently missing from both queries.
+        val tied = withContext(Dispatchers.IO) {
+            service.databaseBackend.getMessagesAtTimestamp(conversation, startMessage.timeSent)
+                .filter { isMediaCell(it) }
+                .map { preferLive(conversation, it) }
+        }.ifEmpty { listOf(startMessage) }
         items.clear()
         items.addAll(older)
-        items.add(startMessage)
+        items.addAll(tied)
         items.addAll(newer)
-        initialIndex = older.size
+        val tiedIndex = tied.indexOfFirst { it.getUuid() == startMessage.getUuid() }
+        initialIndex = older.size + if (tiedIndex >= 0) tiedIndex else 0
         ready = true
     }
 

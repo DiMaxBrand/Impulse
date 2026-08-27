@@ -1507,6 +1507,43 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         return list;
     }
 
+    /**
+     * Every message in this conversation sharing the exact same {@code timeSent} as {@code
+     * timestamp}, ordered by SQLite's own rowid (a stable proxy for insertion/delivery order when
+     * timestamps tie). Needed because {@link #getMessages(Conversation, int, long)} and {@link
+     * #getMessagesAfter(Conversation, int, long)} both use strict {@code </>} on timeSent — a
+     * sibling message that happens to land on the exact same timestamp as the anchor is neither
+     * strictly before nor strictly after it, so it silently falls through both queries and never
+     * reaches the media viewer's pager at all. This is not a rare coincidence: a multi-photo album
+     * delivered together commonly ties, especially via MAM/offline delivery where the XEP-0203
+     * delay stamp can carry only second-level precision, putting an entire batch on the identical
+     * second.
+     */
+    public ArrayList<Message> getMessagesAtTimestamp(Conversation conversation, long timestamp) {
+        ArrayList<Message> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        String[] selectionArgs = {conversation.getUuid(), Long.toString(timestamp)};
+        Cursor cursor =
+                db.query(
+                        Message.TABLENAME,
+                        null,
+                        Message.CONVERSATION + "=? and " + Message.TIME_SENT + "=?",
+                        selectionArgs,
+                        null,
+                        null,
+                        "rowid ASC");
+        CursorUtils.upgradeCursorWindowSize(cursor);
+        while (cursor.moveToNext()) {
+            try {
+                list.add(Message.fromCursor(context, cursor, conversation));
+            } catch (final Exception e) {
+                Log.e(Config.LOGTAG, "unable to restore message", e);
+            }
+        }
+        cursor.close();
+        return list;
+    }
+
     public Message getMessage(Conversation conversation, String uuid) {
         SQLiteDatabase db = this.getReadableDatabase();
         String[] selectionArgs = {conversation.getUuid(), uuid};

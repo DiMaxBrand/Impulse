@@ -193,6 +193,32 @@ Currently implemented: reset update-sheet pause timer. Backlog:
   clipped on the left on a received grid" exactly). Fixed the same way the single-message text
   bubble already does it: widen the Surface by `TAIL_WIDTH` when `item.lastOfGroup`. Shipped
   1.14.1-beta.2.
+- [x] **Media viewer only showed one photo from a tied-timestamp album** — real bug, root cause
+  confirmed: `collectMediaOlder`/`collectMediaNewer` (and the DB layer they call,
+  `getMessages`/`getMessagesAfter`) use strict `</>` on `timeSent`. A sibling message sharing the
+  exact same timestamp as the tapped one is neither strictly before nor strictly after it, so it
+  silently falls through *both* queries — reported as "4 photos, only 1 rendered, couldn't scroll."
+  Ties are not a rare coincidence here: a multi-photo album delivered together, especially via
+  MAM/offline delivery where the XEP-0203 delay stamp can carry only second-level precision, often
+  lands an entire batch on one identical second. (A near-identical `+1` workaround already exists
+  elsewhere for a single-message case — `ConversationComposeFragment.onScrollToMessage()` — which
+  is what pointed at this class of bug.) Fixed with a new `DatabaseBackend.getMessagesAtTimestamp()`
+  (ordered by rowid, a stable proxy for insertion order among ties) spliced into the viewer's
+  initial load in `MediaViewerActivity.kt`. No migration needed — purely a runtime query fix, so it
+  self-heals for messages already in the database the next time the viewer opens on them. Shipped
+  1.14.1-beta.3. Not yet applied to the *pagination* edges (`collectMediaOlder`/`collectMediaNewer`
+  calls when scrolling loads more history) — same class of bug could in principle recur there if a
+  tied cluster straddles exactly a `WINDOW_BATCH` page boundary; rarer, not fixed yet.
+- [x] **"+N" overflow tile long-press: retry only covered the tapped message, not the whole
+  group's failures** — `MessageContextSheet`'s "Send again"/P2P-retry block only ever acted on
+  whichever single message the sheet was opened against, even though the sheet already shows a
+  per-photo failure banner for the *entire* group (see `failuresByError`). Long-pressing the "+N"
+  tile specifically (or any other cell) previously only offered a retry when that exact cell's own
+  message had failed, silently doing nothing about failures elsewhere in the same batch. Now, for
+  any grouped-tile sheet (`group != null`), a single "Retry failed photos" action collects every
+  `STATUS_SEND_FAILED` message in the group and resends all of them — appears only when at least
+  one photo in the batch actually failed. The single-message P2P retry option is intentionally not
+  offered in the group case (its eligibility would need re-checking per photo). Shipped 1.14.1-beta.3.
 - [x] **"Smart" group upload status** — the group's own status icon is a deliberate "weakest link"
   (see `groupStatusRepresentative`) that stays pinned on the uploading glyph until every photo in
   the batch has gone through, which alone just reads as one static spinner with no sense of

@@ -334,6 +334,7 @@
     <string name="paste_as_quote">Вставить как цитату</string>
     <string name="copy_original_url">Копировать адрес ссылки</string>
     <string name="send_again">Отправить ещё раз</string>
+    <string name="retry_failed_photos">Повторить неудачные фото</string>
     <string name="file_url">URL файла</string>
     <string name="url_copied_to_clipboard">Ссылка скопирована в буфер обмена</string>
     <string name="jabber_id_copied_to_clipboard">XMPP-адрес скопирован в буфер обмена</string>
