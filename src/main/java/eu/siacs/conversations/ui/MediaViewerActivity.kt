@@ -4,9 +4,19 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,6 +28,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -40,6 +51,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -333,6 +345,7 @@ private suspend fun collectMediaNewer(
     return if (result.size > needed) result.subList(0, needed) else result
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun MediaViewerScreen(
     service: XmppConnectionService,
@@ -431,6 +444,9 @@ private fun MediaViewerScreen(
     var chromeVisible by remember { mutableStateOf(true) }
     var deleteTarget by remember { mutableStateOf<Message?>(null) }
     var deleting by remember { mutableStateOf(false) }
+    // Destination half of the save-button shared-bounds transform — see saveButton below and the
+    // Card at the bottom of this Box. Collapses on its own BackHandler like Invite's own card.
+    var saveCardExpanded by remember { mutableStateOf(false) }
 
     fun confirmDelete(action: (Message) -> Unit) {
         val target = deleteTarget ?: return
@@ -445,6 +461,17 @@ private fun MediaViewerScreen(
         }
     }
 
+    BackHandler(enabled = saveCardExpanded) { saveCardExpanded = false }
+    // Same spring pairing StartConversationScreen's Invite row→card transform uses: more bounce
+    // expanding out, a quicker settle collapsing back in.
+    val saveBoundsTransform = BoundsTransform { _, _ ->
+        spring(
+            stiffness = 380f,
+            dampingRatio = if (saveCardExpanded) Spring.DampingRatioMediumBouncy else 0.8f,
+        )
+    }
+
+    SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             MediaViewerPage(
@@ -466,9 +493,32 @@ private fun MediaViewerScreen(
                 conversation = conversation,
                 onBack = onClose,
                 onShare = { onShare(currentMessage) },
-                onSave = { onSave(currentMessage) },
                 onShowInChat = { onShowInChat(currentMessage) },
                 onDelete = { deleteTarget = currentMessage },
+                saveButton = {
+                    // Its own AnimatedVisibility (rather than relying on the outer chrome one)
+                    // so this item carries a real AnimatedVisibilityScope to hand to sharedBounds
+                    // below — the source half of the transform into the destination Card.
+                    AnimatedVisibility(
+                        visible = !saveCardExpanded,
+                        enter = EnterTransition.None,
+                        exit = ExitTransition.None,
+                    ) {
+                        ViewerChipButton(
+                            iconRes = R.drawable.ic_download_24dp,
+                            contentDescription = stringResource(R.string.save),
+                            onClick = { saveCardExpanded = true },
+                            modifier = Modifier.sharedBounds(
+                                rememberSharedContentState("save_card"),
+                                animatedVisibilityScope = this@AnimatedVisibility,
+                                enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                boundsTransform = saveBoundsTransform,
+                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                            ),
+                        )
+                    }
+                },
             )
         }
         androidx.compose.animation.AnimatedVisibility(
@@ -500,6 +550,64 @@ private fun MediaViewerScreen(
                 Text(text = stringResource(R.string.deleting), color = Color.White, style = MaterialTheme.typography.bodyMedium)
             }
         }
+
+        val saveScrimAlpha by animateFloatAsState(
+            targetValue = if (saveCardExpanded) 0.32f else 0f,
+            animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+            label = "save_card_scrim",
+        )
+        if (saveScrimAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = saveScrimAlpha))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { saveCardExpanded = false },
+            )
+        }
+        // Destination half of the transform — a floating elevated card, same treatment as
+        // Invite/Add Contact, that grows from the save button's own position.
+        AnimatedVisibility(
+            visible = saveCardExpanded,
+            enter = EnterTransition.None,
+            exit = ExitTransition.None,
+            modifier = Modifier.align(Alignment.Center),
+        ) {
+            val alreadySaved = remember(currentMessage.getUuid()) {
+                currentMessage.getRelativeFilePath()?.sharedStorage() == true
+            }
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                tonalElevation = 6.dp,
+                shadowElevation = 8.dp,
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .fillMaxWidth()
+                    .sharedBounds(
+                        rememberSharedContentState("save_card"),
+                        animatedVisibilityScope = this@AnimatedVisibility,
+                        enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        boundsTransform = saveBoundsTransform,
+                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    )
+                    // Consume touches so taps inside don't fall through to the scrim.
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) {},
+            ) {
+                SaveStatusCardContent(
+                    heroIconRes = R.drawable.ic_download_24dp,
+                    alreadySaved = alreadySaved,
+                    onSave = { onSave(currentMessage) },
+                    onClose = { saveCardExpanded = false },
+                )
+            }
+        }
+    }
     }
     val target = deleteTarget
     if (target != null) {
@@ -524,7 +632,10 @@ private fun MediaViewerTopBar(
     conversation: Conversation,
     onBack: () -> Unit,
     onShare: () -> Unit,
-    onSave: () -> Unit,
+    // Built by the caller (MediaViewerScreen) rather than a plain onClick — it carries the
+    // save-card shared-bounds transform's source half, which needs a real AnimatedVisibilityScope
+    // only available up in the SharedTransitionLayout this bar itself doesn't have access to.
+    saveButton: @Composable () -> Unit,
     onShowInChat: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -560,7 +671,7 @@ private fun MediaViewerTopBar(
         Spacer(Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ViewerChipButton(iconRes = R.drawable.ic_share_24dp, contentDescription = stringResource(R.string.share), onClick = onShare)
-            ViewerChipButton(iconRes = R.drawable.ic_download_24dp, contentDescription = stringResource(R.string.save), onClick = onSave)
+            saveButton()
             Box {
                 ViewerChipButton(
                     iconRes = R.drawable.ic_more_horiz_24dp,
@@ -596,9 +707,14 @@ private fun MediaViewerTopBar(
 }
 
 @Composable
-private fun ViewerChipButton(iconRes: Int, contentDescription: String?, onClick: () -> Unit) {
+private fun ViewerChipButton(
+    iconRes: Int,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(34.dp)
             .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.32f))

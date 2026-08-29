@@ -1316,6 +1316,8 @@
     </plurals>
     <string name="could_not_save_files">Невозможно сохранить файлы</string>
     <string name="save_file">Сохранить файл</string>
+    <string name="save_card_already_saved">У вас включено автоматическое сохранение в галерею в настройках — этот файл уже сохранён в вашей галерее.</string>
+    <string name="save_card_not_saved">Этот файл ещё не сохранён в вашей галерее.</string>
     <string name="copy_url">Копировать URL</string>
     <string name="delete_leftover_message">Удалить запись сообщения</string>
     <string name="filter_type_images">Изображения</string>

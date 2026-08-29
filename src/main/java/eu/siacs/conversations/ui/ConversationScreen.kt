@@ -584,6 +584,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // sheet's Delete action operate on the whole batch instead of silently acting on just the
     // first message it happens to represent.
     var menuTargetGroup by remember { mutableStateOf<List<Message>?>(null) }
+    // Set by MessageContextSheet's "Save file" row — opens the save-status elevated card for this
+    // message instead of saving immediately, so the card can explain what happened (or would
+    // happen) rather than silently no-oping when the file's already in shared storage.
+    var saveCardTarget by remember { mutableStateOf<Message?>(null) }
     // Bottom sheet offering "All Photos" vs "Select Photos" when "Select" is tapped on a grid
     // tile's context sheet — set to the tapped tile's whole batch, null when not showing.
     var selectPopupGroup by remember { mutableStateOf<List<Message>?>(null) }
@@ -690,10 +694,19 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 pendingOnboarding = kind
                 onboardingContinuation = action
             },
+            onRequestSaveCard = { saveCardTarget = it },
             onDismiss = {
                 menuTarget = null
                 menuTargetGroup = null
             },
+        )
+    }
+    val saveTarget = saveCardTarget
+    if (saveTarget != null) {
+        SaveStatusOverlay(
+            message = saveTarget,
+            onSave = { listener.onSaveFile(saveTarget) },
+            onDismiss = { saveCardTarget = null },
         )
     }
     val onboardingKind = pendingOnboarding
@@ -4377,6 +4390,10 @@ private fun MessageContextSheet(
     // ConversationScreen() to show MessageActionOnboardingSheet, then run [action] once that's
     // dismissed. Every later edit/delete for that user runs [action] straight away.
     onNeedsOnboarding: (kind: OnboardingKind, action: () -> Unit) -> Unit,
+    // Opens the save-status elevated card instead of saving immediately — the card explains what
+    // happened (or would happen) rather than silently no-oping when the file's already in shared
+    // storage, same treatment as the media viewer's own save button.
+    onRequestSaveCard: (Message) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -4537,14 +4554,14 @@ private fun MessageContextSheet(
                 listener.onCopyUrl(message)
             })
         }
-        // Save file to shared storage
+        // Save file to shared storage — always shown now (not hidden once already saved), same
+        // as the media viewer's own save button; opens the elevated status card instead of
+        // saving immediately, since silently no-oping when it's already saved was the original
+        // problem this row's own hide-when-redundant gate was covering for.
         if (message.isFileOrImage && !deleted && !cancelable) {
-            val path = message.getRelativeFilePath()
-            if (path != null && !path.sharedStorage()) {
-                add(SheetAction(R.drawable.ic_save_24dp, stringResource(R.string.save_file)) {
-                    listener.onSaveFile(message)
-                })
-            }
+            add(SheetAction(R.drawable.ic_save_24dp, stringResource(R.string.save_file)) {
+                onRequestSaveCard(message)
+            })
         }
         // Share
         val shareable = (message.isFileOrImage && !deleted && !receiving)
@@ -4780,6 +4797,53 @@ internal fun isRetractable(message: Message): Boolean {
 // check, not something tied to the room's privacy/anonymity settings. Owners/admins are
 // supposed to always hold at least moderator role per XEP-0045, but OR in the affiliation
 // directly (ranks(ADMIN) also covers OWNER) in case the client's tracked role lags.
+/** The save-status elevated card, triggered from MessageContextSheet's "Save file" row — same
+ * card/content as the media viewer's own save button (SaveStatusCardContent), but the context
+ * sheet lives inside a ModalBottomSheet's own Dialog window, so a true shared-bounds morph like
+ * the viewer uses can't reliably cross that boundary. This is its own Dialog instead (same reason
+ * MessageContextSheet/DeleteMessageSheet above can be called as bare top-level siblings with no
+ * wrapping Box — Dialogs render above everything on their own, they don't need one), with a
+ * bouncy scale+fade pop-in so it still reads as an intentional "grow into view" rather than a
+ * flat cut, even without a literal continuation of the row's own bounds. */
+@Composable
+private fun SaveStatusOverlay(message: Message, onSave: () -> Unit, onDismiss: () -> Unit) {
+    val alreadySaved = remember(message.getUuid()) {
+        message.getRelativeFilePath()?.sharedStorage() == true
+    }
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { visible = true }
+        AnimatedVisibility(
+            visible = visible,
+            enter = scaleIn(
+                initialScale = 0.85f,
+                animationSpec = spring(
+                    stiffness = 380f,
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                ),
+            ) + fadeIn(),
+            exit = scaleOut(targetScale = 0.85f) + fadeOut(),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                tonalElevation = 6.dp,
+                shadowElevation = 8.dp,
+                modifier = Modifier.padding(horizontal = 24.dp).fillMaxWidth(),
+            ) {
+                SaveStatusCardContent(
+                    heroIconRes = R.drawable.ic_save_24dp,
+                    alreadySaved = alreadySaved,
+                    onSave = onSave,
+                    onClose = onDismiss,
+                )
+            }
+        }
+    }
+}
+
 internal fun isModeratable(message: Message): Boolean {
     val conversation = message.conversation as? Conversation
     val isMuc = conversation?.getMode() == Conversational.MODE_MULTI

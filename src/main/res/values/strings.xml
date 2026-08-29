@@ -1250,6 +1250,8 @@
     </plurals>
     <string name="could_not_save_files">Could not save files</string>
     <string name="save_file">Save file</string>
+    <string name="save_card_already_saved">You have automatic gallery saving turned on in Settings — this file is already saved to your gallery.</string>
+    <string name="save_card_not_saved">This file hasn\'t been saved to your gallery yet.</string>
     <string name="copy_url">Copy URL</string>
     <string name="delete_leftover_message">Delete message entry</string>
     <plurals name="delete_n_messages">

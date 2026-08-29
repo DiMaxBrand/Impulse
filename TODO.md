@@ -275,31 +275,30 @@ Currently implemented: reset update-sheet pause timer. Backlog:
   `<fallback for="...">` element other clients (old Impulse or a different XMPP client entirely)
   already know to fall back to. No version negotiation needed — it's per-message, client-side, and
   works today for the three existing cases.
-- [ ] **Save/download affordances — redesign as an elevated card, not a bare icon that can
-  silently no-op. Two locations, same treatment.** Confirmed real gap: `MediaViewerActivity.
-  saveToDevice()` returns instantly with zero feedback whenever the file's already in shared
-  storage — which, since "Automatically save to gallery" is on by default, is most of the time. No
-  duplicates get created (the early return is correct), but tapping a visibly-present button and
-  having nothing happen, silently, is bad on its own.
-  - **Both locations get it**, not just the viewer: (1) the in-app viewer's circular save button,
-    top-right of the chrome bar, and (2) the long-press context sheet's "Save file" row
-    (`ConversationScreen.kt`'s `MessageContextSheet`). That sheet row currently just hides itself
-    once redundant (`gated on !path.sharedStorage()`) rather than explaining anything — same
-    silent-omission problem as the viewer's silent no-op, just a different flavor of "nothing to
-    see here."
-  - Tapping either one should **grow into** a floating elevated Card (scrim, tap-outside-to-
-    dismiss — same visual result as Invite/Add Contact's card), hero icon = the same rounded
-    download Material Symbol that was tapped, and state-aware text: when auto-save-to-gallery is
-    on, something like "You have automatic gallery saving turned on in Settings — this file is
-    already saved to your gallery" instead of a redundant action.
-  - **Motion**: user asked for the button to *morph into* the card (not just a card that separately
-    fades in) — the codebase's own precedent for exactly this is a real Compose shared-bounds
-    transform (`SharedTransitionLayout`/`sharedBounds`), the same mechanism already used for the
-    Invite FAB item growing into its destination screen and the `DeveloperOptionsActivity` version
-    picker (own `AnimatedVisibility` per side, matching `sharedBounds` key, paired springs for
-    expand/collapse) — not `AnimatedContent` (crossfades between states in one slot, already used
-    elsewhere for e.g. `MediaBubblePhase`, but doesn't grow one element's bounds into another's).
-    Reuse the shared-bounds pattern, not `AnimatedContent`, when this gets built.
+- [x] **Save/download affordances — redesigned as an elevated card, not a bare icon that could
+  silently no-op. Both locations.** Confirmed real gap: `MediaViewerActivity.saveToDevice()`
+  returned instantly with zero feedback whenever the file was already in shared storage — which,
+  since "Automatically save to gallery" is on by default, was most of the time. New
+  `SaveStatusCardContent` (`SaveStatusCard.kt`) is the shared destination content: large hero icon
+  (the exact icon that was tapped), state-aware text/action from
+  `message.getRelativeFilePath()?.sharedStorage()` — "already saved" copy + OK when true, a real
+  Save button when false. New strings `save_card_already_saved`/`save_card_not_saved`, EN+RU.
+  - **Media viewer's circular save button**: a real Compose shared-bounds transform
+    (`SharedTransitionLayout`/`sharedBounds`), same mechanism and spring pairing as the Invite FAB
+    item growing into its destination screen — the button itself morphs into the card, not just a
+    card that separately fades in. `MediaViewerTopBar` now takes a `saveButton: @Composable ()
+    -> Unit` slot (built by `MediaViewerScreen`, which owns the `SharedTransitionLayout`) instead
+    of a plain `onSave` callback, since the shared-bounds source needs a real
+    `AnimatedVisibilityScope` the top bar itself doesn't have.
+  - **Context sheet's "Save file" row**: no longer hides itself once redundant — always shown now,
+    opens the same card via `onRequestSaveCard`. *Not* a true shared-bounds morph like the viewer,
+    though — `MessageContextSheet` renders inside `ModalBottomSheet`'s own Dialog window, which a
+    shared-bounds transform can't reliably cross. Uses its own `Dialog` instead (new
+    `SaveStatusOverlay`, same reason `MessageContextSheet`/`DeleteMessageSheet` are themselves
+    callable as bare top-level siblings with no wrapping Box) with a bouncy scale+fade pop-in, so
+    it still reads as "grow into view" without being a literal continuation of the row's bounds.
+  - Compiles clean (Kotlin + Java); not yet visually verified on a device — the shared-bounds
+    motion in particular is worth a real check once installed.
 - [ ] **In-app emoji picker — after the first stable release ships, not before.** Same idea as
   WhatsApp/Telegram/most native Android and iOS messaging apps: tapping a trigger dismisses the
   system keyboard and an in-app emoji grid takes over that same screen space instead — genuinely
