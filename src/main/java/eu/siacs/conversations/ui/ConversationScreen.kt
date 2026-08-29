@@ -2464,6 +2464,9 @@ private fun MediaGroupRow(
                         MediaGridContent(
                             messages = messages,
                             revision = revision,
+                            corners = remember(item.firstOfGroup, item.lastOfGroup, outgoing) {
+                                mediaGridCorners(item.firstOfGroup, item.lastOfGroup, outgoing)
+                            },
                             selectionActive = selectionActive,
                             selectedUuids = selectedUuids,
                             onCellTap = { tapped ->
@@ -2503,21 +2506,107 @@ private fun MediaGroupRow(
     }
 }
 
-private val MEDIA_CELL_SHAPE = RoundedCornerShape(10.dp)
+// Interior corners (any grid corner that isn't one of the tile's real outer four — the ones
+// facing another cell rather than the bubble's own edge) keep this shared, modest rounding.
+private val MEDIA_CELL_DEFAULT_CORNER: Dp = 10.dp
+
+// Floor so a tightly-radiused bubble corner (CORNER_SMALL, 5dp) doesn't nest down to something
+// so small it reads as a plain square once the margin is subtracted — still visibly rounded, just
+// tight, matching how tight CORNER_SMALL itself already reads on the bubble.
+private val MEDIA_CELL_MIN_CORNER: Dp = 2.dp
+
+/** The grid's real outer corner radii — one per corner of the whole tile, not per cell — so each
+ * outer cell's own outer corner can nest concentrically inside the bubble's actual corner there
+ * instead of using the same flat [MEDIA_CELL_DEFAULT_CORNER] everywhere regardless of what the
+ * bubble itself is doing at that corner. Mirrors [rememberBubbleShape]'s own per-corner logic
+ * exactly (including the tail case) so this never drifts out of sync with the real bubble shape.
+ */
+private data class GridCorners(val topStart: Dp, val topEnd: Dp, val bottomStart: Dp, val bottomEnd: Dp)
+
+private fun mediaGridCorners(firstOfGroup: Boolean, lastOfGroup: Boolean, outgoing: Boolean): GridCorners {
+    val top = if (firstOfGroup) CORNER_LARGE else CORNER_SMALL
+    val sideMargin = 4.dp
+    // The tail side's content padding is wider (see MediaGroupRow's own tailPad) to clear the
+    // tail curl — that pushes *both* corners on that same side further from the bubble's own
+    // corner arc, not just the curl itself, so the still-plain-rounded corner on that side needs
+    // the wider margin too, not the default 4dp.
+    val tailMargin = if (lastOfGroup) sideMargin + TAIL_WIDTH else sideMargin
+    fun nest(outer: Dp, margin: Dp) = (outer - margin).coerceAtLeast(MEDIA_CELL_MIN_CORNER)
+    return if (!lastOfGroup) {
+        // Plain RoundedCornerShape case (rememberBubbleShape's non-tail branch) — every corner
+        // sits behind the same uniform 4dp content margin.
+        if (outgoing) {
+            GridCorners(
+                topStart = nest(CORNER_LARGE, sideMargin),
+                topEnd = nest(top, sideMargin),
+                bottomStart = nest(CORNER_LARGE, sideMargin),
+                bottomEnd = nest(CORNER_SMALL, sideMargin),
+            )
+        } else {
+            GridCorners(
+                topStart = nest(top, sideMargin),
+                topEnd = nest(CORNER_LARGE, sideMargin),
+                bottomStart = nest(CORNER_SMALL, sideMargin),
+                bottomEnd = nest(CORNER_LARGE, sideMargin),
+            )
+        }
+    } else {
+        // bubbleTailShape's corners — three plain rounded corners plus a curl on the tail side.
+        // The curl isn't a circular corner at all, so there's nothing to nest against there; it
+        // keeps the shared default. The *other* corner on that same side is still a real rounded
+        // corner, but sits behind the wider tail-side margin, not the plain 4dp the two corners on
+        // the opposite side get.
+        if (outgoing) {
+            GridCorners(
+                topStart = nest(CORNER_LARGE, sideMargin),
+                topEnd = nest(top, tailMargin),
+                bottomStart = nest(CORNER_LARGE, sideMargin),
+                bottomEnd = MEDIA_CELL_DEFAULT_CORNER,
+            )
+        } else {
+            GridCorners(
+                topStart = nest(top, tailMargin),
+                topEnd = nest(CORNER_LARGE, sideMargin),
+                bottomStart = MEDIA_CELL_DEFAULT_CORNER,
+                bottomEnd = nest(CORNER_LARGE, sideMargin),
+            )
+        }
+    }
+}
+
+/** Builds one grid cell's corner shape — [topStart]/[topEnd]/[bottomStart]/[bottomEnd] mark which
+ * of this specific cell's four corners are real outer corners of the whole tile (and so should
+ * use [corners]' matching, bubble-nested value); every other corner of the same cell faces another
+ * cell, not the bubble edge, and keeps the shared [MEDIA_CELL_DEFAULT_CORNER] regardless. */
+private fun cellShape(
+    corners: GridCorners,
+    topStart: Boolean = false,
+    topEnd: Boolean = false,
+    bottomStart: Boolean = false,
+    bottomEnd: Boolean = false,
+): RoundedCornerShape = RoundedCornerShape(
+    topStart = if (topStart) corners.topStart else MEDIA_CELL_DEFAULT_CORNER,
+    topEnd = if (topEnd) corners.topEnd else MEDIA_CELL_DEFAULT_CORNER,
+    bottomStart = if (bottomStart) corners.bottomStart else MEDIA_CELL_DEFAULT_CORNER,
+    bottomEnd = if (bottomEnd) corners.bottomEnd else MEDIA_CELL_DEFAULT_CORNER,
+)
 
 @Composable
 private fun MediaGridContent(
     messages: List<Message>,
     revision: Int,
+    corners: GridCorners,
     selectionActive: Boolean,
     selectedUuids: List<String>,
     onCellTap: (Message) -> Unit,
     onCellLongTap: (Message) -> Unit,
     onOverflowSelect: () -> Unit,
 ) {
-    // Every cell gets its own modest, uniform rounding — safe now that MediaGroupRow insets the
-    // whole grid from the Surface's real edge with a margin, so a cell's corner never coincides
-    // with (and can't mismatch) the bubble's own shape.
+    // Every cell gets its own modest rounding, tightened to nest concentrically with the bubble's
+    // own corner wherever a cell's corner is actually one of the tile's real outer four — see
+    // [cellShape]/[mediaGridCorners]. Safe now that MediaGroupRow insets the whole grid from the
+    // Surface's real edge with a margin, so a cell's corner never coincides with (and can't
+    // mismatch) the bubble's own shape — it nests just inside it instead.
     when (messages.size) {
         2 -> Row(
             modifier = Modifier.height(MEDIA_GRID_SINGLE_HEIGHT),
@@ -2525,7 +2614,8 @@ private fun MediaGridContent(
         ) {
             MediaGridCell(
                 messages[0],
-                Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE),
+                Modifier.weight(1f).fillMaxHeight()
+                    .clip(cellShape(corners, topStart = true, bottomStart = true)),
                 onCellTap,
                 onCellLongTap,
                 revision = revision,
@@ -2534,7 +2624,8 @@ private fun MediaGridContent(
             )
             MediaGridCell(
                 messages[1],
-                Modifier.weight(1f).fillMaxHeight().clip(MEDIA_CELL_SHAPE),
+                Modifier.weight(1f).fillMaxHeight()
+                    .clip(cellShape(corners, topEnd = true, bottomEnd = true)),
                 onCellTap,
                 onCellLongTap,
                 revision = revision,
@@ -2548,7 +2639,8 @@ private fun MediaGridContent(
         ) {
             MediaGridCell(
                 messages[0],
-                Modifier.weight(1.3f).fillMaxHeight().clip(MEDIA_CELL_SHAPE),
+                Modifier.weight(1.3f).fillMaxHeight()
+                    .clip(cellShape(corners, topStart = true, bottomStart = true)),
                 onCellTap,
                 onCellLongTap,
                 revision = revision,
@@ -2561,7 +2653,8 @@ private fun MediaGridContent(
             ) {
                 MediaGridCell(
                     messages[1],
-                    Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE),
+                    Modifier.weight(1f).fillMaxWidth()
+                        .clip(cellShape(corners, topEnd = true)),
                     onCellTap,
                     onCellLongTap,
                     revision = revision,
@@ -2570,7 +2663,8 @@ private fun MediaGridContent(
                 )
                 MediaGridCell(
                     messages[2],
-                    Modifier.weight(1f).fillMaxWidth().clip(MEDIA_CELL_SHAPE),
+                    Modifier.weight(1f).fillMaxWidth()
+                        .clip(cellShape(corners, bottomEnd = true)),
                     onCellTap,
                     onCellLongTap,
                     revision = revision,
@@ -2585,7 +2679,8 @@ private fun MediaGridContent(
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     MediaGridCell(
                         messages[0],
-                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
+                        Modifier.weight(1f).aspectRatio(4f / 5f)
+                            .clip(cellShape(corners, topStart = true)),
                         onCellTap,
                         onCellLongTap,
                         revision = revision,
@@ -2594,7 +2689,8 @@ private fun MediaGridContent(
                     )
                     MediaGridCell(
                         messages[1],
-                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
+                        Modifier.weight(1f).aspectRatio(4f / 5f)
+                            .clip(cellShape(corners, topEnd = true)),
                         onCellTap,
                         onCellLongTap,
                         revision = revision,
@@ -2605,7 +2701,8 @@ private fun MediaGridContent(
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     MediaGridCell(
                         messages[2],
-                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
+                        Modifier.weight(1f).aspectRatio(4f / 5f)
+                            .clip(cellShape(corners, bottomStart = true)),
                         onCellTap,
                         onCellLongTap,
                         revision = revision,
@@ -2620,7 +2717,8 @@ private fun MediaGridContent(
                     // meaningfully "select" on its own.
                     MediaGridCell(
                         messages[3],
-                        Modifier.weight(1f).aspectRatio(4f / 5f).clip(MEDIA_CELL_SHAPE),
+                        Modifier.weight(1f).aspectRatio(4f / 5f)
+                            .clip(cellShape(corners, bottomEnd = true)),
                         onCellTap,
                         onCellLongTap,
                         revision = revision,

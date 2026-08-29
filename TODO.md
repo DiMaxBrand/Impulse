@@ -205,8 +205,16 @@ Currently implemented: reset update-sheet pause timer. Backlog:
     with either bubble radius (16dp would nest with the 20dp case, ~1dp with the 5dp case; a single
     fixed 10dp cell radius can't match both). True concentric nesting would need each outer cell's
     corner shape to vary by position/`firstOfGroup` rather than one shared `MEDIA_CELL_SHAPE` for
-    every cell — a real (if small) design task, not a one-line tweak. Asked the user whether to
-    pursue exact nesting or just a closer manual number.
+  - Done, 1.14.1-beta.5: real per-corner nesting, not a manual number nudge. New `GridCorners`
+    (topStart/topEnd/bottomStart/bottomEnd) computed once per tile by `mediaGridCorners()`, mirroring
+    `rememberBubbleShape`'s own per-corner logic exactly (including the tail case, where the
+    tail-side corner is a curl with nothing to nest against, and the *other* corner on that same
+    side sits behind the wider tail-side content margin, not the plain 4dp the opposite side gets).
+    Each of the grid's outer cells now gets an asymmetric shape via `cellShape()`: only the specific
+    corner that's actually one of the tile's real outer four uses the computed, bubble-nested value
+    (`outer - margin`, floored at 2dp so `CORNER_SMALL` doesn't nest down to a near-square corner);
+    every other corner of that same cell (facing another cell, not the bubble edge) keeps the shared
+    modest `MEDIA_CELL_DEFAULT_CORNER` (10dp) as before.
 - [x] **Media viewer only showed one photo from a tied-timestamp album** — real bug, root cause
   confirmed: `collectMediaOlder`/`collectMediaNewer` (and the DB layer they call,
   `getMessages`/`getMessagesAfter`) use strict `</>` on `timeSent`. A sibling message sharing the
