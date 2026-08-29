@@ -35,7 +35,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -584,10 +586,6 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // sheet's Delete action operate on the whole batch instead of silently acting on just the
     // first message it happens to represent.
     var menuTargetGroup by remember { mutableStateOf<List<Message>?>(null) }
-    // Set by MessageContextSheet's "Save file" row — opens the save-status elevated card for this
-    // message instead of saving immediately, so the card can explain what happened (or would
-    // happen) rather than silently no-oping when the file's already in shared storage.
-    var saveCardTarget by remember { mutableStateOf<Message?>(null) }
     // Bottom sheet offering "All Photos" vs "Select Photos" when "Select" is tapped on a grid
     // tile's context sheet — set to the tapped tile's whole batch, null when not showing.
     var selectPopupGroup by remember { mutableStateOf<List<Message>?>(null) }
@@ -694,19 +692,11 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 pendingOnboarding = kind
                 onboardingContinuation = action
             },
-            onRequestSaveCard = { saveCardTarget = it },
+            onSaveFile = { listener.onSaveFile(it) },
             onDismiss = {
                 menuTarget = null
                 menuTargetGroup = null
             },
-        )
-    }
-    val saveTarget = saveCardTarget
-    if (saveTarget != null) {
-        SaveStatusOverlay(
-            message = saveTarget,
-            onSave = { listener.onSaveFile(saveTarget) },
-            onDismiss = { saveCardTarget = null },
         )
     }
     val onboardingKind = pendingOnboarding
@@ -4258,6 +4248,10 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
 private class SheetAction(
     val iconRes: Int,
     val label: String,
+    // True for an action that opens an in-sheet sub-screen (see MessageContextSheet's own
+    // showSaveStatus) rather than acting immediately and closing — the generic tap handler below
+    // only calls onDismiss() when this is false, matching every other row's existing behavior.
+    val keepOpen: Boolean = false,
     val onClick: () -> Unit,
 )
 
@@ -4390,14 +4384,21 @@ private fun MessageContextSheet(
     // ConversationScreen() to show MessageActionOnboardingSheet, then run [action] once that's
     // dismissed. Every later edit/delete for that user runs [action] straight away.
     onNeedsOnboarding: (kind: OnboardingKind, action: () -> Unit) -> Unit,
-    // Opens the save-status elevated card instead of saving immediately — the card explains what
-    // happened (or would happen) rather than silently no-oping when the file's already in shared
-    // storage, same treatment as the media viewer's own save button.
-    onRequestSaveCard: (Message) -> Unit = {},
+    // Performs the actual save — the sheet's own "Save file" row opens an in-sheet save-status
+    // sub-screen first (see showSaveStatus below) rather than calling this immediately, so it can
+    // explain what happened (or would happen) instead of silently no-oping when the file's
+    // already in shared storage. Same status content the media viewer's own save button uses.
+    onSaveFile: (Message) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     val onboardingPrefs = remember(context) { eu.siacs.conversations.utils.OnboardingPreferences(context) }
+    // "Save file" swaps the sheet's own content to this in-place sub-screen (slide + resize,
+    // AnimatedContent below) instead of closing the sheet and popping a separate dialog — a
+    // separate floating card was tried first and rejected: it doesn't need to cross any bounds,
+    // it should feel like the sheet's own next/push navigation instead, same spirit as
+    // ModalBottomSheet's own native content transitions.
+    var showSaveStatus by remember { mutableStateOf(false) }
     val conversation = state.conversation.value
     val deleted = message.isDeleted
     val transferable = message.transferable
@@ -4559,8 +4560,8 @@ private fun MessageContextSheet(
         // saving immediately, since silently no-oping when it's already saved was the original
         // problem this row's own hide-when-redundant gate was covering for.
         if (message.isFileOrImage && !deleted && !cancelable) {
-            add(SheetAction(R.drawable.ic_save_24dp, stringResource(R.string.save_file)) {
-                onRequestSaveCard(message)
+            add(SheetAction(R.drawable.ic_save_24dp, stringResource(R.string.save_file), keepOpen = true) {
+                showSaveStatus = true
             })
         }
         // Share
@@ -4690,82 +4691,146 @@ private fun MessageContextSheet(
         onDismissRequest = onDismiss,
         sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.message_options),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
-            )
-            // Show send-failure error detail at the top of the sheet. For a whole grid tile this
-            // has to look at every message in the batch, not just whichever one was tapped to
-            // open the sheet — a photo can fail while its neighbors succeed (each upload runs
-            // independently; one failing never stops the rest), so the sheet groups failures by
-            // identical error text and lists which photo numbers (1-based, batch order) hit each
-            // one, rather than only ever surfacing the tapped photo's own status.
-            if (group != null) {
-                val failuresByError = group.withIndex()
-                    .filter { (_, m) ->
-                        m.status == Message.STATUS_SEND_FAILED &&
-                            m.errorMessage != Message.ERROR_MESSAGE_CANCELLED &&
-                            !m.errorMessage.isNullOrBlank()
-                    }
-                    .groupBy({ it.value.errorMessage!! }) { it.index + 1 }
-                failuresByError.forEach { (error, photoNumbers) ->
-                    ErrorBanner(
-                        text = stringResource(
-                            R.string.photo_n_failed,
-                            photoNumbers.joinToString(", "),
-                            error,
-                        ),
+        // "Push" navigation within the one sheet — content slides out to the left, the save-
+        // status sub-screen slides in from the right, and the sheet's own height follows via
+        // SizeTransform instead of jump-cutting. Reusing the same DefaultSpatial spring (380f/
+        // 0.8f) as the rest of the app's motion language. Rejected a separate floating card/Dialog
+        // for this: it doesn't need to cross any screen bounds, it should read as the sheet's own
+        // next screen, not a popup on top of it.
+        AnimatedContent(
+            targetState = showSaveStatus,
+            transitionSpec = {
+                val spec = spring<androidx.compose.ui.unit.IntOffset>(stiffness = 380f, dampingRatio = 0.8f)
+                val sizeSpec = spring<androidx.compose.ui.unit.IntSize>(stiffness = 380f, dampingRatio = 0.8f)
+                if (targetState) {
+                    (slideInHorizontally(spec) { it } + fadeIn())
+                        .togetherWith(slideOutHorizontally(spec) { -it } + fadeOut())
+                } else {
+                    (slideInHorizontally(spec) { -it } + fadeIn())
+                        .togetherWith(slideOutHorizontally(spec) { it } + fadeOut())
+                }.using(SizeTransform(clip = false) { _, _ -> sizeSpec })
+            },
+            label = "messageContextSheetContent",
+        ) { showingSaveStatus ->
+            if (showingSaveStatus) {
+                val alreadySaved = remember(message.getUuid()) {
+                    message.getRelativeFilePath()?.sharedStorage() == true
+                }
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(
+                        text = stringResource(R.string.save_file),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
                     )
+                    Text(
+                        text = stringResource(
+                            if (alreadySaved) R.string.save_card_already_saved
+                            else R.string.save_card_not_saved,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 16.dp),
+                    )
+                    // Just the one action, bottom-right — "already saved" has nothing to commit
+                    // to (OK only, no matching Cancel), and "not saved" only needs Save itself;
+                    // the sheet's own dismiss (tap outside / swipe down / system back) already
+                    // covers "changed my mind," so a second explicit Cancel button here would be
+                    // redundant with that.
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        if (alreadySaved) {
+                            androidx.compose.material3.Button(onClick = onDismiss) {
+                                Text(stringResource(R.string.ok))
+                            }
+                        } else {
+                            androidx.compose.material3.Button(
+                                onClick = { onSaveFile(message); onDismiss() },
+                            ) {
+                                Text(stringResource(R.string.save))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
                 }
             } else {
-                val errorMessage = if (message.status == Message.STATUS_SEND_FAILED) {
-                    message.errorMessage
-                } else null
-                if (!errorMessage.isNullOrBlank()) {
-                    ErrorBanner(text = errorMessage)
-                }
-            }
-            actions.forEachIndexed { index, action ->
-                val top = if (index == 0) CORNER_LARGE else CORNER_SMALL
-                val bottom = if (index == actions.lastIndex) CORNER_LARGE else CORNER_SMALL
-                Surface(
-                    onClick = {
-                        onDismiss()
-                        action.onClick()
-                    },
-                    shape =
-                        RoundedCornerShape(
-                            topStart = top,
-                            topEnd = top,
-                            bottomStart = bottom,
-                            bottomEnd = bottom,
-                        ),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(action.iconRes),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Spacer(Modifier.width(14.dp))
-                        Text(text = action.label, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = stringResource(R.string.message_options),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
+                    )
+                    // Show send-failure error detail at the top of the sheet. For a whole grid
+                    // tile this has to look at every message in the batch, not just whichever one
+                    // was tapped to open the sheet — a photo can fail while its neighbors succeed
+                    // (each upload runs independently; one failing never stops the rest), so the
+                    // sheet groups failures by identical error text and lists which photo numbers
+                    // (1-based, batch order) hit each one, rather than only ever surfacing the
+                    // tapped photo's own status.
+                    if (group != null) {
+                        val failuresByError = group.withIndex()
+                            .filter { (_, m) ->
+                                m.status == Message.STATUS_SEND_FAILED &&
+                                    m.errorMessage != Message.ERROR_MESSAGE_CANCELLED &&
+                                    !m.errorMessage.isNullOrBlank()
+                            }
+                            .groupBy({ it.value.errorMessage!! }) { it.index + 1 }
+                        failuresByError.forEach { (error, photoNumbers) ->
+                            ErrorBanner(
+                                text = stringResource(
+                                    R.string.photo_n_failed,
+                                    photoNumbers.joinToString(", "),
+                                    error,
+                                ),
+                            )
+                        }
+                    } else {
+                        val errorMessage = if (message.status == Message.STATUS_SEND_FAILED) {
+                            message.errorMessage
+                        } else null
+                        if (!errorMessage.isNullOrBlank()) {
+                            ErrorBanner(text = errorMessage)
+                        }
                     }
+                    actions.forEachIndexed { index, action ->
+                        val top = if (index == 0) CORNER_LARGE else CORNER_SMALL
+                        val bottom = if (index == actions.lastIndex) CORNER_LARGE else CORNER_SMALL
+                        Surface(
+                            onClick = {
+                                if (!action.keepOpen) onDismiss()
+                                action.onClick()
+                            },
+                            shape =
+                                RoundedCornerShape(
+                                    topStart = top,
+                                    topEnd = top,
+                                    bottomStart = bottom,
+                                    bottomEnd = bottom,
+                                ),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(action.iconRes),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                                Spacer(Modifier.width(14.dp))
+                                Text(text = action.label, style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
                 }
             }
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -4797,53 +4862,6 @@ internal fun isRetractable(message: Message): Boolean {
 // check, not something tied to the room's privacy/anonymity settings. Owners/admins are
 // supposed to always hold at least moderator role per XEP-0045, but OR in the affiliation
 // directly (ranks(ADMIN) also covers OWNER) in case the client's tracked role lags.
-/** The save-status elevated card, triggered from MessageContextSheet's "Save file" row — same
- * card/content as the media viewer's own save button (SaveStatusCardContent), but the context
- * sheet lives inside a ModalBottomSheet's own Dialog window, so a true shared-bounds morph like
- * the viewer uses can't reliably cross that boundary. This is its own Dialog instead (same reason
- * MessageContextSheet/DeleteMessageSheet above can be called as bare top-level siblings with no
- * wrapping Box — Dialogs render above everything on their own, they don't need one), with a
- * bouncy scale+fade pop-in so it still reads as an intentional "grow into view" rather than a
- * flat cut, even without a literal continuation of the row's own bounds. */
-@Composable
-private fun SaveStatusOverlay(message: Message, onSave: () -> Unit, onDismiss: () -> Unit) {
-    val alreadySaved = remember(message.getUuid()) {
-        message.getRelativeFilePath()?.sharedStorage() == true
-    }
-    androidx.compose.ui.window.Dialog(
-        onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        var visible by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) { visible = true }
-        AnimatedVisibility(
-            visible = visible,
-            enter = scaleIn(
-                initialScale = 0.85f,
-                animationSpec = spring(
-                    stiffness = 380f,
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                ),
-            ) + fadeIn(),
-            exit = scaleOut(targetScale = 0.85f) + fadeOut(),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                tonalElevation = 6.dp,
-                shadowElevation = 8.dp,
-                modifier = Modifier.padding(horizontal = 24.dp).fillMaxWidth(),
-            ) {
-                SaveStatusCardContent(
-                    heroIconRes = R.drawable.ic_save_24dp,
-                    alreadySaved = alreadySaved,
-                    onSave = onSave,
-                    onClose = onDismiss,
-                )
-            }
-        }
-    }
-}
-
 internal fun isModeratable(message: Message): Boolean {
     val conversation = message.conversation as? Conversation
     val isMuc = conversation?.getMode() == Conversational.MODE_MULTI

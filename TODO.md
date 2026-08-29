@@ -290,15 +290,29 @@ Currently implemented: reset update-sheet pause timer. Backlog:
     -> Unit` slot (built by `MediaViewerScreen`, which owns the `SharedTransitionLayout`) instead
     of a plain `onSave` callback, since the shared-bounds source needs a real
     `AnimatedVisibilityScope` the top bar itself doesn't have.
-  - **Context sheet's "Save file" row**: no longer hides itself once redundant — always shown now,
-    opens the same card via `onRequestSaveCard`. *Not* a true shared-bounds morph like the viewer,
-    though — `MessageContextSheet` renders inside `ModalBottomSheet`'s own Dialog window, which a
-    shared-bounds transform can't reliably cross. Uses its own `Dialog` instead (new
-    `SaveStatusOverlay`, same reason `MessageContextSheet`/`DeleteMessageSheet` are themselves
-    callable as bare top-level siblings with no wrapping Box) with a bouncy scale+fade pop-in, so
-    it still reads as "grow into view" without being a literal continuation of the row's bounds.
-  - Compiles clean (Kotlin + Java); not yet visually verified on a device — the shared-bounds
-    motion in particular is worth a real check once installed.
+  - **Context sheet's "Save file" row**: revised after user feedback — a separate floating
+    Dialog (first attempt) was rejected outright ("a pop-up window, that's bad"), since it doesn't
+    need to cross any screen bounds and reads as an unrelated popup rather than the sheet's own
+    next step. Rebuilt as an **in-place push transition within the same `ModalBottomSheet`**:
+    tapping "Save file" (now always shown, no longer hides itself once redundant) sets local
+    `showSaveStatus = true`, and an `AnimatedContent` wrapping the sheet's whole body slides the
+    actions list out to the left / the save-status sub-screen in from the right, with the sheet's
+    own height following via `SizeTransform(clip = false)` — same `380f/0.8f` spring used
+    throughout the app's other motion. New `SheetAction.keepOpen` flag (default false, preserving
+    every other row's existing dismiss-on-tap behavior) lets this one row switch sub-screens
+    instead of closing the sheet. Sub-screen layout, per explicit user request: title text, body
+    text, and **one bottom-right button only** — "OK" when already saved (nothing to commit to,
+    no matching Cancel needed), "Save" when not (the sheet's own dismiss — tap outside/swipe/back —
+    already covers "changed my mind," so a second explicit Cancel would be redundant).
+  - **Investigated, not changed**: user asked whether Delete already does this same in-sheet
+    push/resize. Confirmed no — `DeleteMessageSheet`/`DeleteGroupSheet` are their own separate
+    `ModalBottomSheet` instances, opened via dismiss-then-reopen exactly like Save originally was.
+    Converting Delete to the same in-place pattern is very possible (same technique, just a second
+    sub-screen state) but wasn't done here: `DeleteMessageSheet` is also invoked independently from
+    `MediaViewerActivity`, which has no parent context sheet to push within, so that flow would
+    need to keep working as a standalone sheet regardless. Worth asking the user whether they still
+    want the `MessageContextSheet`-originated Delete flow specifically converted.
+  - Compiles clean (Kotlin + Java); not yet visually verified on a device.
 - [ ] **In-app emoji picker — after the first stable release ships, not before.** Same idea as
   WhatsApp/Telegram/most native Android and iOS messaging apps: tapping a trigger dismisses the
   system keyboard and an in-app emoji grid takes over that same screen space instead — genuinely
