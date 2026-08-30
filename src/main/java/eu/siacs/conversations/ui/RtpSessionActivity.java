@@ -24,6 +24,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -182,6 +183,29 @@ public class RtpSessionActivity extends XmppActivity
         this.binding.localVideo.setOnClickListener(this::onVideoScreenClick);
         setSupportActionBar(binding.toolbar);
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
+
+        // Predictive back: OnBackPressedCallback instead of overriding the deprecated
+        // onBackPressed() lets the system show its live back-gesture preview/animation. Still
+        // needs to intercept unconditionally (an ongoing call switches to picture-in-picture
+        // instead of leaving the screen; otherwise the call is ended) rather than falling through
+        // to the default finish() behavior.
+        getOnBackPressedDispatcher()
+                .addCallback(
+                        this,
+                        new OnBackPressedCallback(true) {
+                            @Override
+                            public void handleOnBackPressed() {
+                                if (isConnected()) {
+                                    if (switchToPictureInPicture()) {
+                                        return;
+                                    }
+                                } else {
+                                    endCall();
+                                }
+                                setEnabled(false);
+                                getOnBackPressedDispatcher().onBackPressed();
+                            }
+                        });
     }
 
     private void onVideoScreenClick(final View view) {
@@ -644,17 +668,6 @@ public class RtpSessionActivity extends XmppActivity
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        if (isConnected()) {
-            if (switchToPictureInPicture()) {
-                return;
-            }
-        } else {
-            endCall();
-        }
-        super.onBackPressed();
-    }
 
     @Override
     public void onUserLeaveHint() {

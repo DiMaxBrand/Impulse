@@ -209,7 +209,6 @@
             android:windowSoftInputMode="stateUnchanged|adjustResize" />
         <activity
             android:name=".ui.ScanQrCodeActivity"
-            android:enableOnBackInvokedCallback="false"
             android:theme="@style/Theme.Conversations3.FullScreen"
             android:windowSoftInputMode="stateAlwaysHidden" />
         <activity
@@ -326,18 +325,13 @@
             android:launchMode="singleTop" />
         <activity
             android:name=".ui.EditAccountActivity"
-            android:enableOnBackInvokedCallback="false"
             android:exported="false"
             android:launchMode="singleTop" />
         <activity
             android:name=".ui.ConferenceDetailsActivity"
-            android:enableOnBackInvokedCallback="false"
             android:label="@string/action_muc_details" />
-        <!-- ContactDetails technically works with onBackInvokeCallback
-             but we disable that to be consistent with conference details -->
         <activity
-            android:name=".ui.ContactDetailsActivity"
-            android:enableOnBackInvokedCallback="false" />
+            android:name=".ui.ContactDetailsActivity" />
         <activity
             android:name=".ui.PublishProfilePictureActivity"
             android:label="@string/mgmt_account_publish_avatar" />
@@ -438,7 +432,6 @@
         <activity
             android:name=".ui.RtpSessionActivity"
             android:autoRemoveFromRecents="true"
-            android:enableOnBackInvokedCallback="false"
             android:launchMode="singleInstance"
             android:supportsPictureInPicture="true" />
         <activity

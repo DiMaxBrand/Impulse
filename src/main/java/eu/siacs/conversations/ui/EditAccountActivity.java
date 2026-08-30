@@ -29,6 +29,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
@@ -477,12 +478,6 @@ public class EditAccountActivity extends OmemoActivity
         return super.onNavigateUp();
     }
 
-    @Override
-    public void onBackPressed() {
-        deleteAccountAndReturnIfNecessary();
-        super.onBackPressed();
-    }
-
     private void deleteAccountAndReturnIfNecessary() {
         if (mInitMode
                 && mAccount != null
@@ -714,6 +709,22 @@ public class EditAccountActivity extends OmemoActivity
                 (v) -> {
                     requestPermissionAndScanQrCode();
                 });
+
+        // Predictive back: OnBackPressedCallback instead of overriding the deprecated
+        // onBackPressed() lets the system show its live back-gesture preview/animation. Runs the
+        // same cleanup as before, then disables itself and re-dispatches so the default back
+        // behavior (finishing this activity) still happens.
+        getOnBackPressedDispatcher()
+                .addCallback(
+                        this,
+                        new OnBackPressedCallback(true) {
+                            @Override
+                            public void handleOnBackPressed() {
+                                deleteAccountAndReturnIfNecessary();
+                                setEnabled(false);
+                                getOnBackPressedDispatcher().onBackPressed();
+                            }
+                        });
     }
 
     private void onEditYourNameClicked(View view) {

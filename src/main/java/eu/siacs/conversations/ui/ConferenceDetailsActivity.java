@@ -16,6 +16,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Toast;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
@@ -293,6 +294,26 @@ public class ConferenceDetailsActivity extends XmppActivity
                     intent.putExtra("uuid", mConversation.getUuid());
                     startActivity(intent);
                 });
+
+        // Predictive back: OnBackPressedCallback instead of overriding the deprecated
+        // onBackPressed() lets the system show its live back-gesture preview/animation. Only
+        // intercepts back while the name/topic editor is open (to close it instead of leaving the
+        // screen); otherwise disables itself and re-dispatches so the default back behavior
+        // (finishing this activity) still happens.
+        getOnBackPressedDispatcher()
+                .addCallback(
+                        this,
+                        new OnBackPressedCallback(true) {
+                            @Override
+                            public void handleOnBackPressed() {
+                                if (binding.mucEditor.getVisibility() == View.VISIBLE) {
+                                    hideEditor();
+                                } else {
+                                    setEnabled(false);
+                                    getOnBackPressedDispatcher().onBackPressed();
+                                }
+                            }
+                        });
     }
 
     @Override
@@ -571,14 +592,6 @@ public class ConferenceDetailsActivity extends XmppActivity
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        if (this.binding.mucEditor.getVisibility() == View.VISIBLE) {
-            hideEditor();
-        } else {
-            super.onBackPressed();
-        }
-    }
 
     private void updateView() {
         invalidateOptionsMenu();
