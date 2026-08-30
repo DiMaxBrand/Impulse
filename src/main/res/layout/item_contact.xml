@@ -21,7 +21,7 @@
             android:clickable="false"
             android:duplicateParentState="true"
             android:focusable="false"
-            app:cardBackgroundColor="?colorSurfaceContainerLow"
+            app:cardBackgroundColor="@color/item_contact_card_background"
             app:cardElevation="0dp">
 
             <RelativeLayout

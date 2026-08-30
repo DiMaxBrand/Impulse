@@ -88,8 +88,6 @@
     <string name="send_unencrypted_message">Saada sõnum krüptimata tekstina</string>
     <string name="send_message">Saada sõnum</string>
     <string name="send_message_to_x">Saada sõnum kasutajale %s</string>
-    <string name="send_encrypted_message">Saada krüptitud sõnum</string>
-    <string name="send_omemo_x509_message">Saada v\\OMEMO-krüptitud sõnum</string>
     <string name="your_nick_has_been_changed">Sinu hüüdnimi on muutunud</string>
     <string name="send_unencrypted">Saada sõnum krüptimata tekstina</string>
     <string name="decryption_failed">Dekrüptimine ei õnnestunud. Võib-olla pole sul õiget privaatvõtit.</string>

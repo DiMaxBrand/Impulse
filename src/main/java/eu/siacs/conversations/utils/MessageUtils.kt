@@ -45,6 +45,22 @@ object MessageUtils {
 
     @JvmStatic
     fun prepareQuote(message: Message): String {
+        // For media messages, return a human-readable placeholder instead of the raw URL
+        when (message.type) {
+            Message.TYPE_IMAGE -> return "📷 Photo"
+            Message.TYPE_FILE -> {
+                val fileParams = message.fileParams
+                val url = fileParams?.url
+                if (url != null) {
+                    val name = url.substringAfterLast('/').substringBefore('?').ifEmpty { null }
+                    if (name != null) return "📎 $name"
+                }
+                return "📎 File"
+            }
+            Message.TYPE_PRIVATE_FILE -> return "📎 File"
+            Message.TYPE_RTP_SESSION -> return "📞 Call"
+        }
+
         val builder = StringBuilder()
         val body: String
         if (message.hasMeCommand()) {
@@ -75,6 +91,29 @@ object MessageUtils {
     }
 
     @JvmStatic
+    fun replyPreview(message: Message): String {
+        return when (message.type) {
+            Message.TYPE_IMAGE -> "📷 Photo"
+            Message.TYPE_FILE, Message.TYPE_PRIVATE_FILE -> {
+                val mime = message.getMimeType()
+                when {
+                    mime?.startsWith("video/") == true -> "🎬 Video"
+                    mime?.startsWith("audio/") == true -> "🎤 Voice message"
+                    else -> {
+                        val url = message.fileParams?.url
+                        val name = url?.substringAfterLast('/')?.substringBefore('?')?.ifEmpty { null }
+                        if (name != null) "📎 $name" else "📎 File"
+                    }
+                }
+            }
+            Message.TYPE_RTP_SESSION -> "📞 Call"
+            else -> message.body.trim().let {
+                if (it.length > 120) it.take(120) + "…" else it
+            }
+        }
+    }
+
+    @JvmStatic
     fun treatAsDownloadable(body: String, oob: Boolean): Boolean {
         val lines = body.split("\n")
         if (lines.isEmpty()) {
@@ -87,7 +126,9 @@ object MessageUtils {
         }
         val uri: URI
         try {
-            uri = URI(lines[0])
+            // Some servers append a `|<filesize>` hint after the key fragment; `|` is not a
+            // legal URI character and trips up strict java.net.URI parsing, so strip it first.
+            uri = URI(lines[0].substringBefore('|'))
         } catch (e: URISyntaxException) {
             return false
         }
@@ -96,7 +137,7 @@ object MessageUtils {
         }
         val ref = uri.fragment
         val protocol = uri.scheme
-        val encrypted = ref != null && AesGcmURL.IV_KEY.matcher(ref).matches()
+        val encrypted = ref != null && AesGcmURL.isValidKeyFragment(ref)
         val followedByDataUri = lines.size == 2 && lines[1].startsWith("data:")
         val validAesGcm =
             AesGcmURL.PROTOCOL_NAME.equals(protocol, ignoreCase = true)

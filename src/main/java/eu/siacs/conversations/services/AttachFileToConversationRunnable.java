@@ -33,6 +33,8 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
     private final boolean isVideoMessage;
     private final long originalFileSize;
     private int currentProgress = -1;
+    private VideoCompressionConnection videoCompressionConnection;
+    private final DebouncedInterfaceUpdater debouncedInterfaceUpdater;
 
     AttachFileToConversationRunnable(
             final XmppConnectionService xmppConnectionService,
@@ -43,6 +45,7 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
         this.type = type;
         this.mXmppConnectionService = xmppConnectionService;
         this.appSettings = new AppSettings(xmppConnectionService.getApplicationContext());
+        this.debouncedInterfaceUpdater = new DebouncedInterfaceUpdater(xmppConnectionService);
         this.message = message;
         final String mimeType =
                 MimeUtils.guessMimeTypeFromUriAndMime(mXmppConnectionService, uri, type);
@@ -57,6 +60,10 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
 
     boolean isVideoMessage() {
         return this.isVideoMessage;
+    }
+
+    void setVideoCompressionConnection(final VideoCompressionConnection conn) {
+        this.videoCompressionConnection = conn;
     }
 
     private void processAsFile() {
@@ -75,9 +82,20 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
     private void processAsVideo() throws FileNotFoundException {
         Log.d(Config.LOGTAG, "processing file as video");
         mXmppConnectionService.startOngoingVideoTranscodingForegroundNotification();
+        // Transcoding always produces new bytes regardless of where the source came from, but if
+        // that source already exists as a real file we don't manage (almost always a video picked
+        // from the user's own gallery), the re-encoded copy still shouldn't land in shared storage
+        // too — same reasoning as the image/file attach paths in FileBackend, just repeated here
+        // since transcoding is driven from this class instead.
+        final var sourceFile = FileBackend.getFile(uri);
+        final boolean forceInternal =
+                sourceFile.isPresent()
+                        && !new FileBackend.Cache(mXmppConnectionService)
+                                .isCachedFile(sourceFile.get());
         mXmppConnectionService
                 .getFileBackend()
-                .setupRelativeFilePath(message, String.format("%s.%s", message.getUuid(), "mp4"));
+                .setupRelativeFilePath(
+                        message, String.format("%s.%s", message.getUuid(), "mp4"), forceInternal);
         final var file = mXmppConnectionService.getFileBackend().getFile(message);
         final var parent = file.getParentFile();
         if (parent != null && parent.mkdirs()) {
@@ -147,6 +165,11 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
             mXmppConnectionService
                     .getNotificationService()
                     .updateFileAddingNotification(p, message);
+            final VideoCompressionConnection conn = videoCompressionConnection;
+            if (conn != null) {
+                conn.setProgress(p);
+                debouncedInterfaceUpdater.run();
+            }
         }
     }
 

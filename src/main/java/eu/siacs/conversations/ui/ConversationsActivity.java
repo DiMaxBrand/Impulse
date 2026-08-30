@@ -72,6 +72,7 @@ import eu.siacs.conversations.ui.interfaces.OnConversationsListItemUpdated;
 import eu.siacs.conversations.ui.util.ActivityResult;
 import eu.siacs.conversations.ui.util.ConversationMenuConfigurator;
 import eu.siacs.conversations.ui.util.PendingItem;
+import eu.siacs.conversations.update.UpdateCheckHelper;
 import eu.siacs.conversations.utils.ExceptionHelper;
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist;
 import java.util.Arrays;
@@ -160,7 +161,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         }
 
         if (binding.secondaryFragment != null
-                && ConversationFragment.getConversation(this) == null) {
+                && ConversationComposeFragment.getConversation(this) == null) {
             final var conversation = ConversationsOverviewFragment.getSuggestion(this);
             openConversationOrCatch(conversation, null);
         }
@@ -308,7 +309,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     }
 
     private void handleNegativeActivityResult(int requestCode) {
-        Conversation conversation = ConversationFragment.getConversationReliable(this);
+        Conversation conversation = ConversationComposeFragment.getConversationReliable(this);
         switch (requestCode) {
             case REQUEST_DECRYPT_PGP:
                 if (conversation == null) {
@@ -323,7 +324,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     }
 
     private void handlePositiveActivityResult(int requestCode, final Intent data) {
-        Conversation conversation = ConversationFragment.getConversationReliable(this);
+        Conversation conversation = ConversationComposeFragment.getConversationReliable(this);
         if (conversation == null) {
             Log.d(Config.LOGTAG, "conversation not found");
             return;
@@ -374,7 +375,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     @Override
     public void onConversationSelected(Conversation conversation) {
         clearPendingViewIntent();
-        if (ConversationFragment.getConversation(this) == conversation) {
+        if (ConversationComposeFragment.getConversation(this) == conversation) {
             Log.d(
                     Config.LOGTAG,
                     "ignore onConversationSelected() because conversation is already open");
@@ -406,12 +407,12 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                     Log.d(Config.LOGTAG, "not loading conversation and secondary is already empty");
                 }
             } else {
-                final ConversationFragment conversationFragment;
-                if (secondaryFragment instanceof ConversationFragment cf) {
+                final ConversationComposeFragment conversationFragment;
+                if (secondaryFragment instanceof ConversationComposeFragment cf) {
                     conversationFragment = cf;
                     cf.reInit(conversation, extras == null ? new Bundle() : extras);
                 } else {
-                    final var cf = new ConversationFragment();
+                    final var cf = new ConversationComposeFragment();
                     FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                     fragmentTransaction.replace(R.id.secondary_fragment, cf);
                     fragmentTransaction.runOnCommit(
@@ -427,11 +428,11 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         } else if (conversation != null) {
             mainNeedsRefresh = false;
             final Fragment mainFragment = fragmentManager.findFragmentById(R.id.main_fragment);
-            final ConversationFragment conversationFragment;
-            if (mainFragment instanceof ConversationFragment cf) {
+            final ConversationComposeFragment conversationFragment;
+            if (mainFragment instanceof ConversationComposeFragment cf) {
                 conversationFragment = cf;
             } else {
-                conversationFragment = new ConversationFragment();
+                conversationFragment = new ConversationComposeFragment();
                 FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                 fragmentTransaction.replace(R.id.main_fragment, conversationFragment);
                 fragmentTransaction.addToBackStack(null);
@@ -486,7 +487,8 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     @Override
     public boolean onKeyDown(final int keyCode, final KeyEvent keyEvent) {
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP && keyEvent.isCtrlPressed()) {
-            final ConversationFragment conversationFragment = ConversationFragment.get(this);
+            final ConversationComposeFragment conversationFragment =
+                    ConversationComposeFragment.get(this);
             if (conversationFragment != null && conversationFragment.onArrowUpCtrlPressed()) {
                 return true;
             }
@@ -526,12 +528,44 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     public void onResume() {
         super.onResume();
         this.mActivityPaused = false;
+        // The immediate call below only ever reflects whatever a *previous* check already wrote
+        // to prefs — checkOnLaunchIfEligible's own network fetch hasn't returned by the time it
+        // returns, so a version detected by *this* check wouldn't show until some later resume
+        // without the onChecked callback re-running the same logic once that fetch completes.
+        UpdateCheckHelper.checkOnLaunchIfEligible(this, this::maybeShowUpdateSheet);
+        maybeShowUpdateSheet();
+    }
+
+    private void maybeShowUpdateSheet() {
+        // The onChecked callback above can fire after this activity has left the resumed state
+        // (backgrounded again before the network check finished) — unlike the immediate call
+        // right after onResume(), which is always safely in a resumed state.
+        if (isFinishing() || getSupportFragmentManager().isStateSaved()) return;
+        if (!UpdateSheetFragment.shouldShow(this)) return;
+        final var existing = getSupportFragmentManager().findFragmentByTag(UpdateSheetFragment.TAG);
+        if (existing instanceof UpdateSheetFragment sheet) {
+            // Already showing — this call is the async check's onChecked callback completing
+            // *after* the sheet was shown from the synchronous call in onResume(), which can only
+            // have read whatever a previous check wrote. Refresh it so a title/version this check
+            // just wrote doesn't sit there stale until the sheet is torn down and recreated.
+            sheet.refresh();
+            return;
+        }
+        new UpdateSheetFragment().show(getSupportFragmentManager(), UpdateSheetFragment.TAG);
+    }
+
+    void openUpdateSheet() {
+        final var fm = getSupportFragmentManager();
+        if (fm.isStateSaved()) return;
+        if (fm.findFragmentByTag(UpdateSheetFragment.TAG) != null) return;
+        new UpdateSheetFragment().show(fm, UpdateSheetFragment.TAG);
     }
 
     private void initializeFragments() {
         final var fragmentManager = getSupportFragmentManager();
         final var fragments = fragmentManager.getFragments();
-        final var optional = Iterables.tryFind(fragments, f -> f instanceof ConversationFragment);
+        final var optional =
+                Iterables.tryFind(fragments, f -> f instanceof ConversationComposeFragment);
         final var existing = fragmentManager.findFragmentById(R.id.main_fragment);
         if (existing instanceof ConversationsOverviewFragment
                 && binding.secondaryFragment == null
@@ -559,7 +593,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     public void onConversationArchived(final Conversation conversation) {
         final var fragmentManager = getSupportFragmentManager();
         final Fragment mainFragment = fragmentManager.findFragmentById(R.id.main_fragment);
-        if (mainFragment instanceof ConversationFragment) {
+        if (mainFragment instanceof ConversationComposeFragment) {
             try {
                 fragmentManager.popBackStack();
             } catch (final IllegalStateException e) {
@@ -574,7 +608,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         }
         final Fragment secondaryFragment =
                 fragmentManager.findFragmentById(R.id.secondary_fragment);
-        if (secondaryFragment instanceof ConversationFragment conversationFragment) {
+        if (secondaryFragment instanceof ConversationComposeFragment conversationFragment) {
             if (conversationFragment.getConversation() == conversation) {
                 final var suggestion =
                         ConversationsOverviewFragment.getSuggestion(this, conversation);

@@ -74,7 +74,7 @@ import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 public class DatabaseBackend extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "history";
-    private static final int DATABASE_VERSION = 59;
+    private static final int DATABASE_VERSION = 62;
 
     private static boolean requiresMessageIndexRebuild = false;
     private static DatabaseBackend instance = null;
@@ -101,6 +101,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                     + Contact.SYSTEMACCOUNT
                     + " NUMBER, "
                     + Contact.AVATAR
+                    + " TEXT, "
+                    + Contact.AVATAR_VCARD
                     + " TEXT, "
                     + Contact.LAST_PRESENCE
                     + " TEXT, "
@@ -396,6 +398,8 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + " NUMBER, "
                         + Account.AVATAR
                         + " TEXT, "
+                        + Account.AVATAR_VCARD
+                        + " TEXT, "
                         + Account.KEYS
                         + " TEXT, "
                         + Account.HOSTNAME
@@ -495,6 +499,12 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + Message.PINNED
                         + " INTEGER DEFAULT 0,"
                         + Message.REMOTE_MSG_ID
+                        + " TEXT,"
+                        + Message.REPLIED_TO
+                        + " TEXT,"
+                        + Message.REMOTE_EDITING
+                        + " INTEGER DEFAULT 0,"
+                        + Message.LISTEN_STATUS
                         + " TEXT, FOREIGN KEY("
                         + Message.CONVERSATION
                         + ") REFERENCES "
@@ -1128,11 +1138,63 @@ public class DatabaseBackend extends SQLiteOpenHelper {
             }
         }
         if (oldVersion < 58 && newVersion >= 58) {
-            db.execSQL("ALTER TABLE contacts ADD COLUMN avatar_vcard TEXT");
-            db.execSQL("ALTER TABLE accounts ADD COLUMN avatar_vcard TEXT");
+            db.execSQL(
+                    "ALTER TABLE "
+                            + Contact.TABLENAME
+                            + " ADD COLUMN "
+                            + Contact.AVATAR_VCARD
+                            + " TEXT");
+            db.execSQL(
+                    "ALTER TABLE "
+                            + Account.TABLENAME
+                            + " ADD COLUMN "
+                            + Account.AVATAR_VCARD
+                            + " TEXT");
         }
         if (oldVersion < 59 && newVersion >= 59) {
-            db.execSQL("ALTER TABLE messages ADD COLUMN repliedTo TEXT");
+            db.execSQL(
+                    "ALTER TABLE "
+                            + Message.TABLENAME
+                            + " ADD COLUMN "
+                            + Message.REPLIED_TO
+                            + " TEXT");
+        }
+        if (oldVersion < 60 && newVersion >= 60) {
+            // Guard: devices that hit v59 before repliedTo was added lack the column.
+            try {
+                db.execSQL(
+                        "ALTER TABLE "
+                                + Message.TABLENAME
+                                + " ADD COLUMN "
+                                + Message.REPLIED_TO
+                                + " TEXT");
+            } catch (final Exception e) {
+                // column already exists — added by v59 migration on clean upgrade paths
+            }
+        }
+        if (oldVersion < 61 && newVersion >= 61) {
+            try {
+                db.execSQL(
+                        "ALTER TABLE "
+                                + Message.TABLENAME
+                                + " ADD COLUMN "
+                                + Message.REMOTE_EDITING
+                                + " INTEGER DEFAULT 0");
+            } catch (final Exception e) {
+                // column already exists
+            }
+        }
+        if (oldVersion < 62 && newVersion >= 62) {
+            try {
+                db.execSQL(
+                        "ALTER TABLE "
+                                + Message.TABLENAME
+                                + " ADD COLUMN "
+                                + Message.LISTEN_STATUS
+                                + " TEXT");
+            } catch (final Exception e) {
+                // column already exists
+            }
         }
     }
 
@@ -1411,6 +1473,100 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         }
         cursor.close();
         return list;
+    }
+
+    /**
+     * Messages strictly newer than {@code timestamp}, oldest-first — the symmetric counterpart to
+     * {@link #getMessages(Conversation, int, long)}, which only goes older. Used by the media
+     * viewer's pager to extend its window forward as the user swipes toward newer content.
+     */
+    public ArrayList<Message> getMessagesAfter(
+            Conversation conversation, int limit, long timestamp) {
+        ArrayList<Message> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        String[] selectionArgs = {conversation.getUuid(), Long.toString(timestamp)};
+        Cursor cursor =
+                db.query(
+                        Message.TABLENAME,
+                        null,
+                        Message.CONVERSATION + "=? and " + Message.TIME_SENT + ">?",
+                        selectionArgs,
+                        null,
+                        null,
+                        Message.TIME_SENT + " ASC",
+                        String.valueOf(limit));
+        CursorUtils.upgradeCursorWindowSize(cursor);
+        while (cursor.moveToNext()) {
+            try {
+                list.add(Message.fromCursor(context, cursor, conversation));
+            } catch (final Exception e) {
+                Log.e(Config.LOGTAG, "unable to restore message", e);
+            }
+        }
+        cursor.close();
+        return list;
+    }
+
+    /**
+     * Every message in this conversation sharing the exact same {@code timeSent} as {@code
+     * timestamp}, ordered by SQLite's own rowid (a stable proxy for insertion/delivery order when
+     * timestamps tie). Needed because {@link #getMessages(Conversation, int, long)} and {@link
+     * #getMessagesAfter(Conversation, int, long)} both use strict {@code </>} on timeSent — a
+     * sibling message that happens to land on the exact same timestamp as the anchor is neither
+     * strictly before nor strictly after it, so it silently falls through both queries and never
+     * reaches the media viewer's pager at all. This is not a rare coincidence: a multi-photo album
+     * delivered together commonly ties, especially via MAM/offline delivery where the XEP-0203
+     * delay stamp can carry only second-level precision, putting an entire batch on the identical
+     * second.
+     */
+    public ArrayList<Message> getMessagesAtTimestamp(Conversation conversation, long timestamp) {
+        ArrayList<Message> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        String[] selectionArgs = {conversation.getUuid(), Long.toString(timestamp)};
+        Cursor cursor =
+                db.query(
+                        Message.TABLENAME,
+                        null,
+                        Message.CONVERSATION + "=? and " + Message.TIME_SENT + "=?",
+                        selectionArgs,
+                        null,
+                        null,
+                        "rowid ASC");
+        CursorUtils.upgradeCursorWindowSize(cursor);
+        while (cursor.moveToNext()) {
+            try {
+                list.add(Message.fromCursor(context, cursor, conversation));
+            } catch (final Exception e) {
+                Log.e(Config.LOGTAG, "unable to restore message", e);
+            }
+        }
+        cursor.close();
+        return list;
+    }
+
+    public Message getMessage(Conversation conversation, String uuid) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String[] selectionArgs = {conversation.getUuid(), uuid};
+        Cursor cursor =
+                db.query(
+                        Message.TABLENAME,
+                        null,
+                        Message.CONVERSATION + "=? and " + Message.UUID + "=?",
+                        selectionArgs,
+                        null,
+                        null,
+                        null);
+        Message message = null;
+        try {
+            if (cursor.moveToFirst()) {
+                message = Message.fromCursor(context, cursor, conversation);
+            }
+        } catch (final Exception e) {
+            Log.e(Config.LOGTAG, "unable to restore message", e);
+        } finally {
+            cursor.close();
+        }
+        return message;
     }
 
     public Cursor getMessageSearchCursor(final List<String> term, final String uuid) {
@@ -1881,6 +2037,13 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         return rows == 1;
     }
 
+    public void updateMessageEditingState(final String uuid, final boolean editing) {
+        final var db = this.getWritableDatabase();
+        final var values = new android.content.ContentValues();
+        values.put(Message.REMOTE_EDITING, editing ? 1 : 0);
+        db.update(Message.TABLENAME, values, Message.UUID + "=?", new String[] {uuid});
+    }
+
     public boolean deleteMessage(String uuid) {
         final var db = this.getWritableDatabase();
         final String[] args = {uuid};
@@ -1901,7 +2064,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + "=1 ORDER BY "
                         + Message.TIME_SENT
                         + " DESC";
-        try (final Cursor cursor = db.rawQuery(sql, new String[]{conversation.getUuid()})) {
+        try (final Cursor cursor = db.rawQuery(sql, new String[] {conversation.getUuid()})) {
             while (cursor.moveToNext()) {
                 try {
                     list.add(Message.fromCursor(context, cursor, conversation));

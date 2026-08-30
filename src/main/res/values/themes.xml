@@ -22,8 +22,15 @@
         <item name="android:backgroundDimEnabled">true</item>
     </style>
 
+    <!-- Used by the crash/error report dialogs (ExceptionHelper.kt) to make "Send" a filled
+         (primary) button instead of the default flat text button both MaterialAlertDialog buttons
+         get — scoped to just those two dialogs via this overlay, not a global button-bar change. -->
+    <style name="ThemeOverlay.Impulse.FilledPositiveButton" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.Material3.Button</item>
+    </style>
 
-    <style name="Theme.Conversations3" parent="Theme.Material3.Light.NoActionBar">
+
+    <style name="Theme.Conversations3" parent="Theme.Material3Expressive.Light.NoActionBar">
         <item name="windowActionModeOverlay">true</item>
         <item name="colorPrimary">@color/md_theme_light_primary</item>
         <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
@@ -54,7 +61,7 @@
         <item name="preferenceTheme">@style/MaterialPreferenceThemeOverlay</item>
     </style>
 
-    <style name="Theme.Conversations3.Dark" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.Conversations3.Dark" parent="Theme.Material3Expressive.Dark.NoActionBar">
         <item name="windowActionModeOverlay">true</item>
         <item name="colorPrimary">@color/md_theme_dark_primary</item>
         <item name="colorOnPrimary">@color/md_theme_dark_onPrimary</item>
@@ -119,6 +126,11 @@
          Right side (open, interior space): 16dp top + bottom — more rounded.
          Consecutive items match at every junction. -->
     <!-- Default shape for list items; corners are overridden per-position in adapter code. -->
+    <style name="ShapeAppearance.Impulse.Squircle" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">28%</item>
+    </style>
+
     <style name="ShapeAppearance.Impulse.ListItem" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">5dp</item>

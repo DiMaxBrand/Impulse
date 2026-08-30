@@ -2,11 +2,9 @@ package eu.siacs.conversations.services;
 
 import android.content.Context;
 import android.util.Log;
-
 import androidx.annotation.Nullable;
 import androidx.emoji2.text.DefaultEmojiCompatConfig;
 import androidx.emoji2.text.EmojiCompat;
-
 import eu.siacs.conversations.Config;
 
 public class EmojiInitializationService {

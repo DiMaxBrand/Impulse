@@ -86,7 +86,6 @@
     <string name="send_unencrypted_message">Send ukrypteret besked</string>
     <string name="send_message">Send besked</string>
     <string name="send_message_to_x">Send besked til %s</string>
-    <string name="send_omemo_x509_message">Send v\\OMEMO-krypteret besked</string>
     <string name="your_nick_has_been_changed">Dit kaldenavn er blevet ændret</string>
     <string name="send_unencrypted">Send ukrypteret tekst</string>
     <string name="decryption_failed">Dekryptering mislykkes. Måske du ikke har den rette private nøgle.</string>
@@ -951,7 +950,6 @@
     <string name="remove_bookmark">Vil du slette bogmærket for %s?</string>
     <string name="remove_bookmark_and_close">Vil du slette bogmærket for %s og arkiver chatten?</string>
     <string name="archive_this_chat">Slet chat bagefter</string>
-    <string name="send_encrypted_message">Send krypteret besked</string>
     <string name="account_state_logged_out">Logget ud</string>
     <string name="account_status_connection_timeout">Timeout for forbindelse</string>
     <string name="account_status_tls_error_untrusted">Upålidelig certifikat</string>

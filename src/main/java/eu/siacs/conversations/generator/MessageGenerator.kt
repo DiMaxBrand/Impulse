@@ -13,6 +13,7 @@ import im.conversations.android.xmpp.model.correction.Replace
 import im.conversations.android.xmpp.model.hints.Store
 import im.conversations.android.xmpp.model.markers.Markable
 import im.conversations.android.xmpp.model.fallback.Fallback
+import im.conversations.android.xmpp.model.reply.Reply
 import im.conversations.android.xmpp.model.retraction.Retract
 import im.conversations.android.xmpp.model.unique.OriginId
 
@@ -51,6 +52,11 @@ class MessageGenerator(service: XmppConnectionService) : AbstractGenerator(servi
         }
         if (message.edited()) {
             packet.addExtension(Replace(message.editedIdWireFormat))
+        }
+        val repliedTo = message.repliedTo
+        if (repliedTo != null) {
+            val to = conversation.getContact().getAddress().asBareJid().toString()
+            packet.addExtension(Reply.create(to, repliedTo))
         }
         return packet
     }
@@ -132,7 +138,7 @@ class MessageGenerator(service: XmppConnectionService) : AbstractGenerator(servi
         }
         val retract = Retract()
         val retractId = if (conversation.getMode() == Conversational.MODE_SINGLE && !message.isPrivateMessage)
-            message.getUuid()
+            if (message.edited()) message.editedIdWireFormat else message.getUuid()
         else
             message.serverMsgId ?: message.getUuid()
         retract.setAttribute("id", retractId)

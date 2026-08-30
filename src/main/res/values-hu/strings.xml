@@ -86,7 +86,6 @@
     <string name="send_unencrypted_message">Titkosítatlan üzenet küldése</string>
     <string name="send_message">Üzenet küldése</string>
     <string name="send_message_to_x">Üzenet küldése %s számára</string>
-    <string name="send_omemo_x509_message">v\\OMEMO titkosítású üzenet küldése</string>
     <string name="your_nick_has_been_changed">Új becenév használva</string>
     <string name="send_unencrypted">Küldés titkosítatlanul</string>
     <string name="decryption_failed">A visszafejtés sikertelen. Talán nem rendelkezik a megfelelő személyes kulccsal.</string>
@@ -866,7 +865,6 @@
     <string name="remove_bookmark">Szeretné eltávolítani a könyvjezőlt erről: %s?</string>
     <string name="archive_this_chat">Csevegés törlése ezután</string>
     <string name="download_failed_invalid_file">Letöltés sikertelen: Érvénytelen fájl</string>
-    <string name="send_encrypted_message">Titkosított üzenet küldése</string>
     <string name="account_state_logged_out">Kijelentkezve</string>
     <string name="account_status_incompatible_client">Nem kompatibilis kliens</string>
     <string name="title_undo_swipe_out_chat">Csevegés archiválva</string>

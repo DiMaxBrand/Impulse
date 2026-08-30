@@ -220,6 +220,9 @@ public class ShareWithActivity extends XmppActivity
         } else if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
             final ArrayList<Uri> uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
             this.share.uris = uris == null ? new ArrayList<>() : uris;
+            if (type != null) {
+                this.share.type = type;
+            }
         }
     }
 

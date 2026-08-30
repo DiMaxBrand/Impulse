@@ -24,6 +24,8 @@ interface Transferable {
         val STATUS_UPLOADING = 0x207
         @JvmField
         val STATUS_CANCELLED = 0x208
+        @JvmField
+        val STATUS_COMPRESSING = 0x209
     }
 
     fun start(): Boolean

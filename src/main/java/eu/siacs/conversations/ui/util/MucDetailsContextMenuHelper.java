@@ -22,7 +22,7 @@ import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.MucOptions.User;
 import eu.siacs.conversations.ui.ConferenceDetailsActivity;
-import eu.siacs.conversations.ui.ConversationFragment;
+import eu.siacs.conversations.ui.ConversationComposeFragment;
 import eu.siacs.conversations.ui.ConversationsActivity;
 import eu.siacs.conversations.ui.MucUsersActivity;
 import eu.siacs.conversations.ui.XmppActivity;
@@ -76,7 +76,13 @@ public final class MucDetailsContextMenuHelper {
         if (user.realJidMatchesAccount()) {
             showContactDetails.setVisible(true);
             showContactDetails.setTitle(R.string.account_details);
-        } else {
+        } else if (mucOptions.nonanonymous()) {
+            // Only offer to reveal another member's identity when the room already broadcasts
+            // real JIDs to every occupant (whois=anyone) — private groups and non-anonymous
+            // public group chats alike. In a semi-anonymous room, moderators still need real
+            // JIDs for the moderation actions below (ban/promote are bare-JID-bound by protocol)
+            // — but casually looking someone up or starting a 1:1 with them isn't a moderation
+            // action, so don't offer it here.
             showContactDetails.setVisible(true);
             startConversation.setVisible(true);
             showContactDetails.setTitle(R.string.action_contact_details);
@@ -180,7 +186,8 @@ public final class MucDetailsContextMenuHelper {
                 return true;
             case R.id.send_private_message:
                 if (activity instanceof ConversationsActivity) {
-                    ConversationFragment conversationFragment = ConversationFragment.get(activity);
+                    final ConversationComposeFragment conversationFragment =
+                            ConversationComposeFragment.get(activity);
                     if (conversationFragment != null) {
                         conversationFragment.privateMessageWith(user.getFullJid());
                         return true;

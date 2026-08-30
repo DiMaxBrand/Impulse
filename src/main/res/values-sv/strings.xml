@@ -88,7 +88,6 @@
     <string name="send_unencrypted_message">Skicka ett meddelande i klartext</string>
     <string name="send_message">Skicka meddelande</string>
     <string name="send_message_to_x">Skicka meddelande till %s</string>
-    <string name="send_omemo_x509_message">Skicka v\\OMEMO-krypterat meddelande</string>
     <string name="your_nick_has_been_changed">Ditt smeknamn har ändrats</string>
     <string name="send_unencrypted">Skicka klartext</string>
     <string name="decryption_failed">Dekrypteringen misslyckades. Du har kanske inte rätt privat nyckel.</string>
@@ -988,7 +987,6 @@
     <string name="remove_bookmark">Skulle du vilja ta bort bokmärket för %s?</string>
     <string name="action_archive_chat">Arkivera chatten</string>
     <string name="title_activity_new_chat">Ny chatt</string>
-    <string name="send_encrypted_message">Skicka ett avkrypterat meddelande</string>
     <string name="pref_title_interface">Gränssnitt</string>
     <string name="pref_keyboard_options">Tangentbord</string>
     <string name="pref_category_interaction">Interaktion</string>

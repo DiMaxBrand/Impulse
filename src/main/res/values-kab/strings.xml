@@ -290,8 +290,6 @@
     <string name="delete_file_dialog_msg">D tidet tebɣiḍ ad tekkseḍ afaylu-agi?\n\n<b>Ɣur-k·m:</b> Ayagi ur itekkes ara ineɣlan n ufaylu-agi ikelsen deg yibenkan neɣ iqeddacen nniḍen.</string>
     <string name="send_unencrypted_message">Azen izen s wudem n uḍris ibanen</string>
     <string name="send_message_to_x">Azen izen ɣer %s</string>
-    <string name="send_encrypted_message">Azen izen awgelhan</string>
-    <string name="send_omemo_x509_message">Azen izen awgelhan v\\OMEMO</string>
     <string name="your_nick_has_been_changed">Meffer isem-ik·im yettusnifel</string>
     <string name="send_unencrypted">Azen aḍris s wudem ibanen</string>
     <string name="decryption_failed">Tukksa n uwgelhen ur teddi ara. Ahat ur tesɛiḍ ara tasarutt tusligt iwatan.</string>

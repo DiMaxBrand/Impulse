@@ -91,7 +91,17 @@ public class Message extends AbstractEntity
     public static final String OCCUPANT_ID = "occupantId";
     public static final String REACTIONS = "reactions";
     public static final String PINNED = "pinned";
+    public static final String REPLIED_TO = "repliedTo";
+    public static final String REMOTE_EDITING = "remoteEditing";
+    public static final String LISTEN_STATUS = "listenStatus";
     public static final String ME_COMMAND = "/me ";
+
+    /**
+     * Terminal value for {@link #LISTEN_STATUS}: on OUTGOING audio messages, the peer fully
+     * listened; on INCOMING ones, the local user did. Ephemeral states (listening/paused) are never
+     * persisted — they live in ListenStatusManager only.
+     */
+    public static final String LISTEN_STATUS_LISTENED = "listened";
 
     public static final String ERROR_MESSAGE_CANCELLED = "eu.siacs.conversations.cancelled";
 
@@ -124,6 +134,9 @@ public class Message extends AbstractEntity
     private String occupantId;
     private Collection<Reaction> reactions = Collections.emptyList();
     private boolean pinned = false;
+    private String repliedTo = null;
+    private boolean remoteEditing = false;
+    private String listenStatus = null;
 
     private Boolean isGeoUri = null;
     private Boolean isEmojisOnly = null;
@@ -256,36 +269,51 @@ public class Message extends AbstractEntity
 
     public static Message fromCursor(
             final Context context, final Cursor cursor, final Conversation conversation) {
-        final Message message = new Message(
-                conversation,
-                cursor.getString(cursor.getColumnIndexOrThrow(UUID)),
-                cursor.getString(cursor.getColumnIndexOrThrow(CONVERSATION)),
-                fromString(cursor.getString(cursor.getColumnIndexOrThrow(COUNTERPART))),
-                fromString(cursor.getString(cursor.getColumnIndexOrThrow(TRUE_COUNTERPART))),
-                cursor.getString(cursor.getColumnIndexOrThrow(BODY)),
-                cursor.getLong(cursor.getColumnIndexOrThrow(TIME_SENT)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(ENCRYPTION)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(STATUS)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(TYPE)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(CARBON)) > 0,
-                cursor.getString(cursor.getColumnIndexOrThrow(REMOTE_MSG_ID)),
-                storageLocationFromCursor(context, cursor),
-                cursor.getString(cursor.getColumnIndexOrThrow(SERVER_MSG_ID)),
-                cursor.getString(cursor.getColumnIndexOrThrow(FINGERPRINT)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(READ)) > 0,
-                cursor.getString(cursor.getColumnIndexOrThrow(EDITED)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(OOB)) > 0,
-                cursor.getString(cursor.getColumnIndexOrThrow(ERROR_MESSAGE)),
-                ReadByMarker.fromJsonString(
-                        cursor.getString(cursor.getColumnIndexOrThrow(READ_BY_MARKERS))),
-                cursor.getInt(cursor.getColumnIndexOrThrow(MARKABLE)) > 0,
-                cursor.getInt(cursor.getColumnIndexOrThrow(DELETED)) > 0,
-                cursor.getString(cursor.getColumnIndexOrThrow(BODY_LANGUAGE)),
-                cursor.getString(cursor.getColumnIndexOrThrow(OCCUPANT_ID)),
-                Reaction.fromString(cursor.getString(cursor.getColumnIndexOrThrow(REACTIONS))));
+        final Message message =
+                new Message(
+                        conversation,
+                        cursor.getString(cursor.getColumnIndexOrThrow(UUID)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(CONVERSATION)),
+                        fromString(cursor.getString(cursor.getColumnIndexOrThrow(COUNTERPART))),
+                        fromString(
+                                cursor.getString(cursor.getColumnIndexOrThrow(TRUE_COUNTERPART))),
+                        cursor.getString(cursor.getColumnIndexOrThrow(BODY)),
+                        cursor.getLong(cursor.getColumnIndexOrThrow(TIME_SENT)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(ENCRYPTION)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(STATUS)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(TYPE)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(CARBON)) > 0,
+                        cursor.getString(cursor.getColumnIndexOrThrow(REMOTE_MSG_ID)),
+                        storageLocationFromCursor(context, cursor),
+                        cursor.getString(cursor.getColumnIndexOrThrow(SERVER_MSG_ID)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(FINGERPRINT)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(READ)) > 0,
+                        cursor.getString(cursor.getColumnIndexOrThrow(EDITED)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(OOB)) > 0,
+                        cursor.getString(cursor.getColumnIndexOrThrow(ERROR_MESSAGE)),
+                        ReadByMarker.fromJsonString(
+                                cursor.getString(cursor.getColumnIndexOrThrow(READ_BY_MARKERS))),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(MARKABLE)) > 0,
+                        cursor.getInt(cursor.getColumnIndexOrThrow(DELETED)) > 0,
+                        cursor.getString(cursor.getColumnIndexOrThrow(BODY_LANGUAGE)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(OCCUPANT_ID)),
+                        Reaction.fromString(
+                                cursor.getString(cursor.getColumnIndexOrThrow(REACTIONS))));
         final int pinnedIndex = cursor.getColumnIndex(PINNED);
         if (pinnedIndex >= 0) {
             message.pinned = cursor.getInt(pinnedIndex) > 0;
+        }
+        final int repliedToIndex = cursor.getColumnIndex(REPLIED_TO);
+        if (repliedToIndex >= 0) {
+            message.repliedTo = cursor.getString(repliedToIndex);
+        }
+        final int remoteEditingIndex = cursor.getColumnIndex(REMOTE_EDITING);
+        if (remoteEditingIndex >= 0) {
+            message.remoteEditing = cursor.getInt(remoteEditingIndex) > 0;
+        }
+        final int listenStatusIndex = cursor.getColumnIndex(LISTEN_STATUS);
+        if (listenStatusIndex >= 0) {
+            message.listenStatus = cursor.getString(listenStatusIndex);
         }
         return message;
     }
@@ -379,6 +407,9 @@ public class Message extends AbstractEntity
         values.put(OCCUPANT_ID, occupantId);
         values.put(REACTIONS, Reaction.toString(this.reactions));
         values.put(PINNED, pinned ? 1 : 0);
+        values.put(REPLIED_TO, repliedTo);
+        values.put(REMOTE_EDITING, remoteEditing ? 1 : 0);
+        values.put(LISTEN_STATUS, listenStatus);
         return values;
     }
 
@@ -496,6 +527,30 @@ public class Message extends AbstractEntity
         this.serverMsgId = id;
     }
 
+    public String getRepliedTo() {
+        return this.repliedTo;
+    }
+
+    public void setRepliedTo(final String id) {
+        this.repliedTo = id;
+    }
+
+    public boolean isRemoteEditing() {
+        return remoteEditing;
+    }
+
+    public void setRemoteEditing(final boolean active) {
+        this.remoteEditing = active;
+    }
+
+    public String getListenStatus() {
+        return listenStatus;
+    }
+
+    public void setListenStatus(final String listenStatus) {
+        this.listenStatus = listenStatus;
+    }
+
     public boolean isRead() {
         return this.read;
     }
@@ -561,6 +616,19 @@ public class Message extends AbstractEntity
 
     public boolean edited() {
         return !this.edits.isEmpty();
+    }
+
+    /**
+     * Whether {@code id} is any wire id this message has ever been sent/received under — its
+     * current one or an earlier pre-edit one. A read/delivered marker referencing an edited message
+     * can legitimately arrive tagged with a stale id (e.g. the other party's client is slow to
+     * update which id it tracks a corrected message under, or simply read an earlier version before
+     * a later edit caught up) — {@link #getUuid()} alone only matches the *current* id, so callers
+     * resolving an incoming marker to a local message should fall back to this once a direct
+     * uuid/remoteMsgId match fails.
+     */
+    public boolean wasEverKnownAs(final String id) {
+        return id != null && Edit.wasPreviouslyEditedRemoteMsgId(this.edits, id);
     }
 
     public void setTrueCounterpart(Jid trueCounterpart) {
@@ -798,6 +866,14 @@ public class Message extends AbstractEntity
     }
 
     public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
+    /**
+     * Same as {@link #setUuid} but callable from Kotlin, where the name {@code setUuid} collides
+     * with the protected {@code uuid} property of the Kotlin base entity.
+     */
+    public void replaceUuid(final String uuid) {
         this.uuid = uuid;
     }
 

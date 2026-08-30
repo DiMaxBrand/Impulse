@@ -43,6 +43,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
     public static final String ROSTERVERSION = "rosterversion";
     public static final String KEYS = "keys";
     public static final String AVATAR = "avatar";
+    public static final String AVATAR_VCARD = "avatar_vcard";
     public static final String DISPLAY_NAME = "display_name";
     public static final String HOSTNAME = "hostname";
     public static final String PORT = "port";
@@ -64,6 +65,12 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
     public static final int OPTION_FIXED_USERNAME = 9;
     public static final int OPTION_QUICKSTART_AVAILABLE = 10;
     public static final int OPTION_SOFT_DISABLED = 11;
+    public static final int OPTION_NEWS_CHANNEL_JOINED = 12;
+    // One-shot flag: fires exactly once per account (new or pre-existing) the first time it binds
+    // after this cleanup shipped, to unpublish any phone number a build with the now-removed
+    // phone-number field may have already published to this account's vCard. Same
+    // never-set-again pattern as OPTION_NEWS_CHANNEL_JOINED.
+    public static final int OPTION_PHONE_NUMBER_CLEARED = 13;
 
     private static final String KEY_PGP_SIGNATURE = "pgp_signature";
     private static final String KEY_PGP_ID = "pgp_id";
@@ -78,6 +85,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
     private State lastErrorStatus = State.OFFLINE;
     protected String resource;
     protected String avatar;
+    protected String avatarVCard;
     protected String hostname = null;
     protected int port = 5222;
     protected boolean online = false;
@@ -103,6 +111,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
                 null,
                 null,
                 null,
+                null,
                 Resolver.XMPP_PORT_STARTTLS,
                 im.conversations.android.xmpp.model.stanza.Presence.Availability.ONLINE,
                 null,
@@ -120,6 +129,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
             final String rosterVersion,
             final String keys,
             final String avatar,
+            final String avatarVCard,
             String displayName,
             String hostname,
             int port,
@@ -136,6 +146,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
         this.rosterVersion = rosterVersion;
         this.keys = parseKeys(keys);
         this.avatar = avatar;
+        this.avatarVCard = avatarVCard;
         this.displayName = displayName;
         this.hostname = hostname;
         this.port = port;
@@ -183,6 +194,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
                 cursor.getString(cursor.getColumnIndexOrThrow(ROSTERVERSION)),
                 cursor.getString(cursor.getColumnIndexOrThrow(KEYS)),
                 cursor.getString(cursor.getColumnIndexOrThrow(AVATAR)),
+                cursor.getString(cursor.getColumnIndexOrThrow(AVATAR_VCARD)),
                 cursor.getString(cursor.getColumnIndexOrThrow(DISPLAY_NAME)),
                 cursor.getString(cursor.getColumnIndexOrThrow(HOSTNAME)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(PORT)),
@@ -517,6 +529,7 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
         }
         values.put(ROSTERVERSION, rosterVersion);
         values.put(AVATAR, avatar);
+        values.put(AVATAR_VCARD, avatarVCard);
         values.put(DISPLAY_NAME, displayName);
         values.put(HOSTNAME, hostname);
         values.put(PORT, port);
@@ -626,6 +639,18 @@ public class Account extends AbstractEntity implements AvatarService.Avatar {
 
     public String getAvatar() {
         return this.avatar;
+    }
+
+    public boolean setAvatarVCard(final String hash) {
+        if (this.avatarVCard != null && this.avatarVCard.equals(hash)) {
+            return false;
+        }
+        this.avatarVCard = hash;
+        return true;
+    }
+
+    public String getAvatarVCard() {
+        return this.avatarVCard;
     }
 
     public MiniUri.Xmpp getShareableUri() {

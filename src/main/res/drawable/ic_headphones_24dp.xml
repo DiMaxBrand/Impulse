@@ -1,0 +1,18 @@
+<!-- Google Material Symbols Rounded, "headphones", filled (fill1) — path pasted verbatim from
+     https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsrounded/headphones/fill1/24px.svg,
+     wrapped in a translateY group instead of hand-shifting each coordinate so nothing here is
+     transcribed/approximated: Android vector drawables have no viewBox min-y like SVG does (the
+     canvas always starts at y=0), while Material Symbols ships y in [-960,0], so the group just
+     slides the untouched path down by the vector's own height to land it in [0,960]. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960"
+    android:tint="?attr/colorControlNormal">
+  <group android:translateY="960">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M280-120h-80q-33 0-56.5-23.5T120-200v-280q0-75 28.5-140.5t77-114q48.5-48.5 114-77T480-840q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-480v280q0 33-23.5 56.5T760-120h-80q-33 0-56.5-23.5T600-200v-160q0-33 23.5-56.5T680-440h80v-40q0-117-81.5-198.5T480-760q-117 0-198.5 81.5T200-480v40h80q33 0 56.5 23.5T360-360v160q0 33-23.5 56.5T280-120Z"/>
+  </group>
+</vector>

@@ -2,11 +2,15 @@ package eu.siacs.conversations.ui;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.PopupWindow;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.databinding.DataBindingUtil;
@@ -43,6 +47,7 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
     private static final String ALLOW_EDIT_JID_KEY = "allow_edit_jid";
     private static final String ACCOUNTS_LIST_KEY = "activated_accounts_list";
     private static final String SANITY_CHECK_JID = "sanity_check_jid";
+    private static final String DEFAULT_TO_ACCOUNT_DOMAIN_KEY = "default_to_account_domain";
 
     private KnownHostsAdapter knownHostsAdapter;
     private Collection<String> whitelistedDomains = Collections.emptyList();
@@ -50,6 +55,7 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
     private DialogEnterJidBinding binding;
     private AlertDialog dialog;
     private boolean sanityCheckJid = false;
+    private boolean defaultToAccountDomain = false;
 
     private boolean issuedWarning = false;
 
@@ -61,6 +67,30 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
             final String account,
             boolean allowEditJid,
             final boolean sanity_check_jid) {
+        return newInstance(
+                activatedAccounts,
+                title,
+                positiveButton,
+                prefilledJid,
+                account,
+                allowEditJid,
+                sanity_check_jid,
+                false);
+    }
+
+    // defaultToAccountDomain: when the entered text has no "@", treat it as a local part on the
+    // selected account's own domain instead of erroring/warning that it "looks like a domain" —
+    // used only for the "New Contact" flow, where typing a bare username to add someone on your
+    // own server is a much more common intent than typing that server's bare domain.
+    public static EnterJidDialog newInstance(
+            final ArrayList<String> activatedAccounts,
+            final String title,
+            final String positiveButton,
+            final String prefilledJid,
+            final String account,
+            boolean allowEditJid,
+            final boolean sanity_check_jid,
+            final boolean defaultToAccountDomain) {
         final EnterJidDialog dialog = new EnterJidDialog();
         Bundle bundle = new Bundle();
         bundle.putString(TITLE_KEY, title);
@@ -70,6 +100,7 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         bundle.putBoolean(ALLOW_EDIT_JID_KEY, allowEditJid);
         bundle.putStringArrayList(ACCOUNTS_LIST_KEY, activatedAccounts);
         bundle.putBoolean(SANITY_CHECK_JID, sanity_check_jid);
+        bundle.putBoolean(DEFAULT_TO_ACCOUNT_DOMAIN_KEY, defaultToAccountDomain);
         dialog.setArguments(bundle);
         return dialog;
     }
@@ -117,8 +148,10 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
             }
         }
         sanityCheckJid = getArguments().getBoolean(SANITY_CHECK_JID, false);
+        defaultToAccountDomain = getArguments().getBoolean(DEFAULT_TO_ACCOUNT_DOMAIN_KEY, false);
 
         DelayedHintHelper.setHint(R.string.account_settings_example_jabber_id, binding.jid);
+        binding.jidLayout.setEndIconOnClickListener(this::showXmppAddressHelpPopup);
 
         final String account = getArguments().getString(ACCOUNT_KEY);
         if (Strings.isNullOrEmpty(account)) {
@@ -154,6 +187,29 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         return dialog;
     }
 
+    // Explains, in an elevated popup card anchored to the field's help icon, how the person
+    // being added can find their own XMPP address to give out — most people typing a contact's
+    // address here don't yet know it looks like an email address or where their counterpart
+    // would go to find/share it.
+    private void showXmppAddressHelpPopup(final View anchor) {
+        final View content =
+                LayoutInflater.from(anchor.getContext())
+                        .inflate(R.layout.popup_xmpp_address_help, null);
+        final PopupWindow popupWindow =
+                new PopupWindow(
+                        content,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        true);
+        // Transparent popup background so the card's own rounded corners and elevation shadow
+        // aren't clipped by the PopupWindow's default opaque frame.
+        popupWindow.setBackgroundDrawable(new ColorDrawable(0));
+        popupWindow.setOutsideTouchable(true);
+        content.findViewById(R.id.xmpp_address_help_dismiss)
+                .setOnClickListener(v -> popupWindow.dismiss());
+        popupWindow.showAsDropDown(binding.jidLayout);
+    }
+
     private void handleEnter(final DialogEnterJidBinding binding, final String account) {
         final Jid accountJid;
         if (!binding.account.isEnabled() && account == null) {
@@ -178,8 +234,13 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
             binding.jid.setText(contactJid.toString());
             binding.jid.setSelection(binding.jid.getText().length());
         } else {
+            final String rawInput = binding.jid.getText().toString().trim();
+            final String resolvedInput =
+                    defaultToAccountDomain && !rawInput.isEmpty() && rawInput.indexOf('@') < 0
+                            ? rawInput + "@" + accountJid.getDomain()
+                            : rawInput;
             try {
-                contactJid = Jid.ofUserInput(binding.jid.getText().toString().trim());
+                contactJid = Jid.ofUserInput(resolvedInput);
             } catch (final IllegalArgumentException e) {
                 binding.jidLayout.setError(context.getString(R.string.invalid_jid));
                 return;

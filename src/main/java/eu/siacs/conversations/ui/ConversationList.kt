@@ -1,8 +1,13 @@
 package eu.siacs.conversations.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +27,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +38,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
@@ -90,6 +98,7 @@ import kotlinx.coroutines.withContext
 class ConversationListState {
     internal val list: SnapshotStateList<Conversation> = mutableStateListOf()
     internal val revision = mutableIntStateOf(0)
+    val isConnecting: MutableState<Boolean> = mutableStateOf(false)
 
     fun update(source: List<Conversation>) {
         list.clear()
@@ -108,6 +117,9 @@ fun interface ConversationClickListener {
     fun onClick(conversation: Conversation)
 }
 
+/** Person bounding box within a segmented avatar bitmap, as fractions of its dimensions. */
+private data class PersonBounds(val top: Float, val bottom: Float, val centerX: Float)
+
 private fun presenceShape(
     isGroup: Boolean,
     availability: Presence.Availability?,
@@ -125,12 +137,20 @@ private fun presenceShape(
     else -> MaterialShapeHelpers.slanted()
 }
 
-private fun presenceStringRes(availability: Presence.Availability?): Int? = when (availability) {
-    Presence.Availability.CHAT, Presence.Availability.ONLINE -> R.string.presence_online
-    Presence.Availability.AWAY, Presence.Availability.XA -> R.string.presence_away
-    Presence.Availability.DND -> R.string.presence_dnd
-    else -> null
-}
+// "Away"/"Extended away" are gendered past-tense verbs in Russian ("Отошёл"/"Отошла") — the rest
+// of the statuses aren't (nouns/adjectives with no gender agreement), so isFeminine only matters
+// for those two cases.
+private fun presenceStringRes(availability: Presence.Availability?, isFeminine: Boolean): Int? =
+    when (availability) {
+        Presence.Availability.CHAT, Presence.Availability.ONLINE -> R.string.presence_online
+        Presence.Availability.AWAY ->
+            if (isFeminine) R.string.presence_away_feminine else R.string.presence_away
+        Presence.Availability.XA ->
+            if (isFeminine) R.string.presence_xa_feminine else R.string.presence_xa
+        Presence.Availability.DND -> R.string.presence_dnd
+        Presence.Availability.OFFLINE -> R.string.presence_offline
+        else -> null
+    }
 
 private fun presenceColor(availability: Presence.Availability?): Color = when (availability) {
     Presence.Availability.CHAT, Presence.Availability.ONLINE -> Color(0xFF4CAF50)
@@ -147,20 +167,30 @@ object ConversationListHelper {
         state: ConversationListState,
         onConversationClick: ConversationClickListener,
         fab: ExtendedFloatingActionButton,
+        onDownloadComplete: () -> Unit = {},
     ) {
         composeView.setViewCompositionStrategy(
             ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
         )
         composeView.setContent {
             ImpulseTheme {
-                ConversationList(
-                    conversations = state.list,
-                    revision = state.revision.intValue,
-                    onConversationClick = { onConversationClick.onClick(it) },
-                    onFirstVisibleIndexChanged = { index ->
-                        composeView.post { if (index > 0) fab.shrink() else fab.extend() }
-                    },
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column {
+                        ConnectingStrip(isConnecting = state.isConnecting.value)
+                        ConversationList(
+                            conversations = state.list,
+                            revision = state.revision.intValue,
+                            onConversationClick = { onConversationClick.onClick(it) },
+                            onFirstVisibleIndexChanged = { index ->
+                                composeView.post { if (index > 0) fab.shrink() else fab.extend() }
+                            },
+                        )
+                    }
+                    DownloadProgressBar(
+                        onComplete = onDownloadComplete,
+                        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                    )
+                }
             }
         }
     }
@@ -173,6 +203,18 @@ private fun ImpulseTheme(content: @Composable () -> Unit) {
         if (isSystemInDarkTheme()) dynamicDarkColorScheme(context)
         else dynamicLightColorScheme(context)
     MaterialTheme(colorScheme = colorScheme, content = content)
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ConnectingStrip(isConnecting: Boolean) {
+    AnimatedVisibility(
+        visible = isConnecting,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
+    }
 }
 
 @Composable
@@ -279,6 +321,15 @@ private fun ConversationItem(
         else null
     }
 
+    val isFeminine: Boolean = remember(conversation, revision) {
+        if (conversation.getMode() == Conversational.MODE_SINGLE)
+            try {
+                UIHelper.resolveGender(context, conversation.getContact()) ==
+                    eu.siacs.conversations.utils.NameGenderGuesser.Gender.FEMININE
+            } catch (_: Exception) { false }
+        else false
+    }
+
     val isTyping: Boolean = remember(conversation, revision) {
         if (conversation.getMode() == Conversational.MODE_SINGLE)
             try {
@@ -289,7 +340,6 @@ private fun ConversationItem(
             } catch (_: Exception) { false }
         else false
     }
-
 
     val avatarItemDistance = dimensionResource(R.dimen.avatar_item_distance)
     var cardHeightPx by remember { mutableIntStateOf(0) }
@@ -330,7 +380,7 @@ private fun ConversationItem(
                     )
                     val presenceText = when {
                         isTyping -> stringResource(R.string.typing_indicator)
-                        else -> presenceStringRes(availability)?.let { "● ${stringResource(it)}" }
+                        else -> presenceStringRes(availability, isFeminine)?.let { "● ${stringResource(it)}" }
                     }
                     if (presenceText != null) {
                         Text(
@@ -504,6 +554,9 @@ private fun ConversationAvatar(
 
     val isGroup = conversation.getMode() == Conversational.MODE_MULTI
 
+    // Load at full resolution so the 3D zoom effect stays crisp at any overflow depth.
+    val avatarLoadSizePx = 1440
+
     val hasRealPhoto = remember(conversation) {
         try {
             if (isGroup) true
@@ -516,7 +569,7 @@ private fun ConversationAvatar(
 
     val avatarState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
     val segmentedState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
-    val personBoundsState = remember(conversation.getUuid()) { mutableStateOf<Pair<Float, Float>?>(null) }
+    val personBoundsState = remember(conversation.getUuid()) { mutableStateOf<PersonBounds?>(null) }
     val avatarBitmap by avatarState
     val segmentedBitmap by segmentedState
     val personBounds by personBoundsState
@@ -524,7 +577,7 @@ private fun ConversationAvatar(
     LaunchedEffect(conversation) {
         val activity = context as? XmppActivity ?: return@LaunchedEffect
         val bm = withContext(Dispatchers.IO) {
-            activity.avatarService().get(conversation, canvasSizePx.toInt(), false)
+            activity.avatarService().get(conversation, avatarLoadSizePx, false)
         } ?: return@LaunchedEffect
         avatarState.value = bm.asImageBitmap()
         val key = conversation.getUuid() ?: return@LaunchedEffect
@@ -533,7 +586,7 @@ private fun ConversationAvatar(
         }
     }
 
-    // Scan segmented bitmap to find person top and bottom (off main thread)
+    // Scan segmented bitmap to find the person's bounding box (off main thread)
     LaunchedEffect(segmentedBitmap) {
         val segBm = segmentedBitmap
         if (segBm == null) { personBoundsState.value = null; return@LaunchedEffect }
@@ -543,19 +596,24 @@ private fun ConversationAvatar(
                     it.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
                 else it
             }
-            var top = -1; var bottom = -1
-            outer@ for (row in 0 until bmp.height) {
+            var top = -1; var bottom = -1; var left = -1; var right = -1
+            for (row in 0 until bmp.height) {
                 for (col in 0 until bmp.width) {
-                    if (android.graphics.Color.alpha(bmp.getPixel(col, row)) > 32) { top = row; break@outer }
+                    if (android.graphics.Color.alpha(bmp.getPixel(col, row)) > 32) {
+                        if (top == -1) top = row
+                        bottom = row
+                        if (left == -1 || col < left) left = col
+                        if (right == -1 || col > right) right = col
+                    }
                 }
             }
-            outer@ for (row in bmp.height - 1 downTo 0) {
-                for (col in 0 until bmp.width) {
-                    if (android.graphics.Color.alpha(bmp.getPixel(col, row)) > 32) { bottom = row; break@outer }
-                }
-            }
-            if (top >= 0 && bottom > top) top.toFloat() / bmp.height to bottom.toFloat() / bmp.height
-            else null
+            if (top >= 0 && bottom > top && right >= left) {
+                PersonBounds(
+                    top = top.toFloat() / bmp.height,
+                    bottom = bottom.toFloat() / bmp.height,
+                    centerX = (left + right) / 2f / bmp.width,
+                )
+            } else null
         }
         personBoundsState.value = bounds
     }
@@ -642,13 +700,17 @@ private fun ConversationAvatar(
         val srcSize: IntSize
 
         if (!isGroup && pb != null) {
-            val personTopPx = (pb.first * bm.height).toInt().coerceAtLeast(0)
-            val personBottomPx = (pb.second * bm.height).toInt().coerceAtMost(bm.height)
+            val personTopPx = (pb.top * bm.height).toInt().coerceAtLeast(0)
+            val personBottomPx = (pb.bottom * bm.height).toInt().coerceAtMost(bm.height)
             val personH = (personBottomPx - personTopPx).coerceAtLeast(1)
-            val personIsFullBody = pb.second > 0.75f
+            val personIsFullBody = pb.bottom > 0.75f
             val cropH = if (personIsFullBody) personH else (personH * 0.65f).toInt().coerceAtLeast(1)
             val cropW = cropH.coerceAtMost(bm.width)
-            srcOffset = IntOffset((bm.width - cropW) / 2, personTopPx)
+            // Center the crop window on the person's actual horizontal position instead of the
+            // bitmap's center, so off-center subjects aren't cropped out by the zoom.
+            val personCenterXPx = (pb.centerX * bm.width).toInt()
+            val cropX = (personCenterXPx - cropW / 2).coerceIn(0, bm.width - cropW)
+            srcOffset = IntOffset(cropX, personTopPx)
             srcSize = IntSize(cropW, cropH)
         } else {
             srcOffset = IntOffset(0, 0)

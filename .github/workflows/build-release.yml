@@ -2,6 +2,8 @@ name: Build Signed APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [master]
 
 jobs:
   build:
@@ -36,5 +38,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: impulse-release
-          path: build/outputs/apk/conversationsFree/release/*.apk
+          path: build/outputs/apk/conversationsFree/release/Impulse_arm64.apk
           retention-days: 14

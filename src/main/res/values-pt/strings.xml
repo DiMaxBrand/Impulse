@@ -61,7 +61,6 @@
     <string name="send_unencrypted_message">Enviar mensagem em texto normal</string>
     <string name="send_message">Enviar mensagem</string>
     <string name="send_message_to_x">Enviar mensagem para %s</string>
-    <string name="send_omemo_x509_message">Enviar mensagem cifrada com v\\OMEMO</string>
     <string name="send_unencrypted">Enviar texto normal</string>
     <string name="decryption_failed">A decifragem falhou. Talvez  não tenha a chave privada correta.</string>
     <string name="openkeychain_required">OpenKeychain</string>
@@ -417,7 +416,6 @@
     <string name="preparing_images">Preparando para enviar as imagens</string>
     <string name="delete_file_dialog">Apagar ficheiro</string>
     <string name="archive_this_chat">Apagar chat depois</string>
-    <string name="send_encrypted_message">Enviar mensagem encriptada</string>
     <string name="contact_has_no_pgp_key">Não foi possível encriptar a sua mensagem porque o contacto não está a anunciar a sua chave pública.\n\n<small>Por favor peça ao seu contacto para configurar o OpenPGP.</small></string>
     <string name="pref_notification_sound">Som de notificação</string>
     <string name="pref_notification_sound_summary">Sons de notificação para novas mensagens</string>

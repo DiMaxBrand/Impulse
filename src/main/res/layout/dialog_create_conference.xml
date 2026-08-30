@@ -32,5 +32,12 @@
                 android:hint="@string/create_dialog_group_chat_name"
                 android:imeOptions="actionNext|flagNoExtractUi" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/everyone_can_join"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/everyone_can_join" />
     </LinearLayout>
 </layout>

@@ -86,7 +86,6 @@
     <string name="send_unencrypted_message">Αποστολή μη κρυπτογραφημένου μηνύματος</string>
     <string name="send_message">Αποστολή μηνύματος</string>
     <string name="send_message_to_x">Αποστολή μηνύματος στον/στην %s</string>
-    <string name="send_omemo_x509_message">Αποστολή v\\κρυπτογραφημένου μηνύματος OMEMO</string>
     <string name="your_nick_has_been_changed">Το ψευδώνυμό σας έχει αλλάξει</string>
     <string name="send_unencrypted">Αποστολή χωρίς κρυπτογράφηση</string>
     <string name="decryption_failed">Η αποκρυπτογράφηση απέτυχε. Ίσως δεν κατέχετε το σωστό ιδιωτικό κλειδί.</string>
@@ -914,7 +913,6 @@
     <string name="remove_bookmark">Θέλετε να καταργήσετε το σελιδοδείκτη για τον %s;</string>
     <string name="remove_bookmark_and_close">Θα θέλατε να καταργήσετε το σελιδοδείκτη για τον %s και να αρχειοθετήσετε τη συνομιλία;</string>
     <string name="archive_this_chat">Διαγραφή συνομιλίας μετά</string>
-    <string name="send_encrypted_message">Αποστολή κρυπτογραφημένου μηνύματος</string>
     <string name="pref_send_crash_reports">Αποστολή αναφορών σφαλμάτων</string>
     <string name="account_state_logged_out">Αποσυνδεδεμένος</string>
     <string name="account_status_connection_timeout">Χρονικό όριο σύνδεσης</string>

@@ -86,7 +86,6 @@
     <string name="send_unencrypted_message">Açık metin olarak ileti gönder</string>
     <string name="send_message">Mesajı gönder</string>
     <string name="send_message_to_x">%s kişisine ileti gönder</string>
-    <string name="send_omemo_x509_message">v\\OMEMO ile şifrelenmiş ileti gönder</string>
     <string name="your_nick_has_been_changed">Takma adınız değiştirildi</string>
     <string name="send_unencrypted">Açık metin olarak gönder</string>
     <string name="decryption_failed">Deşifre edilemedi. Uygun bir özel anahtarınız olmayabilir.</string>
@@ -980,7 +979,6 @@
     <string name="pref_allow_screenshots_summary">Uygulama değiştiricide içeriği göster ve ekran görüntüsü almaya izin ver</string>
     <string name="remove_bookmark_and_close">%s için yer imini kaldırmak ve sohbeti arşivlemek ister misiniz?</string>
     <string name="audiobook">Sesli kitap</string>
-    <string name="send_encrypted_message">Şifrelenmiş ileti gönder</string>
     <string name="group_chats">Gruplar</string>
     <string name="quicksy_wants_your_consent">Quicksy, verilerinizi kullanmak için izninizi istiyor</string>
     <string name="this_account_is_logged_out">Bu hesabın oturumunu kapatmışsınız</string>

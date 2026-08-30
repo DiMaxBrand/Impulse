@@ -32,6 +32,7 @@ public class AppSettings {
 
     public static final String KEEP_FOREGROUND_SERVICE = "enable_foreground_service";
     public static final String AWAY_WHEN_SCREEN_IS_OFF = "away_when_screen_off";
+    public static final String AWAY_WHEN_APP_EXITED = "away_when_app_exited";
     public static final String DND_SYNC_SYSTEM = "dnd_on_silent_mode";
     public static final String DND_INCLUDE_SILENT_MODES = "treat_vibrate_as_silent";
     public static final String GRACE_PERIOD_LENGTH = "grace_period_length";
@@ -192,7 +193,11 @@ public class AppSettings {
     }
 
     public boolean isUserManagedAvailability() {
-        return getBooleanPreference(MANUALLY_CHANGE_PRESENCE, R.bool.manually_change_presence);
+        // Temporarily disabled — the toggle is commented out in preferences_availability.xml and
+        // existing users get migrated back to automatic (see migratePreferences()), but this is
+        // the single point every caller actually goes through, so it's forced here too rather
+        // than relying solely on the UI being hidden and the one-time migration having run.
+        return false;
     }
 
     public boolean isAutomaticAvailability() {
@@ -211,6 +216,10 @@ public class AppSettings {
     public boolean isAwayWhenScreenLocked() {
         return getBooleanPreference(
                 AppSettings.AWAY_WHEN_SCREEN_IS_OFF, R.bool.away_when_screen_off);
+    }
+
+    public boolean isAwayWhenAppExited() {
+        return getBooleanPreference(AppSettings.AWAY_WHEN_APP_EXITED, R.bool.away_when_app_exited);
     }
 
     public boolean isUseSharedStorage() {
@@ -459,9 +468,9 @@ public class AppSettings {
     }
 
     /**
-     * One-time preference migrations keyed by an integer version stored in SharedPreferences.
-     * Call once from Application.onCreate() so it runs on every app start but each migration
-     * block executes only once.
+     * One-time preference migrations keyed by an integer version stored in SharedPreferences. Call
+     * once from Application.onCreate() so it runs on every app start but each migration block
+     * executes only once.
      */
     public static void migratePreferences(final Context context) {
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
@@ -504,6 +513,50 @@ public class AppSettings {
                 editor.putString(PICTURE_COMPRESSION, DEFAULT_PICTURE_COMPRESSION);
             }
             editor.putBoolean("pref_migrated_picture_compression", true).apply();
+        }
+
+        if (!prefs.getBoolean("pref_migrated_disable_manual_availability", false)) {
+            // Manual availability is being disabled (see isUserManagedAvailability()) — anyone
+            // who already had it toggled on gets switched back to automatic.
+            prefs.edit()
+                    .putBoolean(MANUALLY_CHANGE_PRESENCE, false)
+                    .putBoolean("pref_migrated_disable_manual_availability", true)
+                    .apply();
+        }
+
+        if (!prefs.getBoolean("pref_migrated_use_shared_storage", false)) {
+            // "Automatically save to gallery" is switching to on-by-default — a one-time flip for
+            // anyone who already has the old (off) default persisted, same reasoning as
+            // last_activity_default below: R.bool.use_shared_storage only helps fresh installs,
+            // since the preference screen persists the shown default the first time it's opened.
+            prefs.edit()
+                    .putBoolean(USE_SHARED_STORAGE, true)
+                    .putBoolean("pref_migrated_use_shared_storage", true)
+                    .apply();
+        }
+
+        if (!prefs.getBoolean("pref_migrated_last_activity_default", false)) {
+            // "Show last seen" is switching to on-by-default — a one-time flip for anyone who
+            // already has the old (off) default persisted, not just a new default for fresh
+            // installs (the preference screen persists the shown default the first time it's
+            // opened, so simply changing R.bool.last_activity doesn't retroactively help anyone
+            // who's already visited Settings > Privacy).
+            prefs.edit()
+                    .putBoolean(BROADCAST_LAST_ACTIVITY, true)
+                    .putBoolean("pref_migrated_last_activity_default", true)
+                    .apply();
+        }
+
+        if (!prefs.getBoolean("pref_migrated_reset_crash_reports", false)) {
+            // The crash/error report dialogs' old negative button permanently disabled reporting
+            // in one tap ("Never ask again") — easy to hit by accident, given the whole reason it
+            // was removed in favor of a plain dismiss ("Not now"). Anyone who already tripped that
+            // gets one fresh chance here; if they still want it off, that's now a deliberate
+            // Settings toggle instead of a dialog button.
+            prefs.edit()
+                    .putBoolean(SEND_CRASH_REPORTS, true)
+                    .putBoolean("pref_migrated_reset_crash_reports", true)
+                    .apply();
         }
     }
 }

@@ -222,6 +222,7 @@ public class SearchActivity extends XmppActivity
     protected void onBackendConnected() {
         final List<String> searchTerm = pendingSearch.pop();
         if (searchTerm != null && currentSearch.watch(searchTerm)) {
+            binding.searchProgress.setVisibility(View.VISIBLE);
             xmppConnectionService.search(searchTerm, uuid, this);
         }
     }
@@ -259,7 +260,9 @@ public class SearchActivity extends XmppActivity
             messageListAdapter.setHighlightedTerm(null);
             messageListAdapter.notifyDataSetChanged();
             changeBackground(false, false);
+            binding.searchProgress.setVisibility(View.GONE);
         } else {
+            binding.searchProgress.setVisibility(View.VISIBLE);
             xmppConnectionService.search(term, uuid, this);
         }
     }
@@ -268,6 +271,7 @@ public class SearchActivity extends XmppActivity
     public void onSearchResultsAvailable(List<String> term, List<Message> messages) {
         runOnUiThread(
                 () -> {
+                    binding.searchProgress.setVisibility(View.GONE);
                     this.messages.clear();
                     messageListAdapter.setHighlightedTerm(term);
                     DateSeparator.addAll(messages);

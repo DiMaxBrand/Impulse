@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name (optional)'
+        required: false
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: true
+      title:
+        description: 'Release title (optional, default: "Impulse <version>"). For a stable release, use this for a short changelog headline.'
+        required: false
+        type: string
+      description:
+        description: 'Release description (optional, prepended above the auto-generated changelog)'
+        required: false
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      INPUT_VERSION_NAME: ${{ inputs.version_name }}
+      INPUT_TITLE: ${{ inputs.title }}
+      INPUT_DESCRIPTION: ${{ inputs.description }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version name
+        run: |
+          if [ -n "$INPUT_VERSION_NAME" ]; then
+            VERSION="$INPUT_VERSION_NAME"
+          else
+            VERSION=$(grep 'val appVersion' build.gradle.kts | sed 's/.*"\(.*\)".*/\1/' | cut -d'+' -f1)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+
+      - name: Write signing.properties
+        run: |
+          cat > signing.properties <<EOF
+          keystore=${{ github.workspace }}/keystore.jks
+          keystore.password=${{ secrets.KEYSTORE_PASSWORD }}
+          keystore.alias=${{ secrets.KEY_ALIAS }}
+          EOF
+
+      - name: Build signed release APK
+        run: ./gradlew assembleConversationsFreeRelease
+
+      - name: Create and push git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ env.VERSION }}"
+          git push origin "${{ env.VERSION }}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          TITLE="$INPUT_TITLE"
+          if [ -z "$TITLE" ]; then
+            TITLE="Impulse ${{ env.VERSION }}"
+          fi
+
+          NOTES_ARGS=(--generate-notes)
+          if [ -n "$INPUT_DESCRIPTION" ]; then
+            NOTES_ARGS=(--notes "$INPUT_DESCRIPTION" --generate-notes)
+          fi
+
+          gh release create "${{ env.VERSION }}" \
+            $PRERELEASE_FLAG \
+            --title "$TITLE" \
+            "${NOTES_ARGS[@]}" \
+            "build/outputs/apk/conversationsFree/release/Impulse_arm64.apk"

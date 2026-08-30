@@ -18,4 +18,7 @@
     <cache-path
         name="recordings"
         path="Recordings" />
+    <external-files-path
+        name="downloads"
+        path="Downloads/" />
 </paths>

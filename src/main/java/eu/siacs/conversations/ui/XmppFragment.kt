@@ -9,7 +9,7 @@ abstract class XmppFragment : Fragment(), OnBackendConnected {
     abstract fun refresh()
 
     protected fun runOnUiThread(runnable: Runnable) {
-        requireActivity().runOnUiThread(runnable)
+        activity?.runOnUiThread(runnable)
     }
 
     fun requireXmppActivity(): XmppActivity {

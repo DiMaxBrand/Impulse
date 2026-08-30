@@ -1,4 +1,5 @@
 .classpath
+.kotlin/
 *.swp
 .settings
 
@@ -49,3 +50,4 @@ proguard/
 import-summary.txt
 .navigation/
 preview/
+.claude/worktrees/

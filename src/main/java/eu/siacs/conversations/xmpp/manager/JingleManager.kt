@@ -1029,7 +1029,8 @@ class JingleManager(
         )
     }
 
-    fun getTerminalSessionState(with: Jid, sessionId: String): TerminatedRtpSession? {
+    fun getTerminalSessionState(with: Jid?, sessionId: String?): TerminatedRtpSession? {
+        if (with == null || sessionId == null) return null
         return this.terminatedSessions.getIfPresent(PersistableSessionId(with, sessionId))
     }
 

@@ -1,61 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="24dp"
-        android:paddingTop="24dp"
-        android:paddingBottom="32dp">
-
-        <TextView
-            android:id="@+id/title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/delete_message_title"
-            android:textAppearance="?textAppearanceTitleMedium" />
-
-        <TextView
-            android:id="@+id/description"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textAppearance="?textAppearanceBodySmall"
-            android:textColor="?colorOnSurfaceVariant"
-            android:visibility="gone" />
-
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="20dp" />
+        android:padding="16dp">
 
         <com.google.android.material.button.MaterialButtonGroup
+            android:id="@+id/delete_options"
+            style="@style/Widget.Material3.MaterialButtonGroup.Connected"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            style="@style/Widget.Material3Expressive.MaterialButtonGroup.Connected"
-            app:shapeAppearance="@xml/delete_message_group_shape_state_list"
-            app:innerCornerSize="@xml/delete_message_inner_corner_size_state_list">
+            android:layout_height="wrap_content">
 
-            <com.google.android.material.button.MaterialButton
+            <Button
                 android:id="@+id/btn_delete_everyone"
-                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/delete_for_everyone" />
 
-            <com.google.android.material.button.MaterialButton
+            <Button
                 android:id="@+id/btn_delete_myself"
-                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/delete_for_myself" />
 
-            <com.google.android.material.button.MaterialButton
+            <Button
                 android:id="@+id/btn_cancel"
-                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -64,5 +37,4 @@
         </com.google.android.material.button.MaterialButtonGroup>
 
     </LinearLayout>
-
 </layout>

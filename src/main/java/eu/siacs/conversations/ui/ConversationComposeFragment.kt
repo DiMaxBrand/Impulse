@@ -1,0 +1,1571 @@
+package eu.siacs.conversations.ui
+
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.media.MediaRecorder
+import android.os.Build
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.IdRes
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.ui.platform.ComposeView
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import com.google.common.util.concurrent.FutureCallback
+import com.google.common.util.concurrent.Futures
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import eu.siacs.conversations.Config
+import eu.siacs.conversations.R
+import eu.siacs.conversations.utils.Compatibility
+import eu.siacs.conversations.entities.Conversation
+import eu.siacs.conversations.entities.Conversational
+import eu.siacs.conversations.entities.Message
+import eu.siacs.conversations.entities.Transferable
+import eu.siacs.conversations.utils.Emoticons
+import eu.siacs.conversations.services.CallIntegrationConnectionService
+import eu.siacs.conversations.services.XmppConnectionService
+import eu.siacs.conversations.ui.interfaces.OnConversationRead
+import androidx.lifecycle.lifecycleScope
+import eu.siacs.conversations.ui.util.Attachment
+import eu.siacs.conversations.ui.util.PresenceSelector
+import eu.siacs.conversations.ui.util.ViewUtil
+import eu.siacs.conversations.xmpp.jingle.RtpCapability
+import eu.siacs.conversations.xmpp.manager.HttpUploadManager
+import eu.siacs.conversations.xmpp.manager.ModerationManager
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.launch
+
+/**
+ * Jetpack Compose replacement for [ConversationFragment]: the screen showing a single
+ * conversation. Rendering lives in [ConversationScreen]; this fragment bridges the screen to
+ * [XmppConnectionService].
+ */
+class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
+
+    private val state = ConversationScreenState()
+    private var conversation: Conversation? = null
+    private var pendingConversationUuid: String? = null
+    private val loadingMoreMessages = AtomicBoolean(false)
+    private var pendingTrustAction: (() -> Unit)? = null
+    private var lastComposedText = ""
+    private var typingPauseJob: kotlinx.coroutines.Job? = null
+    private var mediaRecorder: MediaRecorder? = null
+    private var recordingFile: java.io.File? = null
+    private var recordingStartMs = 0L
+    private var totalPausedMs = 0L
+    private var pauseStartMs = 0L
+    private var timerJob: kotlinx.coroutines.Job? = null
+    private val pendingTakePhotoUri = eu.siacs.conversations.ui.util.PendingItem<Uri>()
+    private var pendingSharedUris: List<Uri> = emptyList()
+    private var pendingSharedMimeType: String? = null
+
+    private val takePhotoLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                val uri = pendingTakePhotoUri.pop()
+                if (uri != null) {
+                    stageUris(listOf(uri), eu.siacs.conversations.ui.util.Attachment.Type.IMAGE)
+                }
+            } else {
+                pendingTakePhotoUri.pop()
+            }
+        }
+
+    private val takePhotoPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) launchCameraCapture()
+        }
+
+    private val pickMediaLauncher =
+        registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+            val ctx = context ?: return@registerForActivityResult
+            uris.forEach { uri ->
+                val mime = ctx.contentResolver.getType(uri)
+                val type = if (mime?.startsWith("video/") == true) Attachment.Type.FILE else Attachment.Type.IMAGE
+                stageUris(listOf(uri), type)
+            }
+        }
+
+    private val pickFileLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) stageUris(listOf(uri), Attachment.Type.FILE)
+        }
+
+    private val trustKeysLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                val action = pendingTrustAction
+                pendingTrustAction = null
+                action?.invoke()
+            }
+        }
+
+    private val audioCallPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) triggerRtpSession(RtpSessionActivity.ACTION_MAKE_VOICE_CALL)
+        }
+
+    private val videoCallPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            if (results.values.all { it }) {
+                triggerRtpSession(RtpSessionActivity.ACTION_MAKE_VIDEO_CALL)
+            }
+        }
+
+    private val recordVoiceLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                val data = result.data
+                val uri = data?.data
+                if (uri != null) {
+                    val autoSend =
+                        data.getBooleanExtra(RecordingActivity.EXTRA_AUTO_SEND_RECORDING, false)
+                    if (autoSend) {
+                        commitAttachments(
+                            Attachment.of(requireContext(), uri, Attachment.Type.RECORDING)
+                        )
+                    } else {
+                        stageUris(listOf(uri), Attachment.Type.RECORDING)
+                    }
+                }
+            }
+        }
+
+    private val inviteLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == AppCompatActivity.RESULT_OK && result.data != null) {
+                val invite = XmppActivity.ConferenceInvite.parse(result.data)
+                if (invite != null && invite.execute(requireXmppActivity())) {
+                    Toast.makeText(
+                            requireContext(),
+                            R.string.creating_conference,
+                            Toast.LENGTH_LONG,
+                        )
+                        .show()
+                }
+            }
+        }
+
+    private val recordAudioPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                startNativeRecording()
+            }
+        }
+
+    private val mediaViewerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                val uuid = result.data?.getStringExtra(MediaViewerActivity.EXTRA_RESULT_SHOW_UUID)
+                if (uuid != null) showMessageInChat(uuid)
+            }
+        }
+
+    private fun showMessageInChat(uuid: String) {
+        val service = getXmppConnectionService() ?: return
+        val c = conversation ?: return
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val message = service.databaseBackend.getMessage(c, uuid)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (message != null) onScrollToMessage(message)
+            }
+        }
+    }
+
+    // MediaSelectionActivity's result only ever reaches this Fragment, never the Compose tree
+    // directly — the two outcomes below (merge into the ongoing chat selection, or open a delete
+    // sheet scoped to the picked subset) are pushed back in through ConversationScreenState, the
+    // same channel used for the media viewer's own results.
+    private val mediaSelectionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != AppCompatActivity.RESULT_OK) return@registerForActivityResult
+            val data = result.data ?: return@registerForActivityResult
+            val uuids = data.getStringArrayListExtra(MediaSelectionActivity.EXTRA_RESULT_UUIDS) ?: return@registerForActivityResult
+            val forDelete = data.getBooleanExtra(MediaSelectionActivity.EXTRA_RESULT_FOR_DELETE, false)
+            if (forDelete) {
+                val service = getXmppConnectionService() ?: return@registerForActivityResult
+                val c = conversation ?: return@registerForActivityResult
+                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val messages = uuids.mapNotNull { service.databaseBackend.getMessage(c, it) }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (messages.isNotEmpty()) state.deleteGroupTarget.value = messages
+                    }
+                }
+            } else {
+                state.pendingSelectionMerge.value = uuids
+            }
+        }
+
+    override fun onOpenMediaSelector(messages: List<Message>, forDelete: Boolean) {
+        val c = conversation ?: return
+        val uuids = messages.mapNotNull { it.getUuid() }
+        if (uuids.isEmpty()) return
+        mediaSelectionLauncher.launch(
+            MediaSelectionActivity.launch(requireContext(), c.getUuid(), uuids, forDelete)
+        )
+    }
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        if (pendingSharedUris.isNotEmpty()) {
+            val uris = pendingSharedUris
+            val mimeType = pendingSharedMimeType
+            pendingSharedUris = emptyList()
+            pendingSharedMimeType = null
+            stageUris(uris, if (mimeType?.startsWith("image/") == true) Attachment.Type.IMAGE else Attachment.Type.FILE)
+        }
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
+    ): View {
+        val composeView = ComposeView(requireContext())
+        ConversationScreenHelper.setup(composeView, state, this)
+        return composeView
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (savedInstanceState != null) {
+            pendingConversationUuid = savedInstanceState.getString(STATE_CONVERSATION_UUID)
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val uuid = conversation?.getUuid() ?: pendingConversationUuid
+        if (uuid != null) outState.putString(STATE_CONVERSATION_UUID, uuid)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Read-marking is now progressive (see onMarkReadUpTo / the viewport-tracking effect in
+        // MessageList) — it fires as soon as the first layout pass populates visibleItemsInfo,
+        // which happens right after this anyway, so there's no blanket "mark everything read"
+        // call here anymore. That used to mark a whole unread backlog as read the instant the
+        // conversation opened, before the user had actually scrolled up to see any of it.
+        val activity = activity ?: return
+        val color = com.google.android.material.elevation.SurfaceColors.SURFACE_2.getColor(activity)
+        activity.window.statusBarColor = color
+        val isLight = (resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) !=
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView)
+            .isAppearanceLightStatusBars = isLight
+        AudioPlaybackController.onTransition = ::handleListenTransition
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (state.recordingState.value is RecordingUiState.Active) {
+            stopRecordingSession(save = false)
+            state.recordingState.value = RecordingUiState.Idle
+        }
+        // pauseForBackground() fires a PAUSED transition; keep the handler registered until
+        // after it runs so backgrounding mid-listen still sends a best-effort "paused" stanza.
+        AudioPlaybackController.pauseForBackground()
+        AudioPlaybackController.onTransition = null
+        // Safety net for reInit()'s own save: this covers backgrounding the whole app (home
+        // button, app switcher, screen off) without ever switching to a different conversation,
+        // which reInit() never sees.
+        storeNextMessage()
+        // Same gap reInit() had for switching conversations mid-edit (see its own comment) applies
+        // here too: backgrounding the app without explicitly cancelling or sending an in-progress
+        // edit never sent a "stop", leaving the peer's copy of that message marked as
+        // remotely-being-edited forever.
+        state.correcting.value?.let(::onEditingStopped)
+        state.correcting.value = null
+    }
+
+    /** Persists whatever's currently in the composer as this conversation's draft (XMPP
+     * concept: Conversation.setNextMessage — an in-DB attribute, not just in-memory state, so it
+     * survives the app being killed) so leaving without sending doesn't silently lose it. Mirrors
+     * the old ConversationFragment.storeNextMessage(): skipped for archived conversations and for
+     * a MUC room not yet joined, since a draft has nothing meaningful to attach to there. Returns
+     * whether anything actually changed, purely so callers can skip a pointless DB write. */
+    private fun storeNextMessage(): Boolean {
+        val c = conversation ?: return false
+        val service = getXmppConnectionService() ?: return false
+        val msg = state.getInput()
+        val participating = c.getMode() == Conversational.MODE_SINGLE || c.mucOptions.participating()
+        if (c.getStatus() != Conversation.STATUS_ARCHIVED && participating && c.setNextMessage(msg)) {
+            service.updateConversation(c)
+            return true
+        }
+        return false
+    }
+
+    private fun handleListenTransition(uuid: String, wireState: String) {
+        val message = conversation?.findMessageWithUuid(uuid) ?: return
+        if (message.status != Message.STATUS_RECEIVED) return
+        if (message.mimeType?.startsWith("audio/") != true) return
+        if (wireState == ListenStatusManager.WIRE_LISTENED) {
+            ListenStatusManager.markLocallyListened(uuid)
+            message.listenStatus = Message.LISTEN_STATUS_LISTENED
+            getXmppConnectionService()?.updateMessage(message, false)
+        }
+        sendListenStatusStanza(message, wireState)
+    }
+
+    /** Tells the sender what we're doing with their voice message. 1:1 chats only — in group
+     * rooms this would broadcast listening habits to everyone present. Only ever fires for
+     * INCOMING messages (playing back your own sent message says nothing useful to anyone). */
+    private fun sendListenStatusStanza(message: Message, wireState: String) {
+        val service = getXmppConnectionService() ?: return
+        val c = message.conversation as? Conversation ?: return
+        if (c.getMode() != eu.siacs.conversations.entities.Conversational.MODE_SINGLE) return
+        val packet = im.conversations.android.xmpp.model.stanza.Message()
+        packet.setFrom(c.getAccount().jid)
+        packet.setTo(message.counterpart.asBareJid())
+        val el = eu.siacs.conversations.xml.Element(
+            "listening",
+            eu.siacs.conversations.xml.Namespace.IMPULSE_LISTEN_STATUS,
+        )
+        // Reference the id the sender knows their message by: their uuid, which arrived on our
+        // side as remoteMsgId. (Same reasoning as editing indicators and retractions — a local
+        // uuid means nothing to the other device.)
+        el.setAttribute("id", message.remoteMsgId ?: message.getUuid())
+        el.setAttribute("state", wireState)
+        packet.addChild(el)
+        // Ephemeral transitions (listening/paused) are worthless hours later — don't archive
+        // them. The terminal "listened" is the one worth delivering even if the sender is
+        // offline right now, like a displayed marker.
+        if (wireState == ListenStatusManager.WIRE_LISTENED) {
+            packet.addExtension(im.conversations.android.xmpp.model.hints.Store())
+        } else {
+            packet.addExtension(im.conversations.android.xmpp.model.hints.NoStore())
+        }
+        service.sendMessagePacket(c.getAccount(), packet)
+    }
+
+    fun reInit(conversation: Conversation, extras: Bundle) {
+        if (this.conversation !== conversation) {
+            // Persist whatever was sitting unsent in the composer against the conversation we're
+            // leaving (this.conversation, still the old one at this point) before switching away
+            // from it — otherwise navigating away silently threw the draft out.
+            storeNextMessage()
+            state.replyingTo.value = null
+            // Abandoning an edit by switching conversations (rather than explicitly cancelling or
+            // sending it) still needs its own "stop" sent — otherwise the peer's copy of this
+            // message is left marked as remotely-being-edited forever, since nothing else will
+            // ever tell them we stopped.
+            state.correcting.value?.let(::onEditingStopped)
+            state.correcting.value = null
+            val participating = conversation.getMode() == Conversational.MODE_SINGLE ||
+                conversation.mucOptions.participating()
+            // Restore whatever draft the conversation we're switching *to* was holding, instead
+            // of always starting blank — same "participating" guard as the draft's own display in
+            // the chat list (a MUC you haven't joined has nothing meaningful to draft into).
+            state.setInput(if (participating) conversation.getNextMessage() else "")
+        }
+        this.conversation = conversation
+        this.pendingConversationUuid = null
+        conversation.messagesLoaded.set(true)
+        val text = extras.getString(Intent.EXTRA_TEXT)
+        if (!text.isNullOrBlank() &&
+            !extras.getBoolean(ConversationsActivity.EXTRA_DO_NOT_APPEND, false)
+        ) {
+            state.setInput(text)
+        }
+        val sharedUris: List<Uri> = run {
+            @Suppress("DEPRECATION")
+            val list = extras.getParcelableArrayList<Uri>(Intent.EXTRA_STREAM)
+            if (!list.isNullOrEmpty()) list
+            else {
+                @Suppress("DEPRECATION")
+                listOfNotNull(extras.getParcelable<Uri>(Intent.EXTRA_STREAM))
+            }
+        }
+        if (sharedUris.isNotEmpty()) {
+            val mimeType = extras.getString(ConversationsActivity.EXTRA_TYPE)
+            if (context != null) {
+                stageUris(sharedUris, if (mimeType?.startsWith("image/") == true) Attachment.Type.IMAGE else Attachment.Type.FILE)
+            } else {
+                pendingSharedUris = sharedUris
+                pendingSharedMimeType = mimeType
+            }
+        }
+        val nick = extras.getString(ConversationsActivity.EXTRA_NICK)
+        if (!nick.isNullOrEmpty()) {
+            if (extras.getBoolean(ConversationsActivity.EXTRA_IS_PRIVATE_MESSAGE, false)) {
+                val address = conversation.getAddress()
+                try {
+                    privateMessageWith(
+                        eu.siacs.conversations.xmpp.Jid.of(
+                            address.getLocal(),
+                            address.getDomain(),
+                            nick,
+                        )
+                    )
+                } catch (_: IllegalArgumentException) {}
+            } else if (conversation.mucOptions.participating() ||
+                conversation.getNextCounterpart() != null
+            ) {
+                highlightInConference(nick)
+            }
+        }
+        if (ConversationsActivity.POST_ACTION_RECORD_VOICE ==
+            extras.getString(ConversationsActivity.EXTRA_POST_INIT_ACTION)
+        ) {
+            onStartRecording()
+        }
+        refreshMessages()
+    }
+
+    /** Switches the composer to a private message addressed to the given MUC participant. */
+    fun privateMessageWith(counterpart: eu.siacs.conversations.xmpp.Jid) {
+        val c = conversation ?: return
+        eu.siacs.conversations.xmpp.manager.ChatStateManager.send(c, Config.DEFAULT_CHAT_STATE)
+        c.setNextCounterpart(counterpart)
+        state.setInput("")
+        refreshMessages()
+    }
+
+    private fun highlightInConference(nick: String) {
+        val current = state.getInput()
+        state.setInput(
+            when {
+                current.isBlank() -> "$nick: "
+                current.endsWith(" ") -> "$current$nick "
+                else -> "$current $nick "
+            }
+        )
+    }
+
+    fun getConversation(): Conversation? = conversation
+
+    fun onArrowUpCtrlPressed(): Boolean = false
+
+    override fun refresh() {
+        refreshMessages()
+    }
+
+    override fun onBackendConnected() {
+        val service = getXmppConnectionService() ?: return
+        val uuid = pendingConversationUuid
+        if (conversation == null && uuid != null) {
+            val restored = service.findConversationByUuidReliable(uuid)
+            if (restored != null) {
+                reInit(restored, Bundle())
+                return
+            }
+        }
+        refreshMessages()
+    }
+
+    private fun refreshMessages() {
+        val c = conversation
+        if (c == null) {
+            state.update(null, emptyList())
+            return
+        }
+        val list = ArrayList<Message>()
+        c.populateWithMessages(list)
+        state.update(c, list)
+        // Sync remote-editing indicators: in-memory map (live) OR persisted DB flag (survives navigation)
+        val service = getXmppConnectionService()
+        val indicators = service?.remoteEditingIndicators
+        for (msg in list) {
+            val uuid = msg.getUuid() ?: continue
+            val active = indicators?.get(uuid) == true || msg.isRemoteEditing()
+            state.setRemoteEditing(uuid, active)
+        }
+        refreshPinned()
+    }
+
+    private fun markRead() {
+        val c = conversation ?: return
+        if (!isResumed) return
+        val activity = activity as? OnConversationRead ?: return
+        val lastUuid = state.messages.value.lastOrNull()?.getUuid()
+        activity.onConversationRead(c, lastUuid ?: "")
+        state.unreadCount.intValue = 0
+    }
+
+    override fun onMarkReadUpTo(uuid: String) {
+        if (!isResumed) return
+        val activity = activity as? OnConversationRead ?: return
+        activity.onConversationRead(conversation ?: return, uuid)
+    }
+
+    // ---- ConversationScreenListener ----
+
+    override fun onBackPressed() {
+        requireActivity().onBackPressedDispatcher.onBackPressed()
+    }
+
+    override fun onSendTextMessage(body: String) {
+        val c = conversation ?: return
+        if (body.isBlank()) return
+        val service = getXmppConnectionService() ?: return
+        when (c.nextEncryption) {
+            Message.ENCRYPTION_AXOLOTL -> {
+                if (trustKeysIfNeeded(c) { onSendTextMessage(body) }) return
+            }
+            Message.ENCRYPTION_PGP -> {
+                // OpenPGP sending is not wired into the Compose screen yet.
+                Toast.makeText(requireContext(), R.string.openpgp_error, Toast.LENGTH_SHORT).show()
+                return
+            }
+        }
+        val correcting = state.correcting.value
+        val message: Message
+        if (correcting != null) {
+            onEditingStopped(correcting)
+            message = correcting
+            message.setBody(body)
+            message.putEdited(message.getUuid(), message.serverMsgId)
+            message.replaceUuid(java.util.UUID.randomUUID().toString())
+        } else {
+            message = Message(c, body, c.nextEncryption)
+            Message.configurePrivateMessage(message)
+        }
+        val reply = state.replyingTo.value
+        if (reply != null) {
+            // XEP-0461: for received messages, use remoteMsgId (the sender's original stanza id)
+            // — both sides know it. Our server's archive id (serverMsgId) is meaningless to the
+            // sender's client. For own sent messages, use serverMsgId ?? uuid (uuid = stanza id).
+            val replyId = if (reply.status == Message.STATUS_RECEIVED) {
+                reply.remoteMsgId ?: reply.serverMsgId ?: reply.getUuid()
+            } else {
+                reply.serverMsgId ?: reply.getUuid()
+            }
+            message.setRepliedTo(replyId)
+        }
+        service.sendMessage(message)
+        state.replyingTo.value = null
+        state.correcting.value = null
+        state.setInput("")
+        refreshMessages()
+        markRead()
+    }
+
+    override fun onStartRecording() {
+        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    override fun onPauseRecording() {
+        val recording = state.recordingState.value as? RecordingUiState.Active ?: return
+        val recorder = mediaRecorder ?: return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
+        if (!recording.paused) {
+            try {
+                recorder.pause()
+                pauseStartMs = System.currentTimeMillis()
+                timerJob?.cancel()
+            } catch (_: IllegalStateException) {
+                return
+            }
+            state.recordingState.value = RecordingUiState.Active(recording.elapsedMs, paused = true)
+        } else {
+            try {
+                recorder.resume()
+                totalPausedMs += System.currentTimeMillis() - pauseStartMs
+                pauseStartMs = 0L
+            } catch (_: IllegalStateException) {
+                return
+            }
+            state.recordingState.value = RecordingUiState.Active(recording.elapsedMs, paused = false)
+            startRecordingTimer()
+        }
+    }
+
+    override fun onCancelRecording() {
+        stopRecordingSession(save = false)
+        state.recordingState.value = RecordingUiState.Idle
+    }
+
+    override fun onSendRecording() {
+        val currentElapsed = (state.recordingState.value as? RecordingUiState.Active)?.elapsedMs ?: 0L
+        stopRecordingSession(save = true)
+        val file = recordingFile ?: run {
+            state.recordingState.value = RecordingUiState.Idle
+            return
+        }
+        val ctx = context ?: run {
+            state.recordingState.value = RecordingUiState.Idle
+            return
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            ctx,
+            "${ctx.packageName}.files",
+            file,
+        )
+        val attachment = eu.siacs.conversations.ui.util.Attachment.of(ctx, uri, eu.siacs.conversations.ui.util.Attachment.Type.RECORDING).firstOrNull()
+        if (attachment != null) {
+            commitAttachments(listOf(attachment))
+        }
+        state.recordingState.value = RecordingUiState.Idle
+        recordingFile = null
+    }
+
+    private fun startNativeRecording() {
+        val ctx = context ?: return
+        val outputFormat =
+            if (eu.siacs.conversations.Config.USE_OPUS_VOICE_MESSAGES &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+            ) {
+                MediaRecorder.OutputFormat.OGG
+            } else {
+                MediaRecorder.OutputFormat.MPEG_4
+            }
+        val file = eu.siacs.conversations.persistance.FileBackend.Cache(ctx).recording(outputFormat)
+        recordingFile = file
+
+        @Suppress("DEPRECATION")
+        val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(ctx)
+        } else {
+            MediaRecorder()
+        }
+        try {
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+        } catch (e: RuntimeException) {
+            recorder.release()
+            Toast.makeText(ctx, R.string.unable_to_start_recording, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            recorder.setPrivacySensitive(true)
+        }
+        if (eu.siacs.conversations.Config.USE_OPUS_VOICE_MESSAGES &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        ) {
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.OGG)
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.OPUS)
+            recorder.setAudioEncodingBitRate(32_000)
+        } else {
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.HE_AAC)
+            recorder.setAudioSamplingRate(24_000)
+            recorder.setAudioEncodingBitRate(28_000)
+        }
+        recorder.setOutputFile(file.absolutePath)
+        try {
+            recorder.prepare()
+            recorder.start()
+        } catch (e: Exception) {
+            recorder.release()
+            Toast.makeText(ctx, R.string.unable_to_start_recording, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        mediaRecorder = recorder
+        recordingStartMs = System.currentTimeMillis()
+        totalPausedMs = 0L
+        pauseStartMs = 0L
+        state.recordingState.value = RecordingUiState.Active(0L, paused = false)
+        startRecordingTimer()
+    }
+
+    private fun startRecordingTimer() {
+        timerJob?.cancel()
+        timerJob = lifecycleScope.launch {
+            while (true) {
+                val elapsed = System.currentTimeMillis() - recordingStartMs - totalPausedMs
+                val current = state.recordingState.value
+                if (current is RecordingUiState.Active && !current.paused) {
+                    state.recordingState.value = RecordingUiState.Active(elapsed, paused = false)
+                }
+                kotlinx.coroutines.delay(100)
+            }
+        }
+    }
+
+    private fun stopRecordingSession(save: Boolean) {
+        timerJob?.cancel()
+        timerJob = null
+        val recorder = mediaRecorder ?: return
+        try {
+            recorder.stop()
+            recorder.release()
+        } catch (_: Exception) {
+        } finally {
+            mediaRecorder = null
+        }
+        if (!save) {
+            recordingFile?.delete()
+            recordingFile = null
+        }
+    }
+
+    private fun stageUris(uris: List<Uri>, type: Attachment.Type) {
+        val context = context ?: return
+        for (uri in uris) {
+            state.attachments.addAll(Attachment.of(context, uri, type))
+        }
+    }
+
+    override fun onCommitAttachments() {
+        val c = conversation ?: return
+        if (c.nextEncryption == Message.ENCRYPTION_AXOLOTL &&
+            trustKeysIfNeeded(c) { onCommitAttachments() }
+        ) {
+            return
+        }
+        val attachments = state.attachments.toList()
+        state.attachments.clear()
+        commitAttachments(attachments)
+    }
+
+    private fun commitAttachments(attachments: List<Attachment>) {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val context = context ?: return
+        val reply = state.replyingTo.value
+        val replyId = if (reply != null) {
+            if (reply.status == Message.STATUS_RECEIVED) {
+                reply.remoteMsgId ?: reply.serverMsgId ?: reply.getUuid()
+            } else {
+                reply.serverMsgId ?: reply.getUuid()
+            }
+        } else null
+        state.replyingTo.value = null
+        for (attachment in attachments) {
+            val future =
+                if (attachment.type == Attachment.Type.IMAGE)
+                    service.attachImageToConversation(c, attachment.uri, attachment.mime, replyId)
+                else service.attachFileToConversation(c, attachment.uri, attachment.mime, replyId)
+            Futures.addCallback(
+                future,
+                object : FutureCallback<Void?> {
+                    override fun onSuccess(result: Void?) {
+                        runOnUiThread { refreshMessages() }
+                    }
+
+                    override fun onFailure(t: Throwable) {
+                        runOnUiThread {
+                            val ctx = getContext() ?: return@runOnUiThread
+                            Toast.makeText(ctx, t.message, Toast.LENGTH_LONG).show()
+                            // This is caught here, not an uncaught crash — ExceptionHandler's
+                            // Thread.UncaughtExceptionHandler (and the "send crash report?" prompt
+                            // it queues for next launch) never sees it, so it silently never
+                            // reaches support unless we report it ourselves right here.
+                            eu.siacs.conversations.utils.ExceptionHelper.reportCaughtException(
+                                activity as? eu.siacs.conversations.ui.XmppActivity, t,
+                            )
+                        }
+                    }
+                },
+                ContextCompat.getMainExecutor(context),
+            )
+        }
+    }
+
+    override fun onInputChanged(text: String) {
+        val c = conversation ?: return
+        if (getXmppConnectionService() == null) return
+        typingPauseJob?.cancel()
+        if (text.isEmpty() && lastComposedText.isNotEmpty()) {
+            eu.siacs.conversations.xmpp.manager.ChatStateManager.send(
+                c,
+                Config.DEFAULT_CHAT_STATE,
+            )
+        } else if (text.isNotEmpty() && text != lastComposedText) {
+            eu.siacs.conversations.xmpp.manager.ChatStateManager.send(
+                c,
+                im.conversations.android.xmpp.model.state.Composing::class.java,
+            )
+            typingPauseJob =
+                viewLifecycleOwner.lifecycleScope.launch {
+                    kotlinx.coroutines.delay(3000)
+                    eu.siacs.conversations.xmpp.manager.ChatStateManager.send(
+                        c,
+                        im.conversations.android.xmpp.model.state.Paused::class.java,
+                    )
+                }
+        }
+        lastComposedText = text
+    }
+
+    /** Returns true when the OMEMO trust screen had to be opened first. */
+    private fun trustKeysIfNeeded(conversation: Conversation, action: () -> Unit): Boolean {
+        val axolotlService = conversation.getAccount().axolotlService
+        val targets = axolotlService.getCryptoTargets(conversation)
+        val hasUnaccepted = !conversation.acceptedCryptoTargets.containsAll(targets)
+        val hasUndecidedOwn =
+            axolotlService
+                .getKeysWithTrust(
+                    eu.siacs.conversations.crypto.axolotl.FingerprintStatus
+                        .createActiveUndecided()
+                )
+                .isNotEmpty()
+        val hasUndecidedContacts =
+            axolotlService
+                .getKeysWithTrust(
+                    eu.siacs.conversations.crypto.axolotl.FingerprintStatus
+                        .createActiveUndecided(),
+                    targets,
+                )
+                .isNotEmpty()
+        val hasPendingKeys = axolotlService.findDevicesWithoutSession(conversation).isNotEmpty()
+        val hasNoTrustedKeys = axolotlService.anyTargetHasNoTrustedKeys(targets)
+        val downloadInProgress = axolotlService.hasPendingKeyFetches(targets)
+        return if (hasUndecidedOwn ||
+            hasUndecidedContacts ||
+            hasPendingKeys ||
+            hasNoTrustedKeys ||
+            hasUnaccepted ||
+            downloadInProgress
+        ) {
+            axolotlService.createSessionsIfNeeded(conversation)
+            pendingTrustAction = action
+            val intent = Intent(requireActivity(), TrustKeysActivity::class.java)
+            intent.putExtra("contacts", targets.map { it.toString() }.toTypedArray())
+            intent.putExtra(
+                XmppActivity.EXTRA_ACCOUNT,
+                conversation.getAccount().jid.asBareJid().toString(),
+            )
+            intent.putExtra("conversation", conversation.getUuid())
+            trustKeysLauncher.launch(intent)
+            true
+        } else {
+            false
+        }
+    }
+
+    override fun onAttachImage() {
+        pickMediaLauncher.launch(
+            androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+        )
+    }
+
+    override fun onTakePhoto() {
+        // The manifest holds android.permission.CAMERA (for calls), which means
+        // ACTION_IMAGE_CAPTURE crashes with a SecurityException on many devices — notably
+        // Samsung's stock Camera app — unless that permission is actually granted at runtime,
+        // even though the capture itself is delegated to the camera app.
+        takePhotoPermissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    private fun launchCameraCapture() {
+        val ctx = requireContext()
+        val takePhotoFile = eu.siacs.conversations.persistance.FileBackend.Cache(ctx).takePicture()
+        val photoUri = Uri.fromFile(takePhotoFile)
+        pendingTakePhotoUri.push(photoUri)
+        val intent = android.content.Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(
+                android.provider.MediaStore.EXTRA_OUTPUT,
+                eu.siacs.conversations.persistance.FileBackend.getUriForFile(ctx, takePhotoFile),
+            )
+            addFlags(android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        takePhotoLauncher.launch(intent)
+    }
+
+    override fun onAttachFile() {
+        pickFileLauncher.launch("*/*")
+    }
+
+    override fun onCall(video: Boolean) {
+        val c = conversation ?: return
+        if (c.getMode() != Conversational.MODE_SINGLE) return
+        val service = getXmppConnectionService() ?: return
+        // An ongoing call with this contact takes precedence: return to it instead.
+        val ongoing =
+            try {
+                c.getAccount()
+                    .xmppConnection
+                    .getManager(eu.siacs.conversations.xmpp.manager.JingleManager::class.java)
+                    .getOngoingRtpConnection(c.getContact())
+            } catch (_: Exception) {
+                com.google.common.base.Optional.absent()
+            }
+        if (ongoing.isPresent) {
+            returnToOngoingCall(c, ongoing.get())
+            return
+        }
+        if (eu.siacs.conversations.xmpp.manager.JingleManager.isBusy(service.accounts)) {
+            Toast.makeText(requireContext(), R.string.only_one_call_at_a_time, Toast.LENGTH_LONG)
+                .show()
+            return
+        }
+        if (video) {
+            videoCallPermissionLauncher.launch(
+                arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA)
+            )
+        } else {
+            audioCallPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun returnToOngoingCall(
+        c: Conversation,
+        id: eu.siacs.conversations.xmpp.jingle.OngoingRtpSession,
+    ) {
+        val account = c.getAccount()
+        val intent = Intent(requireActivity(), RtpSessionActivity::class.java)
+        intent.action = Intent.ACTION_VIEW
+        intent.putExtra(RtpSessionActivity.EXTRA_ACCOUNT, account.jid.asBareJid().toString())
+        intent.putExtra(RtpSessionActivity.EXTRA_WITH, id.getWith().toString())
+        when (id) {
+            is eu.siacs.conversations.xmpp.jingle.AbstractJingleConnection -> {
+                intent.putExtra(RtpSessionActivity.EXTRA_SESSION_ID, id.getSessionId())
+                startActivity(intent)
+            }
+            is eu.siacs.conversations.xmpp.manager.JingleManager.RtpSessionProposal -> {
+                intent.putExtra(
+                    RtpSessionActivity.EXTRA_LAST_ACTION,
+                    if (eu.siacs.conversations.xmpp.jingle.Media.audioOnly(id.media))
+                        RtpSessionActivity.ACTION_MAKE_VOICE_CALL
+                    else RtpSessionActivity.ACTION_MAKE_VIDEO_CALL,
+                )
+                intent.putExtra(RtpSessionActivity.EXTRA_PROPOSED_SESSION_ID, id.sessionId)
+                startActivity(intent)
+            }
+        }
+    }
+
+    private fun triggerRtpSession(action: String) {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val account = c.getAccount()
+        val contact = c.getContact()
+        if (Config.USE_JINGLE_MESSAGE_INIT && RtpCapability.jmiSupport(contact)) {
+            CallIntegrationConnectionService.placeCall(
+                service,
+                account,
+                contact.getAddress().asBareJid(),
+                RtpSessionActivity.actionToMedia(action),
+            )
+        } else {
+            val capability =
+                if (action == RtpSessionActivity.ACTION_MAKE_VIDEO_CALL)
+                    RtpCapability.Capability.VIDEO
+                else RtpCapability.Capability.AUDIO
+            PresenceSelector.selectFullJidForDirectRtpConnection(requireActivity(), contact, capability) {
+                fullJid ->
+                CallIntegrationConnectionService.placeCall(
+                    service,
+                    account,
+                    fullJid,
+                    RtpSessionActivity.actionToMedia(action),
+                )
+            }
+        }
+    }
+
+    override fun onOpenDetails() {
+        val c = conversation ?: return
+        if (c.getMode() == Conversational.MODE_SINGLE) {
+            requireXmppActivity().switchToContactDetails(c.getContact())
+        } else {
+            ConferenceDetailsActivity.open(requireActivity(), c)
+        }
+    }
+
+    override fun onOpenMessage(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        val context = context ?: return
+        when {
+            message.isGeoUri -> {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(message.body)))
+                } catch (e: Exception) {
+                    Toast.makeText(context, R.string.no_application_found_to_open_file, Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+            isMediaCell(message) -> {
+                val file = service.fileBackend.getFile(message)
+                if (file.exists()) {
+                    mediaViewerLauncher.launch(MediaViewerActivity.launch(requireContext(), message))
+                }
+                // else: download is in progress or pending — the bubble UI handles it
+            }
+            message.isFileOrImage && !message.isDeleted -> {
+                val file = service.fileBackend.getFile(message)
+                if (file.exists()) {
+                    ViewUtil.view(context, file, message.getUuid() ?: "")
+                }
+                // else: download is in progress or pending — the bubble UI handles it
+            }
+            message.treatAsDownloadable() -> onDownloadMessage(message)
+        }
+    }
+
+    override fun onOpenMediaGroup(messages: List<Message>, tapped: Message) {
+        val service = getXmppConnectionService() ?: return
+        val file = service.fileBackend.getFile(tapped)
+        if (!file.exists()) return // download in progress/pending — the bubble UI handles it
+        val batchUuids = messages.mapNotNull { it.getUuid() }
+        mediaViewerLauncher.launch(MediaViewerActivity.launch(requireContext(), tapped, batchUuids))
+    }
+
+    override fun onDownloadMessage(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        val transferable = message.transferable
+        if (transferable != null &&
+            (transferable.getStatus() == Transferable.STATUS_OFFER ||
+                transferable.getStatus() == Transferable.STATUS_OFFER_CHECK_FILESIZE)) {
+            transferable.start()
+            return
+        }
+        service.httpConnectionManager.createNewDownloadConnection(message, true)
+    }
+
+    override fun onLoadMoreMessages() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        if (!c.messagesLoaded.get()) return
+        val oldest = state.messages.value.firstOrNull() ?: return
+        if (!loadingMoreMessages.compareAndSet(false, true)) return
+        service.loadMoreMessages(
+            c,
+            oldest.timeSent,
+            object : XmppConnectionService.OnMoreMessagesLoaded {
+                override fun onMoreMessagesLoaded(count: Int, conversation: Conversation) {
+                    loadingMoreMessages.set(false)
+                    runOnUiThread {
+                        if (this@ConversationComposeFragment.conversation == conversation) {
+                            refreshMessages()
+                        }
+                    }
+                }
+
+                override fun informUser(r: Int) {
+                    loadingMoreMessages.set(false)
+                    runOnUiThread {
+                        val ctx = context ?: return@runOnUiThread
+                        Toast.makeText(ctx, r, Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
+        )
+    }
+
+    override fun onScrolledToBottom() {
+        markRead()
+    }
+
+    override fun onSearchMessages() {
+        val c = conversation ?: return
+        val intent = Intent(requireActivity(), SearchActivity::class.java)
+        intent.putExtra(SearchActivity.EXTRA_CONVERSATION_UUID, c.getUuid())
+        startActivity(intent)
+    }
+
+    override fun onInviteContact() {
+        val c = conversation ?: return
+        inviteLauncher.launch(ChooseContactActivity.create(requireActivity(), c))
+    }
+
+    override fun onChooseEncryption() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val labels =
+            arrayOf<CharSequence>(
+                getString(R.string.encryption_choice_omemo),
+                getString(R.string.encryption_choice_unencrypted),
+            )
+        val encryptions = intArrayOf(Message.ENCRYPTION_AXOLOTL, Message.ENCRYPTION_NONE)
+        val checked = encryptions.indexOf(c.nextEncryption).coerceAtLeast(0)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireActivity())
+            .setTitle(R.string.choose_encryption)
+            .setSingleChoiceItems(labels, checked) { dialog, which ->
+                if (c.setNextEncryption(encryptions[which])) {
+                    service.updateConversation(c)
+                }
+                refreshMessages()
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    override fun onMuteConversation() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val durations = resources.getIntArray(R.array.mute_options_durations)
+        val labels =
+            Array<CharSequence>(durations.size) { i ->
+                if (durations[i] == -1) getString(R.string.until_further_notice)
+                else
+                    eu.siacs.conversations.utils.TimeFrameUtils.resolve(
+                        requireContext(),
+                        1000L * durations[i],
+                    )
+            }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireActivity())
+            .setTitle(R.string.disable_notifications)
+            .setItems(labels) { _, which ->
+                val till =
+                    if (durations[which] == -1) Long.MAX_VALUE
+                    else System.currentTimeMillis() + durations[which] * 1000L
+                c.setMutedTill(till)
+                service.updateConversation(c)
+                (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+                refreshMessages()
+            }
+            .show()
+    }
+
+    override fun onUnmuteConversation() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        c.setMutedTill(0)
+        service.updateConversation(c)
+        (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+        refreshMessages()
+    }
+
+    override fun onTogglePinned() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val pinned = c.getBooleanAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, false)
+        c.setAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, !pinned)
+        service.updateConversation(c)
+        refreshMessages()
+    }
+
+    override fun onClearHistory() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val dialogView =
+            requireActivity().layoutInflater.inflate(R.layout.dialog_clear_history, null)
+        val endConversationCheckBox =
+            dialogView.findViewById<android.widget.CheckBox>(R.id.end_conversation_checkbox)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireActivity())
+            .setTitle(R.string.clear_conversation_history)
+            .setView(dialogView)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.confirm) { _, _ ->
+                service.clearConversationHistory(c)
+                if (endConversationCheckBox.isChecked) {
+                    service.archiveConversation(c)
+                    (activity as? ConversationsActivity)?.onConversationArchived(c)
+                } else {
+                    (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+                    refreshMessages()
+                }
+            }
+            .show()
+    }
+
+    override fun onBlockContact() {
+        val c = conversation ?: return
+        val activity = activity as? XmppActivity ?: return
+        BlockContactDialog.show(activity, c)
+    }
+
+    override fun onArchiveConversation() {
+        val c = conversation ?: return
+        getXmppConnectionService()?.archiveConversation(c)
+    }
+
+    override fun onSendReactions(message: Message, reactions: Set<String>) {
+        val activity = activity as? XmppActivity ?: return
+        activity.sendReactions(message, reactions)
+    }
+
+    override fun onAddReaction(message: Message) {
+        val activity = activity as? XmppActivity ?: return
+        activity.addReaction(message) { reactions ->
+            activity.sendReactions(message, reactions.toSet())
+        }
+    }
+
+    override fun onShowReactionDetails(message: Message, emoji: String) {
+        val ctx = context ?: return
+        val normalized = Emoticons.normalizeToVS16(emoji)
+        val reactions = message.getReactions().filter { it.normalizedReaction() == normalized }
+        val isMuc = message.conversation.getMode() == Conversational.MODE_MULTI
+        val names = reactions.map { r ->
+            if (isMuc) r.from?.getResource() ?: "?"
+            else r.from?.asBareJid()?.toString() ?: "?"
+        }.toTypedArray()
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(emoji)
+            .setItems(names, null)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    override fun onCopyLink(message: Message) {
+        val activity = requireXmppActivity()
+        eu.siacs.conversations.ui.util.ShareUtil.copyLinkToClipboard(activity, message)
+    }
+
+    override fun onCopyUrl(message: Message) {
+        val activity = requireXmppActivity()
+        eu.siacs.conversations.ui.util.ShareUtil.copyUrlToClipboard(activity, message)
+    }
+
+    override fun onShareMessage(message: Message) {
+        val activity = requireXmppActivity()
+        eu.siacs.conversations.ui.util.ShareUtil.share(activity, message)
+    }
+
+    override fun onForwardMessage(message: Message) {
+        val activity = requireXmppActivity()
+        eu.siacs.conversations.ui.util.ShareUtil.forward(activity, message)
+    }
+
+    override fun onPrivateMessage(message: Message) {
+        val counterpart = message.counterpart ?: return
+        privateMessageWith(counterpart)
+    }
+
+    override fun onSaveFile(message: Message) {
+        val ctx = context ?: return
+        val storageLocation = message.getRelativeFilePath() ?: return
+        if (storageLocation.sharedStorage()) return
+        val future = requireXmppActivity().xmppConnectionService.fileBackend
+            .saveInternalToExternal(storageLocation)
+        Futures.addCallback(future, object : FutureCallback<Void?> {
+            override fun onSuccess(result: Void?) {
+                Toast.makeText(ctx,
+                    resources.getQuantityString(R.plurals.attachments_saved, 1, 1),
+                    Toast.LENGTH_LONG).show()
+            }
+            override fun onFailure(t: Throwable) {
+                Toast.makeText(ctx, R.string.could_not_save_files, Toast.LENGTH_LONG).show()
+            }
+        }, ContextCompat.getMainExecutor(ctx))
+    }
+
+    override fun onDeleteMessage(message: Message) {
+        state.deleteTarget.value = message
+    }
+
+    override fun onDeleteForEveryone(message: Message) {
+        retractMessage(message)
+    }
+
+    override fun onDeleteForMyself(message: Message) {
+        deleteMessageLocally(message)
+    }
+
+    // Confirmation/disclaimer (shown once per 5-minute window) is handled in Compose before this
+    // is called — this just performs the actual XEP-0425 moderation request.
+    override fun onModerateMessage(message: Message) {
+        val account = (message.conversation as? Conversation)?.getAccount() ?: return
+        val manager = account.getXmppConnection().getManager(ModerationManager::class.java)
+        val future = manager.moderate(message)
+        Futures.addCallback(future, object : FutureCallback<Void?> {
+            override fun onSuccess(result: Void?) {}
+            override fun onFailure(t: Throwable) {
+                Toast.makeText(context, R.string.could_not_moderate_message, Toast.LENGTH_LONG).show()
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
+    }
+
+    // Batch delete is local-only for every message in the selection (same semantics as the
+    // single-message "Delete for myself") — deliberately not attempting per-message retraction
+    // or moderation here, since a mixed selection could have wildly different eligibility per
+    // item. Inlines deleteMessageLocally's per-item work instead of calling it in a loop so this
+    // does one refreshMessages() at the end instead of one per message.
+    override fun onDeleteSelectedMessages(messages: List<Message>) {
+        val service = getXmppConnectionService() ?: return
+        for (message in messages) {
+            if (message.isFileOrImage && !message.isDeleted && message.getRelativeFilePath() != null) {
+                if (service.fileBackend.deleteFile(message)) {
+                    message.setDeleted(true)
+                    service.evictPreview(message.getUuid())
+                    service.updateMessage(message, false)
+                }
+                continue
+            }
+            val c = message.conversation as? Conversation ?: continue
+            if (message.isFileOrImage && message.getRelativeFilePath() != null) {
+                service.fileBackend.deleteFile(message)
+                service.evictPreview(message.getUuid())
+            }
+            c.remove(message)
+            service.databaseBackend.deleteMessage(message.getUuid())
+            service.getNotificationService().clear(message)
+        }
+        refreshMessages()
+    }
+
+    // Reachable only when isRetractable() held true for every message in the group (Compose's
+    // DeleteGroupSheet gates the button on that). Fire-and-forget per message, same as the
+    // single-message flow — no artificial delay, one refreshMessages() at the end rather than
+    // per-item.
+    override fun onDeleteMediaGroupForEveryone(messages: List<Message>) {
+        val service = getXmppConnectionService() ?: return
+        for (message in messages) {
+            val c = message.conversation as? Conversation ?: continue
+            val packet = service.getMessageGenerator().generateRetraction(message)
+            service.sendMessagePacket(c.getAccount(), packet)
+            if (message.isFileOrImage && message.getRelativeFilePath() != null) {
+                service.fileBackend.deleteFile(message)
+                service.evictPreview(message.getUuid())
+            }
+            c.remove(message)
+            service.databaseBackend.deleteMessage(message.getUuid())
+            service.getNotificationService().clear(message)
+        }
+        refreshMessages()
+    }
+
+    // Reachable only when isModeratable() held true for every message in the group. Each
+    // ModerationManager.moderate() call does its own local removal + updateConversationUi() on
+    // success — successfulAsList so one failed IQ among the batch doesn't stop the rest from
+    // completing; a single toast covers however many came back null.
+    override fun onModerateMediaGroup(messages: List<Message>) {
+        val account = (messages.firstOrNull()?.conversation as? Conversation)?.getAccount() ?: return
+        val manager = account.getXmppConnection().getManager(ModerationManager::class.java)
+        val futures = messages.map { manager.moderate(it) }
+        val combined = Futures.successfulAsList(futures)
+        Futures.addCallback(combined, object : FutureCallback<List<Void?>> {
+            override fun onSuccess(result: List<Void?>) {
+                if (result.any { it == null }) {
+                    val ctx = context ?: return
+                    Toast.makeText(ctx, R.string.could_not_moderate_message, Toast.LENGTH_LONG).show()
+                }
+            }
+            override fun onFailure(t: Throwable) {
+                val ctx = context ?: return
+                Toast.makeText(ctx, R.string.could_not_moderate_message, Toast.LENGTH_LONG).show()
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
+    }
+
+    override fun onCopySelectedMessages(messages: List<Message>) {
+        eu.siacs.conversations.ui.util.ShareUtil.copyToClipboard(requireXmppActivity(), messages)
+    }
+
+    override fun onForwardSelectedMessages(messages: List<Message>) {
+        eu.siacs.conversations.ui.util.ShareUtil.forward(requireXmppActivity(), messages)
+    }
+
+    override fun onEditingStarted(message: Message) {
+        sendEditingStanza(message, "start")
+    }
+
+    override fun onEditingStopped(message: Message) {
+        sendEditingStanza(message, "stop")
+    }
+
+    private fun sendEditingStanza(message: Message, action: String) {
+        val service = getXmppConnectionService() ?: return
+        val c = message.conversation as? Conversation ?: return
+        val packet = im.conversations.android.xmpp.model.stanza.Message()
+        packet.setFrom(c.getAccount().jid)
+        if (c.getMode() == eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {
+            packet.setTo(message.counterpart.asBareJid())
+            packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.CHAT)
+        } else if (message.isPrivateMessage()) {
+            // A private message's counterpart is the occupant's full room@service/Nickname JID —
+            // the *resource* is the only thing that routes to that one specific occupant instead
+            // of the room itself, so this must NOT be reduced to a bare JID the way the plain MUC
+            // broadcast case below is. Same routing MessageGenerator.generateRetraction() already
+            // uses for a private message's own retraction.
+            packet.setTo(message.counterpart)
+            packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.CHAT)
+        } else {
+            // Without an explicit type='groupchat', this isn't a valid MUC broadcast per XEP-0045
+            // — same mistake the retraction/regular-chat generators avoid via
+            // MessageGenerator.preparePacket()/generateRetraction(). Some servers are lenient
+            // enough to still reflect a type-less stanza back to its own sender (which the
+            // MessageParser-side self-reflection guard now also defends against on its own), but
+            // this shouldn't rely on that leniency to reach OTHER occupants at all.
+            packet.setTo(c.getAddress().asBareJid())
+            packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.GROUPCHAT)
+        }
+        val editing = eu.siacs.conversations.xml.Element("editing", eu.siacs.conversations.xml.Namespace.IMPULSE_EDITING)
+        // For already-edited messages, the current UUID is a replacement UUID — the receiver
+        // stored the original UUID as remoteMsgId. Use editedIdWireFormat (= original UUID before
+        // any edits) to stay in sync with what the Replace stanza also references.
+        val indicatorId = if (message.edited()) message.editedIdWireFormat
+                          else message.remoteMsgId ?: message.getUuid()
+        editing.setAttribute("id", indicatorId)
+        editing.setAttribute("action", action)
+        packet.addChild(editing)
+        service.sendMessagePacket(c.getAccount(), packet)
+    }
+
+    private fun retractMessage(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        val c = message.conversation as? Conversation ?: return
+        // Belt-and-suspenders backstop for DeleteMessageSheet's own canRetract gate: without a
+        // real server-assigned stanza-id, a MUC retraction only matches the sender's own local
+        // UUID and is a no-op for everyone else — refuse rather than wipe the local copy while
+        // silently doing nothing for other occupants. Private messages are exempt from this the
+        // same way isRetractable() (ConversationScreen.kt) already is — they're relayed as a
+        // direct type='chat' stanza and never get a serverMsgId in the first place, so this guard
+        // was blocking every private-message retraction outright, even though generateRetraction()
+        // already has a correct uuid fallback for exactly this case.
+        if (c.getMode() == Conversational.MODE_MULTI &&
+            !message.isPrivateMessage() &&
+            message.serverMsgId == null
+        ) {
+            Toast.makeText(activity, R.string.cannot_delete_for_everyone_yet, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val packet = service.getMessageGenerator().generateRetraction(message)
+        service.sendMessagePacket(c.getAccount(), packet)
+        deleteMessageEntirely(message)
+    }
+
+    private fun deleteMessageLocally(message: Message) {
+        if (message.isFileOrImage && !message.isDeleted && message.getRelativeFilePath() != null) {
+            val service = getXmppConnectionService() ?: return
+            if (service.fileBackend.deleteFile(message)) {
+                message.setDeleted(true)
+                service.evictPreview(message.getUuid())
+                service.updateMessage(message, false)
+                refreshMessages()
+            }
+            return
+        }
+        deleteMessageEntirely(message)
+    }
+
+    private fun deleteMessageEntirely(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        val c = message.conversation as? Conversation ?: return
+        if (message.isFileOrImage && message.getRelativeFilePath() != null) {
+            service.fileBackend.deleteFile(message)
+            service.evictPreview(message.getUuid())
+        }
+        c.remove(message)
+        service.databaseBackend.deleteMessage(message.getUuid())
+        service.getNotificationService().clear(message)
+        refreshMessages()
+    }
+
+    override fun onCancelTransmission(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        val t = message.transferable
+        if (t != null) {
+            t.cancel()
+        } else if (message.status != Message.STATUS_RECEIVED) {
+            service.markMessage(message, Message.STATUS_SEND_FAILED, Message.ERROR_MESSAGE_CANCELLED)
+        }
+    }
+
+    override fun onResendMessage(message: Message) {
+        resendMessage(message, forceP2P = false)
+    }
+
+    override fun onRetryAsP2P(message: Message) {
+        resendMessage(message, forceP2P = true)
+    }
+
+    private fun resendMessage(message: Message, forceP2P: Boolean) {
+        val service = getXmppConnectionService() ?: return
+        val activity = activity as? XmppActivity ?: return
+        val conversation = message.conversation as? Conversation ?: return
+        if (message.isFileOrImage) {
+            val file = service.fileBackend.getFile(message)
+            if ((file.exists() && file.canRead()) || message.hasFileOnRemoteHost()) {
+                val xmppConnection = conversation.getAccount().getXmppConnection()
+                val needsPresence = !message.hasFileOnRemoteHost() &&
+                    xmppConnection != null &&
+                    conversation.getMode() == Conversational.MODE_SINGLE &&
+                    (
+                        !xmppConnection.getManager(HttpUploadManager::class.java)
+                            .isAvailableForSize(message.fileParams.size) || forceP2P
+                        )
+                if (needsPresence) {
+                    // Picks (or prompts for) which of the peer's online resources to target —
+                    // required for a direct P2P transfer, and harmless for a plain server resend.
+                    activity.selectPresence(conversation) {
+                        message.setCounterpart(conversation.nextCounterpart)
+                        service.resendFailedMessages(message, forceP2P)
+                    }
+                    return
+                }
+            } else if (!Compatibility.hasStoragePermission(activity)) {
+                Toast.makeText(
+                    activity,
+                    getString(R.string.no_storage_permission, getString(R.string.app_name)),
+                    Toast.LENGTH_SHORT,
+                ).show()
+                return
+            } else {
+                Toast.makeText(activity, R.string.file_deleted, Toast.LENGTH_SHORT).show()
+                message.setDeleted(true)
+                service.updateMessage(message, false)
+                (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+                refreshMessages()
+                return
+            }
+        }
+        service.resendFailedMessages(message, forceP2P)
+    }
+
+    override fun onScrollToMessage(message: Message) {
+        val uuid = message.getUuid()
+        if (state.messages.value.none { it.getUuid() == uuid }) {
+            val service = getXmppConnectionService() ?: return
+            val c = conversation ?: return
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                // Load a batch ending just after this message so it's included in the window.
+                val batch = service.databaseBackend.getMessages(c, 50, message.timeSent + 1)
+                val existingUuids = state.messages.value.mapTo(HashSet()) { it.getUuid() }
+                val fresh = batch.filter { it.getUuid() !in existingUuids }
+                if (fresh.isNotEmpty()) c.addAll(0, fresh)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    refreshMessages()
+                    state.requestScrollToUuid.value = uuid
+                }
+            }
+        } else {
+            state.requestScrollToUuid.value = uuid
+        }
+    }
+
+    override fun onPinMessage(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        message.setPinned(true)
+        service.updateMessage(message, false)
+        refreshPinned()
+        refresh()
+    }
+
+    override fun onUnpinMessage(message: Message) {
+        val service = getXmppConnectionService() ?: return
+        message.setPinned(false)
+        service.updateMessage(message, false)
+        refreshPinned()
+        refresh()
+    }
+
+    private fun refreshPinned() {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val pinned = service.databaseBackend.getPinnedMessages(c)
+        state.updatePinned(pinned)
+    }
+
+    companion object {
+        private const val STATE_CONVERSATION_UUID =
+            "eu.siacs.conversations.ui.ConversationComposeFragment.uuid"
+
+        @JvmStatic
+        fun get(activity: AppCompatActivity): ConversationComposeFragment? {
+            val fragmentManager = activity.supportFragmentManager
+            for (@IdRes id in intArrayOf(R.id.main_fragment, R.id.secondary_fragment)) {
+                val fragment = fragmentManager.findFragmentById(id)
+                if (fragment is ConversationComposeFragment) return fragment
+            }
+            return null
+        }
+
+        @JvmStatic
+        fun getConversation(activity: FragmentActivity): Conversation? {
+            for (@IdRes id in intArrayOf(R.id.main_fragment, R.id.secondary_fragment)) {
+                val fragment = activity.supportFragmentManager.findFragmentById(id)
+                if (fragment is ConversationComposeFragment) return fragment.conversation
+            }
+            return null
+        }
+
+        @JvmStatic
+        fun getConversationReliable(activity: AppCompatActivity): Conversation? {
+            return getConversation(activity)
+        }
+    }
+}

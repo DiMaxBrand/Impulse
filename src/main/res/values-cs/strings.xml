@@ -89,7 +89,6 @@
     <string name="send_unencrypted_message">Odeslat nešifrovanou zprávu</string>
     <string name="send_message">Odeslat zprávu</string>
     <string name="send_message_to_x">Odeslat zprávu pro %s</string>
-    <string name="send_omemo_x509_message">Odeslat v\\OMEMO šifrovanou zprávu</string>
     <string name="your_nick_has_been_changed">Přezdívka byla změněna.</string>
     <string name="send_unencrypted">Odeslat nešifrovaný text</string>
     <string name="decryption_failed">Zašifrování se nezdařilo. Možná nemáte správný privátní klíč.</string>
@@ -1027,7 +1026,6 @@
     <string name="action_archive_chat">Archivovat chat</string>
     <string name="title_activity_new_chat">Nový chat</string>
     <string name="archive_this_chat">Poté smazat chat</string>
-    <string name="send_encrypted_message">Odeslat šifrovanou zprávu</string>
     <string name="corresponding_chats_closed">Příslušné chaty archivovány.</string>
     <string name="rtp_state_contact_offline">Kontakt není dostupný</string>
     <string name="title_undo_swipe_out_chat">Chat archivován</string>

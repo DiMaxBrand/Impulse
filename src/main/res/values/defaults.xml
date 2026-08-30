@@ -33,6 +33,7 @@
     <bool name="display_enter_key">false</bool>
     <bool name="manually_change_presence">false</bool>
     <bool name="away_when_screen_off">true</bool>
+    <bool name="away_when_app_exited">true</bool>
     <bool name="enable_foreground_service">true</bool>
     <bool name="send_crash_reports">true</bool>
     <bool name="validate_hostname">false</bool>

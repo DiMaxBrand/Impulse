@@ -89,7 +89,6 @@
     <string name="send_unencrypted_message">Пошаљи нешифровану поруку</string>
     <string name="send_message">Пошаљи поруку</string>
     <string name="send_message_to_x">Пошаљи поруку ка %s</string>
-    <string name="send_omemo_x509_message">Пошаљи v\\ОМЕМО шифровану поруку</string>
     <string name="your_nick_has_been_changed">Твој надимак је измењен</string>
     <string name="send_unencrypted">Пошаљи нешифровано</string>
     <string name="decryption_failed">Дешифровање није успело. Можда немаш одговарајући приватни кључ.</string>
@@ -846,7 +845,6 @@
     <string name="title_activity_share_with">Подели користећи…</string>
     <string name="sharing_application_not_grant_permission">Апликација за дељење није дозволила пермисију за приступ овом фајлу.</string>
     <string name="incoming_call_duration_timestamp">Долазни позив (%s) · %s</string>
-    <string name="send_encrypted_message">Пошаљи шифровану поруку</string>
     <string name="openkeychain_required_long"><![CDATA[%1$s користи <b>OpenKeychain</b> за шифровање и дешифровање порука и управљање твојим јавним кључевима.<br><br>Лиценциран је под GPLv3+ и доступан је на F-Droid и Google Play продавницама.<br><br><small>(После поново покрени %1$s.)</small>]]></string>
     <string name="pref_notification_grace_period_summary">Временски период током којег су обавештења утишана након примећене активности на једном од твојих других уређаја.</string>
     <string name="pref_prevent_screenshots">Забрани скриншотове</string>

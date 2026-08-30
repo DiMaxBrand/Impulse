@@ -412,6 +412,18 @@ public class Conversation extends AbstractEntity
                     return message;
                 }
             }
+            // Second pass, only reached if nothing matched the *current* id above: a delivery or
+            // displayed marker for one of our own edited messages can arrive tagged with a wire
+            // id from before its most recent edit (replaceUuid() moves our own current id
+            // forward on every edit, but the other party's marker may still reference whichever
+            // version they actually saw) — fall back to matching any id this message has ever
+            // been sent under, not just its current one, so an edited message can still reach
+            // "delivered"/"read".
+            for (Message message : this.messages) {
+                if (message.getStatus() >= Message.STATUS_SEND && message.wasEverKnownAs(id)) {
+                    return message;
+                }
+            }
         }
         return null;
     }
@@ -420,6 +432,24 @@ public class Conversation extends AbstractEntity
         synchronized (this.messages) {
             for (final Message message : this.messages) {
                 if (id.equals(message.getUuid()) || id.equals(message.getRemoteMsgId())) {
+                    return message;
+                }
+            }
+            // Same reasoning as the fallback in findSentMessageWithUuidOrRemoteId(): a reaction
+            // or retraction targeting an edited message can be tagged with any of the ids that
+            // message has ever been known by on the wire — our own current uuid only covers the
+            // latest one. Both directions can go stale here: reacting to/retracting our own
+            // edited message references our current (post-replaceUuid) id, which is exactly what
+            // gets recorded into the *other* party's local edits history the moment they apply
+            // our correction; reacting to/retracting a contact's edited message references
+            // whatever id we've tracked them under (their original, never updated past first
+            // receipt — see the "Deliberately NOT updating remoteMsgId" note in MessageParser),
+            // which is exactly their own edits[0] entry on their side. Either way, a plain
+            // uuid/remoteMsgId match above only ever catches the single id each side happens to
+            // currently be using; this catches every id that's ever appeared for the message on
+            // either side of an edit.
+            for (final Message message : this.messages) {
+                if (message.wasEverKnownAs(id)) {
                     return message;
                 }
             }
@@ -438,14 +468,11 @@ public class Conversation extends AbstractEntity
                 }
                 if (mcp.equals(counterpart)
                         && ((message.getStatus() == Message.STATUS_RECEIVED) == received)
-                        && (carbon == message.isCarbon() || received)) {
-                    if (id.equals(message.getRemoteMsgId())
-                            && !message.isFileOrImage()
-                            && !message.treatAsDownloadable()) {
-                        return message;
-                    } else {
-                        return null;
-                    }
+                        && (carbon == message.isCarbon() || received)
+                        && id.equals(message.getRemoteMsgId())
+                        && !message.isFileOrImage()
+                        && !message.treatAsDownloadable()) {
+                    return message;
                 }
             }
         }

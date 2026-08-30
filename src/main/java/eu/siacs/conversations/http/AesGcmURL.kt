@@ -14,6 +14,16 @@ object AesGcmURL {
 
     const val PROTOCOL_NAME = "aesgcm"
 
+    /**
+     * Some servers (e.g. share.on-chat.ru) append a `|<filesize>` hint after the
+     * IV+KEY hex in the fragment. Strip it before matching/decoding the key.
+     */
+    @JvmStatic
+    fun keyPart(ref: String): String = ref.substringBefore('|')
+
+    @JvmStatic
+    fun isValidKeyFragment(ref: String): Boolean = IV_KEY.matcher(keyPart(ref)).matches()
+
     @JvmStatic
     fun toAesGcmUrl(url: HttpUrl): String {
         return if (url.isHttps) {

@@ -5,6 +5,59 @@
 
     <merge>
 
+        <LinearLayout
+            android:id="@+id/reply_card"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/background_reply_card"
+            android:minWidth="80dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <View
+                android:layout_width="3dp"
+                android:layout_height="match_parent"
+                android:background="?colorPrimary" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="6dp"
+                android:layout_marginVertical="4dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/reply_sender"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?textAppearanceLabelSmall"
+                    android:textColor="?colorPrimary"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/reply_preview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textAppearance="?textAppearanceBodySmall" />
+
+            </LinearLayout>
+
+            <eu.siacs.conversations.ui.widget.SquircleImageView
+                android:id="@+id/reply_thumbnail"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginEnd="6dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
         <TextView
             android:id="@+id/message_body"
             android:layout_width="wrap_content"
@@ -54,8 +107,9 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/play_pause"
                 style="?attr/materialIconButtonOutlinedStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:minWidth="0dp"
                 android:layout_centerVertical="true"
                 app:icon="@drawable/ic_play_arrow_24dp"
                 app:iconSize="26dp" />

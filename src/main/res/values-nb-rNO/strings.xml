@@ -61,7 +61,6 @@
     <string name="send_unencrypted_message">Send dekryptert melding</string>
     <string name="send_message">Send melding</string>
     <string name="send_message_to_x">Send melding til %s</string>
-    <string name="send_omemo_x509_message">Send \\OMEMO-kryptert melding</string>
     <string name="send_unencrypted">Send dekryptert</string>
     <string name="decryption_failed">Dekryptering feilet. Kanskje du ikke lenger har den rette private nøkkelen.</string>
     <string name="openkeychain_required">OpenKeychain</string>
@@ -459,7 +458,6 @@
     <string name="delete_file_dialog">Slett filen</string>
     <string name="delete_file_dialog_msg">Er du sikker på at du vil slette denne filen?\n\n<b>OBS!</b> Dette vil ikke slette andre kopier av filen, lagret på andre enheter eller servere.</string>
     <string name="archive_this_chat">Slett samtalen etterpå</string>
-    <string name="send_encrypted_message">Send kryptert melding</string>
     <string name="your_nick_has_been_changed">Kallenavnet ditt har blitt endret</string>
     <string name="openkeychain_required_long"><![CDATA[%1$s bruker <b>OpenKeychain</b> til å kryptere og dekryptere meldinger, og til å håndtere dine offentlige nøkler. <br><br>Den er lisensiert under GPLv3+ og er tilgjengelig på F-Droid og Google Play.<br><br><small>(Vær så snill– restart %1$s etterpå.)</small>]]></string>
     <string name="contact_has_no_pgp_key">Du kunne ikke kryptere meldingen din. Brukeren har ikke lagt til sin egen offentlig nøkkel.\n\n<small>Vær så snill spørr brukeren til å konfigurere OpenPGP.</small></string>

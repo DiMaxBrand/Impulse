@@ -82,10 +82,11 @@ public class ConversationAdapter
         final float topR = position > 0 ? small : large;
         final float botR = position < getItemCount() - 1 ? small : large;
         final GradientDrawable shell = new GradientDrawable();
-        shell.setColor(MaterialColors.getColor(
-                viewHolder.itemView,
-                com.google.android.material.R.attr.colorSecondaryFixedDim));
-        shell.setCornerRadii(new float[]{topR, topR, topR, topR, botR, botR, botR, botR});
+        shell.setColor(
+                MaterialColors.getColor(
+                        viewHolder.itemView,
+                        com.google.android.material.R.attr.colorSecondaryFixedDim));
+        shell.setCornerRadii(new float[] {topR, topR, topR, topR, botR, botR, botR, botR});
         viewHolder.itemView.setBackground(shell);
 
         final Message message = conversation.getLatestMessage();
@@ -261,7 +262,8 @@ public class ConversationAdapter
                 conversation,
                 viewHolder.binding.conversationImage,
                 R.dimen.avatar_on_conversation_overview);
-        viewHolder.binding.frame.setOnClickListener(v -> listener.onConversationClick(v, conversation));
+        viewHolder.binding.frame.setOnClickListener(
+                v -> listener.onConversationClick(v, conversation));
     }
 
     @Override

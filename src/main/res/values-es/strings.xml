@@ -87,7 +87,6 @@
     <string name="send_unencrypted_message">Enviar mensaje sin cifrar</string>
     <string name="send_message">Enviar mensaje</string>
     <string name="send_message_to_x">Enviar mensaje a %s</string>
-    <string name="send_omemo_x509_message">Enviar mensaje cifrado v\\OMEMO</string>
     <string name="your_nick_has_been_changed">Tu apodo ha sido modificado</string>
     <string name="send_unencrypted">Enviar sin cifrar</string>
     <string name="decryption_failed">Falló el descifrado. Tal vez no tenga la clave privada apropiada.</string>
@@ -1004,7 +1003,6 @@
     <string name="pref_connection_summary_w_cd">Nombre de host y puerto, Tor, detección de canales</string>
     <string name="pref_summary_security">Cifrado E2E, confianza ciega antes de la verificación, detección de MITM</string>
     <string name="pref_up_long_summary">Al actuar como un Distribuidor de UnifiedPush la conexión XMPP persistente, fiable y de bajo consumo de batería se utilizará para despertar a otras aplicaciones compatibles con UnifiedPush como Tusky, Ltt.rs, FluffyChat y más.</string>
-    <string name="send_encrypted_message">Enviar mensaje cifrado</string>
     <string name="pref_title_interface">Interfaz</string>
     <string name="pref_summary_appearance">Tema, colores, capturas de pantalla, entrada</string>
     <string name="pref_title_security">Seguridad</string>

@@ -431,7 +431,8 @@ public final class MimeUtils {
     }
 
     // mime types that are more reliant by path
-    private static final Collection<String> PATH_PRECEDENCE_MIME_TYPE = ImmutableList.of("audio/x-m4b");
+    private static final Collection<String> PATH_PRECEDENCE_MIME_TYPE =
+            ImmutableList.of("audio/x-m4b");
 
     private static void add(String mimeType, String extension) {
         // If we have an existing x -> y mapping, we do not want to
