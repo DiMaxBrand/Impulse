@@ -2470,6 +2470,21 @@ private fun MediaGroupRow(
                             corners = remember(item.firstOfGroup, item.lastOfGroup, outgoing) {
                                 mediaGridCorners(item.firstOfGroup, item.lastOfGroup, outgoing)
                             },
+                            // The tail-side content inset above is widened for the whole cell
+                            // column so the tail curl (which only bulges near the very bottom)
+                            // never clips a full-height cell's image — but that same wide inset
+                            // wrongly starves a *top-row* cell's own corner too, even though the
+                            // curl is nowhere near it. topRowCorners reuses the plain, non-tail
+                            // shape (forcing lastOfGroup = false) for cells that only occupy the
+                            // grid's top row, so their corner nests against the normal 4dp margin
+                            // instead of the tail's wider one.
+                            topRowCorners = remember(item.firstOfGroup, outgoing) {
+                                mediaGridCorners(
+                                    firstOfGroup = item.firstOfGroup,
+                                    lastOfGroup = false,
+                                    outgoing = outgoing,
+                                )
+                            },
                             selectionActive = selectionActive,
                             selectedUuids = selectedUuids,
                             onCellTap = { tapped ->
@@ -2599,6 +2614,12 @@ private fun MediaGridContent(
     messages: List<Message>,
     revision: Int,
     corners: GridCorners,
+    // Same shape as [corners] but always computed as if this row weren't the group's last —
+    // i.e. no tail-side flattening. Full-height cells (the 2-cell layout, the 3-cell hero) sit in
+    // the tail's widened inset for their entire span and need [corners]' tail-aware value; a cell
+    // that's only ever in the grid's top row (3-cell's top-of-stack cell, the 2x2 layout's top
+    // row) never reaches the curl at all and should nest against the plain margin instead.
+    topRowCorners: GridCorners,
     selectionActive: Boolean,
     selectedUuids: List<String>,
     onCellTap: (Message) -> Unit,
@@ -2657,7 +2678,7 @@ private fun MediaGridContent(
                 MediaGridCell(
                     messages[1],
                     Modifier.weight(1f).fillMaxWidth()
-                        .clip(cellShape(corners, topEnd = true)),
+                        .clip(cellShape(topRowCorners, topEnd = true)),
                     onCellTap,
                     onCellLongTap,
                     revision = revision,
@@ -2683,7 +2704,7 @@ private fun MediaGridContent(
                     MediaGridCell(
                         messages[0],
                         Modifier.weight(1f).aspectRatio(4f / 5f)
-                            .clip(cellShape(corners, topStart = true)),
+                            .clip(cellShape(topRowCorners, topStart = true)),
                         onCellTap,
                         onCellLongTap,
                         revision = revision,
@@ -2693,7 +2714,7 @@ private fun MediaGridContent(
                     MediaGridCell(
                         messages[1],
                         Modifier.weight(1f).aspectRatio(4f / 5f)
-                            .clip(cellShape(corners, topEnd = true)),
+                            .clip(cellShape(topRowCorners, topEnd = true)),
                         onCellTap,
                         onCellLongTap,
                         revision = revision,
@@ -4399,6 +4420,18 @@ private fun MessageContextSheet(
     // it should feel like the sheet's own next/push navigation instead, same spirit as
     // ModalBottomSheet's own native content transitions.
     var showSaveStatus by remember { mutableStateOf(false) }
+    // Every internal dismiss (an action row, the Save/OK buttons) must go through the sheet's own
+    // hide() animation before actually removing the composable — calling onDismiss() directly
+    // nulls out the caller's menuTarget on the next recomposition, which yanks the whole
+    // ModalBottomSheet out of composition with no exit transition at all (the sheet just vanishes
+    // instead of sliding down). Swipe-to-dismiss/tap-outside don't have this problem since
+    // ModalBottomSheet's own gesture handling already runs hide() first internally — this mirrors
+    // that same official pattern for our own buttons.
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val animatedDismiss: () -> Unit = {
+        scope.launch { sheetState.hide() }.invokeOnCompletion { if (!sheetState.isVisible) onDismiss() }
+    }
     val conversation = state.conversation.value
     val deleted = message.isDeleted
     val transferable = message.transferable
@@ -4688,8 +4721,8 @@ private fun MessageContextSheet(
     }
 
     androidx.compose.material3.ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        onDismissRequest = animatedDismiss,
+        sheetState = sheetState,
     ) {
         // "Push" navigation within the one sheet — content slides out to the left, the save-
         // status sub-screen slides in from the right, and the sheet's own height follows via
@@ -4738,12 +4771,12 @@ private fun MessageContextSheet(
                     // redundant with that.
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         if (alreadySaved) {
-                            androidx.compose.material3.Button(onClick = onDismiss) {
+                            androidx.compose.material3.Button(onClick = animatedDismiss) {
                                 Text(stringResource(R.string.ok))
                             }
                         } else {
                             androidx.compose.material3.Button(
-                                onClick = { onSaveFile(message); onDismiss() },
+                                onClick = { onSaveFile(message); animatedDismiss() },
                             ) {
                                 Text(stringResource(R.string.save))
                             }
@@ -4800,7 +4833,7 @@ private fun MessageContextSheet(
                         val bottom = if (index == actions.lastIndex) CORNER_LARGE else CORNER_SMALL
                         Surface(
                             onClick = {
-                                if (!action.keepOpen) onDismiss()
+                                if (!action.keepOpen) animatedDismiss()
                                 action.onClick()
                             },
                             shape =
