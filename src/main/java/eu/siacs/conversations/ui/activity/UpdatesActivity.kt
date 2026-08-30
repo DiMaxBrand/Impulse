@@ -170,6 +170,8 @@ class UpdatesActivity : ActionBarActivity() {
                     uiState = uiState.copy(checkStatus = CheckStatus.UP_TO_DATE)
                 is UpdateChecker.CheckResult.ChannelBehind ->
                     uiState = uiState.copy(checkStatus = CheckStatus.CHANNEL_BEHIND)
+                is UpdateChecker.CheckResult.CheckFailed ->
+                    uiState = uiState.copy(checkStatus = CheckStatus.CHECK_FAILED)
                 is UpdateChecker.CheckResult.UpdateAvailable -> {
                     val info = result.info
                     // The exact version already actively downloading — nothing to cancel or

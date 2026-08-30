@@ -1244,6 +1244,7 @@ private fun mainStatusText(state: UpdatesUiState): String? = when {
     state.checkStatus == CheckStatus.CHECKING -> stringResource(R.string.updates_status_checking)
     state.checkStatus == CheckStatus.UP_TO_DATE -> stringResource(R.string.updates_status_up_to_date)
     state.checkStatus == CheckStatus.CHANNEL_BEHIND -> stringResource(R.string.updates_status_channel_behind)
+    state.checkStatus == CheckStatus.CHECK_FAILED -> stringResource(R.string.updates_status_check_failed)
     state.pendingVersion != null &&
         state.downloadPhase == DownloadPhase.IDLE &&
         !state.versionAlreadyShownInTitle() ->
@@ -1285,7 +1286,7 @@ private fun sheetStatusText(state: UpdatesUiState): String? = when {
 
 // ─── State model ─────────────────────────────────────────────────────────────
 
-enum class CheckStatus { IDLE, CHECKING, UP_TO_DATE, UPDATE_AVAILABLE, CHANNEL_BEHIND }
+enum class CheckStatus { IDLE, CHECKING, UP_TO_DATE, UPDATE_AVAILABLE, CHANNEL_BEHIND, CHECK_FAILED }
 enum class DownloadPhase { IDLE, NO_WIFI_PENDING, DOWNLOADING, PROCESSING, READY, CANCELING }
 
 data class UpdatesUiState(

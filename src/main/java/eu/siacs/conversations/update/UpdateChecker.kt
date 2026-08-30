@@ -9,8 +9,13 @@ import org.json.JSONObject
 class UpdateChecker(private val client: OkHttpClient) {
 
     fun checkForUpdate(channel: UpdateChannel): CheckResult {
-        val releases = fetchReleases() ?: return CheckResult.UpToDate
-        val current = parseVersion(stripBuildMeta(BuildConfig.VERSION_NAME)) ?: return CheckResult.UpToDate
+        // fetchReleases() returns null only on a genuine failure to check (no connectivity, a
+        // timeout, GitHub erroring/rate-limiting, an unparseable response) -- never for a
+        // legitimately empty release list, which parses fine as an empty List. Treating that
+        // failure as UpToDate would tell the user they're current when the check never actually
+        // ran; CheckFailed keeps "we don't know" distinct from "confirmed you're current."
+        val releases = fetchReleases() ?: return CheckResult.CheckFailed
+        val current = parseVersion(stripBuildMeta(BuildConfig.VERSION_NAME)) ?: return CheckResult.CheckFailed
 
         val best = releases
             .filter { releaseMatchesChannel(it.optString("tag_name"), channel) }
@@ -46,6 +51,9 @@ class UpdateChecker(private val client: OkHttpClient) {
         // The best release on this channel is older than what is currently installed.
         // Shown when the user switches to a less-cutting-edge channel mid-cycle.
         object ChannelBehind : CheckResult()
+        // The check itself couldn't complete (no connectivity, a timeout, GitHub
+        // erroring/rate-limiting, an unparseable response) -- never claim UpToDate for this.
+        object CheckFailed : CheckResult()
     }
 
     /** Every published release with an APK asset, newest first, regardless of channel or how

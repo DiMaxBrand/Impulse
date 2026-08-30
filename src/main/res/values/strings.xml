@@ -1293,6 +1293,7 @@
     <string name="updates_continue">Continue</string>
     <string name="updates_status_checking">Checking…</string>
     <string name="updates_status_up_to_date">Up to date</string>
+    <string name="updates_status_check_failed">Couldn\'t check for updates — check your connection and try again</string>
     <string name="updates_status_downloading">Downloading version %s…</string>
     <string name="updates_status_downloading_unknown_version">Downloading update…</string>
     <string name="updates_status_processing">Preparing version %s…</string>
