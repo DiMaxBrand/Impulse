@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Small filled dot marking the reaction picker's "more" button as unexplored. Pulsed via an
+     ObjectAnimator in AddReactionDialog, not an animated-vector — plain alpha pulse on a static
+     shape is all this needs. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="?attr/colorTertiary" />
+</shape>

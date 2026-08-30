@@ -25,7 +25,9 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Messenger;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
@@ -39,6 +41,9 @@ import android.util.Pair;
 import androidx.annotation.NonNull;
 import androidx.core.app.RemoteInput;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.ProcessLifecycleOwner;
 import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
@@ -56,7 +61,9 @@ import de.gultsch.common.MiniUri;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.Conversations;
+import eu.siacs.conversations.FeatureFlag;
 import eu.siacs.conversations.R;
+import eu.siacs.conversations.android.Device;
 import eu.siacs.conversations.android.JabberIdContact;
 import eu.siacs.conversations.crypto.OmemoSetting;
 import eu.siacs.conversations.crypto.PgpDecryptionService;
@@ -91,6 +98,7 @@ import eu.siacs.conversations.utils.AccountUtils;
 import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.ConversationsFileObserver;
 import eu.siacs.conversations.utils.CryptoHelper;
+import eu.siacs.conversations.utils.FeatureFlagPreferences;
 import eu.siacs.conversations.utils.MimeUtils;
 import eu.siacs.conversations.utils.NetworkManager;
 import eu.siacs.conversations.utils.PhoneHelper;
@@ -296,6 +304,83 @@ public class XmppConnectionService extends Service {
     private final BroadcastReceiver mInternalRestrictedEventReceiver =
             new RestrictedEventReceiver(List.of(TorServiceUtils.ACTION_STATUS));
     private final BroadcastReceiver mInternalScreenEventReceiver = new InternalEventReceiver();
+
+    // "Away when app is exited": tracks whether the grace period (see
+    // Config.AWAY_ON_APP_EXIT_GRACE_PERIOD_MILLIS) has elapsed since the app was last
+    // backgrounded, without it coming back to the foreground in the meantime. Read from the
+    // XMPP connection thread (PresenceManager.getTargetPresence()), written from the main
+    // thread (ProcessLifecycleOwner callbacks below) — volatile covers that handoff since it's
+    // only ever a plain flag read/write, no compound operations.
+    private volatile boolean awayDueToAppExit = false;
+    private final Handler mAppExitAwayHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mAppExitAwayRunnable =
+            () -> {
+                awayDueToAppExit = true;
+                if (appSettings.isAwayWhenAppExited() && appSettings.isAutomaticAvailability()) {
+                    refreshAllPresences();
+                }
+            };
+
+    private final DefaultLifecycleObserver mProcessLifecycleObserver =
+            new DefaultLifecycleObserver() {
+                @Override
+                public void onStop(final LifecycleOwner owner) {
+                    if (appSettings.isAwayWhenAppExited()) {
+                        mAppExitAwayHandler.postDelayed(
+                                mAppExitAwayRunnable, Config.AWAY_ON_APP_EXIT_GRACE_PERIOD_MILLIS);
+                    }
+                }
+
+                @Override
+                public void onStart(final LifecycleOwner owner) {
+                    mAppExitAwayHandler.removeCallbacks(mAppExitAwayRunnable);
+                    if (awayDueToAppExit) {
+                        awayDueToAppExit = false;
+                        refreshAllPresences();
+                    }
+                }
+            };
+
+    public boolean isAwayDueToAppExit() {
+        return awayDueToAppExit;
+    }
+
+    // Timestamp of when AWAY (from either trigger — screen lock or app exit) most recently
+    // started continuously, or 0 if not currently away. Recomputed on every refreshAllPresences()
+    // call, which already happens at exactly the moments this needs to change (screen on/off,
+    // app-exit grace period elapsing, app returning to foreground) — see the call sites of
+    // refreshAllPresences() elsewhere in this file.
+    private volatile long awaySinceMillis = 0L;
+    private final Handler mExtendedAwayHandler = new Handler(Looper.getMainLooper());
+    // Just re-triggers a presence refresh — recomputeAwaySince() + getTargetPresence() do the
+    // actual escalation once this fires. Needed because nothing else calls refreshAllPresences()
+    // while continuously away with no other event happening (e.g. the screen staying locked
+    // overnight) — without a proactively scheduled check, the threshold would only ever get
+    // noticed by the NEXT unrelated trigger, which for an overnight lock is "waking up and
+    // unlocking," by which point AWAY has already cleared and XA never actually got sent.
+    private final Runnable mExtendedAwayRunnable = this::refreshAllPresences;
+
+    private void recomputeAwaySince() {
+        final boolean isAway =
+                (appSettings.isAwayWhenScreenLocked() && new Device(this).isScreenLocked())
+                        || (appSettings.isAwayWhenAppExited() && awayDueToAppExit);
+        if (isAway) {
+            if (awaySinceMillis == 0L) {
+                awaySinceMillis = System.currentTimeMillis();
+                mExtendedAwayHandler.postDelayed(
+                        mExtendedAwayRunnable, Config.EXTENDED_AWAY_THRESHOLD_MILLIS);
+            }
+        } else {
+            awaySinceMillis = 0L;
+            mExtendedAwayHandler.removeCallbacks(mExtendedAwayRunnable);
+        }
+    }
+
+    public boolean isExtendedAway() {
+        return awaySinceMillis != 0L
+                && (System.currentTimeMillis() - awaySinceMillis)
+                        >= Config.EXTENDED_AWAY_THRESHOLD_MILLIS;
+    }
 
     public boolean isInLowPingTimeoutMode(Account account) {
         synchronized (mLowPingTimeoutMode) {
@@ -991,6 +1076,12 @@ public class XmppConnectionService extends Service {
     }
 
     public boolean isDataSaverDisabled() {
+        // Emergency mode reuses this exact gate rather than adding parallel checks in
+        // AvatarManager/HttpDownloadConnection/JingleFileTransferConnection: activating it is
+        // equivalent to Android's own Data Saver being on, network-metered-or-not.
+        if (emergencyModeActive) {
+            return false;
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             return true;
         }
@@ -998,6 +1089,37 @@ public class XmppConnectionService extends Service {
         return !Compatibility.isActiveNetworkMetered(connectivityManager)
                 || Compatibility.getRestrictBackgroundStatus(connectivityManager)
                         == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED;
+    }
+
+    // Feature-flagged (FeatureFlag.EMERGENCY_MODE, default off) — see that flag's doc comment for
+    // the full rationale and what's explicitly out of scope for this first slice (MAM catch-up
+    // limiting, disabling carbons, longer timeouts — see TODO.md).
+    private volatile boolean emergencyModeActive = false;
+
+    public boolean isEmergencyModeActive() {
+        return emergencyModeActive;
+    }
+
+    /**
+     * Re-evaluated on every account status change (see updateAccountUi()) rather than only on
+     * demand, so isDataSaverDisabled() above can stay a cheap volatile-field read instead of
+     * scanning every account's status on every avatar/download decision.
+     */
+    private void refreshEmergencyMode() {
+        if (!new FeatureFlagPreferences(this).isEnabled(FeatureFlag.EMERGENCY_MODE)) {
+            emergencyModeActive = false;
+            return;
+        }
+        boolean shouldBeActive = false;
+        for (final Account account : getAccounts()) {
+            final Account.State status = account.getStatus();
+            if (status == Account.State.SERVER_NOT_FOUND
+                    || status == Account.State.CONNECTION_TIMEOUT) {
+                shouldBeActive = true;
+                break;
+            }
+        }
+        emergencyModeActive = shouldBeActive;
     }
 
     private ListenableFuture<Void> directReply(
@@ -1190,6 +1312,7 @@ public class XmppConnectionService extends Service {
         toggleForegroundService();
         updateUnreadCountBadge();
         toggleScreenEventReceiver();
+        ProcessLifecycleOwner.get().getLifecycle().addObserver(mProcessLifecycleObserver);
         final IntentFilter systemBroadcastFilter = new IntentFilter();
         scheduleNextIdlePing();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -1310,6 +1433,9 @@ public class XmppConnectionService extends Service {
         } catch (final RuntimeException e) {
             // ignored
         }
+        ProcessLifecycleOwner.get().getLifecycle().removeObserver(mProcessLifecycleObserver);
+        mAppExitAwayHandler.removeCallbacks(mAppExitAwayRunnable);
+        mExtendedAwayHandler.removeCallbacks(mExtendedAwayRunnable);
         destroyed = false;
         fileObserver.stopWatching();
         internalPingExecutor.shutdown();
@@ -3489,16 +3615,23 @@ public class XmppConnectionService extends Service {
     public void updateRemoteEditingIndicator(final String messageId, final boolean active) {
         if (active) {
             remoteEditingIndicators.put(messageId, true);
-            // Dismiss the notification for this message — content is about to change
-            for (final Conversation conversation : getConversations()) {
-                final Message message = conversation.findMessageWithUuid(messageId);
-                if (message != null) {
-                    getNotificationService().clear(message);
-                    break;
-                }
-            }
         } else {
             remoteEditingIndicators.remove(messageId);
+        }
+        // Keep the live in-memory Message in sync too, not just the DB column — this is what
+        // UIHelper.getMessagePreview() actually reads to show "Editing…" instead of the stale
+        // pre-edit text, both in an already-showing notification and the conversation list's own
+        // last-message preview.
+        for (final Conversation conversation : getConversations()) {
+            final Message message = conversation.findMessageWithUuid(messageId);
+            if (message != null) {
+                message.setRemoteEditing(active);
+                // Refresh (not dismiss) any notification currently showing this message, so its
+                // preview text reflects the edit in progress instead of either vanishing outright
+                // or sitting stale with the pre-edit text until the correction lands.
+                getNotificationService().refreshMessage(message);
+                break;
+            }
         }
         databaseBackend.updateMessageEditingState(messageId, active);
         updateConversationUi();
@@ -3531,6 +3664,10 @@ public class XmppConnectionService extends Service {
     }
 
     public void updateAccountUi() {
+        // Called on every account status transition already (see AccountStateProcessor) — the
+        // one central point to re-check whether any account just entered or left a
+        // SERVER_NOT_FOUND/CONNECTION_TIMEOUT state, rather than adding a second listener.
+        refreshEmergencyMode();
         for (final OnAccountUpdate listener : threadSafeList(this.mOnAccountUpdates)) {
             listener.onAccountUpdate();
         }
@@ -3764,6 +3901,7 @@ public class XmppConnectionService extends Service {
     }
 
     public void refreshAllPresences() {
+        recomputeAwaySince();
         final boolean includeIdleTimestamp =
                 checkListeners() && appSettings.isBroadcastLastActivity();
         for (final var account : getAccounts()) {

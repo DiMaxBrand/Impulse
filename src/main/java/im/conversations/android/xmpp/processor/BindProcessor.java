@@ -21,6 +21,7 @@ import eu.siacs.conversations.xmpp.manager.NickManager;
 import eu.siacs.conversations.xmpp.manager.OfflineMessagesManager;
 import eu.siacs.conversations.xmpp.manager.PresenceManager;
 import eu.siacs.conversations.xmpp.manager.RosterManager;
+import eu.siacs.conversations.xmpp.manager.VCardManager;
 
 public class BindProcessor extends XmppConnection.Delegate implements Runnable {
 
@@ -49,7 +50,23 @@ public class BindProcessor extends XmppConnection.Delegate implements Runnable {
                 account.setOption(
                         Account.OPTION_HTTP_UPLOAD_AVAILABLE,
                         getManager(HttpUploadManager.class).isAvailableForSize(0));
-        if (loggedInSuccessfully || gainedFeature || sosModified) {
+        // Separate from loggedInSuccessfully on purpose: that flag is already permanently set on
+        // every account that existed before this feature shipped, so gating the join on it would
+        // only ever catch brand-new accounts. OPTION_NEWS_CHANNEL_JOINED starts unset for
+        // everyone — new and existing alike — so this fires exactly once per account regardless
+        // of when it was created, then never again (including not re-joining if the user later
+        // leaves the channel, same one-shot-flag pattern as loggedInSuccessfully itself).
+        final boolean joinNewsChannel = account.setOption(Account.OPTION_NEWS_CHANNEL_JOINED, true);
+        // The phone-number field (and publishing it to this account's vCard) has been removed —
+        // this fires once, ever, per account (same pattern as joinNewsChannel above) to unpublish
+        // any TEL entry a build that still had the field may have already put on the server.
+        final boolean clearPhoneNumber =
+                account.setOption(Account.OPTION_PHONE_NUMBER_CLEARED, true);
+        if (loggedInSuccessfully
+                || gainedFeature
+                || sosModified
+                || joinNewsChannel
+                || clearPhoneNumber) {
             service.databaseBackend.updateAccount(account);
         }
 
@@ -62,6 +79,16 @@ public class BindProcessor extends XmppConnection.Delegate implements Runnable {
                                 + ": display name wasn't empty on first log in. publishing");
                 getManager(NickManager.class).publish(displayName);
             }
+        }
+        if (joinNewsChannel) {
+            // Same join+bookmark pattern ChannelDiscoveryActivity uses for a manual channel join.
+            final var newsConversation =
+                    service.findOrCreateConversation(
+                            account, Config.NEWS_CHANNEL, true, true, false);
+            getManager(BookmarkManager.class).ensureBookmarkIsAutoJoin(newsConversation);
+        }
+        if (clearPhoneNumber) {
+            getManager(VCardManager.class).publishPhoneNumber(null);
         }
 
         getManager(PresenceManager.class).clear();

@@ -87,7 +87,6 @@
     <string name="send_unencrypted_message">Lähetä selkeä tekstiviesti</string>
     <string name="send_message">Lähetä viesti</string>
     <string name="send_message_to_x">Lähetä viesti henkilölle %s</string>
-    <string name="send_omemo_x509_message">Lähetä v\\OMEMO-salattu viesti</string>
     <string name="your_nick_has_been_changed">Sinun nimimerkkisi on muuttu</string>
     <string name="send_unencrypted">Lähetä selkeää tekstiä</string>
     <string name="decryption_failed">Salauksen purku epäonnistui. Sinulle ei varmaan ole oikeaa salaista avainta.</string>
@@ -999,7 +998,6 @@
     <string name="action_archive_chat">Arkistoi pikakeskustelu</string>
     <string name="share_with">Jaa kanssa…</string>
     <string name="archive_this_chat">Poista pikakeskustelu jälkeenpäin</string>
-    <string name="send_encrypted_message">Lähetä salattu viesti</string>
     <string name="perform_action_with">Suorita toiminto kanssa</string>
     <string name="pref_category_receiving">Vastaanotetaan</string>
     <string name="pref_automatic_download">Automaattinen lataus</string>

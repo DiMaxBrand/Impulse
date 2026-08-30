@@ -88,7 +88,6 @@
     <string name="send_unencrypted_message">Unverschlüsselt schreiben…</string>
     <string name="send_message">Nachricht senden</string>
     <string name="send_message_to_x">Nachricht an %s senden</string>
-    <string name="send_omemo_x509_message">v\\OMEMO-verschlüsselte Nachricht senden</string>
     <string name="your_nick_has_been_changed">Dein Nickname wurde geändert</string>
     <string name="send_unencrypted">Unverschlüsselt senden</string>
     <string name="decryption_failed">Entschlüsselung fehlgeschlagen. Vielleicht hast du nicht den richtigen privaten Schlüssel.</string>
@@ -1022,7 +1021,6 @@
     <string name="pref_category_application">Anwendung</string>
     <string name="pref_category_interaction">Interaktion</string>
     <string name="pref_up_long_summary">Beim Einsatz als UnifiedPush-Verteiler wird die dauerhafte, zuverlässige und akkuschonende XMPP-Verbindung genutzt, um andere UnifiedPush-kompatible Apps wie Tusky, Ltt.rs, FluffyChat und andere aufzuwecken.</string>
-    <string name="send_encrypted_message">Verschlüsselt schreiben…</string>
     <string name="pref_large_font_summary">Schriftgröße der Nachrichten erhöhen</string>
     <string name="pref_large_font">Große Schrift</string>
     <string name="pref_accept_invites_from_strangers">Einladungen von Unbekannten</string>

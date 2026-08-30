@@ -12,6 +12,10 @@ object Config {
     const val QUICK_LOG = false
 
     @JvmField val BUG_REPORTS: Jid = Jid.of("support@on-chat.ru")
+    // Official Impulse announcements channel — auto-joined once per account, new or existing,
+    // the first time it connects after this feature shipped (see BindProcessor's
+    // OPTION_NEWS_CHANNEL_JOINED handling). Does not re-join if the user later leaves.
+    @JvmField val NEWS_CHANNEL: Jid = Jid.of("news@conference.on-chat.ru")
     @JvmField val HELP: Uri = Uri.parse("https://help.conversations.im")
     const val MAGIC_CREATE_DOMAIN = "conversations.im"
     @JvmField val QUICKSY_DOMAIN: Jid = Jid.of("quicksy.im")
@@ -25,6 +29,16 @@ object Config {
 
     const val CONTACT_SYNC_RETRY_INTERVAL = 1000L * 60 * 5
     const val QUICKSTART_ENABLED = true
+
+    // Grace period before "away when app is exited" actually flips presence to AWAY — avoids
+    // flickering to Away and back for a quick app switch (e.g. checking a notification).
+    const val AWAY_ON_APP_EXIT_GRACE_PERIOD_MILLIS = 1000L * 30
+
+    // How long continuously AWAY (from either trigger — screen lock or app exit) before presence
+    // escalates from AWAY to XA (Extended Away). Deliberately much longer than the AWAY
+    // thresholds themselves — this is meant to signal genuine long-term absence, not just having
+    // stepped out for a bit.
+    const val EXTENDED_AWAY_THRESHOLD_MILLIS = 1000L * 60 * 60 * 5
 
     const val HIDE_MESSAGE_TEXT_IN_NOTIFICATION = false
     const val ALWAYS_NOTIFY_BY_DEFAULT = false

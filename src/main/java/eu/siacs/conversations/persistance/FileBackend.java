@@ -689,13 +689,35 @@ public class FileBackend {
                     extension = extensionFromUri;
                 }
             }
-            setupRelativeFilePath(message, String.format("%s.%s", message.getUuid(), extension));
+            // Neither the mime nor the source URI's own filename yielded an extension (both null)
+            // — genuinely unknown, not worth guessing further. String.format("%s.%s", uuid, null)
+            // would silently name the file "<uuid>.null", which is worse than no extension at all
+            // (confuses MIME lookups on the resulting file later, e.g. re-opening/sharing it).
+            final String filename =
+                    extension == null
+                            ? message.getUuid()
+                            : String.format("%s.%s", message.getUuid(), extension);
+            // file.isPresent() here means the source already resolved to a real file that isn't
+            // one of our own cache-staging files above — almost always a pre-existing item in the
+            // user's own gallery/downloads picked to send. Force internal storage so sending it
+            // doesn't create a second, redundant public copy of something that's already public;
+            // only genuinely new content (no resolvable local file at all) is still eligible for
+            // the shared-storage "auto-save" location.
+            setupRelativeFilePath(message, filename, file.isPresent());
         }
         copyFileToPrivateStorage(mXmppConnectionService.getFileBackend().getFile(message), uri);
     }
 
     private String getExtensionFromUri(final Uri uri) {
         final String filename = getFilenameFromUri(uri);
+        // getFilenameFromUri() legitimately returns null — an empty/null MediaStore DATA column
+        // (seen on some devices' content providers, e.g. MIUI's) or a URI with no path segments
+        // at all falls through to this. Splitter.split(null) doesn't handle that — it NPEs deep
+        // inside Guava rather than returning something we could check, so guard before ever
+        // calling it instead of after.
+        if (filename == null) {
+            return null;
+        }
         return Iterables.getLast(Splitter.on('.').split(filename), null);
     }
 
@@ -831,21 +853,44 @@ public class FileBackend {
                         case WEBP -> String.format("%s.%s", message.getUuid(), "webp");
                         default -> throw new IllegalStateException("Unknown image format");
                     };
-            setupRelativeFilePath(message, filename);
+            // file.isPresent() here means the source already resolved to a real file that isn't
+            // one of our own cache-staging files above — almost always a photo picked from the
+            // user's own gallery. Force internal storage so sending it doesn't create a second,
+            // redundant public copy (usually a recompressed one, at that) of something that's
+            // already public.
+            setupRelativeFilePath(message, filename, file.isPresent());
         }
         copyImageToPrivateStorage(getFile(message), image);
         updateFileParams(message);
     }
 
     public void setupRelativeFilePath(final Message message, final String filename) {
+        setupRelativeFilePath(message, filename, false);
+    }
+
+    /**
+     * @param forceInternal Skip the shared-storage ("automatically save to gallery") location
+     *     entirely, even if the setting is on. Used by the outgoing/send path when the source
+     *     content already exists as a real file somewhere we don't manage — e.g. a photo picked
+     *     from the user's own gallery — so we don't create a second public copy of something that's
+     *     already public. See copyImageToPrivateStorage(Message, Uri) and
+     *     copyFileToPrivateStorage(Message, Uri, String) for where this is decided.
+     */
+    public void setupRelativeFilePath(
+            final Message message, final String filename, final boolean forceInternal) {
         final String extension = MimeUtils.extractRelevantExtension(filename);
         final String mime = MimeUtils.guessMimeTypeFromExtension(extension);
-        setupRelativeFilePath(message, filename, mime);
+        setupRelativeFilePath(message, filename, mime, forceInternal);
     }
 
     public Message.StorageLocation getStorageLocation(final String filename, final String mime) {
+        return getStorageLocation(filename, mime, false);
+    }
+
+    public Message.StorageLocation getStorageLocation(
+            final String filename, final String mime, final boolean forceInternal) {
         final var appSettings = new AppSettings(mXmppConnectionService.getApplicationContext());
-        if (appSettings.isUseSharedStorage()) {
+        if (!forceInternal && appSettings.isUseSharedStorage()) {
             final var file = getSharedStorageLocation(filename, mime);
             return new Message.StorageLocation(file, true);
         } else {
@@ -916,7 +961,15 @@ public class FileBackend {
 
     public void setupRelativeFilePath(
             final Message message, final String filename, final String mime) {
-        final var storageLocation = getStorageLocation(filename, mime);
+        setupRelativeFilePath(message, filename, mime, false);
+    }
+
+    public void setupRelativeFilePath(
+            final Message message,
+            final String filename,
+            final String mime,
+            final boolean forceInternal) {
+        final var storageLocation = getStorageLocation(filename, mime, forceInternal);
         Log.d(Config.LOGTAG, storageLocation.toString());
         message.setRelativeFilePath(storageLocation);
     }
@@ -971,21 +1024,44 @@ public class FileBackend {
     }
 
     public Bitmap getThumbnail(Message message, int size, boolean cacheOnly) throws IOException {
+        return getThumbnail(message, size, cacheOnly, true);
+    }
+
+    // drawVideoPlayOverlay exists for the Compose message bubble (MediaThumbnailBubble in
+    // ConversationScreen.kt), which already draws its own animated play affordance on top of the
+    // thumbnail — every other consumer (notifications, reply/quote previews) has no overlay of
+    // its own and still needs the baked-in one, so this only ever gets passed false from there.
+    // Also governs the PDF "open PDF" icon overlay (same reasoning, same call sites) — the
+    // full-screen viewer (MediaViewerActivity) already passes false for the video case, but
+    // getPdfDocumentPreview() never received the flag at all until now, so a PDF opened full-screen
+    // always got the small baked-in icon plastered across the actual page content regardless —
+    // exactly wrong for someone trying to read something (a QR code, fine print) at full size.
+    // Cached separately from the overlaid version since they're genuinely different bitmaps.
+    public Bitmap getThumbnail(
+            Message message, int size, boolean cacheOnly, boolean drawVideoPlayOverlay)
+            throws IOException {
         final String uuid = message.getUuid();
+        // Size is part of the key: callers request very different sizes for the same message
+        // (a ~120px grid/filmstrip thumbnail vs. a ~1600px full-screen viewer image), and without
+        // it here, whichever size was decoded first "wins" the cache slot for every later
+        // request regardless of what size was actually asked for — e.g. the full-screen viewer
+        // silently getting back a small, blurry thumbnail because the chat bubble already primed
+        // the cache with one.
+        final String cacheKey = uuid + "#" + size + (drawVideoPlayOverlay ? "" : "#no-overlay");
         final LruCache<String, Bitmap> cache = mXmppConnectionService.getBitmapCache();
-        Bitmap thumbnail = cache.get(uuid);
+        Bitmap thumbnail = cache.get(cacheKey);
         if ((thumbnail == null) && (!cacheOnly)) {
             synchronized (THUMBNAIL_LOCK) {
-                thumbnail = cache.get(uuid);
+                thumbnail = cache.get(cacheKey);
                 if (thumbnail != null) {
                     return thumbnail;
                 }
                 final var file = getFile(message);
                 final String mime = MimeUtils.getMimeType(file);
                 if ("application/pdf".equals(mime)) {
-                    thumbnail = getPdfDocumentPreview(file, size);
+                    thumbnail = getPdfDocumentPreview(file, size, drawVideoPlayOverlay);
                 } else if (mime.startsWith("video/")) {
-                    thumbnail = getVideoPreview(file, size);
+                    thumbnail = getVideoPreview(file, size, drawVideoPlayOverlay);
                 } else {
                     final Bitmap fullSize = getFullSizeImagePreview(file, size);
                     if (fullSize == null) {
@@ -1005,7 +1081,7 @@ public class FileBackend {
                         thumbnail = withGifOverlay;
                     }
                 }
-                cache.put(uuid, thumbnail);
+                cache.put(cacheKey, thumbnail);
             }
         }
         return thumbnail;
@@ -1095,7 +1171,7 @@ public class FileBackend {
         }
     }
 
-    private Bitmap getVideoPreview(final File file, final int size) {
+    private Bitmap getVideoPreview(final File file, final int size, final boolean drawPlayOverlay) {
         final MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
         Bitmap frame;
         try {
@@ -1107,26 +1183,31 @@ public class FileBackend {
             frame = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
             frame.eraseColor(0xff000000);
         }
-        drawOverlay(
-                frame,
-                paintOverlayBlack(frame)
-                        ? R.drawable.play_video_black
-                        : R.drawable.play_video_white,
-                0.75f);
+        if (drawPlayOverlay) {
+            drawOverlay(
+                    frame,
+                    paintOverlayBlack(frame)
+                            ? R.drawable.play_video_black
+                            : R.drawable.play_video_white,
+                    0.75f);
+        }
         return frame;
     }
 
-    private Bitmap getPdfDocumentPreview(final File file, final int size) {
+    private Bitmap getPdfDocumentPreview(
+            final File file, final int size, final boolean drawOverlayIcon) {
         try {
             final ParcelFileDescriptor fileDescriptor =
                     ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
             final Bitmap rendered = renderPdfDocument(fileDescriptor, size, true);
-            drawOverlay(
-                    rendered,
-                    paintOverlayBlackPdf(rendered)
-                            ? R.drawable.open_pdf_black
-                            : R.drawable.open_pdf_white,
-                    0.75f);
+            if (drawOverlayIcon) {
+                drawOverlay(
+                        rendered,
+                        paintOverlayBlackPdf(rendered)
+                                ? R.drawable.open_pdf_black
+                                : R.drawable.open_pdf_white,
+                        0.75f);
+            }
             return rendered;
         } catch (final IOException | SecurityException e) {
             Log.d(Config.LOGTAG, "unable to render PDF document preview", e);

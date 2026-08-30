@@ -169,7 +169,7 @@ class EntityTimeManager(private val service: XmppConnectionService, connection: 
         @JvmStatic
         fun isNightTime(zonedDateTime: ZonedDateTime): Boolean {
             val localTime = zonedDateTime.toLocalTime()
-            return localTime.isAfter(LocalTime.of(22, 0)) || localTime.isBefore(LocalTime.of(8, 0))
+            return localTime.isAfter(LocalTime.of(20, 0)) || localTime.isBefore(LocalTime.of(12, 0))
         }
 
         @JvmStatic

@@ -89,7 +89,6 @@
     <string name="send_unencrypted_message">Trimite mesaj necriptat</string>
     <string name="send_message">Trimite mesaj</string>
     <string name="send_message_to_x">Trimite mesaj către %s</string>
-    <string name="send_omemo_x509_message">Trimite mesaj criptat cu v\\OMEMO</string>
     <string name="your_nick_has_been_changed">Numele de utilizator a fost schimbat</string>
     <string name="send_unencrypted">Trimite necriptat</string>
     <string name="decryption_failed">Decriptarea a eșuat. Poate nu aveți cheia privată corectă.</string>
@@ -1039,7 +1038,6 @@
     <string name="pref_summary_security">Criptare E2E, Încredere oarbă înainte de verificare, detectare MITM</string>
     <string name="pref_connection_summary">Nume gazdă &amp; Port, Tor</string>
     <string name="pref_up_long_summary">Atunci când acționezi ca distribuitor UnifiedPush, conexiunea XMPP persistentă, fiabilă și prietenoasă cu bateria va fi utilizată pentru a trezi alte aplicații compatibile cu UnifiedPush, cum ar fi Tusky, Ltt.rs, FluffyChat și altele.</string>
-    <string name="send_encrypted_message">Trimite mesaj criptat</string>
     <string name="pref_large_font">Font mare</string>
     <string name="pref_large_font_summary">Mărește fontul pentru textul din mesaje</string>
     <string name="pref_accept_invites_from_strangers">Invitații de la persoane necunoscute</string>

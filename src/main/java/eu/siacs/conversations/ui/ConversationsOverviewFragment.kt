@@ -197,7 +197,7 @@ class ConversationsOverviewFragment : XmppFragment() {
                 newState == SearchView.TransitionState.SHOWN
             searchViewOnBackPressedCallback.isEnabled = isShowing
         }
-        binding.fab.setOnClickListener { StartConversationActivity.launch(activity) }
+        binding.fab.setOnClickListener { activity?.let { StartConversationActivity.launch(it) } }
 
         composeState = ConversationListState()
         ConversationListHelper.setup(

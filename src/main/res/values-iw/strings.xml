@@ -303,10 +303,8 @@
     <string name="choose_presence">בחר מכשיר</string>
     <string name="send_message">שלח הודעה</string>
     <string name="send_message_to_x">שלח הודעה ל%s</string>
-    <string name="send_omemo_x509_message">שלח הודעה מוצפנת v\\OMEMO</string>
     <string name="your_nick_has_been_changed">כינוי חדש בשימוש</string>
     <string name="contacts_have_no_pgp_keys">לא ניתן היה להצפין את ההודעה שלך כי אנשי הקשר שלך לא מכריזים על המפתחות הציבוריים שלהם.\n\n<small>בקש מהם להגדיר את OpenPGP.</small></string>
-    <string name="send_encrypted_message">שלח הודעה מוצפנת</string>
     <string name="contact_has_no_pgp_key">לא ניתן היה להצפין את ההודעה שלך כי איש הקשר שלך לא הכריז על המפתח הציבורי שלו.\n\n<small>אנא בקש מאיש הקשר שלך להגדיר את OpenPGP.</small></string>
     <string name="pref_attachments">מצורפים</string>
     <string name="pref_notification_settings">התראות</string>

@@ -39,6 +39,7 @@ import android.view.TextureView;
 import android.view.TextureView.SurfaceTextureListener;
 import android.view.View;
 import android.view.WindowManager;
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -190,6 +191,20 @@ public final class ScanQrCodeActivity extends AppCompatActivity
         cameraThread = new HandlerThread("cameraThread", Process.THREAD_PRIORITY_BACKGROUND);
         cameraThread.start();
         cameraHandler = new Handler(cameraThread.getLooper());
+
+        // Predictive back: OnBackPressedCallback instead of overriding the deprecated
+        // onBackPressed() lets the system show its live back-gesture preview/animation.
+        getOnBackPressedDispatcher()
+                .addCallback(
+                        this,
+                        new OnBackPressedCallback(true) {
+                            @Override
+                            public void handleOnBackPressed() {
+                                scannerView.setVisibility(View.GONE);
+                                setResult(RESULT_CANCELED);
+                                postFinish();
+                            }
+                        });
     }
 
     @Override
@@ -247,12 +262,6 @@ public final class ScanQrCodeActivity extends AppCompatActivity
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
     }
 
-    @Override
-    public void onBackPressed() {
-        scannerView.setVisibility(View.GONE);
-        setResult(RESULT_CANCELED);
-        postFinish();
-    }
 
     @Override
     public boolean onKeyDown(final int keyCode, final KeyEvent event) {

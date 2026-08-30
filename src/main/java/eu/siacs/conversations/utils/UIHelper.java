@@ -13,8 +13,8 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import eu.siacs.conversations.R;
-import eu.siacs.conversations.crypto.axolotl.AxolotlService;
 import eu.siacs.conversations.entities.Account;
+import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Conversational;
 import eu.siacs.conversations.entities.Message;
@@ -106,14 +106,25 @@ public class UIHelper {
 
     public static String lastUserInteraction(
             final Context context, final LastUserInteraction interaction) {
+        return lastUserInteraction(context, interaction, null);
+    }
+
+    public static String lastUserInteraction(
+            final Context context,
+            final LastUserInteraction interaction,
+            @Nullable final Contact contact) {
         if (interaction instanceof LastUserInteraction.Online) {
             return context.getString(R.string.presence_online);
         } else if (interaction instanceof LastUserInteraction.None) {
             return null; // just hide the subtitle
         } else if (interaction instanceof LastUserInteraction.Idle idle) {
+            final int stringRes =
+                    resolveGender(context, contact) == NameGenderGuesser.Gender.FEMININE
+                            ? R.string.last_seen_feminine
+                            : R.string.last_seen;
             if (context.getResources().getBoolean(R.bool.last_seen_full_text)) {
                 return context.getString(
-                        R.string.last_seen,
+                        stringRes,
                         UIHelper.readableTimeDifferenceFull(
                                 context, idle.getSince().toEpochMilli()));
             } else {
@@ -122,6 +133,21 @@ public class UIHelper {
         } else {
             return null;
         }
+    }
+
+    // Manual per-contact override wins over the heuristic name guess — it exists specifically
+    // for the names the guesser gets wrong.
+    public static NameGenderGuesser.Gender resolveGender(
+            final Context context, @Nullable final Contact contact) {
+        if (contact == null) {
+            return NameGenderGuesser.Gender.UNKNOWN;
+        }
+        final NameGenderGuesser.Gender override =
+                ContactGenderOverride.INSTANCE.get(context, contact);
+        if (override != NameGenderGuesser.Gender.UNKNOWN) {
+            return override;
+        }
+        return NameGenderGuesser.INSTANCE.guess(contact.getDisplayName());
     }
 
     @ColorInt
@@ -149,6 +175,12 @@ public class UIHelper {
             final Message message,
             final @Nullable @ColorInt Integer textColor,
             @Nullable final Character separator) {
+        // Takes priority over every other case below — a correction in flight means the body
+        // shown here would be stale (the pre-edit text) either way, so this always wins rather
+        // than being just one more branch among the type-specific ones.
+        if (message.isRemoteEditing()) {
+            return new Pair<>(context.getString(R.string.message_being_edited), true);
+        }
         final Transferable d = message.getTransferable();
         if (d != null) {
             final int status = d.getStatus();
@@ -158,35 +190,47 @@ public class UIHelper {
                                 R.string.checking_x, getFileDescriptionString(context, message)),
                         true);
             } else if (status == Transferable.STATUS_DOWNLOADING) {
+                final FileDescription description = describeFile(context, message);
                 return new Pair<>(
                         context.getString(
-                                R.string.receiving_x_file,
-                                getFileDescriptionString(context, message),
+                                pluralAwareStringRes(
+                                        description.gender(),
+                                        R.string.receiving_x_file,
+                                        R.string.receiving_x_file_plural),
+                                description.label(),
                                 d.getProgress()),
                         true);
             } else if (status == Transferable.STATUS_OFFER
                     || status == Transferable.STATUS_OFFER_CHECK_FILESIZE) {
+                final FileDescription description = describeFile(context, message);
                 return new Pair<>(
                         context.getString(
-                                R.string.x_file_offered_for_download,
-                                getFileDescriptionString(context, message)),
+                                pluralAwareStringRes(
+                                        description.gender(),
+                                        R.string.x_file_offered_for_download,
+                                        R.string.x_file_offered_for_download_plural),
+                                description.label()),
                         true);
             } else if (status == Transferable.STATUS_FAILED) {
                 return new Pair<>(context.getString(R.string.file_transmission_failed), true);
             } else if (status == Transferable.STATUS_CANCELLED) {
                 return new Pair<>(context.getString(R.string.file_transmission_cancelled), true);
             } else if (status == Transferable.STATUS_UPLOADING) {
+                final FileDescription description = describeFile(context, message);
                 if (message.getStatus() == Message.STATUS_OFFERED) {
                     return new Pair<>(
                             context.getString(
-                                    R.string.offering_x_file,
-                                    getFileDescriptionString(context, message)),
+                                    offeringXFileStringRes(description.gender()),
+                                    description.label()),
                             true);
                 } else {
                     return new Pair<>(
                             context.getString(
-                                    R.string.sending_x_file,
-                                    getFileDescriptionString(context, message)),
+                                    pluralAwareStringRes(
+                                            description.gender(),
+                                            R.string.sending_x_file,
+                                            R.string.sending_x_file_plural),
+                                    description.label()),
                             true);
                 }
             } else {
@@ -227,10 +271,14 @@ public class UIHelper {
                 return new Pair<>(context.getString(R.string.location), true);
             } else if (message.treatAsDownloadable()
                     || MessageUtils.unInitiatedButKnownSize(message)) {
+                final FileDescription description = describeFile(context, message);
                 return new Pair<>(
                         context.getString(
-                                R.string.x_file_offered_for_download,
-                                getFileDescriptionString(context, message)),
+                                pluralAwareStringRes(
+                                        description.gender(),
+                                        R.string.x_file_offered_for_download,
+                                        R.string.x_file_offered_for_download_plural),
+                                description.label()),
                         true);
             } else {
                 if (textColor != null) {
@@ -401,48 +449,91 @@ public class UIHelper {
         return concatNames(ImmutableList.copyOf(Iterables.limit(users, max)));
     }
 
-    public static String getFileDescriptionString(final Context context, final Message message) {
+    // Grammatical gender of the noun a file-type label translates to in languages (currently
+    // just Russian) where the verb agreeing with it changes form — e.g. "Предложен файл"
+    // (masculine) vs. "Предложено видео" (neuter). Meaningless for English; kept as MASCULINE
+    // there since English string variants are all identical text regardless of gender.
+    private enum FileNounGender {
+        MASCULINE,
+        FEMININE,
+        NEUTER,
+        PLURAL,
+    }
+
+    private record FileDescription(String label, FileNounGender gender) {}
+
+    private static FileDescription describeFile(final Context context, final Message message) {
         final String mime = message.getMimeType();
         if (Strings.isNullOrEmpty(mime)) {
-            return context.getString(R.string.file);
+            return new FileDescription(context.getString(R.string.file), FileNounGender.MASCULINE);
         } else if (MimeUtils.AMBIGUOUS_CONTAINER_FORMATS.contains(mime)) {
-            return context.getString(R.string.multimedia_file);
+            return new FileDescription(
+                    context.getString(R.string.multimedia_file), FileNounGender.MASCULINE);
         } else if (mime.equals("audio/x-m4b")) {
-            return context.getString(R.string.audiobook);
+            return new FileDescription(
+                    context.getString(R.string.audiobook), FileNounGender.FEMININE);
         } else if (mime.startsWith("audio/")) {
-            return context.getString(R.string.audio);
+            return new FileDescription(context.getString(R.string.audio), FileNounGender.NEUTER);
         } else if (mime.startsWith("video/")) {
-            return context.getString(R.string.video);
+            return new FileDescription(context.getString(R.string.video), FileNounGender.NEUTER);
         } else if (mime.equals("image/gif")) {
-            return context.getString(R.string.gif);
+            return new FileDescription(context.getString(R.string.gif), FileNounGender.MASCULINE);
         } else if (mime.equals("image/svg+xml")) {
-            return context.getString(R.string.vector_graphic);
+            return new FileDescription(
+                    context.getString(R.string.vector_graphic), FileNounGender.FEMININE);
         } else if (mime.startsWith("image/") || message.getType() == Message.TYPE_IMAGE) {
-            return context.getString(R.string.image);
+            return new FileDescription(context.getString(R.string.image), FileNounGender.NEUTER);
         } else if (mime.contains("pdf")) {
-            return context.getString(R.string.pdf_document);
+            return new FileDescription(
+                    context.getString(R.string.pdf_document), FileNounGender.MASCULINE);
         } else if (MimeUtils.WORD_DOCUMENT_MIMES.contains(mime)) {
-            return context.getString(R.string.word_document);
+            return new FileDescription(
+                    context.getString(R.string.word_document), FileNounGender.MASCULINE);
         } else if (mime.equals("application/vnd.android.package-archive")) {
-            return context.getString(R.string.apk);
+            return new FileDescription(context.getString(R.string.apk), FileNounGender.NEUTER);
         } else if (mime.equals(ExportBackupWorker.MIME_TYPE)) {
-            return context.getString(R.string.conversations_backup);
+            return new FileDescription(
+                    context.getString(R.string.conversations_backup), FileNounGender.FEMININE);
         } else if (mime.contains("vcard")) {
-            return context.getString(R.string.vcard);
+            return new FileDescription(context.getString(R.string.vcard), FileNounGender.MASCULINE);
         } else if (mime.equals("text/x-vcalendar") || mime.equals("text/calendar")) {
-            return context.getString(R.string.event);
+            return new FileDescription(context.getString(R.string.event), FileNounGender.NEUTER);
         } else if (mime.equals("application/epub+zip")
                 || mime.equals("application/vnd.amazon.mobi8-ebook")) {
-            return context.getString(R.string.ebook);
+            return new FileDescription(context.getString(R.string.ebook), FileNounGender.FEMININE);
         } else if (mime.equals("application/gpx+xml")) {
-            return context.getString(R.string.gpx_track);
+            return new FileDescription(
+                    context.getString(R.string.gpx_track), FileNounGender.MASCULINE);
         } else if (mime.equals("text/plain")) {
-            return context.getString(R.string.plain_text_document);
+            return new FileDescription(
+                    context.getString(R.string.plain_text_document), FileNounGender.PLURAL);
         } else if (mime.equals("application/vnd.apple.pkpass")) {
-            return context.getString(R.string.mobile_ticket);
+            return new FileDescription(
+                    context.getString(R.string.mobile_ticket), FileNounGender.MASCULINE);
         } else {
-            return mime;
+            return new FileDescription(mime, FileNounGender.MASCULINE);
         }
+    }
+
+    public static String getFileDescriptionString(final Context context, final Message message) {
+        return describeFile(context, message).label();
+    }
+
+    private static int offeringXFileStringRes(final FileNounGender gender) {
+        return switch (gender) {
+            case FEMININE -> R.string.offering_x_file_feminine;
+            case NEUTER -> R.string.offering_x_file_neuter;
+            case PLURAL -> R.string.offering_x_file_plural;
+            case MASCULINE -> R.string.offering_x_file;
+        };
+    }
+
+    // Present-tense verbs in these templates don't change by gender, only by grammatical
+    // number — "Текстовые данные" (plain-text files) is the one noun among the file types that's
+    // plural-only ("данные загружаются", not "загружается"), so only PLURAL needs its own form.
+    private static int pluralAwareStringRes(
+            final FileNounGender gender, final int singularRes, final int pluralRes) {
+        return gender == FileNounGender.PLURAL ? pluralRes : singularRes;
     }
 
     public static String getMessageDisplayName(final Message message) {
@@ -480,15 +571,7 @@ public class UIHelper {
     public static String getMessageHint(final Context context, final Conversation conversation) {
         return switch (conversation.getNextEncryption()) {
             case Message.ENCRYPTION_NONE -> context.getString(R.string.send_unencrypted_message);
-            case Message.ENCRYPTION_AXOLOTL -> {
-                final AxolotlService axolotlService = conversation.getAccount().getAxolotlService();
-                if (axolotlService != null && axolotlService.trustedSessionVerified(conversation)) {
-                    yield context.getString(R.string.send_omemo_x509_message);
-                } else {
-                    yield context.getString(R.string.send_encrypted_message);
-                }
-            }
-            default -> context.getString(R.string.send_encrypted_message);
+            default -> context.getString(R.string.send_message);
         };
     }
 

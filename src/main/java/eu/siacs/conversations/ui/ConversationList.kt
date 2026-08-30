@@ -137,12 +137,20 @@ private fun presenceShape(
     else -> MaterialShapeHelpers.slanted()
 }
 
-private fun presenceStringRes(availability: Presence.Availability?): Int? = when (availability) {
-    Presence.Availability.CHAT, Presence.Availability.ONLINE -> R.string.presence_online
-    Presence.Availability.AWAY, Presence.Availability.XA -> R.string.presence_away
-    Presence.Availability.DND -> R.string.presence_dnd
-    else -> null
-}
+// "Away"/"Extended away" are gendered past-tense verbs in Russian ("Отошёл"/"Отошла") — the rest
+// of the statuses aren't (nouns/adjectives with no gender agreement), so isFeminine only matters
+// for those two cases.
+private fun presenceStringRes(availability: Presence.Availability?, isFeminine: Boolean): Int? =
+    when (availability) {
+        Presence.Availability.CHAT, Presence.Availability.ONLINE -> R.string.presence_online
+        Presence.Availability.AWAY ->
+            if (isFeminine) R.string.presence_away_feminine else R.string.presence_away
+        Presence.Availability.XA ->
+            if (isFeminine) R.string.presence_xa_feminine else R.string.presence_xa
+        Presence.Availability.DND -> R.string.presence_dnd
+        Presence.Availability.OFFLINE -> R.string.presence_offline
+        else -> null
+    }
 
 private fun presenceColor(availability: Presence.Availability?): Color = when (availability) {
     Presence.Availability.CHAT, Presence.Availability.ONLINE -> Color(0xFF4CAF50)
@@ -313,6 +321,15 @@ private fun ConversationItem(
         else null
     }
 
+    val isFeminine: Boolean = remember(conversation, revision) {
+        if (conversation.getMode() == Conversational.MODE_SINGLE)
+            try {
+                UIHelper.resolveGender(context, conversation.getContact()) ==
+                    eu.siacs.conversations.utils.NameGenderGuesser.Gender.FEMININE
+            } catch (_: Exception) { false }
+        else false
+    }
+
     val isTyping: Boolean = remember(conversation, revision) {
         if (conversation.getMode() == Conversational.MODE_SINGLE)
             try {
@@ -323,7 +340,6 @@ private fun ConversationItem(
             } catch (_: Exception) { false }
         else false
     }
-
 
     val avatarItemDistance = dimensionResource(R.dimen.avatar_item_distance)
     var cardHeightPx by remember { mutableIntStateOf(0) }
@@ -364,7 +380,7 @@ private fun ConversationItem(
                     )
                     val presenceText = when {
                         isTyping -> stringResource(R.string.typing_indicator)
-                        else -> presenceStringRes(availability)?.let { "● ${stringResource(it)}" }
+                        else -> presenceStringRes(availability, isFeminine)?.let { "● ${stringResource(it)}" }
                     }
                     if (presenceText != null) {
                         Text(

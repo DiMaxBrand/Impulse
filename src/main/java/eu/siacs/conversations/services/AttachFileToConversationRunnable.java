@@ -82,9 +82,20 @@ public class AttachFileToConversationRunnable implements Runnable, TranscoderLis
     private void processAsVideo() throws FileNotFoundException {
         Log.d(Config.LOGTAG, "processing file as video");
         mXmppConnectionService.startOngoingVideoTranscodingForegroundNotification();
+        // Transcoding always produces new bytes regardless of where the source came from, but if
+        // that source already exists as a real file we don't manage (almost always a video picked
+        // from the user's own gallery), the re-encoded copy still shouldn't land in shared storage
+        // too — same reasoning as the image/file attach paths in FileBackend, just repeated here
+        // since transcoding is driven from this class instead.
+        final var sourceFile = FileBackend.getFile(uri);
+        final boolean forceInternal =
+                sourceFile.isPresent()
+                        && !new FileBackend.Cache(mXmppConnectionService)
+                                .isCachedFile(sourceFile.get());
         mXmppConnectionService
                 .getFileBackend()
-                .setupRelativeFilePath(message, String.format("%s.%s", message.getUuid(), "mp4"));
+                .setupRelativeFilePath(
+                        message, String.format("%s.%s", message.getUuid(), "mp4"), forceInternal);
         final var file = mXmppConnectionService.getFileBackend().getFile(message);
         final var parent = file.getParentFile();
         if (parent != null && parent.mkdirs()) {

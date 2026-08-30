@@ -18,46 +18,14 @@
                 android:layout_height="wrap_content"
                 android:minHeight="?attr/actionBarSize" />
 
-            <com.google.android.material.tabs.TabLayout
-                android:id="@+id/tab_layout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/app_bar_layout"
-                app:tabGravity="fill"
-                app:tabMode="fixed" />
-
         </com.google.android.material.appbar.AppBarLayout>
 
-
-        <androidx.viewpager.widget.ViewPager
-            android:id="@+id/start_conversation_view_pager"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_below="@id/app_bar_layout">
-
-
-        </androidx.viewpager.widget.ViewPager>
-
-        <com.leinardi.android.speeddial.SpeedDialOverlayLayout
-            android:id="@+id/overlay"
+        <!-- Tabs, list content, and the expressive FAB menu are all Compose-native — see
+             StartConversationScreen.kt / StartConversationListHelper. -->
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/start_conversation_compose"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_below="@id/app_bar_layout" />
-
-
-        <com.leinardi.android.speeddial.SpeedDialView
-            android:id="@+id/speed_dial"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
-            android:layout_alignParentBottom="true"
-            android:contentDescription="@string/add_contact_or_create_or_join_group_chat"
-            app:sdMainFabClosedBackgroundColor="?colorPrimaryContainer"
-            app:sdMainFabClosedIconColor="?colorOnPrimaryContainer"
-            app:sdMainFabClosedSrc="@drawable/ic_add_24dp"
-            app:sdMainFabOpenedBackgroundColor="?colorPrimaryContainer"
-            app:sdMainFabOpenedIconColor="?colorOnPrimaryContainer"
-            app:sdOverlayLayout="@id/overlay"
-            app:sdUseReverseAnimationOnClose="true" />
     </RelativeLayout>
 </layout>

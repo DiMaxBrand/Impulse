@@ -120,7 +120,13 @@ public class UserAdapter extends ListAdapter<MucOptions.User, UserAdapter.ViewHo
                         });
         viewHolder.binding.contactDisplayName.setText(user.getDisplayName());
         final var jid = user.getRealJid();
-        if (jid != null) {
+        // Gate on whether the room is non-anonymous (whois=anyone), not on whether it's
+        // members-only — a public group chat can be non-anonymous too, and a members-only room
+        // could in principle be semi-anonymous. If the room already broadcasts real JIDs to every
+        // occupant via presence, there's nothing left to protect by hiding it here. If it's
+        // semi-anonymous (whois=moderators), Impulse stays blind to it in the UI even though the
+        // server discloses it to moderators at the protocol level.
+        if (jid != null && user.getMucOptions().nonanonymous()) {
             viewHolder.binding.contactJid.setText(jid);
             viewHolder.binding.contactJid.setVisibility(View.VISIBLE);
         } else {

@@ -22,6 +22,13 @@
         <item name="android:backgroundDimEnabled">true</item>
     </style>
 
+    <!-- Used by the crash/error report dialogs (ExceptionHelper.kt) to make "Send" a filled
+         (primary) button instead of the default flat text button both MaterialAlertDialog buttons
+         get — scoped to just those two dialogs via this overlay, not a global button-bar change. -->
+    <style name="ThemeOverlay.Impulse.FilledPositiveButton" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.Material3.Button</item>
+    </style>
+
 
     <style name="Theme.Conversations3" parent="Theme.Material3Expressive.Light.NoActionBar">
         <item name="windowActionModeOverlay">true</item>

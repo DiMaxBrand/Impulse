@@ -14,17 +14,35 @@ import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 /** Nightly wipe of the dedicated update-APK subfolder. That folder holds nothing but our own
- * downloaded update APKs — never shared with received attachments or anything else — so a full,
- * unconditional wipe every night is always safe. */
+ * downloaded update APKs — never shared with received attachments or anything else. Deliberately
+ * unconditional whenever nothing is actively downloading: a downloaded-but-not-yet-installed
+ * update doesn't get to sit around indefinitely just because the user hasn't gotten to it —
+ * leaving an update uninstalled is on them, not a reason to keep it (and its title/notes) around
+ * forever. The one thing this must never do is touch the folder while DownloadManager is actively
+ * writing into it. */
 class ApkCleanupWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
+        val prefs = UpdatePreferences(applicationContext)
+        // Never touch the folder while a download is in flight — DownloadManager may still be
+        // writing to a file in here right now; deleting mid-write would corrupt it. It'll get
+        // swept on a later night once it's no longer active.
+        if (prefs.activeDownloadId != -1L) return Result.success()
+
         val dir = File(
             applicationContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
             UpdateDownloader.UPDATES_SUBDIR,
         )
         dir.listFiles()?.forEach { it.delete() }
-        UpdatePreferences(applicationContext).clearDownload()
+        // downloadedApkPath being non-null and the file now being gone is exactly what
+        // clearDownload() is for — also drops downloadedVersion and the now-meaningless
+        // title/notes describing a build that no longer exists on disk. A merely-pending
+        // (not-yet-downloaded) update is untouched: there's no file for it to begin with, and
+        // clearDownload() doesn't clear pendingUpdateVersion/Url/NoWifi (that's clearPending()'s
+        // job, not called here).
+        if (prefs.downloadedApkPath != null) {
+            prefs.clearDownload()
+        }
         return Result.success()
     }
 

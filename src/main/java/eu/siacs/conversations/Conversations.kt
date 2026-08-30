@@ -10,6 +10,7 @@ import com.google.common.base.Suppliers
 import eu.siacs.conversations.persistance.DatabaseBackend
 import eu.siacs.conversations.services.EmojiInitializationService
 import eu.siacs.conversations.ui.util.SettingsUtils
+import eu.siacs.conversations.update.UpdatePreferences
 import eu.siacs.conversations.utils.ExceptionHelper
 import eu.siacs.conversations.worker.ApkCleanupWorker
 import eu.siacs.conversations.worker.UpdateCheckWorker
@@ -38,6 +39,10 @@ class Conversations : Application() {
         EmojiInitializationService.execute(applicationContext)
         ExceptionHelper.init(applicationContext)
         SettingsUtils.applyThemeSettings(this)
+        // Once per process start, before any UI (or the developer-options manual version
+        // picker, which deliberately stages non-newer versions) can run — see
+        // UpdatePreferences.clearIfNotNewerThan() for why this exists.
+        UpdatePreferences(this).clearIfNotNewerThan(BuildConfig.VERSION_NAME)
         UpdateCheckWorker.schedule(this)
         ApkCleanupWorker.schedule(this)
     }

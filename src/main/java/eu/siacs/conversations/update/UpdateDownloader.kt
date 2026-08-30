@@ -8,6 +8,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Environment
 import androidx.core.content.FileProvider
+import eu.siacs.conversations.R
 import java.io.File
 
 object UpdateDownloader {
@@ -24,8 +25,23 @@ object UpdateDownloader {
     const val UPDATES_SUBDIR = "impulse_updates"
 
     fun startDownload(context: Context, info: UpdateInfo): Long {
-        wipeUpdatesDir(context)
+        // Only drops the stale "downloaded and ready" *pointer* from prefs — not the files
+        // themselves (ApkCleanupWorker's nightly run owns that). Deleting here used to also mean
+        // clearing pendingReleaseTitle/pendingReleaseNotes moments after the caller had just set
+        // them for *this* download — clearDownloadedApk() only touches the stale pointer, not
+        // those.
+        UpdatePreferences(context).clearDownloadedApk()
         val subPath = "$UPDATES_SUBDIR/impulse-update-${info.versionName}.apk"
+        // Versioned filenames mean a different version never collides — but re-fetching the exact
+        // same version (nightly cleanup hasn't run yet since an earlier download of it) could
+        // land on a file that's already there. Rather than lean on DownloadManager's own
+        // overwrite behavior at an existing destination — not something worth trusting blindly
+        // across every Android version/storage mode — just clear that one file explicitly first.
+        val destination = File(
+            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+            subPath,
+        )
+        if (destination.exists()) destination.delete()
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(info.downloadUrl))
             .setTitle("Impulse ${info.versionName}")
@@ -35,14 +51,6 @@ object UpdateDownloader {
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(false)
         return dm.enqueue(request)
-    }
-
-    // Wipes every file in the dedicated updates subfolder before starting a new download — the
-    // folder holds nothing but our own APKs, so a full wipe is always safe.
-    private fun wipeUpdatesDir(context: Context) {
-        val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), UPDATES_SUBDIR)
-        dir.listFiles()?.forEach { it.delete() }
-        UpdatePreferences(context).clearDownload()
     }
 
     fun cancelDownload(context: Context, downloadId: Long) {
@@ -62,73 +70,45 @@ object UpdateDownloader {
             val fraction = if (total > 0) downloaded.toFloat() / total.toFloat() else 0f
             return when (status) {
                 DownloadManager.STATUS_RUNNING ->
-                    DownloadProgress.InProgress(fraction, statusText = debugSuffix(status, reason))
+                    DownloadProgress.InProgress(fraction, statusText = null, downloaded, total)
                 DownloadManager.STATUS_PENDING ->
-                    DownloadProgress.InProgress(fraction, statusText = "Queued…" + debugSuffix(status, reason))
-                DownloadManager.STATUS_PAUSED ->
                     DownloadProgress.InProgress(
                         fraction,
-                        statusText = pausedReasonText(reason) + debugSuffix(status, reason),
+                        context.getString(R.string.update_download_status_queued),
+                        downloaded,
+                        total,
                     )
+                DownloadManager.STATUS_PAUSED ->
+                    DownloadProgress.InProgress(fraction, pausedReasonText(context, reason), downloaded, total)
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     val localUri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI))
                     DownloadProgress.Complete(localUri)
                 }
                 DownloadManager.STATUS_FAILED ->
-                    DownloadProgress.Failed(failedReasonText(reason) + debugSuffix(status, reason))
+                    DownloadProgress.Failed(failedReasonText(context, reason))
                 else -> DownloadProgress.Unknown
             }
         }
     }
 
-    private fun pausedReasonText(reason: Int): String = when (reason) {
-        DownloadManager.PAUSED_WAITING_FOR_NETWORK -> "Waiting for network…"
-        DownloadManager.PAUSED_WAITING_TO_RETRY -> "Connection lost, retrying…"
-        DownloadManager.PAUSED_QUEUED_FOR_WIFI -> "Waiting for Wi-Fi…"
-        DownloadManager.PAUSED_UNKNOWN -> "Paused…"
-        else -> "Paused…"
+    private fun pausedReasonText(context: Context, reason: Int): String = when (reason) {
+        DownloadManager.PAUSED_WAITING_FOR_NETWORK ->
+            context.getString(R.string.update_download_status_waiting_for_network)
+        DownloadManager.PAUSED_WAITING_TO_RETRY -> context.getString(R.string.update_download_status_retrying)
+        DownloadManager.PAUSED_QUEUED_FOR_WIFI ->
+            context.getString(R.string.update_download_status_waiting_for_wifi)
+        else -> context.getString(R.string.update_download_status_paused)
     }
 
-    private fun failedReasonText(reason: Int): String = when (reason) {
-        DownloadManager.ERROR_INSUFFICIENT_SPACE -> "Not enough storage space"
-        DownloadManager.ERROR_DEVICE_NOT_FOUND -> "Storage not available"
-        DownloadManager.ERROR_CANNOT_RESUME -> "Connection interrupted, couldn't resume"
-        DownloadManager.ERROR_HTTP_DATA_ERROR -> "Network error"
-        DownloadManager.ERROR_TOO_MANY_REDIRECTS -> "Server redirect error"
-        DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> "Server error"
-        DownloadManager.ERROR_FILE_ERROR -> "File error"
-        else -> "Download failed"
-    }
-
-    // TEMPORARY — debug instrumentation to see DownloadManager's raw status/reason codes
-    // while diagnosing the mobile-data stall. Safe to remove once the root cause is found.
-    private fun debugSuffix(status: Int, reason: Int): String {
-        val statusName = when (status) {
-            DownloadManager.STATUS_PENDING -> "STATUS_PENDING"
-            DownloadManager.STATUS_RUNNING -> "STATUS_RUNNING"
-            DownloadManager.STATUS_PAUSED -> "STATUS_PAUSED"
-            DownloadManager.STATUS_SUCCESSFUL -> "STATUS_SUCCESSFUL"
-            DownloadManager.STATUS_FAILED -> "STATUS_FAILED"
-            else -> "STATUS_UNKNOWN($status)"
-        }
-        val reasonName = when (reason) {
-            DownloadManager.PAUSED_WAITING_TO_RETRY -> "PAUSED_WAITING_TO_RETRY"
-            DownloadManager.PAUSED_WAITING_FOR_NETWORK -> "PAUSED_WAITING_FOR_NETWORK"
-            DownloadManager.PAUSED_QUEUED_FOR_WIFI -> "PAUSED_QUEUED_FOR_WIFI"
-            DownloadManager.PAUSED_UNKNOWN -> "PAUSED_UNKNOWN"
-            DownloadManager.ERROR_UNKNOWN -> "ERROR_UNKNOWN"
-            DownloadManager.ERROR_FILE_ERROR -> "ERROR_FILE_ERROR"
-            DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> "ERROR_UNHANDLED_HTTP_CODE"
-            DownloadManager.ERROR_HTTP_DATA_ERROR -> "ERROR_HTTP_DATA_ERROR"
-            DownloadManager.ERROR_TOO_MANY_REDIRECTS -> "ERROR_TOO_MANY_REDIRECTS"
-            DownloadManager.ERROR_INSUFFICIENT_SPACE -> "ERROR_INSUFFICIENT_SPACE"
-            DownloadManager.ERROR_DEVICE_NOT_FOUND -> "ERROR_DEVICE_NOT_FOUND"
-            DownloadManager.ERROR_CANNOT_RESUME -> "ERROR_CANNOT_RESUME"
-            DownloadManager.ERROR_FILE_ALREADY_EXISTS -> "ERROR_FILE_ALREADY_EXISTS"
-            0 -> null
-            else -> "reason=$reason"
-        }
-        return if (reasonName != null) " [$statusName/$reasonName]" else " [$statusName]"
+    private fun failedReasonText(context: Context, reason: Int): String = when (reason) {
+        DownloadManager.ERROR_INSUFFICIENT_SPACE -> context.getString(R.string.update_download_error_insufficient_space)
+        DownloadManager.ERROR_DEVICE_NOT_FOUND -> context.getString(R.string.update_download_error_device_not_found)
+        DownloadManager.ERROR_CANNOT_RESUME -> context.getString(R.string.update_download_error_cannot_resume)
+        DownloadManager.ERROR_HTTP_DATA_ERROR -> context.getString(R.string.update_download_error_http_data)
+        DownloadManager.ERROR_TOO_MANY_REDIRECTS -> context.getString(R.string.update_download_error_too_many_redirects)
+        DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> context.getString(R.string.update_download_error_unhandled_http_code)
+        DownloadManager.ERROR_FILE_ERROR -> context.getString(R.string.update_download_error_file_error)
+        else -> context.getString(R.string.update_download_error_generic)
     }
 
     fun installApk(context: Context, filePath: String) {
@@ -143,9 +123,14 @@ object UpdateDownloader {
     }
 
     sealed class DownloadProgress {
-        data class InProgress(val fraction: Float, val statusText: String? = null) : DownloadProgress()
+        data class InProgress(
+            val fraction: Float,
+            val statusText: String? = null,
+            val downloadedBytes: Long = 0L,
+            val totalBytes: Long = 0L,
+        ) : DownloadProgress()
         data class Complete(val localUri: String) : DownloadProgress()
-        data class Failed(val reasonText: String = "Download failed") : DownloadProgress()
+        data class Failed(val reasonText: String) : DownloadProgress()
         object Unknown : DownloadProgress()
     }
 }

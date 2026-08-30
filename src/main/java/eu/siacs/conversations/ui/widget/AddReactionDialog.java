@@ -1,5 +1,7 @@
 package eu.siacs.conversations.ui.widget;
 
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Intent;
 import android.text.Editable;
@@ -25,6 +27,7 @@ import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.Reaction;
 import eu.siacs.conversations.ui.AddReactionActivity;
 import eu.siacs.conversations.utils.CharSequences;
+import eu.siacs.conversations.utils.OnboardingPreferences;
 import eu.siacs.conversations.xmpp.manager.MultiUserChatManager;
 import im.conversations.android.xmpp.model.reactions.Restrictions;
 import java.util.Collection;
@@ -90,13 +93,35 @@ public class AddReactionDialog {
         }
         viewBinding.emojiTextInput.setOnEditorActionListener(new EditorActionListener(dialog));
         if (emojiChoiceRestricted) {
+            // Nothing here to hint about — a restricted allow-list has no "more" screen and no
+            // freeform keyboard entry, so the explainer row would just be pointing at buttons
+            // that don't exist in this dialog right now.
             viewBinding.more.setVisibility(View.GONE);
+            viewBinding.moreUnseenBadge.setVisibility(View.GONE);
             viewBinding.keyboard.setVisibility(View.GONE);
+            viewBinding.reactionPickerHint.setVisibility(View.GONE);
         } else {
             viewBinding.more.setVisibility(View.VISIBLE);
             viewBinding.keyboard.setOnClickListener(
                     new KeyboardButtonListener(dialog, viewBinding));
-            viewBinding.more.setOnClickListener(new ActivityLauncher(dialog, message));
+            final var onboardingPrefs = new OnboardingPreferences(activity);
+            ObjectAnimator badgePulse = null;
+            if (!onboardingPrefs.getHasOpenedMoreReactions()) {
+                viewBinding.moreUnseenBadge.setVisibility(View.VISIBLE);
+                badgePulse =
+                        ObjectAnimator.ofFloat(viewBinding.moreUnseenBadge, View.ALPHA, 1f, 0.25f);
+                badgePulse.setDuration(700);
+                badgePulse.setRepeatCount(ValueAnimator.INFINITE);
+                badgePulse.setRepeatMode(ValueAnimator.REVERSE);
+                badgePulse.start();
+            }
+            viewBinding.more.setOnClickListener(
+                    new ActivityLauncher(
+                            dialog,
+                            message,
+                            onboardingPrefs,
+                            viewBinding.moreUnseenBadge,
+                            badgePulse));
         }
         viewBinding.emojiTextInput.addTextChangedListener(new EmojiTextWatcher(viewBinding));
         return dialog;
@@ -197,15 +222,31 @@ public class AddReactionDialog {
 
         private final AlertDialog dialog;
         private final Message message;
+        private final OnboardingPreferences onboardingPrefs;
+        private final View unseenBadge;
+        private final ObjectAnimator badgePulse;
 
-        public ActivityLauncher(final AlertDialog alertDialog, final Message message) {
+        public ActivityLauncher(
+                final AlertDialog alertDialog,
+                final Message message,
+                final OnboardingPreferences onboardingPrefs,
+                final View unseenBadge,
+                final ObjectAnimator badgePulse) {
             this.dialog = alertDialog;
             this.message = message;
+            this.onboardingPrefs = onboardingPrefs;
+            this.unseenBadge = unseenBadge;
+            this.badgePulse = badgePulse;
         }
 
         @Override
         public void onClick(final View v) {
             final var context = v.getContext();
+            if (badgePulse != null) {
+                badgePulse.cancel();
+            }
+            unseenBadge.setVisibility(View.GONE);
+            onboardingPrefs.setHasOpenedMoreReactions(true);
             dialog.dismiss();
             final var intent = new Intent(context, AddReactionActivity.class);
             intent.putExtra("conversation", message.getConversation().getUuid());

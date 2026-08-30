@@ -85,7 +85,6 @@
     <string name="send_unencrypted_message">Envia un missatge de text clar</string>
     <string name="send_message">Envia un missatge</string>
     <string name="send_message_to_x">Envia un missatge a %s</string>
-    <string name="send_omemo_x509_message">Envia un missatge xifrat amb v\\OMEMO</string>
     <string name="your_nick_has_been_changed">S\'ha canviat el teu sobrenom</string>
     <string name="send_unencrypted">Envia el text clar</string>
     <string name="decryption_failed">El desxiframent ha fallat. Potser no teniu la clau privada apropiada.</string>
@@ -894,7 +893,6 @@
     <string name="crash_report_title">%1$s ha fallat</string>
     <string name="crash_report_message">Fer servir el teu compte XMPP per enviar traces de la pila per ajudar al desenvolupament continu de %1$s.</string>
     <string name="archive_this_chat">Esborra el xat després</string>
-    <string name="send_encrypted_message">Envia el missatge xifrat</string>
     <string name="openkeychain_required_long"><![CDATA[%1$s utilitza OpenKeychain per a xifrar i desxifrar missatges i gestionar les vostres claus públiques.<br><br>Té llicència GPLv3+ i està disponible a F-Droid i Google Play.<br><br><small>(Reinicieu %1$s després, si us plau.)</small>]]></string>
     <string name="pref_call_ringtone_summary">To de trucada per a les trucades entrants</string>
     <string name="pref_send_crash_reports">Envia informes d\'error</string>

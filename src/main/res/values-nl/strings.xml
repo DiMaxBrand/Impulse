@@ -85,7 +85,6 @@
     <string name="send_unencrypted_message">Verstuur onversleuteld bericht</string>
     <string name="send_message">Verstuur bericht</string>
     <string name="send_message_to_x">Bericht sturen naar %s</string>
-    <string name="send_omemo_x509_message">Verstuur v\\OMEMO-versleuteld bericht</string>
     <string name="your_nick_has_been_changed">Nieuwe bijnaam in gebruik</string>
     <string name="send_unencrypted">Verstuur onversleuteld</string>
     <string name="decryption_failed">Ontsleutelen mislukt. Misschien heb je niet de juiste private sleutel.</string>
@@ -822,7 +821,6 @@
     <string name="request_presence_updates">Vraag eerst aanwezigheidsupdates aan bij je contactpersoon.
 \n
 \n<small>Dit wordt gebruikt om te bepalen welke chat-app jouw contactpersoon gebruikt</small>.</string>
-    <string name="send_encrypted_message">Verstuur versleuteld bericht</string>
     <string name="pref_notification_sound">Kennisgevingsgeluid</string>
     <string name="pref_notification_sound_summary">Kennisgevingsgeluid voor nieuwe berichten</string>
     <string name="pref_call_ringtone_summary">Ringtone voor inkomende oproepen</string>

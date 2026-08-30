@@ -1,0 +1,296 @@
+package eu.siacs.conversations.ui.activity
+
+import android.os.Bundle
+import androidx.activity.compose.setContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.toPath
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.graphics.shapes.Morph
+import androidx.graphics.shapes.RoundedPolygon
+import eu.siacs.conversations.R
+import eu.siacs.conversations.ui.ActionBarActivity
+import eu.siacs.conversations.ui.ImpulseExpressiveTheme
+import eu.siacs.conversations.ui.MaterialShapeHelpers
+
+/** Full MaterialShapes set (35 shapes) — the complete catalog, not just the handful the chat
+ * list's presence-avatar happened to need. */
+private val CATALOG_SHAPES: List<Pair<String, RoundedPolygon>> by lazy {
+    listOf(
+        "Circle" to MaterialShapeHelpers.circle(),
+        "Square" to MaterialShapeHelpers.square(),
+        "Slanted" to MaterialShapeHelpers.slanted(),
+        "Arch" to MaterialShapeHelpers.arch(),
+        "Fan" to MaterialShapeHelpers.fan(),
+        "Arrow" to MaterialShapeHelpers.arrow(),
+        "Semi-circle" to MaterialShapeHelpers.semiCircle(),
+        "Oval" to MaterialShapeHelpers.oval(),
+        "Pill" to MaterialShapeHelpers.pill(),
+        "Triangle" to MaterialShapeHelpers.triangle(),
+        "Diamond" to MaterialShapeHelpers.diamond(),
+        "Clam shell" to MaterialShapeHelpers.clamShell(),
+        "Pentagon" to MaterialShapeHelpers.pentagon(),
+        "Gem" to MaterialShapeHelpers.gem(),
+        "Sunny" to MaterialShapeHelpers.sunny(),
+        "Very sunny" to MaterialShapeHelpers.verySunny(),
+        "Cookie 4" to MaterialShapeHelpers.cookie4Sided(),
+        "Cookie 6" to MaterialShapeHelpers.cookie6Sided(),
+        "Cookie 7" to MaterialShapeHelpers.cookie7Sided(),
+        "Cookie 9" to MaterialShapeHelpers.cookie9Sided(),
+        "Cookie 12" to MaterialShapeHelpers.cookie12Sided(),
+        "Ghostish" to MaterialShapeHelpers.ghostish(),
+        "Clover 4-leaf" to MaterialShapeHelpers.clover4Leaf(),
+        "Clover 8-leaf" to MaterialShapeHelpers.clover8Leaf(),
+        "Burst" to MaterialShapeHelpers.burst(),
+        "Soft burst" to MaterialShapeHelpers.softBurst(),
+        "Boom" to MaterialShapeHelpers.boom(),
+        "Soft boom" to MaterialShapeHelpers.softBoom(),
+        "Flower" to MaterialShapeHelpers.flower(),
+        "Puffy" to MaterialShapeHelpers.puffy(),
+        "Puffy diamond" to MaterialShapeHelpers.puffyDiamond(),
+        "Pixel circle" to MaterialShapeHelpers.pixelCircle(),
+        "Pixel triangle" to MaterialShapeHelpers.pixelTriangle(),
+        "Bun" to MaterialShapeHelpers.bun(),
+        "Heart" to MaterialShapeHelpers.heart(),
+    )
+}
+
+/**
+ * Developer-options screen for browsing the MaterialShapes set: a hero shape pinned to the top
+ * third of the screen morphs (via [Morph], the same technique the chat list's presence-shaped
+ * avatar frame already uses) into whatever shape is tapped in the scrollable catalog below.
+ * The catalog wraps with FlowRow rather than scrolling sideways — only the catalog itself
+ * scrolls vertically; the hero never moves.
+ */
+class ShapeCatalogActivity : ActionBarActivity() {
+
+    @OptIn(
+        ExperimentalMaterial3ExpressiveApi::class,
+        ExperimentalMaterial3Api::class,
+        ExperimentalFoundationApi::class,
+    )
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            ImpulseExpressiveTheme {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text(stringResource(R.string.shape_catalog_title)) },
+                            navigationIcon = {
+                                IconButton(onClick = { finish() }) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_arrow_back_24dp),
+                                        contentDescription = null,
+                                    )
+                                }
+                            },
+                        )
+                    },
+                ) { padding ->
+                    var selectedIndex by remember { mutableIntStateOf(0) }
+                    Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+                        ShapeHero(
+                            shape = CATALOG_SHAPES[selectedIndex].second,
+                            name = CATALOG_SHAPES[selectedIndex].first,
+                            // weight(1f) against the catalog's weight(2f) below splits the
+                            // screen exactly into thirds — the hero never scrolls with it.
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        )
+                        HorizontalDivider()
+                        FlowRow(
+                            modifier = Modifier
+                                .weight(2f)
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .padding(20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            CATALOG_SHAPES.forEachIndexed { index, (name, shape) ->
+                                ShapeCatalogItem(
+                                    name = name,
+                                    shape = shape,
+                                    selected = index == selectedIndex,
+                                    onClick = { selectedIndex = index },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShapeHero(shape: RoundedPolygon, name: String, modifier: Modifier = Modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            MorphingShape(
+                targetShape = shape,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(140.dp),
+            )
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+        }
+    }
+}
+
+/** Same Morph-driven redraw as the chat list's presence-shaped avatar frame — animates a spring
+ * from whatever shape was showing to [targetShape] every time it changes. Rapid taps (e.g. three
+ * different catalog shapes in a row before the first transition finishes) are queued rather than
+ * interrupting whatever's already mid-flight: the naive "restart the LaunchedEffect on every new
+ * targetShape" approach snaps the visible shape straight to its equilibrium the instant a newer
+ * tap lands, discarding however far the in-progress morph had actually gotten — every queued
+ * shape is guaranteed to play out its own full transition, in order, before the next one starts. */
+@Composable
+private fun MorphingShape(targetShape: RoundedPolygon, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
+    val morphProgress = remember { Animatable(1f) }
+    val fromShape = remember { mutableStateOf(targetShape) }
+    val toShape = remember { mutableStateOf(targetShape) }
+    val queue = remember { androidx.compose.runtime.mutableStateListOf<RoundedPolygon>() }
+
+    // Producer: only enqueues. Dedupes against whatever's already queued (or the current target,
+    // if the queue happens to be empty) so tapping the same shape repeatedly doesn't pile up
+    // redundant transitions.
+    LaunchedEffect(targetShape) {
+        val alreadyQueuedOrCurrent = queue.lastOrNull() ?: toShape.value
+        if (alreadyQueuedOrCurrent !== targetShape) queue.add(targetShape)
+    }
+
+    // Consumer: a single long-lived loop, never restarted/cancelled by a new tap the way the
+    // producer effect above is — animateTo() below always runs to completion before the next
+    // queued shape is even looked at.
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (queue.isEmpty()) {
+                snapshotFlow { queue.size }.first { it > 0 }
+            }
+            val next = queue.removeAt(0)
+            if (next === toShape.value) continue
+            fromShape.value = toShape.value
+            toShape.value = next
+            morphProgress.snapTo(0f)
+            morphProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow,
+                ),
+            )
+        }
+    }
+
+    val morph = remember(fromShape.value, toShape.value) { Morph(fromShape.value, toShape.value) }
+    val progress = morphProgress.value
+    val reusedPath = remember { Path() }
+    val reusedMatrix = remember { android.graphics.Matrix() }
+
+    Canvas(modifier = modifier) {
+        // RoundedPolygon isn't strictly bounded to its nominal [0,1] box, and morph
+        // interpolation between very different silhouettes (e.g. arrow -> circle) can bulge
+        // past both endpoints' bounds mid-transition. Filling the canvas edge-to-edge meant
+        // that overshoot got clipped by the canvas bounds themselves — visible as a "cut" corner
+        // during the morph. Drawing at 78% with the remainder as a centered margin gives it room
+        // to breathe without ever touching the edge.
+        val drawScale = 0.78f
+        val margin = (1f - drawScale) / 2f
+        reusedMatrix.reset()
+        reusedMatrix.postScale(size.width * drawScale, size.height * drawScale)
+        reusedMatrix.postTranslate(size.width * margin, size.height * margin)
+        morph.toPath(progress, reusedPath)
+        reusedPath.asAndroidPath().transform(reusedMatrix)
+        clipPath(reusedPath) { drawRect(color) }
+    }
+}
+
+@Composable
+private fun ShapeCatalogItem(
+    name: String,
+    shape: RoundedPolygon,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    // Selection is expressed through shape change as well as color — the swatch itself morphs
+    // toward a rounder silhouette when picked, not just a tint swap, echoing the same
+    // "shape as state" language the filmstrip selection indicator uses elsewhere in the app.
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.08f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "shapeCatalogItemScale",
+    )
+    val background = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+    val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .background(background, RoundedCornerShape(16.dp))
+                .padding(12.dp)
+                .scale(scale),
+            contentAlignment = Alignment.Center,
+        ) {
+            MorphingShape(targetShape = shape, color = tint, modifier = Modifier.size(36.dp))
+        }
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+}

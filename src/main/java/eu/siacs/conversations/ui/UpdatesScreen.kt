@@ -11,16 +11,21 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -53,7 +58,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -61,9 +65,11 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -71,7 +77,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -79,6 +89,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp as lerpDp
+import androidx.graphics.shapes.Morph
 import eu.siacs.conversations.R
 import eu.siacs.conversations.update.UpdateChannel
 import kotlinx.coroutines.launch
@@ -100,7 +111,6 @@ fun UpdatesScreen(
     onInstall: () -> Unit,
     onConfirmInstall: () -> Unit,
     onDownloadCircleTapped: () -> Unit = {},
-    onShowUpdateSheet: () -> Unit = {},
     onHideUpdateSheet: () -> Unit = {},
 ) {
     var channelPickerVisible by remember { mutableStateOf(false) }
@@ -235,15 +245,6 @@ fun UpdatesScreen(
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
-
-                FilledTonalButton(
-                    onClick = onShowUpdateSheet,
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Show update bottom sheet")
-                }
             }
 
             // ── Scrim (animated independently) ───────────────────────────
@@ -489,9 +490,17 @@ private fun SharedTransitionScope.ChannelInfoPage(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(16.dp))
+            // Deliberately a static `shape=`, not the animated `shapes = ButtonDefaults.shapes()`
+            // press-morph used elsewhere in this screen. This button's very first composition
+            // happens while its container (the Surface above) is still mid shared-element
+            // transition from the channel row — the press-morph's shape state seems to capture
+            // that transient moment as its resting value, rendering fully square until the first
+            // press/release cycle nudges it into the correct rounded shape. A fixed shape has no
+            // such first-composition state to get stuck on, at the cost of losing the squish
+            // animation on this one button.
             FilledTonalButton(
                 onClick = onBack,
-                shapes = ButtonDefaults.shapes(),
+                shape = ButtonDefaults.filledTonalShape,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(android.R.string.ok))
@@ -516,6 +525,11 @@ fun UpdateSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            // The whole sheet scrolls as one unit now — release notes no longer carry their own
+            // capped-height inner scroll (see ReleaseNotesSection), so without this an expanded
+            // "What's new" panel could push content taller than the sheet's own bounds with no
+            // way to reach the rest of it.
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
             .padding(bottom = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -531,11 +545,18 @@ fun UpdateSheetContent(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = stringResource(R.string.app_name),
+            text = state.releaseTitle?.takeIf { it.isNotBlank() } ?: stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
         )
-        if (state.pendingVersion != null) {
+        // "Version X is available" only makes sense before a download has started — once it's
+        // downloading/ready, sheetStatusText below already says so. Also skipped whenever the
+        // hero above is already showing a real release title, since that title leads with the
+        // version by convention — this line would just repeat it right underneath.
+        if (state.pendingVersion != null &&
+            state.downloadPhase == DownloadPhase.IDLE &&
+            !state.versionAlreadyShownInTitle()
+        ) {
             Text(
                 text = stringResource(R.string.updates_new_version_available, state.pendingVersion),
                 style = MaterialTheme.typography.bodyLarge,
@@ -554,6 +575,101 @@ fun UpdateSheetContent(
             onConfirmInstall = onConfirmInstall,
             onDownloadCircleTapped = onDownloadCircleTapped,
         )
+
+        ReleaseNotesSection(state.releaseNotes)
+    }
+}
+
+// The GitHub release body — collapsed by default (release descriptions run long: bilingual RU+EN
+// sections plus dev notes per this project's release-notes convention). Rendered via
+// markdownToAnnotatedString (MarkdownText.kt): headers/`code`/**bold**/*italic* — the styling this
+// project's own release descriptions actually use — instead of showing the raw Markdown source
+// with literal `#`/`*` characters.
+//
+// A full-width Expressive "reveal" button, not a plain TextButton: expanding it flattens its own
+// bottom corners down to the same 8dp the channel/settings rows use for a TOP-positioned
+// ExpressiveGroupRow, and the revealed panel below picks up the matching BOTTOM shape (28dp) —
+// same connected-group language already established for those rows, just two pieces instead of a
+// whole column of them. Deliberately a separate Surface with its own small gap (not one seamless
+// merged shape) — the *panel* is what's being revealed here, not something inside the button.
+@Composable
+private fun ReleaseNotesSection(releaseNotes: String?, modifier: Modifier = Modifier) {
+    if (releaseNotes.isNullOrBlank()) return
+    var expanded by remember(releaseNotes) { mutableStateOf(false) }
+    val spatialSpring = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
+    val bottomCorner by animateDpAsState(
+        targetValue = if (expanded) 8.dp else 28.dp,
+        animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
+        label = "whats_new_bottom_corner",
+    )
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = spatialSpring,
+        label = "whats_new_arrow",
+    )
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(
+                topStart = 28.dp,
+                topEnd = 28.dp,
+                bottomStart = bottomCorner,
+                bottomEnd = bottomCorner,
+            ),
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            onClick = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth().height(64.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.updates_whats_new),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    painter = painterResource(R.drawable.ic_expand_more_24dp),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp).rotate(arrowRotation),
+                )
+            }
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) + fadeIn(),
+            exit = shrinkVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) + fadeOut(),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(
+                    topStart = 8.dp,
+                    topEnd = 8.dp,
+                    bottomStart = 28.dp,
+                    bottomEnd = 28.dp,
+                ),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                // No heightIn()/verticalScroll() of its own anymore — the whole sheet
+                // (UpdateSheetContent's outer Column) scrolls as one unit instead, so this just
+                // takes whatever height its text naturally needs.
+                val bodyStyle = MaterialTheme.typography.bodySmall
+                val codeColor = MaterialTheme.colorScheme.primary
+                val codeBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                Text(
+                    text = remember(releaseNotes, bodyStyle.fontSize, codeColor, codeBackground) {
+                        markdownToAnnotatedString(releaseNotes, bodyStyle.fontSize, codeColor, codeBackground)
+                    },
+                    style = bodyStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                )
+            }
+        }
     }
 }
 
@@ -592,6 +708,18 @@ internal fun StatusSection(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+        }
+
+        // Speed/ETA — only populated while actively downloading (not paused/queued/failed),
+        // see UpdatesActivity.pollDownload().
+        AnimatedVisibility(visible = state.downloadSpeedText != null) {
+            Text(
+                text = state.downloadSpeedText ?: "",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         SharedTransitionLayout {
@@ -931,11 +1059,78 @@ private fun CancelingCircle() {
         modifier = Modifier.size(64.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            LoadingIndicator(
-                modifier = Modifier.size(40.dp),
+            CancelMorphIndicator(
                 color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(40.dp),
             )
         }
+    }
+}
+
+// The requested loop, specifically — not the stock M3 LoadingIndicator (which cycles through its
+// own built-in shape set, not this one), and not a reusable everyday spinner either: fan -> arrow
+// -> semi-circle -> arrow -> fan, repeating for as long as CANCELING is shown. Arrow sitting
+// between the two rounder shapes is what gives the whole loop its "turning" read — an inherent
+// property of how Morph interpolates between these three vertex sets, not an added rotation
+// transform. Same Morph/MaterialShapes technique as the Developer Options shape catalog, but a
+// dedicated, self-contained implementation here rather than a shared component: this one drives
+// itself on a timer in a fixed loop, not from taps, so reusing ShapeCatalogActivity's
+// tap-queueing MorphingShape would be the wrong shape (no pun intended) for this job.
+private val CANCEL_MORPH_SEQUENCE: List<androidx.graphics.shapes.RoundedPolygon> by lazy {
+    listOf(
+        MaterialShapeHelpers.fan(),
+        MaterialShapeHelpers.arrow(),
+        MaterialShapeHelpers.semiCircle(),
+        MaterialShapeHelpers.arrow(),
+    )
+}
+
+@Composable
+private fun CancelMorphIndicator(color: Color, modifier: Modifier = Modifier) {
+    var index by remember { mutableIntStateOf(0) }
+    val morphProgress = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            morphProgress.snapTo(0f)
+            morphProgress.animateTo(
+                targetValue = 1f,
+                // A little overshoot, not the catalog's full bounce — this loop repeats
+                // continuously for as long as the cancel screen is up, so DampingRatioMediumBouncy
+                // (the catalog's feel) would read as jittery on repeat. LowBouncy gives just enough
+                // spring to feel alive without that jitter. StiffnessMedium (1500) was a mistake
+                // here, not a "brisk" version of the catalog's StiffnessLow (200) — at that
+                // stiffness the spring settles almost instantly regardless of damping ratio, so
+                // the overshoot was never actually visible; this needs to be *at least* as
+                // unhurried as the catalog, just less bouncy, not faster.
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow,
+                ),
+            )
+            index = (index + 1) % CANCEL_MORPH_SEQUENCE.size
+        }
+    }
+
+    val fromShape = CANCEL_MORPH_SEQUENCE[(index - 1 + CANCEL_MORPH_SEQUENCE.size) % CANCEL_MORPH_SEQUENCE.size]
+    val toShape = CANCEL_MORPH_SEQUENCE[index]
+    val morph = remember(fromShape, toShape) { Morph(fromShape, toShape) }
+    val reusedPath = remember { Path() }
+    val reusedMatrix = remember { android.graphics.Matrix() }
+
+    Canvas(modifier = modifier) {
+        // Same 78%-scale-with-margin treatment as the shape catalog — Morph interpolation between
+        // very different silhouettes can bulge past both endpoints' own [0,1] bounds mid-transition,
+        // and filling the canvas edge-to-edge means that overshoot gets clipped by the canvas
+        // itself instead of just breathing into the margin.
+        val drawScale = 0.78f
+        val margin = (1f - drawScale) / 2f
+        reusedMatrix.reset()
+        reusedMatrix.postScale(size.width * drawScale, size.height * drawScale)
+        reusedMatrix.postTranslate(size.width * margin, size.height * margin)
+        morph.toPath(morphProgress.value, reusedPath)
+        reusedPath.asAndroidPath().transform(reusedMatrix)
+        clipPath(reusedPath) { drawRect(color) }
     }
 }
 
@@ -1036,12 +1231,23 @@ private fun channelDescription(channel: UpdateChannel): Int = when (channel) {
     UpdateChannel.ALPHA -> R.string.update_channel_alpha_description
 }
 
+// The hero already shows the release title, and project convention has every title lead with
+// the version number (default fallback is literally "Impulse <version>"; the documented stable
+// format is "<version>: <description>") — so once a title is actually present, repeating the
+// version down here too is just showing the same string twice in the same small dialog. Only
+// worth calling out separately when the hero has nothing to show it with — a blank title, which
+// falls back to the plain "Impulse" wordmark with no version anywhere.
+private fun UpdatesUiState.versionAlreadyShownInTitle(): Boolean = !releaseTitle.isNullOrBlank()
+
 @Composable
 private fun mainStatusText(state: UpdatesUiState): String? = when {
     state.checkStatus == CheckStatus.CHECKING -> stringResource(R.string.updates_status_checking)
     state.checkStatus == CheckStatus.UP_TO_DATE -> stringResource(R.string.updates_status_up_to_date)
     state.checkStatus == CheckStatus.CHANNEL_BEHIND -> stringResource(R.string.updates_status_channel_behind)
-    state.pendingVersion != null && state.downloadPhase == DownloadPhase.IDLE ->
+    state.checkStatus == CheckStatus.CHECK_FAILED -> stringResource(R.string.updates_status_check_failed)
+    state.pendingVersion != null &&
+        state.downloadPhase == DownloadPhase.IDLE &&
+        !state.versionAlreadyShownInTitle() ->
         stringResource(R.string.updates_new_version_available, state.pendingVersion)
     else -> null
 }
@@ -1051,19 +1257,36 @@ private fun sheetStatusText(state: UpdatesUiState): String? = when {
     state.downloadPhase == DownloadPhase.CANCELING -> stringResource(R.string.updates_canceling)
     state.cancelConfirmVisible -> stringResource(R.string.updates_stop_download_question)
     state.downloadPhase == DownloadPhase.NO_WIFI_PENDING ->
-        stringResource(R.string.updates_status_no_wifi_detected)
+        if (state.pendingVersion != null && !state.versionAlreadyShownInTitle()) {
+            stringResource(R.string.updates_status_no_wifi_detected, state.pendingVersion)
+        } else {
+            stringResource(R.string.updates_status_no_wifi_detected_unknown_version)
+        }
     state.downloadPhase == DownloadPhase.DOWNLOADING ->
-        state.downloadStatusText ?: stringResource(R.string.updates_status_downloading)
+        state.downloadStatusText
+            ?: if (state.pendingVersion != null && !state.versionAlreadyShownInTitle()) {
+                stringResource(R.string.updates_status_downloading, state.pendingVersion)
+            } else {
+                stringResource(R.string.updates_status_downloading_unknown_version)
+            }
     state.downloadPhase == DownloadPhase.PROCESSING ->
-        stringResource(R.string.updates_status_processing)
+        if (state.pendingVersion != null && !state.versionAlreadyShownInTitle()) {
+            stringResource(R.string.updates_status_processing, state.pendingVersion)
+        } else {
+            stringResource(R.string.updates_status_processing_unknown_version)
+        }
+    state.downloadPhase == DownloadPhase.READY &&
+        state.pendingVersion != null &&
+        !state.versionAlreadyShownInTitle() ->
+        stringResource(R.string.updates_status_ready, state.pendingVersion)
     state.downloadPhase == DownloadPhase.READY ->
-        stringResource(R.string.updates_status_ready)
+        stringResource(R.string.updates_status_ready_unknown_version)
     else -> null
 }
 
 // ─── State model ─────────────────────────────────────────────────────────────
 
-enum class CheckStatus { IDLE, CHECKING, UP_TO_DATE, UPDATE_AVAILABLE, CHANNEL_BEHIND }
+enum class CheckStatus { IDLE, CHECKING, UP_TO_DATE, UPDATE_AVAILABLE, CHANNEL_BEHIND, CHECK_FAILED }
 enum class DownloadPhase { IDLE, NO_WIFI_PENDING, DOWNLOADING, PROCESSING, READY, CANCELING }
 
 data class UpdatesUiState(
@@ -1074,8 +1297,11 @@ data class UpdatesUiState(
     val downloadPhase: DownloadPhase = DownloadPhase.IDLE,
     val downloadProgress: Float = 0f,
     val downloadStatusText: String? = null,
+    val downloadSpeedText: String? = null,
     val cancelConfirmVisible: Boolean = false,
     val pendingVersion: String? = null,
+    val releaseNotes: String? = null,
+    val releaseTitle: String? = null,
     val showInstallCard: Boolean = false,
     val canInstallDirectly: Boolean = true,
     val isFirstUpdate: Boolean = false,

@@ -52,6 +52,7 @@
     <string name="register_account">Создать новый аккаунт на сервере</string>
     <string name="change_password_on_server">Изменить пароль на сервере</string>
     <string name="share_with">Поделиться…</string>
+    <string name="forward_message">Переслать</string>
     <string name="invite_contact">Пригласить контакт</string>
     <string name="invite">Пригласить</string>
     <string name="contacts">Контакты</string>
@@ -65,10 +66,16 @@
     <string name="unblock">Разблокировать</string>
     <string name="save">Сохранить</string>
     <string name="ok">ОК</string>
+    <!-- "баг" (a colloquial loanword for "bug") was what phone keyboard autocomplete suggested
+         while typing about this feature — deliberately not used here. "сбой" (failure) and
+         "проблема" (problem) below read more neutral/native for the app's tone. -->
     <string name="crash_report_title">В %1$s произошёл сбой</string>
-    <string name="crash_report_message">Отправляя отчёты об ошибках, вы помогаете совершенствованию %1$s.</string>
+    <string name="crash_report_message">Отправляя отчёты об ошибках, вы помогаете совершенствованию %1$s — большинство проблем исправляется в течение суток.</string>
+    <string name="error_report_title">В %1$s возникла проблема</string>
+    <string name="error_report_message">Сбоя не произошло, но что-то пошло не так. Большинство проблем исправляется в течение суток — отчёт поможет разобраться и с этой.</string>
     <string name="send_now">Отправить сейчас</string>
     <string name="send_never">Больше не спрашивать</string>
+    <string name="not_now">Не сейчас</string>
     <string name="problem_connecting_to_account">Невозможно подключиться к аккаунту</string>
     <string name="problem_connecting_to_accounts">Невозможно подключиться к аккаунтам</string>
     <string name="touch_to_fix">Нажмите, чтобы настроить аккаунт</string>
@@ -92,7 +99,6 @@
     <string name="send_unencrypted_message">Отправить незашифрованное сообщение</string>
     <string name="send_message">Сообщение</string>
     <string name="send_message_to_x">Сообщение для %s</string>
-    <string name="send_omemo_x509_message">Зашифрованное v\\OMEMO сообщение</string>
     <string name="your_nick_has_been_changed">Ваше имя изменено</string>
     <string name="send_unencrypted">Отправить в незашифрованном виде</string>
     <string name="decryption_failed">Расшифровка невозможна. Вероятно, у вас нет надлежащего ключа.</string>
@@ -142,6 +148,12 @@
     <string name="send_presence_updates">Отправлять присутствие</string>
     <string name="receive_presence_updates">Получать присутствие</string>
     <string name="ask_for_presence_updates">Запрашивать присутствие</string>
+    <string name="contact_grammatical_gender">Грамматический род: %s</string>
+    <string name="contact_grammatical_gender_dialog_title">Грамматический род</string>
+    <string name="contact_grammatical_gender_explanation">Используется только для выбора правильной формы глагола (например, «был(а) в сети») в переводах, где это зависит от рода, — например, в русском.</string>
+    <string name="contact_grammatical_gender_auto">Определять автоматически</string>
+    <string name="contact_grammatical_gender_masculine">Мужской</string>
+    <string name="contact_grammatical_gender_feminine">Женский</string>
     <string name="preemptively_grant">Удовлетворять запросы на подписки</string>
     <string name="error_not_an_image_file">Выбранный файл не является изображением</string>
     <string name="error_compressing_image">Невозможно преобразовать изображение</string>
@@ -187,6 +199,13 @@
     <string name="account_settings_jabber_id">XMPP-адрес</string>
     <string name="block_jabber_id">Заблокировать XMPP-адрес</string>
     <string name="account_settings_example_jabber_id">username@example.com</string>
+    <string name="xmpp_address_help_title">Как узнать XMPP-адрес собеседника?</string>
+    <string name="xmpp_address_help_impulse_shortcut_header">Если у него тоже Импульс: быстрый способ</string>
+    <string name="xmpp_address_help_impulse_shortcut_body">Попросите его открыть Импульс и перейти на такое же окно «Добавить контакт» — в поле выше уже будет его собственный адрес. Вводить что-либо нужно только вам; когда он назовёт свой адрес, он может просто закрыть своё окно.</string>
+    <string name="xmpp_address_help_impulse_qr_header">Если у него тоже Импульс: по QR-коду</string>
+    <string name="xmpp_address_help_impulse_qr_body">Откройте оба главный экран со списком чатов и нажмите кнопку QR-кода сверху. Один из вас нажимает «Сканировать», другой — «Показать» — не важно, кто что делает.</string>
+    <string name="xmpp_address_help_other_app_header">Если у него другое приложение</string>
+    <string name="xmpp_address_help_other_app_body">Посмотрите в справке этого приложения, как найти адрес. Обычно там есть понятная кнопка вроде «Новый чат» или «Добавить контакт», куда можно ввести адрес, который вам дали.</string>
     <string name="password">Пароль</string>
     <string name="invalid_jid">Недопустимый XMPP-адрес</string>
     <string name="error_out_of_memory">Нехватка памяти. Изображение слишком большое.</string>
@@ -225,6 +244,12 @@
     <string name="unblock_contact">Разблокировать контакт</string>
     <string name="create">Создать</string>
     <string name="select">Выбрать</string>
+    <string name="close_selection">Закрыть выбор</string>
+    <string name="messages_selected_count">Выбрано: %d</string>
+    <string name="all_photos">Все фото</string>
+    <string name="select_photos">Выбрать фото</string>
+    <string name="select_to_delete">Выбрать для удаления</string>
+    <string name="photo_n_failed">Фото %1$s: %2$s</string>
     <string name="contact_already_exists">Контакт уже существует</string>
     <string name="join">Присоединиться</string>
     <string name="channel_full_jid_example">канал@конференция.пример.com/имя</string>
@@ -300,7 +325,7 @@
     <string name="conference_unknown_error">Вы больше не состоите в этой конференции</string>
     <string name="using_account">используется аккаунт %s</string>
     <string name="hosted_on">размещено на %s</string>
-    <string name="checking_x">Проверка %s на сервере HTTP</string>
+    <string name="checking_x">Проверка на сервере HTTP: %s</string>
     <string name="not_connected_try_again">Вы не подключены. Попробуйте позже.</string>
     <string name="check_x_filesize">Проверить размер (%s)</string>
     <string name="check_x_filesize_on_host">Проверить размер на %2$s (%1$s)</string>
@@ -309,6 +334,7 @@
     <string name="paste_as_quote">Вставить как цитату</string>
     <string name="copy_original_url">Копировать адрес ссылки</string>
     <string name="send_again">Отправить ещё раз</string>
+    <string name="retry_failed_photos">Повторить неудачные фото</string>
     <string name="file_url">URL файла</string>
     <string name="url_copied_to_clipboard">Ссылка скопирована в буфер обмена</string>
     <string name="jabber_id_copied_to_clipboard">XMPP-адрес скопирован в буфер обмена</string>
@@ -331,13 +357,16 @@
     <string name="notification_restored_backup_title">Восстановление из резервной копии выполнено</string>
     <string name="notification_restored_backup_subtitle">Не забудьте включить аккаунт.</string>
     <string name="receiving_x_file">%1$s загружается (%2$d%% выполнено)</string>
+    <string name="receiving_x_file_plural">%1$s загружаются (%2$d%% выполнено)</string>
     <string name="download_x_file">Загрузить %s</string>
     <string name="delete_x_file">Удалить %s</string>
     <string name="file">файл</string>
     <string name="open_x_file">Открыть %s</string>
     <string name="sending_file">отправка (%1$d%% выполнено)</string>
+    <string name="group_upload_progress">Отправлено %1$d из %2$d</string>
     <string name="preparing_file">Файл готовится для передачи</string>
     <string name="x_file_offered_for_download">%s предлагается скачать</string>
+    <string name="x_file_offered_for_download_plural">%s предлагаются скачать</string>
     <string name="cancel_transmission">Отменить передачу</string>
     <string name="file_transmission_failed">передача файла не выполнена</string>
     <string name="file_transmission_cancelled">передача файла отменена</string>
@@ -384,6 +413,7 @@
     <string name="non_anonymous">Сделать XMPP-адрес видимым для всех</string>
     <string name="moderated">Сделать канал модерируемым</string>
     <string name="you_are_not_participating">Вы не участвуете</string>
+    <string name="read_only_channel">Канал только для чтения — писать могут только администраторы</string>
     <string name="modified_conference_options">Настройки конференции изменены!</string>
     <string name="could_not_modify_conference_options">Невозможно изменить настройки конференции</string>
     <string name="never">Никогда</string>
@@ -405,7 +435,11 @@
     <string name="vcard">контакт</string>
     <string name="avatar_has_been_published">Аватар загружен!</string>
     <string name="sending_x_file">Отправляется %s</string>
+    <string name="sending_x_file_plural">Отправляются %s</string>
     <string name="offering_x_file">Предложен %s</string>
+    <string name="offering_x_file_feminine">Предложена %s</string>
+    <string name="offering_x_file_neuter">Предложено %s</string>
+    <string name="offering_x_file_plural">Предложены %s</string>
     <string name="hide_offline">Скрыть не в сети</string>
     <string name="contact_is_typing">%s печатает…</string>
     <string name="contact_has_stopped_typing">%s перестал(а) печатать</string>
@@ -453,6 +487,8 @@
     <string name="pref_presence_settings">Доступность</string>
     <string name="pref_away_when_screen_off">\"Отошёл\" при блокировке экрана</string>
     <string name="pref_away_when_screen_off_summary">Устанавливать статус \"Отошёл\", когда устройство заблокировано</string>
+    <string name="pref_away_when_app_exited">\"Отошёл\" при выходе из приложения</string>
+    <string name="pref_away_when_app_exited_summary">Устанавливать статус \"Отошёл\" вскоре после выхода из Impulse, даже если экран не заблокирован</string>
     <string name="pref_show_connection_options">Имя хоста и порт</string>
     <string name="pref_show_connection_options_summary">Показывать расширенные настройки соединения при настройке аккаунта</string>
     <string name="hostname_example">xmpp.example.com</string>
@@ -485,6 +521,12 @@
         <item quantity="many">%d сообщений</item>
         <item quantity="other">%d сообщений</item>
     </plurals>
+    <plurals name="new_messages_pill">
+        <item quantity="one">%d новое сообщение</item>
+        <item quantity="few">%d новых сообщения</item>
+        <item quantity="many">%d новых сообщений</item>
+        <item quantity="other">%d новых сообщений</item>
+    </plurals>
     <string name="load_more_messages">Загрузить больше сообщений</string>
     <string name="shared_file_with_x">Файл отправлен %s</string>
     <string name="shared_image_with_x">Изображение отправлено %s</string>
@@ -516,6 +558,13 @@
     <string name="this_field_is_required">Незаполненное поле</string>
     <string name="correct_message">Изменить</string>
     <string name="send_corrected_message">Отправить изменённое сообщение</string>
+    <string name="message_being_edited">Редактируется…</string>
+    <string name="onboarding_edit_title">О редактировании сообщений</string>
+    <string name="onboarding_edit_body">Отправленное сообщение можно изменить в любой момент — ограничений по времени нет. Пока вы редактируете, у собеседника сообщение показывается размытым, и прежний текст ему не виден, пока вы не закончите.</string>
+    <string name="onboarding_delete_title">Кстати</string>
+    <string name="onboarding_delete_body">Когда вы удаляете сообщение для всех, оно также исчезает из шторки уведомлений собеседника — а не только из чата.</string>
+    <string name="onboarding_got_it">Понятно</string>
+    <string name="reaction_picker_hint">Не забывайте про три точки — они открывают экран с практически любыми эмодзи. Или нажмите значок клавиатуры, чтобы выбрать эмодзи прямо со своей клавиатуры.</string>
     <string name="no_keys_just_confirm">Вы уже пометили отпечаток этого человека как доверенный. Выбрав \"Готово\", вы только подтвердите, что %s является участником конференции.</string>
     <string name="this_account_is_disabled">Вы отключили этот аккаунт</string>
     <string name="security_error_invalid_file_access">Ошибка безопасности: доступ к файлу невозможен!</string>
@@ -534,8 +583,10 @@
     <string name="presence_chat">Свободен для общения</string>
     <string name="presence_online">В сети</string>
     <string name="presence_away">Отошёл</string>
-    <string name="presence_xa">Недоступен</string>
-    <string name="presence_dnd">Не беспокоить</string>
+    <string name="presence_away_feminine">Отошла</string>
+    <string name="presence_xa">Давно отошёл</string>
+    <string name="presence_xa_feminine">Давно отошла</string>
+    <string name="presence_dnd">Без звука</string>
     <string name="secure_password_generated">Пароль был сгенерирован</string>
     <string name="device_does_not_support_battery_op">Ваше устройство не поддерживает отключение оптимизации энергопотребления</string>
     <string name="registration_please_wait">Регистрация не выполнена: повторите попытку позднее</string>
@@ -713,6 +764,10 @@
     <string name="title_activity_share_location">Поделиться местоположением</string>
     <string name="title_activity_show_location">Показать местоположение</string>
     <string name="share">Поделиться</string>
+    <string name="show_in_chat">Показать в чате</string>
+    <string name="delete_images">Удалить изображения</string>
+    <string name="delete_files">Удалить файлы</string>
+    <string name="deleting">Удаление…</string>
     <string name="unable_to_start_recording">Невозможно начать запись</string>
     <string name="please_wait">Подождите…</string>
     <string name="no_microphone_permission">Предоставить %1$s разрешение на использование микрофона</string>
@@ -837,6 +892,8 @@
     <string name="please_enter_xmpp_address">Введите XMPP-адрес</string>
     <string name="this_is_an_xmpp_address">Это XMPP-адрес. Введите имя.</string>
     <string name="creating_channel">Создание публичного канала…</string>
+    <string name="creating_group_chat">Создание группы…</string>
+    <string name="everyone_can_join">Может присоединиться кто угодно</string>
     <string name="channel_already_exists">Этот канал уже существует</string>
     <string name="joined_an_existing_channel">Вы присоединились к существующему каналу</string>
     <string name="unable_to_set_channel_configuration">Невозможно сохранить настройки канала</string>
@@ -851,6 +908,7 @@
     <string name="jabber_ids_are_visible_to_anyone">XMPP-адреса видны всем.</string>
     <string name="no_users_hint_channel">У этого публичного канала нет участников. Пригласите ваших знакомых или нажмите кнопку \"Поделиться\", чтобы отправить XMPP-адрес.</string>
     <string name="no_users_hint_group_chat">У этой приватной конференции нет участников.</string>
+    <string name="channel_members_hidden">Список участников канала скрыт. Никто, включая вас, не видит, кто подписан.</string>
     <string name="manage_permission">Управление правами</string>
     <string name="search_participants">Поиск участников</string>
     <string name="file_too_large">Размер файла слишком велик</string>
@@ -980,6 +1038,22 @@
     <string name="pref_autojoin_summary">Устанавливать флаг \"автоприсоединение\" при входе и выходе из группового чата, и реагировать на изменения от других клиентов</string>
     <string name="search_group_chats">Поиск конференций</string>
     <string name="download_failed_invalid_file">Загрузка не выполнена: файл испорчен</string>
+    <string name="download_eta_seconds">Осталось %1$d с</string>
+    <string name="download_eta_minutes_seconds">Осталось %1$d мин %2$d с</string>
+    <string name="download_eta_hours_minutes">Осталось %1$d ч %2$d мин</string>
+    <string name="update_download_status_queued">В очереди…</string>
+    <string name="update_download_status_waiting_for_network">Ожидание сети…</string>
+    <string name="update_download_status_retrying">Соединение потеряно, повтор…</string>
+    <string name="update_download_status_waiting_for_wifi">Ожидание Wi-Fi…</string>
+    <string name="update_download_status_paused">Приостановлено…</string>
+    <string name="update_download_error_insufficient_space">Недостаточно места в хранилище</string>
+    <string name="update_download_error_device_not_found">Хранилище недоступно</string>
+    <string name="update_download_error_cannot_resume">Соединение прервано, не удалось возобновить</string>
+    <string name="update_download_error_http_data">Ошибка сети</string>
+    <string name="update_download_error_too_many_redirects">Ошибка перенаправления сервера</string>
+    <string name="update_download_error_unhandled_http_code">Ошибка сервера</string>
+    <string name="update_download_error_file_error">Ошибка файла</string>
+    <string name="update_download_error_generic">Загрузка не удалась</string>
     <string name="rtp_state_content_add_video">Перейти на видеовызов\?</string>
     <string name="outgoing_call_duration_timestamp" formatted="false">Исходящий вызов (%s) · %s</string>
     <string name="incoming_call_duration_timestamp" formatted="false">Входящий вызов (%s) · %s</string>
@@ -1064,7 +1138,6 @@
     <string name="pref_large_font">Крупный шрифт</string>
     <string name="pref_large_font_summary">Увеличить размер шрифта сообщений</string>
     <string name="pref_summary_security">Сквозное шифрование, слепое доверие до подтверждения, обнаружение атаки посредника</string>
-    <string name="send_encrypted_message">Отправить зашифрованное сообщение</string>
     <string name="corresponding_chats_closed">Соответствующие беседы архивированы.</string>
     <string name="pref_title_trust_system_ca_store_summary">Доверять сертификатам системных УЦ</string>
     <string name="pref_connection_summary_w_cd">Имя хоста и порт, Tor, обзор каналов</string>
@@ -1149,10 +1222,11 @@
     <string name="moderate_delete_dot_dot_dot">Удалить как модератор…</string>
     <string name="moderate_delete">Удалить как модератор</string>
     <string name="delete_message">Удалить сообщение</string>
-    <string name="moderation_explained">Сообщение будет удалено для вас и всех остальных участников этого публичного канала.</string>
+    <string name="moderation_explained">Сообщение будет удалено для вас и всех остальных участников этого чата.</string>
     <string name="do_not_show_this_warning_again">Больше не предупреждать.</string>
     <string name="could_not_moderate_message">Невозможно модерировать сообщение</string>
-    <string name="last_seen">В сети %s</string>
+    <string name="last_seen">Был в сети %s</string>
+    <string name="last_seen_feminine">Была в сети %s</string>
     <plurals name="x_participants">
         <item quantity="one">%1$d участник</item>
         <item quantity="few">%1$d участника</item>
@@ -1203,6 +1277,7 @@
     <string name="pref_category_backup_storage">Хранилище</string>
     <string name="pref_import_backup_summary">Выбор файла резервной копии для восстановления данных</string>
     <string name="its_time_for_contact">У ^2 сейчас ^1</string>
+    <string name="its_time_for_contact_compose">У %2$s сейчас %1$s</string>
     <string name="mobile_ticket">Цифровой пропуск</string>
     <string name="pref_entity_time_summary">Делиться своим текущим временем с контактами, чтобы взамен знать их местное время</string>
     <string name="pref_entity_time">Делиться местным временем</string>
@@ -1241,6 +1316,8 @@
     </plurals>
     <string name="could_not_save_files">Невозможно сохранить файлы</string>
     <string name="save_file">Сохранить файл</string>
+    <string name="save_card_already_saved">У вас включено автоматическое сохранение в галерею в настройках — этот файл уже сохранён в вашей галерее.</string>
+    <string name="save_card_not_saved">Этот файл ещё не сохранён в вашей галерее.</string>
     <string name="copy_url">Копировать URL</string>
     <string name="delete_leftover_message">Удалить запись сообщения</string>
     <string name="filter_type_images">Изображения</string>
@@ -1268,6 +1345,7 @@
     <string name="delete_message_title">Удалить сообщение?</string>
     <string name="delete_for_everyone">У всех</string>
     <string name="delete_for_myself">У себя</string>
+    <string name="cannot_delete_for_everyone_yet">Пока нельзя удалить у всех — сервер ещё не подтвердил это сообщение</string>
     <string name="editing">редактирует…</string>
 
     <!-- Updates screen -->
@@ -1284,15 +1362,21 @@
     <string name="updates_continue">Продолжить</string>
     <string name="updates_status_checking">Проверка…</string>
     <string name="updates_status_up_to_date">Актуальная версия</string>
-    <string name="updates_status_downloading">Загрузка обновления…</string>
-    <string name="updates_status_processing">Подготовка…</string>
-    <string name="updates_status_ready">Готово к установке</string>
+    <string name="updates_status_check_failed">Не удалось проверить обновления — проверьте подключение и попробуйте снова</string>
+    <string name="updates_status_downloading">Загрузка версии %s…</string>
+    <string name="updates_status_downloading_unknown_version">Загрузка обновления…</string>
+    <string name="updates_status_processing">Подготовка версии %s…</string>
+    <string name="updates_status_processing_unknown_version">Подготовка…</string>
+    <string name="updates_status_ready">Версия %s готова к установке</string>
+    <string name="updates_status_ready_unknown_version">Готово к установке</string>
     <string name="updates_status_no_wifi">Нет Wi-Fi — обновление загрузится при подключении</string>
-    <string name="updates_status_no_wifi_detected">При обнаружении обновления не было Wi-Fi — вы можете загрузить сейчас</string>
+    <string name="updates_status_no_wifi_detected">Обнаружена версия %s, но нет Wi-Fi — вы можете загрузить сейчас</string>
+    <string name="updates_status_no_wifi_detected_unknown_version">При обнаружении обновления не было Wi-Fi — вы можете загрузить сейчас</string>
     <string name="updates_stop_download_question">Остановить загрузку?</string>
     <string name="updates_canceling">Отмена…</string>
     <string name="updates_almost_done">Почти готово…</string>
     <string name="updates_new_version_available">Доступна версия %s</string>
+    <string name="updates_whats_new">Что нового</string>
     <string name="updates_install_first_time_title">Impulse обновляется впервые. Спасибо, что пользуетесь!</string>
     <string name="updates_install_title">Impulse готов к обновлению</string>
     <string name="updates_install_grant_permission">Система попросит разрешить Impulse устанавливать обновления. Нажмите «Разрешить», затем «Установить».</string>
@@ -1309,4 +1393,49 @@
     <string name="update_channel_beta_description">Новые функции на стадии тестирования. Возможны ошибки и нестабильная работа.</string>
     <string name="update_channel_alpha_description">Крайне нестабильная. Сбои и неработающие функции — норма. Только если готовы к переустановке.</string>
     <string name="update_channel_info_title">О канале</string>
+    <string name="listen_status_not_listened">Не прослушано</string>
+    <string name="listen_status_listening">Слушает</string>
+    <string name="listen_status_paused">Пауза</string>
+    <string name="listen_status_listened">Прослушано</string>
+    <string name="listen_status_unknown">Неизвестно</string>
+    <string name="developer_options_title">Параметры разработчика</string>
+    <string name="developer_options_reset_pause_timer">Сбросить таймер паузы обновлений</string>
+    <string name="developer_options_reset_pause_timer_summary">Сбрасывает задержку после закрытия панели обновления, чтобы она могла появиться снова сразу</string>
+    <string name="developer_options_reset_pause_timer_done">Таймер паузы сброшен</string>
+    <string name="updates_status_channel_behind">Ваша сборка новее этого канала</string>
+    <string name="developer_options_show_update_sheet">Показать панель обновления</string>
+    <string name="developer_options_show_update_sheet_summary">Открывает панель обновления в текущем состоянии загрузчика</string>
+    <string name="developer_options_pick_version">Выбрать версию вручную</string>
+    <string name="developer_options_pick_version_summary">Обходит ограничения на понижение — переход к любой опубликованной версии</string>
+    <string name="developer_options_pick_version_empty">Версии не найдены</string>
+    <string name="developer_options_change_language">Изменить язык приложения</string>
+    <string name="developer_options_change_language_summary">Открывает системный выбор языка для этого приложения</string>
+    <string name="developer_options_shape_catalog">Каталог форм</string>
+    <string name="developer_options_shape_catalog_summary">Просмотр набора MaterialShapes с живым превью морфинга</string>
+    <string name="shape_catalog_title">Каталог форм</string>
+    <string name="developer_options_feature_flags">Флаги функций</string>
+    <string name="developer_options_feature_flags_summary">Переопределение отдельных флагов функций для тестирования</string>
+    <string name="feature_flags_title">Флаги функций</string>
+    <string name="feature_flags_disclaimer">Этот экран для разработчиков — если это не про вас, всё равно можно посмотреть. То, что скрыто за этими флагами, почти наверняка ещё не работает — не потому, что там баг, а потому, что это упирается в то, что должно произойти раньше, прежде чем это вообще сможет заработать. Когда создавался этот экран, это была ссылка-приглашение, которую нельзя было доделать, пока не появится стабильный релиз, на который она будет ссылаться, а его тогда не было. Хотите новые функции, которые действительно работают, пусть даже с багами? Флаги здесь ни при чём — большинство функций доходят до вас именно через более ранние каналы. Переключите свой: Настройки → Обновления → Канал → любой, кроме Stable. Перед выбором посмотрите на значок информации рядом с каналом.</string>
+    <string name="feature_flag_option_default">По умолчанию</string>
+    <string name="feature_flag_option_on">Вкл.</string>
+    <string name="feature_flag_option_off">Выкл.</string>
+    <string name="feature_flag_invite_contacts_title">Приглашение контактов</string>
+    <string name="feature_flag_invite_contacts_description">Добавляет пункт «Пригласить» в меню + на экране «Начать чат» — отправьте другу прямую ссылку для скачивания приложения</string>
+    <string name="feature_flag_emergency_mode_title">Аварийный режим</string>
+    <string name="feature_flag_emergency_mode_description">При плохом соединении (сервер не найден / тайм-аут соединения) автоматически прекращает загрузку новых аватаров и медиафайлов — текстовые сообщения продолжают работать</string>
+    <string name="invite_title">Пригласить</string>
+    <string name="invite_play_protect_note">Play Protect предложит проверить приложение перед установкой — это ожидаемо, не предупреждение об опасности. Он проверит файл, подтвердит, что всё безопасно, и позволит продолжить установку.</string>
+    <string name="invite_intro">Отправьте эту ссылку тому, кого хотите пригласить. Как только человек откроет её в браузере на телефоне, приложение скачается автоматически:</string>
+    <string name="invite_share_button">Поделиться ссылкой-приглашением</string>
+    <string name="invite_sms_warning">Это сообщение длинное — как обычное SMS оно займёт несколько сообщений. Лучше отправить через WhatsApp или Telegram.</string>
+    <string name="invite_share_message">Присоединяйся к Импульсу! Здесь реально работают аудио- и видеозвонки — мессенджер не настолько популярен, чтобы его замедляли или блокировали, как крупные приложения. Ссылка: %1$s\n\nAndroid может показать пару запросов безопасности при установке (проверка Play Protect, иногда ~10 секунд ожидания на некоторых телефонах) — это всё нормально, просто продолжайте.</string>
+    <string name="invite_link_copied">Ссылка скопирована</string>
+    <string name="invite_install_steps_title">Как установить</string>
+    <string name="invite_install_chrome_title">Chrome</string>
+    <string name="invite_install_chrome_steps">Откройте скачанный файл (нажмите на уведомление или зайдите в меню ⋮ → Загрузки в Chrome), затем нажмите «Установить».</string>
+    <string name="invite_install_samsung_title">Samsung Internet</string>
+    <string name="invite_install_samsung_steps">Нажмите «Открыть» на плашке загрузки или ⋮ (внизу справа) → Загрузки → файл сверху списка, затем «Установить».</string>
+    <string name="invite_install_permission_heads_up">Android может попросить разрешить установку из вашего браузера в первый раз — это ожидаемо, просто нажмите «Разрешить». На некоторых телефонах (особенно на Xiaomi) кнопка подтверждения будет неактивна около 10 секунд — это встроенная задержка безопасности, а не баг, так что просто подождите.</string>
+    <string name="invite_install_unknown_sources">Если Android всё же блокирует установку, разрешите её для браузера в Настройки → Приложения → Особый доступ → Установка неизвестных приложений, затем попробуйте снова.</string>
 </resources>

@@ -2,6 +2,7 @@ package eu.siacs.conversations.ui.activity
 
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.compose.setContent
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -27,11 +28,14 @@ import eu.siacs.conversations.ui.DownloadPhase
 import eu.siacs.conversations.ui.ImpulseExpressiveTheme
 import eu.siacs.conversations.ui.UpdatesScreen
 import eu.siacs.conversations.ui.UpdatesUiState
+import eu.siacs.conversations.update.DownloadEtaTracker
 import eu.siacs.conversations.update.UpdateChecker
 import eu.siacs.conversations.update.UpdateDownloader
 import eu.siacs.conversations.update.UpdateInfo
 import eu.siacs.conversations.update.UpdatePreferences
+import eu.siacs.conversations.update.formatSpeedAndEta
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,6 +44,13 @@ import okhttp3.OkHttpClient
 class UpdatesActivity : ActionBarActivity() {
 
     private val prefs by lazy { UpdatePreferences(this) }
+    // At most one poll loop alive at a time — resumeActiveDownload() (onCreate) and
+    // startUserDownload() (a later user tap, including via triggerManualCheck()) both call
+    // pollDownload(); without this, a second call while the first is still looping starts a
+    // genuine duplicate — two coroutines both polling the same download and writing uiState, one
+    // of which can keep looping (and overwriting uiState back to DOWNLOADING with a stale
+    // progress read) even after the other already reached Complete/READY and quit cleanly.
+    private var pollJob: Job? = null
     private var uiState by mutableStateOf(UpdatesUiState())
     private var pendingInfo: UpdateInfo? = null
 
@@ -90,7 +101,6 @@ class UpdatesActivity : ActionBarActivity() {
                                 prefs.hasInstalledUpdate = true
                                 UpdateDownloader.installApk(this@UpdatesActivity, path)
                             },
-                            onShowUpdateSheet = { showUpdateSheet() },
                             onHideUpdateSheet = {
                                 uiState = uiState.copy(showUpdateSheet = false)
                             },
@@ -103,14 +113,6 @@ class UpdatesActivity : ActionBarActivity() {
         resumeActiveDownload()
     }
 
-    private fun showUpdateSheet() {
-        val currentPhase = uiState.downloadPhase
-        uiState = uiState.copy(
-            downloadPhase = if (currentPhase == DownloadPhase.IDLE) DownloadPhase.NO_WIFI_PENDING else currentPhase,
-            showUpdateSheet = true,
-        )
-    }
-
     private fun initState() {
         val rawVersion = BuildConfig.VERSION_NAME
         val currentVersion = UpdateChecker.stripBuildMeta(rawVersion)
@@ -120,8 +122,8 @@ class UpdatesActivity : ActionBarActivity() {
             packageManager.canRequestPackageInstalls()
         } else true
 
-        val apkExists = prefs.downloadedApkExists()
-        if (downloadedPath != null && !apkExists) prefs.downloadedApkPath = null
+        val apkExists = prefs.downloadedApkExists() && UpdateChecker.isNewerThanInstalled(prefs.downloadedVersion)
+        if (downloadedPath != null && !apkExists) prefs.clearDownload()
 
         val restoredPhase = when {
             apkExists -> DownloadPhase.READY
@@ -134,9 +136,18 @@ class UpdatesActivity : ActionBarActivity() {
             autoCheck = prefs.autoCheck,
             downloadPhase = restoredPhase,
             pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
+            releaseNotes = prefs.pendingReleaseNotes,
+            releaseTitle = prefs.pendingReleaseTitle,
             canInstallDirectly = canInstallDirectly,
             isFirstUpdate = !prefs.hasInstalledUpdate,
             showUpdateSheet = restoredPhase != DownloadPhase.IDLE,
+            // restoredPhase is never DOWNLOADING here (only resumeActiveDownload() sets that, and
+            // its own poll loop refreshes these within moments) — so these two are always stale
+            // leftovers from whatever the *previous* DOWNLOADING stretch last wrote. Without this,
+            // a correct "ready to install" button could sit next to a frozen "1.8 MB/s · 3s left"
+            // line forever, since nothing else here touches these fields.
+            downloadStatusText = null,
+            downloadSpeedText = null,
         )
     }
 
@@ -159,17 +170,63 @@ class UpdatesActivity : ActionBarActivity() {
                     uiState = uiState.copy(checkStatus = CheckStatus.UP_TO_DATE)
                 is UpdateChecker.CheckResult.ChannelBehind ->
                     uiState = uiState.copy(checkStatus = CheckStatus.CHANNEL_BEHIND)
+                is UpdateChecker.CheckResult.CheckFailed ->
+                    uiState = uiState.copy(checkStatus = CheckStatus.CHECK_FAILED)
                 is UpdateChecker.CheckResult.UpdateAvailable -> {
                     val info = result.info
+                    // The exact version already actively downloading — nothing to cancel or
+                    // restart, just refresh the check status/notes below and let it keep going.
+                    val alreadyDownloadingThisVersion =
+                        uiState.downloadPhase == DownloadPhase.DOWNLOADING &&
+                            prefs.pendingUpdateVersion == info.versionName
+                    // A different version's download can still be in flight in the background
+                    // (e.g. downloaded rc.104, then Check Now found rc.105 before it finished) —
+                    // starting a second download without cancelling the first would leave two
+                    // pollDownload loops racing to write prefs.downloadedVersion/downloadedApkPath,
+                    // and whichever download happens to finish first would stamp its file with
+                    // whatever version is currently in prefs.pendingUpdateVersion at that moment
+                    // (already overwritten below to the new version) — a real file/version
+                    // mismatch, not just a display glitch. Cancel the stale one first.
+                    if (uiState.downloadPhase == DownloadPhase.DOWNLOADING &&
+                        prefs.pendingUpdateVersion != null &&
+                        prefs.pendingUpdateVersion != info.versionName
+                    ) {
+                        withContext(Dispatchers.IO) {
+                            UpdateDownloader.cancelDownload(this@UpdatesActivity, prefs.activeDownloadId)
+                        }
+                        prefs.activeDownloadId = -1L
+                    }
                     pendingInfo = info
                     prefs.pendingUpdateVersion = info.versionName
                     prefs.pendingUpdateUrl = info.downloadUrl
+                    prefs.pendingReleaseNotes = info.releaseNotes
+                    prefs.pendingReleaseTitle = info.releaseTitle
                     if (info.versionName == prefs.downloadedVersion && prefs.downloadedApkExists()) {
                         // Already downloaded in full — go straight to install, don't refetch.
+                        // downloadStatusText/downloadSpeedText cleared explicitly: this is exactly
+                        // the "dismiss the sheet mid-download, hit Check Now again" path — without
+                        // this the correct READY button would sit next to whatever stale
+                        // "1.8 MB/s · 3s left" text pollDownload last wrote before this download
+                        // finished (possibly via a path this screen wasn't watching).
                         uiState = uiState.copy(
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,
                             downloadPhase = DownloadPhase.READY,
                             pendingVersion = info.versionName,
+                            releaseNotes = info.releaseNotes,
+                            releaseTitle = info.releaseTitle,
+                            showUpdateSheet = true,
+                            downloadStatusText = null,
+                            downloadSpeedText = null,
+                        )
+                    } else if (alreadyDownloadingThisVersion) {
+                        // Don't touch downloadPhase/downloadProgress here — pollDownload is still
+                        // running and owns those; restarting would just reset it to 0% for no
+                        // reason.
+                        uiState = uiState.copy(
+                            checkStatus = CheckStatus.UPDATE_AVAILABLE,
+                            pendingVersion = info.versionName,
+                            releaseNotes = info.releaseNotes,
+                            releaseTitle = info.releaseTitle,
                             showUpdateSheet = true,
                         )
                     } else if (UpdateDownloader.isWifiConnected(this@UpdatesActivity)) {
@@ -177,6 +234,8 @@ class UpdatesActivity : ActionBarActivity() {
                         uiState = uiState.copy(
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,
                             pendingVersion = info.versionName,
+                            releaseNotes = info.releaseNotes,
+                            releaseTitle = info.releaseTitle,
                             showUpdateSheet = true,
                         )
                         startUserDownload()
@@ -186,7 +245,11 @@ class UpdatesActivity : ActionBarActivity() {
                             checkStatus = CheckStatus.UPDATE_AVAILABLE,
                             downloadPhase = DownloadPhase.NO_WIFI_PENDING,
                             pendingVersion = info.versionName,
+                            releaseNotes = info.releaseNotes,
+                            releaseTitle = info.releaseTitle,
                             showUpdateSheet = true,
+                            downloadStatusText = null,
+                            downloadSpeedText = null,
                         )
                     }
                 }
@@ -202,7 +265,8 @@ class UpdatesActivity : ActionBarActivity() {
                 versionName = version,
                 channel = prefs.selectedChannel,
                 downloadUrl = url,
-                releaseNotes = "",
+                releaseNotes = prefs.pendingReleaseNotes ?: "",
+                releaseTitle = prefs.pendingReleaseTitle ?: "",
             )
         }
         val id = UpdateDownloader.startDownload(this, info)
@@ -215,26 +279,64 @@ class UpdatesActivity : ActionBarActivity() {
             downloadPhase = DownloadPhase.DOWNLOADING,
             downloadProgress = 0f,
             showUpdateSheet = true,
+            // A fresh download start shouldn't briefly show whatever speed/ETA text a previous
+            // attempt left behind before the first poll tick overwrites it.
+            downloadStatusText = null,
+            downloadSpeedText = null,
         )
         pollDownload(id)
     }
 
     private fun pollDownload(id: Long) {
-        lifecycleScope.launch {
+        val trackedVersion = prefs.pendingUpdateVersion
+        pollJob?.cancel()
+        pollJob = lifecycleScope.launch {
+            val etaTracker = DownloadEtaTracker()
             while (true) {
+                // activeDownloadId no longer pointing at this id has two different causes, not
+                // one: a genuinely different download superseded this one (see triggerManualCheck)
+                // — nothing to show, just stop; or this *exact* download simply finished via a
+                // concurrent watcher instead of this loop (UpdateCheckHelper.awaitDownload(),
+                // which the beta/alpha on-launch background check runs independently and can race
+                // this one to the same id's completion). Silently bailing out either way used to
+                // leave the screen stuck showing DOWNLOADING with a frozen progress/ETA forever in
+                // the second case, since nothing else was left to move it on to READY.
+                if (prefs.activeDownloadId != id) {
+                    resolveIfFinishedElsewhere(trackedVersion)
+                    return@launch
+                }
                 val progress = withContext(Dispatchers.IO) {
                     UpdateDownloader.queryProgress(this@UpdatesActivity, id)
                 }
+                if (prefs.activeDownloadId != id) {
+                    resolveIfFinishedElsewhere(trackedVersion)
+                    return@launch
+                }
                 when (progress) {
                     is UpdateDownloader.DownloadProgress.InProgress -> {
+                        // Only STATUS_RUNNING clears statusText to null — paused/queued states
+                        // set it, which doubles as our signal that bytes aren't actually moving
+                        // right now, so speed/ETA would be meaningless.
+                        val sampled = etaTracker.sample(
+                            nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                            downloadedBytes = progress.downloadedBytes,
+                            totalBytes = progress.totalBytes,
+                            activelyRunning = progress.statusText == null,
+                        )
+                        val speedText = sampled?.let { (bps, eta) -> formatSpeedAndEta(this@UpdatesActivity, bps, eta) }
                         uiState = uiState.copy(
                             downloadPhase = DownloadPhase.DOWNLOADING,
                             downloadProgress = progress.fraction,
                             downloadStatusText = progress.statusText,
+                            downloadSpeedText = speedText,
                         )
                     }
                     is UpdateDownloader.DownloadProgress.Complete -> {
-                        uiState = uiState.copy(downloadPhase = DownloadPhase.PROCESSING, downloadStatusText = null)
+                        uiState = uiState.copy(
+                            downloadPhase = DownloadPhase.PROCESSING,
+                            downloadStatusText = null,
+                            downloadSpeedText = null,
+                        )
                         prefs.downloadedVersion = prefs.pendingUpdateVersion
                         prefs.downloadedApkPath = progress.localUri
                         prefs.activeDownloadId = -1L
@@ -248,6 +350,7 @@ class UpdatesActivity : ActionBarActivity() {
                         uiState = uiState.copy(
                             downloadPhase = DownloadPhase.DOWNLOADING,
                             downloadStatusText = progress.reasonText,
+                            downloadSpeedText = null,
                         )
                         prefs.activeDownloadId = -1L
                         delay(4000)
@@ -261,22 +364,54 @@ class UpdatesActivity : ActionBarActivity() {
         }
     }
 
+    /** Same reasoning as UpdateSheetFragment's twin — see its doc comment. */
+    private fun resolveIfFinishedElsewhere(trackedVersion: String?) {
+        if (trackedVersion != null &&
+            trackedVersion == prefs.downloadedVersion &&
+            prefs.downloadedApkExists()
+        ) {
+            uiState = uiState.copy(
+                downloadPhase = DownloadPhase.READY,
+                downloadStatusText = null,
+                downloadSpeedText = null,
+            )
+        }
+    }
+
     private fun cancelDownload() {
         val id = prefs.activeDownloadId
         uiState = uiState.copy(
             downloadPhase = DownloadPhase.CANCELING,
             cancelConfirmVisible = false,
+            // Otherwise the last-seen speed/ETA line lingers underneath the cancel animation
+            // instead of disappearing the moment cancellation starts.
+            downloadStatusText = null,
+            downloadSpeedText = null,
         )
+        // Mark this id as no longer active *before* doing the actual (I/O, non-instant) cancel
+        // work below, not after — see UpdateSheetFragment.cancelDownload()'s doc comment for the
+        // exact race this closes (pollDownload's own in-flight poll otherwise overwriting
+        // CANCELING back to DOWNLOADING for a moment).
+        prefs.activeDownloadId = -1L
+        prefs.clearPending()
         lifecycleScope.launch {
+            val enteredCancelingAt = SystemClock.elapsedRealtime()
             if (id != -1L) {
                 withContext(Dispatchers.IO) {
                     UpdateDownloader.cancelDownload(this@UpdatesActivity, id)
                 }
             }
-            prefs.activeDownloadId = -1L
-            prefs.clearPending()
-            delay(600)
+            // Same floor as UpdateSheetFragment.cancelDownload() — the cancel work above is
+            // near-instant, so without this the CANCELING phase's shape-morph would flash and
+            // vanish before it's legible. Only ever adds delay, never cuts short.
+            val elapsed = SystemClock.elapsedRealtime() - enteredCancelingAt
+            val remaining = MIN_CANCELING_DISPLAY_MS - elapsed
+            if (remaining > 0) delay(remaining)
             finish()
         }
+    }
+
+    companion object {
+        private const val MIN_CANCELING_DISPLAY_MS = 3000L
     }
 }

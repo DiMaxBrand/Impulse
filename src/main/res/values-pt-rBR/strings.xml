@@ -85,7 +85,6 @@
     <string name="send_unencrypted_message">Enviar mensagem sem criptografia</string>
     <string name="send_message">Enviar mensagem</string>
     <string name="send_message_to_x">Enviar mensagem para %s</string>
-    <string name="send_omemo_x509_message">Enviar mensagem criptografada via v\\OMEMO</string>
     <string name="your_nick_has_been_changed">Seu apelido foi alterado</string>
     <string name="send_unencrypted">Enviar sem criptografia</string>
     <string name="decryption_failed">A descriptografia falhou. Talvez você não tenha a chave privada necessária.</string>
@@ -948,7 +947,6 @@
     <string name="title_activity_share_with">Compartilhar com…</string>
     <string name="action_archive_chat">Arquivar conversa</string>
     <string name="title_activity_new_chat">Nova conversa</string>
-    <string name="send_encrypted_message">Enviar mensagem criptografada</string>
     <string name="account_state_logged_out">Desconectada</string>
     <string name="remove_bookmark">Gostaria de remover o favorito de %s?</string>
     <string name="unsupported_operation">Operação não suportada</string>

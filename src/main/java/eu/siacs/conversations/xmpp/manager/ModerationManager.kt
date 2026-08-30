@@ -74,7 +74,7 @@ class ModerationManager(
             handleDirectRetraction(message, from)
             return
         }
-        if (from.isFullJid() || message.getType() != Message.Type.GROUPCHAT) {
+        if (message.getType() != Message.Type.GROUPCHAT) {
             Log.d(
                 Config.LOGTAG,
                 "received retraction from $from but retractions are only supported in MUC"
@@ -86,13 +86,6 @@ class ModerationManager(
             Log.d(
                 Config.LOGTAG,
                 "${account.getJid().asBareJid()}: received retraction in MUC w/o state"
-            )
-            return
-        }
-        if (mucOptions.isPrivateAndNonAnonymous()) {
-            Log.d(
-                Config.LOGTAG,
-                "${account.getJid().asBareJid()}: retractions are only supported in public channels"
             )
             return
         }

@@ -9,8 +9,13 @@ import org.json.JSONObject
 class UpdateChecker(private val client: OkHttpClient) {
 
     fun checkForUpdate(channel: UpdateChannel): CheckResult {
-        val releases = fetchReleases() ?: return CheckResult.UpToDate
-        val current = parseVersion(stripBuildMeta(BuildConfig.VERSION_NAME)) ?: return CheckResult.UpToDate
+        // fetchReleases() returns null only on a genuine failure to check (no connectivity, a
+        // timeout, GitHub erroring/rate-limiting, an unparseable response) -- never for a
+        // legitimately empty release list, which parses fine as an empty List. Treating that
+        // failure as UpToDate would tell the user they're current when the check never actually
+        // ran; CheckFailed keeps "we don't know" distinct from "confirmed you're current."
+        val releases = fetchReleases() ?: return CheckResult.CheckFailed
+        val current = parseVersion(stripBuildMeta(BuildConfig.VERSION_NAME)) ?: return CheckResult.CheckFailed
 
         val best = releases
             .filter { releaseMatchesChannel(it.optString("tag_name"), channel) }
@@ -18,19 +23,21 @@ class UpdateChecker(private val client: OkHttpClient) {
                 val tag = release.optString("tag_name")
                 val version = parseVersion(tag) ?: return@mapNotNull null
                 val apkUrl = findApkAsset(release) ?: return@mapNotNull null
-                Triple(version, apkUrl, tag)
+                Triple(version, apkUrl, tag) to release
             }
-            .maxWithOrNull { a, b -> compareSemver(a.first, b.first) }
+            .maxWithOrNull { (a, _), (b, _) -> compareSemver(a.first, b.first) }
             ?: return CheckResult.UpToDate
+        val (bestTriple, bestRelease) = best
 
-        val cmp = compareSemver(best.first, current)
+        val cmp = compareSemver(bestTriple.first, current)
         return when {
             cmp > 0 -> CheckResult.UpdateAvailable(
                 UpdateInfo(
-                    versionName = best.third,
+                    versionName = bestTriple.third,
                     channel = channel,
-                    downloadUrl = best.second,
-                    releaseNotes = "",
+                    downloadUrl = bestTriple.second,
+                    releaseNotes = bestRelease.optString("body"),
+                    releaseTitle = bestRelease.optString("name"),
                 )
             )
             cmp < 0 -> CheckResult.ChannelBehind
@@ -44,6 +51,41 @@ class UpdateChecker(private val client: OkHttpClient) {
         // The best release on this channel is older than what is currently installed.
         // Shown when the user switches to a less-cutting-edge channel mid-cycle.
         object ChannelBehind : CheckResult()
+        // The check itself couldn't complete (no connectivity, a timeout, GitHub
+        // erroring/rate-limiting, an unparseable response) -- never claim UpToDate for this.
+        object CheckFailed : CheckResult()
+    }
+
+    /** Every published release with an APK asset, newest first, regardless of channel or how
+     * it compares to the installed version. Powers the developer-options manual version picker,
+     * which deliberately bypasses the checkForUpdate() upgrade-only restriction. */
+    fun listReleases(): List<UpdateInfo> {
+        val releases = fetchReleases() ?: return emptyList()
+        return releases
+            .mapNotNull { release ->
+                val tag = release.optString("tag_name")
+                if (tag.isNullOrEmpty()) return@mapNotNull null
+                val version = parseVersion(tag) ?: return@mapNotNull null
+                val apkUrl = findApkAsset(release) ?: return@mapNotNull null
+                Triple(version, apkUrl, tag) to release
+            }
+            .sortedWith { (a, _), (b, _) -> compareSemver(b.first, a.first) }
+            .map { (triple, release) ->
+                val (_, apkUrl, tag) = triple
+                val channel = when {
+                    tag.contains("-alpha.") -> UpdateChannel.ALPHA
+                    tag.contains("-beta.") -> UpdateChannel.BETA
+                    tag.contains("-rc.") -> UpdateChannel.RC
+                    else -> UpdateChannel.STABLE
+                }
+                UpdateInfo(
+                    versionName = tag,
+                    channel = channel,
+                    downloadUrl = apkUrl,
+                    releaseNotes = release.optString("body"),
+                    releaseTitle = release.optString("name"),
+                )
+            }
     }
 
     private fun fetchReleases(): List<JSONObject>? {
@@ -124,6 +166,19 @@ class UpdateChecker(private val client: OkHttpClient) {
                 }
             }
             return SemVer(major, minor, patch, preType, preNum)
+        }
+
+        // Shared by every place that decides whether a *stored* version string (pending or
+        // already-downloaded) is still worth acting on — file/pref presence alone isn't enough,
+        // since whatever wrote it can only be trusted at the moment it ran; what's actually
+        // installed can move on without that state ever being told to reconcile. Always re-derive
+        // from BuildConfig.VERSION_NAME — the one source of truth for what's running right now —
+        // rather than some other cached "current version" value that could itself be stale.
+        fun isNewerThanInstalled(versionName: String?): Boolean {
+            if (versionName == null) return false
+            val current = parseVersion(stripBuildMeta(BuildConfig.VERSION_NAME)) ?: return true
+            val candidate = parseVersion(versionName) ?: return false
+            return compareSemver(candidate, current) > 0
         }
 
         fun compareSemver(a: SemVer, b: SemVer): Int {

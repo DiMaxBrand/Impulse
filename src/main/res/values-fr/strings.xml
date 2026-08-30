@@ -89,7 +89,6 @@
     <string name="send_unencrypted_message">Envoyer un message non-chiffré</string>
     <string name="send_message">Envoyer le message</string>
     <string name="send_message_to_x">Envoyer un message à %s</string>
-    <string name="send_omemo_x509_message">Envoyer un message chiffré avec v\\OMEMO</string>
     <string name="your_nick_has_been_changed">Votre pseudo a été changé</string>
     <string name="send_unencrypted">Envoyer non-chiffré</string>
     <string name="decryption_failed">Échec du déchiffrement. Peut-être que vous n\'avez pas la bonne clé privée.</string>
@@ -1027,7 +1026,6 @@
     <string name="channel_discover_opt_in_message">La découverte de salons utilise un service tier appelé &lt;a href=https://search.jabber.network&gt;search.jabber.network&lt;/a&gt;.&lt;br&gt;&lt;br&gt; Utiliser cette fonctionnalité va transmettre votre adresse IP et votre recherche à ce service. Voir leur &lt;a href=https://search.jabber.network/privacy&gt;Politique de confidentialité&lt;/a&gt; pour plus d\'informations.</string>
     <string name="action_archive_chat">Archiver la conversation</string>
     <string name="archive_this_chat">Supprimer cette conversation ensuite</string>
-    <string name="send_encrypted_message">Envoyer un message chiffré</string>
     <string name="title_undo_swipe_out_chat">Conversation archivée</string>
     <string name="switch_to_chat">Se rendre à la conversation</string>
     <string name="contact_uses_unverified_keys">Votre contact utilise un appareil qui n\'est pas encore vérifié. Scannez son QR code pour effectuer une vérification et éviter une attaque de l\'homme du milieu.</string>

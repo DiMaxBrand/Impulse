@@ -585,9 +585,18 @@ public class MessageParser extends AbstractParser
                             final String uuid = replacedMessage.getUuid();
                             replacedMessage.setUuid(UUID.randomUUID().toString());
                             replacedMessage.setBody(message.getBody());
-                            // we store the IDs of the replacing message. This is essentially unused
-                            // today (only the fact that there are _some_ edits causes the edit icon
-                            // to appear)
+                            // Deliberately NOT updating remoteMsgId here: the sender's <replace>
+                            // (and our own "editing" indicator, see sendEditingStanza()) always
+                            // references editedIdWireFormat — the very first, pre-edit id — for
+                            // every subsequent edit too, and
+                            // findMessageWithRemoteIdAndCounterpart()
+                            // above matches the *next* correction against this exact field. Once
+                            // our own "displayed"/receipt marker for this message is sent, it goes
+                            // out tagged with this same original id — the sender's own
+                            // findSentMessageWithUuidOrRemoteId() falls back to checking whether
+                            // that id was *ever* one of their message's ids (Message.edits, via
+                            // wasEverKnownAs()), which it always is (edits[0]), so their checkmark
+                            // still resolves correctly without this needing to track the latest id.
                             replacedMessage.putEdited(
                                     message.getRemoteMsgId(), message.getServerMsgId());
 
@@ -629,6 +638,20 @@ public class MessageParser extends AbstractParser
                             }
                         }
                         mXmppConnectionService.getNotificationService().updateNotification();
+                        // The scroll-based "mark read" trigger in the UI only fires on a scroll
+                        // *transition* to the bottom — a correction that updates a message
+                        // already sitting on screen (user already at the bottom) doesn't move
+                        // the scroll position, so that trigger never re-fires and the message
+                        // would sit marked unread indefinitely despite being actively visible.
+                        // Send the receipt directly here instead, exactly like the UI would if
+                        // it noticed.
+                        if (replacedMessage.getStatus() == Message.STATUS_RECEIVED
+                                && mXmppConnectionService
+                                        .getNotificationService()
+                                        .isConversationOpen(conversation)) {
+                            mXmppConnectionService.sendReadMarker(
+                                    conversation, replacedMessage.getUuid());
+                        }
                         return;
                     } else {
                         Log.d(
@@ -851,13 +874,30 @@ public class MessageParser extends AbstractParser
         if (editingEl != null) {
             final String editingId = editingEl.getAttribute("id");
             final String editingAction = editingEl.getAttribute("action");
-            if (editingId != null && editingAction != null) {
-                // editingId is the sender's remoteMsgId. Resolve it to the local UUID so the
-                // receiver's UI can look it up by its own message UUID.
-                String localUuid = editingId;
-                if (from != null) {
-                    final eu.siacs.conversations.entities.Conversation conv =
-                            mXmppConnectionService.find(account, from.asBareJid());
+            if (editingId != null && editingAction != null && from != null) {
+                final eu.siacs.conversations.entities.Conversation conv =
+                        mXmppConnectionService.find(account, from.asBareJid());
+                // A MUC room reflects a broadcast message back to its own sender the same way it
+                // does for everyone else's — without this check, that reflection of OUR OWN
+                // "editing" indicator gets mistaken for a genuine notification about our own
+                // message (findMessageWithRemoteId below fails to match it, since our own sent
+                // messages never populate remoteMsgId, so it silently falls back to using
+                // editingId itself — which happens to already equal our own message's local
+                // UUID), permanently marking our own outgoing message as remotely-being-edited.
+                // That hides its footer (including the read/delivered checkmark) until a "stop"
+                // reflection happens to be processed too, which isn't guaranteed — e.g. abandoning
+                // an edit by navigating away instead of explicitly cancelling never sends one.
+                final boolean isOwnReflection =
+                        conv != null
+                                && conv.getMode()
+                                        == eu.siacs.conversations.entities.Conversation.MODE_MULTI
+                                && getManager(MultiUserChatManager.class)
+                                        .getOrCreateState(conv)
+                                        .isSelf(from);
+                if (!isOwnReflection) {
+                    // editingId is the sender's remoteMsgId. Resolve it to the local UUID so the
+                    // receiver's UI can look it up by its own message UUID.
+                    String localUuid = editingId;
                     if (conv != null) {
                         final eu.siacs.conversations.entities.Message found =
                                 conv.findMessageWithRemoteId(editingId, from);
@@ -865,9 +905,41 @@ public class MessageParser extends AbstractParser
                             localUuid = found.getUuid();
                         }
                     }
+                    mXmppConnectionService.updateRemoteEditingIndicator(
+                            localUuid, "start".equals(editingAction));
                 }
-                mXmppConnectionService.updateRemoteEditingIndicator(
-                        localUuid, "start".equals(editingAction));
+            }
+            return;
+        }
+
+        final eu.siacs.conversations.xml.Element listenEl =
+                original.findChild("listening", Namespace.IMPULSE_LISTEN_STATUS);
+        if (listenEl != null) {
+            final String listenId = listenEl.getAttribute("id");
+            final String listenState = listenEl.getAttribute("state");
+            if (listenId != null && listenState != null && from != null) {
+                final eu.siacs.conversations.entities.Conversation conv =
+                        mXmppConnectionService.find(account, from.asBareJid());
+                // 1:1 only. The id references a message WE sent — the peer knows it by the id
+                // on the wire, which findSentMessageWithUuidOrRemoteId resolves either way.
+                if (conv != null
+                        && conv.getMode()
+                                == eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {
+                    final eu.siacs.conversations.entities.Message found =
+                            conv.findSentMessageWithUuidOrRemoteId(listenId);
+                    if (found != null && found.getUuid() != null) {
+                        eu.siacs.conversations.ui.ListenStatusManager.onPeerTransition(
+                                found.getUuid(), listenState);
+                        // The terminal state survives restarts; ephemeral ones stay in memory.
+                        if (eu.siacs.conversations.entities.Message.LISTEN_STATUS_LISTENED.equals(
+                                listenState)) {
+                            found.setListenStatus(
+                                    eu.siacs.conversations.entities.Message.LISTEN_STATUS_LISTENED);
+                            mXmppConnectionService.updateMessage(found, false);
+                        }
+                        mXmppConnectionService.updateConversationUi();
+                    }
+                }
             }
             return;
         }

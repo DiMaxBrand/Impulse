@@ -9,7 +9,6 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.security.KeyChain;
 import android.security.KeyChainAliasCallback;
@@ -30,8 +29,8 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.databinding.DataBindingUtil;
@@ -76,7 +75,6 @@ import eu.siacs.conversations.ui.util.SoftKeyboardUtils;
 import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.CryptoHelper;
 import eu.siacs.conversations.utils.Resolver;
-import eu.siacs.conversations.utils.SignupUtils;
 import eu.siacs.conversations.utils.TorServiceUtils;
 import eu.siacs.conversations.utils.UIHelper;
 import eu.siacs.conversations.xmpp.Jid;
@@ -170,6 +168,7 @@ public class EditAccountActivity extends OmemoActivity
     private MiniUri.Xmpp pendingUri = null;
     private boolean mUseTor;
     private ActivityEditAccountBinding binding;
+
     private final OnClickListener mSaveButtonClickListener =
             new OnClickListener() {
 
@@ -479,12 +478,6 @@ public class EditAccountActivity extends OmemoActivity
         return super.onNavigateUp();
     }
 
-    @Override
-    public void onBackPressed() {
-        deleteAccountAndReturnIfNecessary();
-        super.onBackPressed();
-    }
-
     private void deleteAccountAndReturnIfNecessary() {
         if (mInitMode
                 && mAccount != null
@@ -716,6 +709,22 @@ public class EditAccountActivity extends OmemoActivity
                 (v) -> {
                     requestPermissionAndScanQrCode();
                 });
+
+        // Predictive back: OnBackPressedCallback instead of overriding the deprecated
+        // onBackPressed() lets the system show its live back-gesture preview/animation. Runs the
+        // same cleanup as before, then disables itself and re-dispatches so the default back
+        // behavior (finishing this activity) still happens.
+        getOnBackPressedDispatcher()
+                .addCallback(
+                        this,
+                        new OnBackPressedCallback(true) {
+                            @Override
+                            public void handleOnBackPressed() {
+                                deleteAccountAndReturnIfNecessary();
+                                setEnabled(false);
+                                getOnBackPressedDispatcher().onBackPressed();
+                            }
+                        });
     }
 
     private void onEditYourNameClicked(View view) {
@@ -1105,11 +1114,10 @@ public class EditAccountActivity extends OmemoActivity
     }
 
     private void changePresence() {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean manualStatus =
-                sharedPreferences.getBoolean(
-                        AppSettings.MANUALLY_CHANGE_PRESENCE,
-                        getResources().getBoolean(R.bool.manually_change_presence));
+        // Routed through AppSettings (currently hardcoded false — see
+        // AppSettings.isUserManagedAvailability()) instead of reading the raw preference
+        // directly, so this picker stays hidden even if the underlying pref is ever true.
+        boolean manualStatus = new AppSettings(this).isUserManagedAvailability();
         final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
         final DialogPresenceBinding binding =
                 DataBindingUtil.inflate(getLayoutInflater(), R.layout.dialog_presence, null, false);
@@ -1221,8 +1229,7 @@ public class EditAccountActivity extends OmemoActivity
         final String displayName = mAccount.getDisplayName();
         updateDisplayName(displayName);
 
-        final boolean togglePassword =
-                !mAccount.isOptionSet(Account.OPTION_LOGGED_IN_SUCCESSFULLY);
+        final boolean togglePassword = !mAccount.isOptionSet(Account.OPTION_LOGGED_IN_SUCCESSFULLY);
         final boolean neverLoggedIn =
                 !mAccount.isOptionSet(Account.OPTION_LOGGED_IN_SUCCESSFULLY)
                         && QuickConversationsService.isConversations();
