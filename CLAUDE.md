@@ -131,11 +131,21 @@ Pattern: write `.kt`, delete `.java`, keep the same package.
 
 ## Build
 
+**Local verification is compile-only — never run a full assemble locally.**
+
 ```bash
-./gradlew assembleConversationsFreeRelease   # signed release APK
-./gradlew assembleConversationsFreeDebug     # debug APK
+./gradlew compileConversationsFreeDebugKotlin   # local check: confirms it compiles, nothing else
 ```
 
-Output APKs land in `build/outputs/apk/conversationsFree/release/`.
+Actual APK builds (`assembleConversationsFreeRelease`/`assembleConversationsFreeDebug`,
+signing included) only happen via the GitHub Actions release workflow
+(`.github/workflows/release.yml`), triggered explicitly. Do not run
+`./gradlew assemble*` locally — that's the CI/CD step, not a local one, even
+to "double-check" something the compile step already covers. If something
+needs verifying beyond compilation, trigger the workflow and check its result
+instead of building locally.
+
+Output APKs from the CI build land in `build/outputs/apk/conversationsFree/release/`
+inside that workflow's run.
 
 AGP 9.2.1 has built-in Kotlin support — no separate Kotlin plugin needed.
