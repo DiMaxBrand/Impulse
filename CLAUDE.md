@@ -164,6 +164,49 @@ Stable is at `1.14.1`. Nothing pending in CI.
 - **Deferred, explicitly not bundled into this work**: the "Bug-report tracking ID + fix
   notification" TODO.md item (unblocked now that stable releases are real, but unrelated
   to predictive back — full spec already in TODO.md, do it as its own dedicated session).
+- **Confirmed final decision, not just tentative**: do not cut a stable release for
+  `1.15.0-beta.2`. Keep building on this same minor version instead (see the notification
+  sound / font relaunch handoff below, which is what's actually happening next — this
+  predictive-back thread is parked, not the active one).
+
+## Session handoff: notification sound fixes + Google Sans Flex relaunch (2026-08-30)
+
+A message from the session that wrote this: I don't have the conversation that produced
+the work below — it happened in a session before this one, and wasn't summarized into my
+context. Everything here is reconstructed from `git log`/`git diff` on the branch, not
+first-hand memory. Treat the branch's own commits as the primary source of truth, not this
+note. If you (the next session) need something that's genuinely only in the user's head —
+not discoverable from the codebase — just ask in chat addressed to Dima; he copy-pastes
+prompts between sessions by hand, so a question phrased for him will get relayed and
+answered even though there's no direct channel between us.
+
+- **Target branch: `notification-setup-screen`** (remote, unmerged into `listening_status`).
+  It forked at `d5c141418` ("Isolate update APKs in their own subfolder") — a long way back,
+  before the Compose chat-screen rewrite, the whole grouped-photo pipeline, save/download
+  cards, and the predictive-back work above. Expect real rebase/merge conflicts; don't
+  assume a clean fast-forward.
+- **What's on it**, per its commit history:
+  - Notification channel sound workarounds for OEMs that strip channel sounds — HyperOS/Xiaomi
+    detection (`ro.mi.os.version.name`), ringtone-picker wiring for both message and call
+    channels, a fix treating `Uri.EMPTY` as "no sound," a missed-calls-channel sound fix.
+  - An adaptive "notification setup screen" shown on first launch and re-triggered by a
+    version-number bump, with current-ringtone-name display on its cards.
+  - Google Sans Flex variable-font integration — bundled locally first, then switched to the
+    official `fonts.gstatic.com` build, used on the welcome-screen title. This is the same
+    font work TODO.md's "Typography & UI refresh" section describes (Developer Options font
+    demo, new Welcome Screen) — that TODO entry and this branch are the same thread.
+  - Version on that branch was last bumped to `1.12.0-alpha.1` — long stale, ignore it;
+    re-derive the real next version from wherever `listening_status` actually is once this
+    lands, per the normal versioning rules above.
+- **Don't confuse with**: `claude/per-contact-notification-sounds-g05xp7`, a separate,
+  more recent branch — per-contact notification sound *selection*, a different feature from
+  the OEM-channel-sound-stripping workaround above.
+- **Versioning**: user explicitly confirmed this ships as a **MINOR** bump when ready — a
+  big visible relaunch (new font, fixed notification sounds, refreshed welcome screen), not
+  a real breaking change, despite "major" being used loosely in conversation at first.
+- Not blocked on, and not blocking, the predictive-back thread above — parallel, unrelated
+  work. `listening_status` currently sits at `1.15.0-beta.2` with no stable cut planned for
+  that beta; this thread continues on the same minor version rather than starting a new one.
 
 ## Localization
 
