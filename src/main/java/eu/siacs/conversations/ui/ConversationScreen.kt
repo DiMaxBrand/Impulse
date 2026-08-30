@@ -2470,21 +2470,6 @@ private fun MediaGroupRow(
                             corners = remember(item.firstOfGroup, item.lastOfGroup, outgoing) {
                                 mediaGridCorners(item.firstOfGroup, item.lastOfGroup, outgoing)
                             },
-                            // The tail-side content inset above is widened for the whole cell
-                            // column so the tail curl (which only bulges near the very bottom)
-                            // never clips a full-height cell's image — but that same wide inset
-                            // wrongly starves a *top-row* cell's own corner too, even though the
-                            // curl is nowhere near it. topRowCorners reuses the plain, non-tail
-                            // shape (forcing lastOfGroup = false) for cells that only occupy the
-                            // grid's top row, so their corner nests against the normal 4dp margin
-                            // instead of the tail's wider one.
-                            topRowCorners = remember(item.firstOfGroup, outgoing) {
-                                mediaGridCorners(
-                                    firstOfGroup = item.firstOfGroup,
-                                    lastOfGroup = false,
-                                    outgoing = outgoing,
-                                )
-                            },
                             selectionActive = selectionActive,
                             selectedUuids = selectedUuids,
                             onCellTap = { tapped ->
@@ -2544,11 +2529,6 @@ private data class GridCorners(val topStart: Dp, val topEnd: Dp, val bottomStart
 private fun mediaGridCorners(firstOfGroup: Boolean, lastOfGroup: Boolean, outgoing: Boolean): GridCorners {
     val top = if (firstOfGroup) CORNER_LARGE else CORNER_SMALL
     val sideMargin = 4.dp
-    // The tail side's content padding is wider (see MediaGroupRow's own tailPad) to clear the
-    // tail curl — that pushes *both* corners on that same side further from the bubble's own
-    // corner arc, not just the curl itself, so the still-plain-rounded corner on that side needs
-    // the wider margin too, not the default 4dp.
-    val tailMargin = if (lastOfGroup) sideMargin + TAIL_WIDTH else sideMargin
     fun nest(outer: Dp, margin: Dp) = (outer - margin).coerceAtLeast(MEDIA_CELL_MIN_CORNER)
     return if (!lastOfGroup) {
         // Plain RoundedCornerShape case (rememberBubbleShape's non-tail branch) — every corner
@@ -2571,19 +2551,23 @@ private fun mediaGridCorners(firstOfGroup: Boolean, lastOfGroup: Boolean, outgoi
     } else {
         // bubbleTailShape's corners — three plain rounded corners plus a curl on the tail side.
         // The curl isn't a circular corner at all, so there's nothing to nest against there; it
-        // keeps the shared default. The *other* corner on that same side is still a real rounded
-        // corner, but sits behind the wider tail-side margin, not the plain 4dp the two corners on
-        // the opposite side get.
+        // keeps the shared default. The *other* corner on that same side (the one this row's own
+        // content padding widens to clear the curl, see MediaGroupRow's tailPad) still nests
+        // against the plain 4dp margin, not the wider one: bubbleTailShape's own path only bulges
+        // out near the very bottom of that side (the last TAIL_HEIGHT), so at the top the real
+        // bubble edge sits at the exact same position as the non-tail case — nesting against the
+        // wider margin there was computing a corner for an edge that isn't actually there,
+        // flattening it far more than the bubble's real corner ever does.
         if (outgoing) {
             GridCorners(
                 topStart = nest(CORNER_LARGE, sideMargin),
-                topEnd = nest(top, tailMargin),
+                topEnd = nest(top, sideMargin),
                 bottomStart = nest(CORNER_LARGE, sideMargin),
                 bottomEnd = MEDIA_CELL_DEFAULT_CORNER,
             )
         } else {
             GridCorners(
-                topStart = nest(top, tailMargin),
+                topStart = nest(top, sideMargin),
                 topEnd = nest(CORNER_LARGE, sideMargin),
                 bottomStart = MEDIA_CELL_DEFAULT_CORNER,
                 bottomEnd = nest(CORNER_LARGE, sideMargin),
@@ -2614,12 +2598,6 @@ private fun MediaGridContent(
     messages: List<Message>,
     revision: Int,
     corners: GridCorners,
-    // Same shape as [corners] but always computed as if this row weren't the group's last —
-    // i.e. no tail-side flattening. Full-height cells (the 2-cell layout, the 3-cell hero) sit in
-    // the tail's widened inset for their entire span and need [corners]' tail-aware value; a cell
-    // that's only ever in the grid's top row (3-cell's top-of-stack cell, the 2x2 layout's top
-    // row) never reaches the curl at all and should nest against the plain margin instead.
-    topRowCorners: GridCorners,
     selectionActive: Boolean,
     selectedUuids: List<String>,
     onCellTap: (Message) -> Unit,
@@ -2678,7 +2656,7 @@ private fun MediaGridContent(
                 MediaGridCell(
                     messages[1],
                     Modifier.weight(1f).fillMaxWidth()
-                        .clip(cellShape(topRowCorners, topEnd = true)),
+                        .clip(cellShape(corners, topEnd = true)),
                     onCellTap,
                     onCellLongTap,
                     revision = revision,
@@ -2704,7 +2682,7 @@ private fun MediaGridContent(
                     MediaGridCell(
                         messages[0],
                         Modifier.weight(1f).aspectRatio(4f / 5f)
-                            .clip(cellShape(topRowCorners, topStart = true)),
+                            .clip(cellShape(corners, topStart = true)),
                         onCellTap,
                         onCellLongTap,
                         revision = revision,
@@ -2714,7 +2692,7 @@ private fun MediaGridContent(
                     MediaGridCell(
                         messages[1],
                         Modifier.weight(1f).aspectRatio(4f / 5f)
-                            .clip(cellShape(topRowCorners, topEnd = true)),
+                            .clip(cellShape(corners, topEnd = true)),
                         onCellTap,
                         onCellLongTap,
                         revision = revision,
