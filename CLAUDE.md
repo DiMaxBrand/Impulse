@@ -98,6 +98,73 @@ geo → `ShowLocationActivity`, web+ap → handler or HTTPS fallback).
 - Context sheet (`MessageContextSheet`) currently implements: reply, copy text,
   correct, open file, download file, add reaction. See TODO.md for the backlog.
 
+## Session handoff: predictive back custom transitions (2026-08-30)
+
+Current version: `1.15.0-beta.2` (baseVersionCode 42465), confirmed green/published.
+Stable is at `1.14.1`. Nothing pending in CI.
+
+- **beta.1** migrated the 5 legacy View-based screens that had opted out of
+  predictive back (`android:enableOnBackInvokedCallback="false"` in the manifest)
+  because they overrode the deprecated `onBackPressed()`: `ScanQrCodeActivity`,
+  `EditAccountActivity`, `ConferenceDetailsActivity`, `RtpSessionActivity`,
+  `ContactDetailsActivity`. Each now registers an `androidx.activity.OnBackPressedCallback`
+  via `getOnBackPressedDispatcher().addCallback(...)` in `onCreate()` instead, and the
+  manifest opt-outs are gone — every Activity now inherits the app-level
+  `enableOnBackInvokedCallback="true"`. The Compose screens (`ConversationScreen`,
+  `MediaViewerActivity`, `StartConversationScreen`, `ConversationComposeFragment`)
+  already used Compose's `BackHandler` and needed no change.
+- **beta.2** fixed an unrelated bug found while testing beta.1 on device: `UpdateChecker`
+  silently reported "Up to date" when the check itself failed (no internet, timeout,
+  GitHub erroring). New `CheckResult.CheckFailed`/`CheckStatus.CHECK_FAILED` with its own
+  status text, EN+RU. Unrelated to predictive back, just landed in the same beta cycle.
+- **What's NOT done yet — this is the actual next task**: none of the 5 migrated screens
+  (or the Compose ones) have a *custom* predictive-back transition. Every screen currently
+  gets whatever the system draws by default — which on the user's own device is nothing
+  visible at all, since the OS-level predictive-back visual is gated behind a hidden,
+  inconsistent per-device/OEM toggle (Settings → System → Developer options → "Predictive
+  back animations"), separate from the app-level opt-in. Confirmed via direct testing.
+- **Researched two real open-source apps to see how they get a reliable, custom
+  transition regardless of that toggle** (both confirmed via their actual public source,
+  not guessed):
+  - [Econ01/HydroTracker](https://github.com/Econ01/HydroTracker) migrated to Jetpack
+    **Navigation3** (`androidx.navigation3`) and uses `NavDisplay`'s
+    `predictivePopTransitionSpec = { swipeEdge -> ... }`, which hands you the live swipe
+    edge (`NavigationEvent.EDGE_LEFT`/`EDGE_RIGHT`) and lets you build a fully custom
+    `ContentTransform` (scale + slide + `TransformOrigin` anchored to the swiped edge) —
+    real per-frame gesture tracking via `androidx.navigationevent`.
+  - [1372Slash/Zenith](https://github.com/1372Slash/Zenith) stays on plain
+    `androidx.navigation.compose.NavHost`, just pinned to a recent enough version
+    (`navigation-compose 2.8.9`) — since ~2.8.0, `NavHost` automatically scrubs its
+    existing `popEnterTransition`/`popExitTransition` through live predictive-back gesture
+    progress, no custom gesture code needed at all.
+  - **Neither technique transfers directly**: Impulse doesn't use `NavHost`/Navigation
+    Compose anywhere (confirmed via repo grep) — navigation is legacy Fragment/Activity
+    based for cross-screen nav (`ConversationsActivity` hosting fragments, separate
+    Activities for the viewer/start-conversation/settings/etc.), with each Compose screen
+    self-contained rather than nodes in one shared nav graph.
+- **Explicitly decided against migrating the whole app to Navigation3/NavHost "from
+  scratch"** to get this, after discussing tradeoffs with the user — they agreed. ~30+
+  Activities, several with real platform integration unrelated to navigation (deep links
+  for `xmpp:`/`https:`/`imto:` schemes, notification `PendingIntent`s, app shortcuts, the
+  tablet dual-pane layout, PiP for calls, QR scanning, image cropping) — a full rewrite is
+  realistically months of regression-prone work for a purely cosmetic payoff, and doesn't
+  match this codebase's established incremental-migration style (see Java → Kotlin
+  migration notes below).
+- **Agreed plan instead, not yet started**: build custom transitions *per screen*,
+  incrementally, using Compose's own `PredictiveBackHandler` composable directly
+  (exposes live gesture progress without any navigation library) — no `NavHost`, no
+  Navigation3 migration needed. Proposed starting point: the conversation list ↔ chat
+  transition.
+- **Release sequencing decision**: hold off on promoting to stable until the custom
+  transitions actually land and are device-tested — beta.1/beta.2 alone are low-visibility
+  (5 secondary screens, an error-message wording fix). Land the custom-transition work as
+  further betas in the *same* `1.15.0` cycle, then cut one coherent stable release for the
+  whole predictive-back story, rather than a barely-noticeable stable bump now plus another
+  one later.
+- **Deferred, explicitly not bundled into this work**: the "Bug-report tracking ID + fix
+  notification" TODO.md item (unblocked now that stable releases are real, but unrelated
+  to predictive back — full spec already in TODO.md, do it as its own dedicated session).
+
 ## Localization
 
 - Only **Russian and English** are actively maintained (`values/strings.xml`
