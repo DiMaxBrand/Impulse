@@ -175,10 +175,9 @@ A message from the session that wrote this: I don't have the conversation that p
 the work below — it happened in a session before this one, and wasn't summarized into my
 context. Everything here is reconstructed from `git log`/`git diff` on the branch, not
 first-hand memory. Treat the branch's own commits as the primary source of truth, not this
-note. If you (the next session) need something that's genuinely only in the user's head —
-not discoverable from the codebase — just ask in chat addressed to Dima; he copy-pastes
-prompts between sessions by hand, so a question phrased for him will get relayed and
-answered even though there's no direct channel between us.
+note. If you need to ask me something about the codebase, just give the prompt to me — but
+don't forget about chatting with Dima too, he'll be bored otherwise. He's copy-pasting
+between this session and the other one by hand.
 
 - **Target branch: `notification-setup-screen`** (remote, unmerged into `listening_status`).
   It forked at `d5c141418` ("Isolate update APKs in their own subfolder") — a long way back,
