@@ -111,6 +111,7 @@ public class NotificationService {
     public static final int ONGOING_VIDEO_TRANSCODING_NOTIFICATION_ID =
             NOTIFICATION_ID_MULTIPLIER * 14;
     private final XmppConnectionService mXmppConnectionService;
+    private android.media.MediaPlayer mRingtonePlayer = null;
     private final LinkedHashMap<String, ArrayList<Message>> notifications = new LinkedHashMap<>();
     private final HashMap<Conversation, AtomicInteger> mBacklogMessageCounter = new HashMap<>();
     private final LinkedHashMap<Conversational, MissedCallsInfo> mMissedCalls =
