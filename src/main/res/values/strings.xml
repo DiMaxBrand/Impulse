@@ -1333,6 +1333,8 @@
     <string name="update_channel_info_title">About this channel</string>
     <string name="developer_options_show_update_sheet">Show update bottom sheet</string>
     <string name="developer_options_show_update_sheet_summary">Opens the update sheet in whatever state the updater is currently in</string>
+    <string name="developer_options_show_notification_setup">Show notification setup screen</string>
+    <string name="developer_options_show_notification_setup_summary">Opens the notification setup screen directly, ignoring the version gate</string>
     <string name="developer_options_pick_version">Pick version manually</string>
     <string name="developer_options_pick_version_summary">Bypasses downgrade restrictions — jump to any published version</string>
     <string name="developer_options_pick_version_empty">No versions found</string>

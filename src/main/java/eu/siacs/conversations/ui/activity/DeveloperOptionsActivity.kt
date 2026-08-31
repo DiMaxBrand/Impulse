@@ -175,6 +175,28 @@ class DeveloperOptionsActivity : ActionBarActivity() {
 
                                 Spacer(Modifier.height(6.dp))
 
+                                ExpressiveGroupRow(GroupPosition.SINGLE) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_show_notification_setup))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_show_notification_setup_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            startActivity(
+                                                Intent(
+                                                    this@DeveloperOptionsActivity,
+                                                    eu.siacs.conversations.ui.NotificationSetupActivity::class.java,
+                                                )
+                                            )
+                                        },
+                                    )
+                                }
+
+                                Spacer(Modifier.height(6.dp))
+
                                 // Own group — language switching isn't an update-sheet debugging
                                 // tool, so it doesn't belong visually merged with the group above.
                                 ExpressiveGroupRow(GroupPosition.SINGLE) {

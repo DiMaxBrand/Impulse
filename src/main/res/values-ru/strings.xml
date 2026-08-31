@@ -1405,6 +1405,8 @@
     <string name="updates_status_channel_behind">Ваша сборка новее этого канала</string>
     <string name="developer_options_show_update_sheet">Показать панель обновления</string>
     <string name="developer_options_show_update_sheet_summary">Открывает панель обновления в текущем состоянии загрузчика</string>
+    <string name="developer_options_show_notification_setup">Показать экран настройки уведомлений</string>
+    <string name="developer_options_show_notification_setup_summary">Открывает экран настройки уведомлений напрямую, игнорируя проверку версии</string>
     <string name="developer_options_pick_version">Выбрать версию вручную</string>
     <string name="developer_options_pick_version_summary">Обходит ограничения на понижение — переход к любой опубликованной версии</string>
     <string name="developer_options_pick_version_empty">Версии не найдены</string>
