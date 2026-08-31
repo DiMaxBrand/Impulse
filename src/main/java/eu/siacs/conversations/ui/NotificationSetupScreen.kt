@@ -160,10 +160,13 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                 size = 340.dp,
                 alpha = 0.10f,
             )
+            // Left-side shapes were previously cropped by ~90% (pushed almost entirely off the
+            // left edge) -- only ~10% of each should hang off-screen now, so most of the shape
+            // is actually visible instead of a barely-there sliver.
             DecorativeShapeBackdrop(
                 shapes = shapePolygons,
                 alignment = Alignment.BottomStart,
-                baseOffsetX = (-90).dp,
+                baseOffsetX = (-24).dp,
                 baseOffsetY = 100.dp,
                 jitter = scatter[1],
                 size = 240.dp,
@@ -172,7 +175,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
             DecorativeShapeBackdrop(
                 shapes = shapePolygons,
                 alignment = Alignment.CenterStart,
-                baseOffsetX = (-150).dp,
+                baseOffsetX = (-18).dp,
                 baseOffsetY = 0.dp,
                 jitter = scatter[2],
                 size = 180.dp,
@@ -185,13 +188,20 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                     .padding(horizontal = 24.dp, vertical = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Title
-                Text(
+                // Title -- glyph-clipped onto the same morphing-shape scene as the backdrop,
+                // instead of a plain text draw, so OEM font-substitution engines (HyperOS/MIUI)
+                // have nothing to intercept and the expressive styling can't be silently dropped.
+                // See GlyphClippedMorphingTitle's own doc for why. Applied everywhere, not just
+                // on HyperOS -- it should look identical to a normal styled title where the
+                // substitution problem doesn't exist.
+                GlyphClippedMorphingTitle(
                     text = stringResource(R.string.notification_setup_title),
                     style = MaterialTheme.typography.headlineMediumEmphasized.copy(
                         fontFamily = expressiveFontFamily,
                         fontWeight = FontWeight.Bold
-                    )
+                    ),
+                    shapes = shapePolygons,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
 
                 // Description
