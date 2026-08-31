@@ -165,6 +165,9 @@ public class ConversationsActivity extends QrCodeProcessingActivity
             final var conversation = ConversationsOverviewFragment.getSuggestion(this);
             openConversationOrCatch(conversation, null);
         }
+        // Notification setup screen is not tied to any specific fragment — launch it regardless
+        // of whether we're on the conversation list or inside a chat.
+        scheduleNotificationSetupIfNeeded();
         showDialogsIfMainIsOverview();
     }
 
@@ -177,10 +180,6 @@ public class ConversationsActivity extends QrCodeProcessingActivity
             if (ExceptionHelper.checkForCrash(this)) {
                 return;
             }
-            // Schedule the notification setup screen before any dialogs that return early,
-            // so it isn't skipped when (e.g.) the battery-optimization dialog fires on first
-            // launch.
-            scheduleNotificationSetupIfNeeded();
             if (openBatteryOptimizationDialogIfNeeded()) {
                 return;
             }
