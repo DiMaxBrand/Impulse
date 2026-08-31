@@ -185,6 +185,7 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                         },
                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                         modifier = Modifier.clickable {
+                                            showHyperOsDebugToast()
                                             startActivity(
                                                 Intent(
                                                     this@DeveloperOptionsActivity,
@@ -444,6 +445,19 @@ class DeveloperOptionsActivity : ActionBarActivity() {
         if (supportFragmentManager.findFragmentByTag(UpdateSheetFragment.TAG) == null) {
             UpdateSheetFragment().show(supportFragmentManager, UpdateSheetFragment.TAG)
         }
+    }
+
+    /** Mirrors the debug toast in ConversationsActivity.scheduleNotificationSetupIfNeeded() so
+     * triggering the screen from here is a faithful test of the automatic flow. */
+    private fun showHyperOsDebugToast() {
+        var hyperOsProp = ""
+        try {
+            val sp = Class.forName("android.os.SystemProperties")
+            val get = sp.getMethod("get", String::class.java, String::class.java)
+            hyperOsProp = get.invoke(null, "ro.mi.os.version.name", "") as String
+        } catch (_: Exception) {
+        }
+        Toast.makeText(this, "hyperos: \"$hyperOsProp\"", Toast.LENGTH_LONG).show()
     }
 
     private fun openLanguageSettings() {
