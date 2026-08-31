@@ -177,11 +177,14 @@ public class ConversationsActivity extends QrCodeProcessingActivity
             if (ExceptionHelper.checkForCrash(this)) {
                 return;
             }
+            // Schedule the notification setup screen before any dialogs that return early,
+            // so it isn't skipped when (e.g.) the battery-optimization dialog fires on first
+            // launch.
+            scheduleNotificationSetupIfNeeded();
             if (openBatteryOptimizationDialogIfNeeded()) {
                 return;
             }
             requestNotificationPermissionIfNeeded();
-            scheduleNotificationSetupIfNeeded();
         }
     }
 
