@@ -262,7 +262,6 @@ public final class ScanQrCodeActivity extends AppCompatActivity
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
     }
 
-
     @Override
     public boolean onKeyDown(final int keyCode, final KeyEvent event) {
         switch (keyCode) {

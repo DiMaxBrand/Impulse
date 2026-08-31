@@ -668,7 +668,6 @@ public class RtpSessionActivity extends XmppActivity
         }
     }
 
-
     @Override
     public void onUserLeaveHint() {
         super.onUserLeaveHint();

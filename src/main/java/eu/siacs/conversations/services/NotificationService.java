@@ -583,9 +583,10 @@ public class NotificationService {
             player.setAudioStreamType(AudioManager.STREAM_NOTIFICATION);
             player.setDataSource(mXmppConnectionService, uri);
             player.setLooping(false);
-            player.setOnCompletionListener(mp -> {
-                mp.release();
-            });
+            player.setOnCompletionListener(
+                    mp -> {
+                        mp.release();
+                    });
             player.prepare();
             player.start();
         } catch (Exception e) {
@@ -614,7 +615,8 @@ public class NotificationService {
             try {
                 mRingtonePlayer.stop();
                 mRingtonePlayer.release();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             mRingtonePlayer = null;
         }
     }

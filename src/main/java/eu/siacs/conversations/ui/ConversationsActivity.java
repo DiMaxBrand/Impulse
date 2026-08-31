@@ -188,8 +188,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     private static boolean channelHasNoSound(final android.app.NotificationChannel ch) {
         if (ch == null) return false;
         final android.net.Uri sound = ch.getSound();
-        return sound == null || sound.equals(android.net.Uri.EMPTY)
-                || sound.toString().isEmpty();
+        return sound == null || sound.equals(android.net.Uri.EMPTY) || sound.toString().isEmpty();
     }
 
     private void scheduleNotificationSetupIfNeeded() {
@@ -197,17 +196,27 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         final eu.siacs.conversations.AppSettings appSettings =
                 new eu.siacs.conversations.AppSettings(this);
         if (appSettings.isNotificationSetupDone()) return;
-        binding.getRoot().postDelayed(() -> {
-            if (isFinishing() || isDestroyed()) return;
-            String hyperOsProp = "";
-            try {
-                final Class<?> sp = Class.forName("android.os.SystemProperties");
-                final java.lang.reflect.Method get = sp.getMethod("get", String.class, String.class);
-                hyperOsProp = (String) get.invoke(null, "ro.mi.os.version.name", "");
-            } catch (final Exception ignored) {}
-            Toast.makeText(this, "hyperos: \"" + hyperOsProp + "\"", Toast.LENGTH_LONG).show();
-            startActivity(new Intent(this, NotificationSetupActivity.class));
-        }, 2000);
+        binding.getRoot()
+                .postDelayed(
+                        () -> {
+                            if (isFinishing() || isDestroyed()) return;
+                            String hyperOsProp = "";
+                            try {
+                                final Class<?> sp = Class.forName("android.os.SystemProperties");
+                                final java.lang.reflect.Method get =
+                                        sp.getMethod("get", String.class, String.class);
+                                hyperOsProp =
+                                        (String) get.invoke(null, "ro.mi.os.version.name", "");
+                            } catch (final Exception ignored) {
+                            }
+                            Toast.makeText(
+                                            this,
+                                            "hyperos: \"" + hyperOsProp + "\"",
+                                            Toast.LENGTH_LONG)
+                                    .show();
+                            startActivity(new Intent(this, NotificationSetupActivity.class));
+                        },
+                        2000);
     }
 
     private String getBatteryOptimizationPreferenceKey() {

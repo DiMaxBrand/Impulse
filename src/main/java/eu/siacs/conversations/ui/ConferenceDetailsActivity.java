@@ -592,7 +592,6 @@ public class ConferenceDetailsActivity extends XmppActivity
         }
     }
 
-
     private void updateView() {
         invalidateOptionsMenu();
         if (mConversation == null) {

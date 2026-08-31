@@ -581,8 +581,10 @@ public class AppSettings {
     }
 
     public void setWorkaroundCallsEnabled(final boolean enabled) {
-        PreferenceManager.getDefaultSharedPreferences(context).edit()
-                .putBoolean(WORKAROUND_CALLS_ENABLED, enabled).apply();
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putBoolean(WORKAROUND_CALLS_ENABLED, enabled)
+                .apply();
     }
 
     public boolean isWorkaroundMessagesEnabled() {
@@ -591,39 +593,50 @@ public class AppSettings {
     }
 
     public void setWorkaroundMessagesEnabled(final boolean enabled) {
-        PreferenceManager.getDefaultSharedPreferences(context).edit()
-                .putBoolean(WORKAROUND_MESSAGES_ENABLED, enabled).apply();
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putBoolean(WORKAROUND_MESSAGES_ENABLED, enabled)
+                .apply();
     }
 
     public Uri getWorkaroundCallSound() {
-        final var s = PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(WORKAROUND_CALL_SOUND, null);
+        final var s =
+                PreferenceManager.getDefaultSharedPreferences(context)
+                        .getString(WORKAROUND_CALL_SOUND, null);
         return s == null ? null : android.net.Uri.parse(s);
     }
 
     public void setWorkaroundCallSound(final Uri uri) {
-        PreferenceManager.getDefaultSharedPreferences(context).edit()
-                .putString(WORKAROUND_CALL_SOUND, uri == null ? null : uri.toString()).apply();
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(WORKAROUND_CALL_SOUND, uri == null ? null : uri.toString())
+                .apply();
     }
 
     public Uri getWorkaroundMessageSound() {
-        final var s = PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(WORKAROUND_MESSAGE_SOUND, null);
+        final var s =
+                PreferenceManager.getDefaultSharedPreferences(context)
+                        .getString(WORKAROUND_MESSAGE_SOUND, null);
         return s == null ? null : android.net.Uri.parse(s);
     }
 
     public void setWorkaroundMessageSound(final Uri uri) {
-        PreferenceManager.getDefaultSharedPreferences(context).edit()
-                .putString(WORKAROUND_MESSAGE_SOUND, uri == null ? null : uri.toString()).apply();
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(WORKAROUND_MESSAGE_SOUND, uri == null ? null : uri.toString())
+                .apply();
     }
 
     public boolean isNotificationSetupDone() {
         return PreferenceManager.getDefaultSharedPreferences(context)
-                .getInt(NOTIFICATION_SETUP_VERSION, 0) >= CURRENT_NOTIFICATION_SETUP_VERSION;
+                        .getInt(NOTIFICATION_SETUP_VERSION, 0)
+                >= CURRENT_NOTIFICATION_SETUP_VERSION;
     }
 
     public void setNotificationSetupDone() {
-        PreferenceManager.getDefaultSharedPreferences(context).edit()
-                .putInt(NOTIFICATION_SETUP_VERSION, CURRENT_NOTIFICATION_SETUP_VERSION).apply();
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putInt(NOTIFICATION_SETUP_VERSION, CURRENT_NOTIFICATION_SETUP_VERSION)
+                .apply();
     }
 }
