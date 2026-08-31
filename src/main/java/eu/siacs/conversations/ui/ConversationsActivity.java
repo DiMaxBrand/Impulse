@@ -202,20 +202,6 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                 .postDelayed(
                         () -> {
                             if (isFinishing() || isDestroyed()) return;
-                            String hyperOsProp = "";
-                            try {
-                                final Class<?> sp = Class.forName("android.os.SystemProperties");
-                                final java.lang.reflect.Method get =
-                                        sp.getMethod("get", String.class, String.class);
-                                hyperOsProp =
-                                        (String) get.invoke(null, "ro.mi.os.version.name", "");
-                            } catch (final Exception ignored) {
-                            }
-                            Toast.makeText(
-                                            this,
-                                            "hyperos: \"" + hyperOsProp + "\"",
-                                            Toast.LENGTH_LONG)
-                                    .show();
                             startActivity(new Intent(this, NotificationSetupActivity.class));
                         },
                         2000);
