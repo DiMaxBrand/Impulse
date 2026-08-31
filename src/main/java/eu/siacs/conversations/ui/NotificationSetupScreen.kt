@@ -10,12 +10,14 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -41,9 +43,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.Font
+import androidx.graphics.shapes.RoundedPolygon
 import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.R
 
@@ -130,84 +134,155 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 48.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // Title
-            Text(
-                text = stringResource(R.string.notification_setup_title),
-                style = MaterialTheme.typography.headlineMediumEmphasized.copy(
-                    fontFamily = expressiveFontFamily,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-
-            // Description
-            Text(
-                text = stringResource(
-                    if (anyWorkaround) R.string.notification_setup_description_workaround
-                    else R.string.notification_setup_description
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Cards
-            NotificationSetupCard(
-                title = stringResource(R.string.notification_setup_call_ringtone_title),
-                description = stringResource(R.string.notification_setup_call_ringtone_description),
-                buttonLabel = stringResource(R.string.notification_setup_choose_ringtone),
-                soundName = ringtoneTitle(callSoundUri),
-                isSet = callSoundUri != null,
-                isFirst = true,
-                isLast = false,
-                onClick = {
-                    val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                        callSoundUri?.let { putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, it) }
-                    }
-                    callRingtoneLauncher.launch(intent)
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Purely decorative — three shapes, each cycling through the full MaterialShapes
+            // catalog forever and rotating clockwise, scattered around the screen behind
+            // everything else. Each one starts on a random shape at a random angle
+            // (randomStart) so they never look synchronized, and their scatter positions are
+            // themselves randomized once per screen visit rather than fixed — a deliberate
+            // "might land a little differently every time" choice over a hand-placed layout.
+            val shapePolygons = remember { MATERIAL_SHAPE_CATALOG.map { it.second } }
+            val scatter = remember {
+                List(3) {
+                    Triple(
+                        (-40..40).random().dp,
+                        (-40..40).random().dp,
+                        (14000..30000).random(),
+                    )
                 }
+            }
+            DecorativeShapeBackdrop(
+                shapes = shapePolygons,
+                alignment = Alignment.TopEnd,
+                baseOffsetX = 120.dp,
+                baseOffsetY = (-120).dp,
+                jitter = scatter[0],
+                size = 340.dp,
+                alpha = 0.10f,
             )
-
-            NotificationSetupCard(
-                title = stringResource(R.string.notification_setup_message_sound_title),
-                description = stringResource(R.string.notification_setup_message_sound_description),
-                buttonLabel = stringResource(R.string.notification_setup_open_settings),
-                soundName = null,
-                isSet = false,
-                isFirst = false,
-                isLast = true,
-                onClick = {
-                    val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
-                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
-                        putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, "messages")
-                    }
-                    context.startActivity(intent)
-                }
+            DecorativeShapeBackdrop(
+                shapes = shapePolygons,
+                alignment = Alignment.BottomStart,
+                baseOffsetX = (-90).dp,
+                baseOffsetY = 100.dp,
+                jitter = scatter[1],
+                size = 240.dp,
+                alpha = 0.08f,
             )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Button(
-                onClick = {
-                    appSettings.setNotificationSetupDone()
-                    onDone()
-                },
-                modifier = Modifier.fillMaxWidth()
+            DecorativeShapeBackdrop(
+                shapes = shapePolygons,
+                alignment = Alignment.CenterStart,
+                baseOffsetX = (-150).dp,
+                baseOffsetY = 0.dp,
+                jitter = scatter[2],
+                size = 180.dp,
+                alpha = 0.07f,
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 48.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Text(stringResource(R.string.notification_setup_done))
+                // Title
+                Text(
+                    text = stringResource(R.string.notification_setup_title),
+                    style = MaterialTheme.typography.headlineMediumEmphasized.copy(
+                        fontFamily = expressiveFontFamily,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+
+                // Description
+                Text(
+                    text = stringResource(
+                        if (anyWorkaround) R.string.notification_setup_description_workaround
+                        else R.string.notification_setup_description
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Cards
+                NotificationSetupCard(
+                    title = stringResource(R.string.notification_setup_call_ringtone_title),
+                    description = stringResource(R.string.notification_setup_call_ringtone_description),
+                    buttonLabel = stringResource(R.string.notification_setup_choose_ringtone),
+                    soundName = ringtoneTitle(callSoundUri),
+                    isSet = callSoundUri != null,
+                    isFirst = true,
+                    isLast = false,
+                    onClick = {
+                        val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                            callSoundUri?.let { putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, it) }
+                        }
+                        callRingtoneLauncher.launch(intent)
+                    }
+                )
+
+                NotificationSetupCard(
+                    title = stringResource(R.string.notification_setup_message_sound_title),
+                    description = stringResource(R.string.notification_setup_message_sound_description),
+                    buttonLabel = stringResource(R.string.notification_setup_open_settings),
+                    soundName = null,
+                    isSet = false,
+                    isFirst = false,
+                    isLast = true,
+                    onClick = {
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+                            putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, "messages")
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Button(
+                    onClick = {
+                        appSettings.setNotificationSetupDone()
+                        onDone()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.notification_setup_done))
+                }
             }
         }
     }
+}
+
+/** One scattered instance of [AutoMorphingShape] — [jitter] is a (dx, dy, rotationDurationMs)
+ * triple so each backdrop shape gets its own small position wobble and its own rotation speed,
+ * on top of the alignment/base-offset placement that positions it in the first place. */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.DecorativeShapeBackdrop(
+    shapes: List<RoundedPolygon>,
+    alignment: Alignment,
+    baseOffsetX: Dp,
+    baseOffsetY: Dp,
+    jitter: Triple<Dp, Dp, Int>,
+    size: Dp,
+    alpha: Float,
+) {
+    val (jitterX, jitterY, rotationDurationMs) = jitter
+    AutoMorphingShape(
+        shapes = shapes,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
+        randomStart = true,
+        rotationDurationMs = rotationDurationMs,
+        modifier = Modifier
+            .size(size)
+            .align(alignment)
+            .offset(x = baseOffsetX + jitterX, y = baseOffsetY + jitterY),
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

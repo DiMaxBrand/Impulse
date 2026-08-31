@@ -54,49 +54,11 @@ import androidx.graphics.shapes.RoundedPolygon
 import eu.siacs.conversations.R
 import eu.siacs.conversations.ui.ActionBarActivity
 import eu.siacs.conversations.ui.ImpulseExpressiveTheme
-import eu.siacs.conversations.ui.MaterialShapeHelpers
+import eu.siacs.conversations.ui.MATERIAL_SHAPE_CATALOG
 
-/** Full MaterialShapes set (35 shapes) — the complete catalog, not just the handful the chat
- * list's presence-avatar happened to need. */
-private val CATALOG_SHAPES: List<Pair<String, RoundedPolygon>> by lazy {
-    listOf(
-        "Circle" to MaterialShapeHelpers.circle(),
-        "Square" to MaterialShapeHelpers.square(),
-        "Slanted" to MaterialShapeHelpers.slanted(),
-        "Arch" to MaterialShapeHelpers.arch(),
-        "Fan" to MaterialShapeHelpers.fan(),
-        "Arrow" to MaterialShapeHelpers.arrow(),
-        "Semi-circle" to MaterialShapeHelpers.semiCircle(),
-        "Oval" to MaterialShapeHelpers.oval(),
-        "Pill" to MaterialShapeHelpers.pill(),
-        "Triangle" to MaterialShapeHelpers.triangle(),
-        "Diamond" to MaterialShapeHelpers.diamond(),
-        "Clam shell" to MaterialShapeHelpers.clamShell(),
-        "Pentagon" to MaterialShapeHelpers.pentagon(),
-        "Gem" to MaterialShapeHelpers.gem(),
-        "Sunny" to MaterialShapeHelpers.sunny(),
-        "Very sunny" to MaterialShapeHelpers.verySunny(),
-        "Cookie 4" to MaterialShapeHelpers.cookie4Sided(),
-        "Cookie 6" to MaterialShapeHelpers.cookie6Sided(),
-        "Cookie 7" to MaterialShapeHelpers.cookie7Sided(),
-        "Cookie 9" to MaterialShapeHelpers.cookie9Sided(),
-        "Cookie 12" to MaterialShapeHelpers.cookie12Sided(),
-        "Ghostish" to MaterialShapeHelpers.ghostish(),
-        "Clover 4-leaf" to MaterialShapeHelpers.clover4Leaf(),
-        "Clover 8-leaf" to MaterialShapeHelpers.clover8Leaf(),
-        "Burst" to MaterialShapeHelpers.burst(),
-        "Soft burst" to MaterialShapeHelpers.softBurst(),
-        "Boom" to MaterialShapeHelpers.boom(),
-        "Soft boom" to MaterialShapeHelpers.softBoom(),
-        "Flower" to MaterialShapeHelpers.flower(),
-        "Puffy" to MaterialShapeHelpers.puffy(),
-        "Puffy diamond" to MaterialShapeHelpers.puffyDiamond(),
-        "Pixel circle" to MaterialShapeHelpers.pixelCircle(),
-        "Pixel triangle" to MaterialShapeHelpers.pixelTriangle(),
-        "Bun" to MaterialShapeHelpers.bun(),
-        "Heart" to MaterialShapeHelpers.heart(),
-    )
-}
+// Kept as a local alias so the rest of this file (written before the catalog moved to its own
+// shared file) doesn't need touching.
+private val CATALOG_SHAPES: List<Pair<String, RoundedPolygon>> get() = MATERIAL_SHAPE_CATALOG
 
 /**
  * Developer-options screen for browsing the MaterialShapes set: a hero shape pinned to the top
