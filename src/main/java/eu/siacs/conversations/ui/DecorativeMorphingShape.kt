@@ -10,16 +10,13 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidPath
@@ -123,10 +120,8 @@ fun AutoMorphingShape(
 }
 
 /**
- * A title rendered as glyph-shaped windows onto a live [AutoMorphingShape] scene, instead of a
- * plain text draw call — the letters themselves never get painted; what's visible inside their
- * outlines is whatever the morphing/rotating shape looks like at that instant, like looking
- * through cutout letters at moving shapes behind them.
+ * A title rendered by filling its glyph outlines directly, instead of a plain text draw call —
+ * same solid color as normal text, just reached by a different path.
  *
  * This exists as a workaround for OEM system-wide font-substitution engines (HyperOS/MIUI's
  * being the specific, documented case) that intercept text drawn through the normal
@@ -134,21 +129,23 @@ fun AutoMorphingShape(
  * variable font and its custom axes. [Paragraph.getPathForRange] computes the glyph outlines
  * once, from this composable's own [style] — nothing about that step is a text *draw* call, so
  * there's nothing for a font-substitution hook watching draw-time text calls to intercept. What
- * gets drawn afterward is pure vector clipping and shape fills, the same primitives the rest of
- * this screen's decoration already uses. Not proven to defeat every OEM's hook — some may
- * intercept earlier in text layout too — but it's the best available approach found, and applied
- * unconditionally (not just on HyperOS) since it should render identically everywhere the
- * substitution problem doesn't exist.
+ * gets drawn afterward is a plain vector fill, same as any other shape. Not proven to defeat
+ * every OEM's hook — some may intercept earlier in text layout too — but it's the best available
+ * approach found, and applied unconditionally (not just on HyperOS) since it should render
+ * identically everywhere the substitution problem doesn't exist.
+ *
+ * Deliberately just a flat fill, not a moving pattern behind the letters: anything animated
+ * (e.g. a morphing/rotating shape) risks a frame where part of a letter goes unlit mid-morph,
+ * which is a real legibility problem for a title, not just a cosmetic one.
  *
  * Single-line only: measured without a width constraint, so a title long enough to need wrapping
  * on narrow screens will overflow rather than wrap. Fine for the short titles this is built for;
  * worth revisiting if used for longer strings.
  */
 @Composable
-fun GlyphClippedMorphingTitle(
+fun GlyphFilledTitle(
     text: String,
     style: TextStyle,
-    shapes: List<RoundedPolygon>,
     color: Color,
     modifier: Modifier = Modifier,
 ) {
@@ -160,21 +157,8 @@ fun GlyphClippedMorphingTitle(
     val density = LocalDensity.current
     val widthDp = with(density) { layoutResult.size.width.toDp() }
     val heightDp = with(density) { layoutResult.size.height.toDp() }
-    // Oversized relative to the glyph box and centered, so the visible pattern reads as one
-    // continuous scene behind the whole word rather than a separate tiny shape isolated per
-    // letter.
-    val patternSize = maxOf(widthDp, heightDp) * 1.6f
 
-    Box(
-        modifier = modifier
-            .size(widthDp, heightDp)
-            .drawWithContent { clipPath(glyphPath) { this@drawWithContent.drawContent() } },
-        contentAlignment = Alignment.Center,
-    ) {
-        AutoMorphingShape(
-            shapes = shapes,
-            color = color,
-            modifier = Modifier.size(patternSize),
-        )
+    Canvas(modifier = modifier.size(widthDp, heightDp)) {
+        drawPath(glyphPath, color = color)
     }
 }

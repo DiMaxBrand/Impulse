@@ -188,19 +188,18 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                     .padding(horizontal = 24.dp, vertical = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Title -- glyph-clipped onto the same morphing-shape scene as the backdrop,
-                // instead of a plain text draw, so OEM font-substitution engines (HyperOS/MIUI)
-                // have nothing to intercept and the expressive styling can't be silently dropped.
-                // See GlyphClippedMorphingTitle's own doc for why. Applied everywhere, not just
-                // on HyperOS -- it should look identical to a normal styled title where the
-                // substitution problem doesn't exist.
-                GlyphClippedMorphingTitle(
+                // Title -- glyph outlines filled directly instead of a plain text draw, so OEM
+                // font-substitution engines (HyperOS/MIUI) have nothing to intercept and the
+                // expressive styling can't be silently dropped. Flat fill, not an animated
+                // pattern -- see GlyphFilledTitle's own doc for why. Applied everywhere, not
+                // just on HyperOS -- it should look identical to a normal styled title where
+                // the substitution problem doesn't exist.
+                GlyphFilledTitle(
                     text = stringResource(R.string.notification_setup_title),
                     style = MaterialTheme.typography.headlineMediumEmphasized.copy(
                         fontFamily = expressiveFontFamily,
                         fontWeight = FontWeight.Bold
                     ),
-                    shapes = shapePolygons,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
 
