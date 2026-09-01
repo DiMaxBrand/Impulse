@@ -188,17 +188,25 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                     .padding(horizontal = 24.dp, vertical = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Title. GlyphFilledTitle (rendering the glyph outlines directly, as a
-                // HyperOS/MIUI font-substitution workaround) was tried here and shipped a
-                // solid, illegible black bar instead of visible text on-device -- reverted to
-                // plain Text rather than guess at another untestable fix. The HyperOS
-                // font-substitution problem is still open; see TODO.md / CLAUDE.md notes.
-                Text(
+                // Title -- glyph outlines filled directly instead of a plain text draw, so OEM
+                // font-substitution engines (HyperOS/MIUI) have nothing to intercept and the
+                // expressive styling can't be silently dropped. Flat fill, not an animated
+                // pattern. See GlyphFilledTitle's own doc for why this version measures inside
+                // the Canvas draw scope instead of via remember (the first version shipped a
+                // solid black bar on-device from measuring too early, before the async-loaded
+                // font resolved). Applied unconditionally, not just on HyperOS -- it should
+                // look identical to a normal styled title where the substitution problem
+                // doesn't exist.
+                GlyphFilledTitle(
                     text = stringResource(R.string.notification_setup_title),
                     style = MaterialTheme.typography.headlineMediumEmphasized.copy(
                         fontFamily = expressiveFontFamily,
                         fontWeight = FontWeight.Bold
-                    )
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
                 )
 
                 // Description

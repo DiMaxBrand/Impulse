@@ -22,6 +22,9 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.material3.toPath
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
 import kotlinx.coroutines.delay
@@ -119,11 +122,52 @@ fun AutoMorphingShape(
     }
 }
 
-// A GlyphFilledTitle composable (rendering a title's glyph outlines directly via
-// Paragraph.getPathForRange(), as a HyperOS/MIUI font-substitution workaround) was tried and
-// removed here -- it shipped a solid, illegible black bar on-device instead of visible text.
-// Suspected cause: textMeasurer.measure() was called eagerly inside remember(), likely before
-// the async-loaded custom font resolved, baking in "tofu"/missing-glyph boxes that a normal
-// Text() composable (which recomposes automatically when its FontFamily finishes loading)
-// would never show. Not re-attempted without a way to verify on-device first -- see
-// NotificationSetupScreen.kt's title comment and CLAUDE.md/TODO.md for the open problem.
+/**
+ * A title rendered by filling its glyph outlines directly, instead of a plain text draw call —
+ * same solid color as normal text, just reached by a different path. Workaround for OEM
+ * system-wide font-substitution engines (HyperOS/MIUI's being the documented case) that
+ * intercept text drawn through the normal Typeface/Text pipeline and silently swap in the
+ * system font, discarding this app's embedded variable font and its custom axes. Nothing about
+ * filling a plain [Path] is a text *draw* call, so there's nothing for a substitution hook
+ * watching draw-time text calls to intercept.
+ *
+ * A first version of this measured the text once via `remember { textMeasurer.measure(...) }`
+ * and shipped a solid black bar instead of visible text on-device — `remember`'s calculation
+ * block is not a snapshot-observed read, so if the custom font (loaded asynchronously from
+ * resources) hadn't resolved yet at that exact composition, the baked-in "tofu"/missing-glyph
+ * boxes never got a chance to redraw once loading finished. `Text()` never has this problem
+ * because Compose's own text layout node reads font-resolution state directly during the
+ * draw/layout phase, where snapshot observation *does* trigger a redraw on change. This version
+ * measures inside the [Canvas]'s draw scope itself instead of via `remember` — the same draw
+ * scope this file's [AutoMorphingShape] already reads animated [Animatable]/`State` values from
+ * successfully — so a font resolving after first frame should trigger the same kind of
+ * automatic redraw.
+ *
+ * Deliberately just a flat fill, not a moving pattern behind the letters: anything animated
+ * (e.g. a morphing/rotating shape) risks a frame where part of a letter goes unlit mid-morph,
+ * which is a real legibility problem for a title, not just a cosmetic one.
+ *
+ * Unlike the first version, this does not auto-size to the measured text — [modifier] must
+ * supply an explicit size (the caller doesn't know the text's measured bounds ahead of the
+ * font resolving either). Single-line only: measured without a width constraint, so a title
+ * long enough to need wrapping on narrow screens will overflow rather than wrap.
+ */
+@Composable
+fun GlyphFilledTitle(
+    text: String,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    val textMeasurer = rememberTextMeasurer()
+    val annotatedText = remember(text) { AnnotatedString(text) }
+
+    Canvas(modifier = modifier) {
+        // Deliberately not memoized via remember{} -- see the doc comment above. Measuring here,
+        // inside the draw scope, is what makes this redraw automatically once an
+        // asynchronously-loading custom font actually resolves.
+        val layoutResult = textMeasurer.measure(text = annotatedText, style = style)
+        val glyphPath = layoutResult.getPathForRange(0, text.length)
+        drawPath(glyphPath, color = color)
+    }
+}
