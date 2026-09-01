@@ -188,25 +188,22 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                     .padding(horizontal = 24.dp, vertical = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Title -- glyph outlines filled directly instead of a plain text draw, so OEM
-                // font-substitution engines (HyperOS/MIUI) have nothing to intercept and the
-                // expressive styling can't be silently dropped. Flat fill, not an animated
-                // pattern. See GlyphFilledTitle's own doc for why this version measures inside
-                // the Canvas draw scope instead of via remember (the first version shipped a
-                // solid black bar on-device from measuring too early, before the async-loaded
-                // font resolved). Applied unconditionally, not just on HyperOS -- it should
-                // look identical to a normal styled title where the substitution problem
-                // doesn't exist.
-                GlyphFilledTitle(
+                // Title. Two GlyphFilledTitle attempts shipped a solid black bar on-device,
+                // both diagnosed and fixed differently -- and both failed identically. Root
+                // cause found: TextLayoutResult.getPathForRange() is the *selection-highlight*
+                // API (the same one used to draw text-selection background rectangles), not a
+                // glyph-outline API -- it was always going to return a filled bounding box, no
+                // matter how/when it was measured. Real glyph outlines need a lower-level API
+                // this hasn't been attempted with yet (Paint.getTextPath() against a manually
+                // built Typeface with the same FontVariation settings) -- a real chunk of work,
+                // not a one-line fix, so reverted to plain Text rather than guess a third time.
+                // See GlyphFilledTitle's own doc in DecorativeMorphingShape.kt.
+                Text(
                     text = stringResource(R.string.notification_setup_title),
                     style = MaterialTheme.typography.headlineMediumEmphasized.copy(
                         fontFamily = expressiveFontFamily,
                         fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
+                    )
                 )
 
                 // Description
