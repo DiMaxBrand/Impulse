@@ -107,7 +107,13 @@ fun AutoMorphingShape(
 
     Canvas(modifier = modifier) {
         rotate(degrees = rotationDegrees, pivot = Offset(size.width / 2f, size.height / 2f)) {
-            val drawScale = 0.78f
+            // 0.78 (11% margin per side) was tuned for the tap-driven shape catalog, where every
+            // morph pair got hand-tested. This composable auto-morphs between *any* random pair
+            // from the full 35-shape catalog (randomStart) with no chance to catch an overshoot
+            // by eye first -- silhouettes as different as "Burst" -> "Circle" can bulge well past
+            // an 11% margin mid-transition, visibly clipping a point off. Much wider margin here
+            // to make that safe regardless of which pair lands.
+            val drawScale = 0.58f
             val margin = (1f - drawScale) / 2f
             reusedMatrix.reset()
             reusedMatrix.postScale(size.width * drawScale, size.height * drawScale)
