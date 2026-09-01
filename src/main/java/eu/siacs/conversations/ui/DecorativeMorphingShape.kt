@@ -10,7 +10,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,11 +22,6 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.material3.toPath
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
 import kotlinx.coroutines.delay
@@ -125,46 +119,11 @@ fun AutoMorphingShape(
     }
 }
 
-/**
- * A title rendered by filling its glyph outlines directly, instead of a plain text draw call —
- * same solid color as normal text, just reached by a different path.
- *
- * This exists as a workaround for OEM system-wide font-substitution engines (HyperOS/MIUI's
- * being the specific, documented case) that intercept text drawn through the normal
- * Typeface/Text pipeline and silently swap in the system font, discarding this app's embedded
- * variable font and its custom axes. [Paragraph.getPathForRange] computes the glyph outlines
- * once, from this composable's own [style] — nothing about that step is a text *draw* call, so
- * there's nothing for a font-substitution hook watching draw-time text calls to intercept. What
- * gets drawn afterward is a plain vector fill, same as any other shape. Not proven to defeat
- * every OEM's hook — some may intercept earlier in text layout too — but it's the best available
- * approach found, and applied unconditionally (not just on HyperOS) since it should render
- * identically everywhere the substitution problem doesn't exist.
- *
- * Deliberately just a flat fill, not a moving pattern behind the letters: anything animated
- * (e.g. a morphing/rotating shape) risks a frame where part of a letter goes unlit mid-morph,
- * which is a real legibility problem for a title, not just a cosmetic one.
- *
- * Single-line only: measured without a width constraint, so a title long enough to need wrapping
- * on narrow screens will overflow rather than wrap. Fine for the short titles this is built for;
- * worth revisiting if used for longer strings.
- */
-@Composable
-fun GlyphFilledTitle(
-    text: String,
-    style: TextStyle,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    val textMeasurer = rememberTextMeasurer()
-    val layoutResult = remember(text, style, textMeasurer) {
-        textMeasurer.measure(text = AnnotatedString(text), style = style)
-    }
-    val glyphPath = remember(layoutResult) { layoutResult.getPathForRange(0, text.length) }
-    val density = LocalDensity.current
-    val widthDp = with(density) { layoutResult.size.width.toDp() }
-    val heightDp = with(density) { layoutResult.size.height.toDp() }
-
-    Canvas(modifier = modifier.size(widthDp, heightDp)) {
-        drawPath(glyphPath, color = color)
-    }
-}
+// A GlyphFilledTitle composable (rendering a title's glyph outlines directly via
+// Paragraph.getPathForRange(), as a HyperOS/MIUI font-substitution workaround) was tried and
+// removed here -- it shipped a solid, illegible black bar on-device instead of visible text.
+// Suspected cause: textMeasurer.measure() was called eagerly inside remember(), likely before
+// the async-loaded custom font resolved, baking in "tofu"/missing-glyph boxes that a normal
+// Text() composable (which recomposes automatically when its FontFamily finishes loading)
+// would never show. Not re-attempted without a way to verify on-device first -- see
+// NotificationSetupScreen.kt's title comment and CLAUDE.md/TODO.md for the open problem.
