@@ -244,6 +244,18 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                     }
                 }
 
+                // Display over other apps (SYSTEM_ALERT_WINDOW) -- unlike the OEM-only toggles
+                // (HyperOS's "Show on Lock screen", MIUI's "Display pop-up windows", etc.), this
+                // one is real, standard AOSP: available since API 23, with a genuine public API
+                // to check (Settings.canDrawOverlays) and a genuine deep-link to request it
+                // (ACTION_MANAGE_OVERLAY_PERMISSION). Declared in the manifest but never actually
+                // checked or requested anywhere until now -- some OEMs (MIUI/HyperOS among them,
+                // by report) gate pop-up call UI behind it as an extra condition on top of
+                // Android's own full-screen-intent mechanism.
+                val overlayGranted = remember {
+                    android.provider.Settings.canDrawOverlays(context)
+                }
+
                 // Cards -- grouped tightly (2dp, matching the app's other grouped-list rows)
                 // rather than the outer Column's 24dp spacedBy, so they read as one merged pair
                 // (top card rounds only its top corners, bottom card only its bottom corners)
@@ -275,7 +287,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                         soundName = null,
                         isSet = false,
                         isFirst = false,
-                        isLast = fullScreenIntentGranted,
+                        isLast = fullScreenIntentGranted && overlayGranted,
                         onClick = {
                             val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
                                 putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
@@ -293,7 +305,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                             soundName = null,
                             isSet = false,
                             isFirst = false,
-                            isLast = true,
+                            isLast = overlayGranted,
                             onClick = {
                                 val intent = android.content.Intent(
                                     android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
@@ -304,6 +316,38 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                                 } catch (_: Exception) {
                                     // No activity handles this on some OEM skins -- nothing more
                                     // we can do than fall through silently.
+                                }
+                            }
+                        )
+                    }
+
+                    if (!overlayGranted) {
+                        NotificationSetupCard(
+                            title = stringResource(R.string.notification_setup_overlay_title),
+                            description = stringResource(R.string.notification_setup_overlay_description),
+                            buttonLabel = stringResource(R.string.notification_setup_open_settings),
+                            soundName = null,
+                            isSet = false,
+                            isFirst = false,
+                            isLast = true,
+                            onClick = {
+                                val intent = android.content.Intent(
+                                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    android.net.Uri.parse("package:" + context.packageName),
+                                )
+                                try {
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                    // Some OEMs don't accept the package-scoped URI -- retry
+                                    // with the bare, unscoped settings screen instead.
+                                    try {
+                                        context.startActivity(
+                                            android.content.Intent(
+                                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION
+                                            )
+                                        )
+                                    } catch (_: Exception) {
+                                    }
                                 }
                             }
                         )

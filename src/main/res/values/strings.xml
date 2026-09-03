@@ -1388,6 +1388,8 @@
     <string name="notification_setup_open_settings">Notification settings</string>
     <string name="notification_setup_full_screen_intent_title">Full-screen call alerts</string>
     <string name="notification_setup_full_screen_intent_description">Your device is currently blocking incoming calls from automatically popping up over the lock screen -- you\'d only see them by tapping the notification yourself. Turn this on to fix it.</string>
+    <string name="notification_setup_overlay_title">Display over other apps</string>
+    <string name="notification_setup_overlay_description">Some devices need this permission for the incoming call screen to pop up automatically. Turn it on for Impulse to fix it.</string>
     <string name="notification_setup_done">Done</string>
     <string name="notification_setup_sound_set">Sound set</string>
 </resources>

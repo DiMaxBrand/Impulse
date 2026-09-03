@@ -1454,6 +1454,8 @@
     <string name="notification_setup_open_settings">Настройки уведомлений</string>
     <string name="notification_setup_full_screen_intent_title">Полноэкранные уведомления о звонках</string>
     <string name="notification_setup_full_screen_intent_description">Сейчас ваше устройство блокирует автоматическое появление входящих звонков поверх заблокированного экрана — вы увидите их, только если сами откроете уведомление. Включите это, чтобы исправить.</string>
+    <string name="notification_setup_overlay_title">Отображение поверх других приложений</string>
+    <string name="notification_setup_overlay_description">Некоторым устройствам это разрешение нужно, чтобы экран входящего звонка появлялся автоматически. Включите его для Impulse, чтобы исправить.</string>
     <string name="notification_setup_done">Готово</string>
     <string name="notification_setup_sound_set">Звук выбран</string>
 </resources>
