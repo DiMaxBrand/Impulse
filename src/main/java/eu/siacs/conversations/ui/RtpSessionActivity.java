@@ -172,12 +172,30 @@ public class RtpSessionActivity extends XmppActivity
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow()
-                .addFlags(
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                                | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
-                                | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                                | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // Show-over-lock-screen used to go entirely through the deprecated WindowManager
+        // .LayoutParams flags (FLAG_DISMISS_KEYGUARD/FLAG_SHOW_WHEN_LOCKED/FLAG_TURN_SCREEN_ON),
+        // which Android itself deprecated as of API 27 in favor of the per-Activity methods
+        // below -- some OEM skins (Samsung's One UI reportedly among them) don't reliably honor
+        // the old flags for showing an activity over a *secure* lock screen, even though the
+        // notification/sound still comes through fine, which is exactly the "audio plays, call
+        // screen never appears" symptom this fixes. Guarded rather than assumed unconditional,
+        // even though minSdk is already past API 27, so the legacy path stays available as a
+        // fallback if minSdk is ever lowered.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+            final var keyguardManager = getSystemService(android.app.KeyguardManager.class);
+            if (keyguardManager != null) {
+                keyguardManager.requestDismissKeyguard(this, null);
+            }
+        } else {
+            getWindow()
+                    .addFlags(
+                            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                                    | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                                    | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        }
         this.binding = DataBindingUtil.setContentView(this, R.layout.activity_rtp_session);
         this.binding.remoteVideo.setOnClickListener(this::onVideoScreenClick);
         this.binding.localVideo.setOnClickListener(this::onVideoScreenClick);
