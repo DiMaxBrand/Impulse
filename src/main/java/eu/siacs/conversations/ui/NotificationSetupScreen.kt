@@ -98,6 +98,12 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
         )
     }
+    // Separate from callSoundUri (which always holds a value, falling back to the system
+    // default) -- this tracks whether the user has actually picked/stored a sound, so the
+    // card's checkmark doesn't claim "set" for a fallback default nobody chose.
+    var callSoundIsUserSet by remember {
+        mutableStateOf(appSettings.getWorkaroundCallSound() != null)
+    }
 
     val callRingtoneLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -105,6 +111,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
         val picked = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             callSoundUri = picked ?: callSoundUri
+            callSoundIsUserSet = true
             if (callNeedsWorkaround) {
                 appSettings.setWorkaroundCallSound(picked)
             } else {
@@ -172,13 +179,16 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                 size = 240.dp,
                 alpha = 0.08f,
             )
+            // Moved out of dead-center (where it competed with the title/description/cards for
+            // attention) into the empty space below the cards and above the Done button, on the
+            // right side -- fully on-screen, not edge-cropped like the two above.
             DecorativeShapeBackdrop(
                 shapes = shapePolygons,
-                alignment = Alignment.CenterStart,
-                baseOffsetX = (-18).dp,
-                baseOffsetY = 0.dp,
+                alignment = Alignment.BottomEnd,
+                baseOffsetX = (-32).dp,
+                baseOffsetY = (-140).dp,
                 jitter = scatter[2],
-                size = 180.dp,
+                size = 150.dp,
                 alpha = 0.07f,
             )
             Column(
@@ -218,42 +228,47 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Cards
-                NotificationSetupCard(
-                    title = stringResource(R.string.notification_setup_call_ringtone_title),
-                    description = stringResource(R.string.notification_setup_call_ringtone_description),
-                    buttonLabel = stringResource(R.string.notification_setup_choose_ringtone),
-                    soundName = ringtoneTitle(callSoundUri),
-                    isSet = callSoundUri != null,
-                    isFirst = true,
-                    isLast = false,
-                    onClick = {
-                        val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                            callSoundUri?.let { putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, it) }
+                // Cards -- grouped tightly (2dp, matching the app's other grouped-list rows)
+                // rather than the outer Column's 24dp spacedBy, so they read as one merged pair
+                // (top card rounds only its top corners, bottom card only its bottom corners)
+                // instead of two separate cards with a large gap between them.
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    NotificationSetupCard(
+                        title = stringResource(R.string.notification_setup_call_ringtone_title),
+                        description = stringResource(R.string.notification_setup_call_ringtone_description),
+                        buttonLabel = stringResource(R.string.notification_setup_choose_ringtone),
+                        soundName = ringtoneTitle(callSoundUri),
+                        isSet = callSoundIsUserSet,
+                        isFirst = true,
+                        isLast = false,
+                        onClick = {
+                            val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                                callSoundUri?.let { putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, it) }
+                            }
+                            callRingtoneLauncher.launch(intent)
                         }
-                        callRingtoneLauncher.launch(intent)
-                    }
-                )
+                    )
 
-                NotificationSetupCard(
-                    title = stringResource(R.string.notification_setup_message_sound_title),
-                    description = stringResource(R.string.notification_setup_message_sound_description),
-                    buttonLabel = stringResource(R.string.notification_setup_open_settings),
-                    soundName = null,
-                    isSet = false,
-                    isFirst = false,
-                    isLast = true,
-                    onClick = {
-                        val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
-                            putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
-                            putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, "messages")
+                    NotificationSetupCard(
+                        title = stringResource(R.string.notification_setup_message_sound_title),
+                        description = stringResource(R.string.notification_setup_message_sound_description),
+                        buttonLabel = stringResource(R.string.notification_setup_open_settings),
+                        soundName = null,
+                        isSet = false,
+                        isFirst = false,
+                        isLast = true,
+                        onClick = {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+                                putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, "messages")
+                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
-                    }
-                )
+                    )
+                }
 
                 Spacer(modifier = Modifier.weight(1f))
 
