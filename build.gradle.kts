@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42481
-val appVersion = "1.15.0-beta.18+2.20.0"
+val baseVersionCode = 42482
+val appVersion = "1.15.0-beta.19+2.20.0"
 
 @Suppress("DEPRECATION")
 android {
@@ -37,7 +37,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        minSdk = 33
+        minSdk = 26
         targetSdk = 36
         versionCode = baseVersionCode
         versionName = appVersion

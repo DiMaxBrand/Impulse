@@ -89,8 +89,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -354,7 +352,7 @@ internal fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val isDark = isSystemInDarkTheme()
     val isSamsung = remember { Build.MANUFACTURER.equals("samsung", ignoreCase = true) }
-    val rawColorScheme = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val rawColorScheme = dynamicOrStaticColorScheme(context, isDark)
     // Samsung One UI 8.5 generates a much darker tone for surfaceContainerHigh than the M3
     // spec expects (~tone 70 vs. the standard ~92), making incoming chat bubbles appear as a
     // dark gray in light mode. Remap to the lighter surfaceContainerLow tier on Samsung.
@@ -5358,11 +5356,46 @@ private fun AttachmentPreviewStrip(state: ConversationScreenState) {
                             val bm =
                                 withContext(Dispatchers.IO) {
                                     try {
-                                        context.contentResolver.loadThumbnail(
-                                            attachment.uri,
-                                            android.util.Size(144, 144),
-                                            null,
-                                        )
+                                        // ContentResolver#loadThumbnail requires API 29 -- decode
+                                        // manually (downsampled, to avoid loading a full-size
+                                        // bitmap just for a 72dp preview) below that.
+                                        if (android.os.Build.VERSION.SDK_INT
+                                            >= android.os.Build.VERSION_CODES.Q
+                                        ) {
+                                            context.contentResolver.loadThumbnail(
+                                                attachment.uri,
+                                                android.util.Size(144, 144),
+                                                null,
+                                            )
+                                        } else {
+                                            context.contentResolver.openInputStream(attachment.uri)
+                                                ?.use { input ->
+                                                    val bounds =
+                                                        android.graphics.BitmapFactory.Options()
+                                                            .apply { inJustDecodeBounds = true }
+                                                    android.graphics.BitmapFactory.decodeStream(
+                                                        input, null, bounds)
+                                                    var sample = 1
+                                                    while ((bounds.outWidth / sample) > 288
+                                                        || (bounds.outHeight / sample) > 288) {
+                                                        sample *= 2
+                                                    }
+                                                    context.contentResolver
+                                                        .openInputStream(attachment.uri)
+                                                        ?.use { second ->
+                                                            android.graphics.BitmapFactory
+                                                                .decodeStream(
+                                                                    second,
+                                                                    null,
+                                                                    android.graphics
+                                                                        .BitmapFactory.Options()
+                                                                        .apply {
+                                                                            inSampleSize = sample
+                                                                        },
+                                                                )
+                                                        }
+                                                }
+                                        }
                                     } catch (_: Exception) {
                                         null
                                     }
@@ -6052,11 +6085,15 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             editText.setText(text)
                             editText.setSelection((editText.text?.length ?: 0))
                         }
-                        // setTextCursorDrawable exists since API 29; minSdk is 33, always available.
-                        val cursorWidthPx = (2 * editText.resources.displayMetrics.density).toInt()
-                        editText.textCursorDrawable = GradientDrawable().apply {
-                            setColor(primaryColor)
-                            setSize(cursorWidthPx, -1)
+                        // setTextCursorDrawable exists since API 29 -- below that, the cursor
+                        // just keeps its default drawable/tint instead of the custom color/width.
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                            val cursorWidthPx =
+                                (2 * editText.resources.displayMetrics.density).toInt()
+                            editText.textCursorDrawable = GradientDrawable().apply {
+                                setColor(primaryColor)
+                                setSize(cursorWidthPx, -1)
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),

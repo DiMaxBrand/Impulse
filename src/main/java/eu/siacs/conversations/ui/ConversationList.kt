@@ -33,8 +33,6 @@ import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -199,9 +197,7 @@ object ConversationListHelper {
 @Composable
 private fun ImpulseTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val colorScheme =
-        if (isSystemInDarkTheme()) dynamicDarkColorScheme(context)
-        else dynamicLightColorScheme(context)
+    val colorScheme = dynamicOrStaticColorScheme(context, isSystemInDarkTheme())
     MaterialTheme(colorScheme = colorScheme, content = content)
 }
 
