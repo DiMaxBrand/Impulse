@@ -228,6 +228,22 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Full-screen call alerts (Android 14+ only): USE_FULL_SCREEN_INTENT is declared
+                // in the manifest, but as of API 34 it can land in a denied state for sideloaded
+                // apps with no runtime prompt at all -- the notification just silently degrades
+                // to an ordinary heads-up alert instead of auto-launching the call screen (sound
+                // plays, the call screen never appears until the notification is tapped
+                // manually). Unlike everything else on this screen, this one has a real,
+                // documented settings deep-link, so it's worth surfacing here.
+                val fullScreenIntentGranted = remember {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        androidx.core.app.NotificationManagerCompat.from(context)
+                            .canUseFullScreenIntent()
+                    } else {
+                        true
+                    }
+                }
+
                 // Cards -- grouped tightly (2dp, matching the app's other grouped-list rows)
                 // rather than the outer Column's 24dp spacedBy, so they read as one merged pair
                 // (top card rounds only its top corners, bottom card only its bottom corners)
@@ -259,7 +275,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                         soundName = null,
                         isSet = false,
                         isFirst = false,
-                        isLast = true,
+                        isLast = fullScreenIntentGranted,
                         onClick = {
                             val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
                                 putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
@@ -268,6 +284,30 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                             context.startActivity(intent)
                         }
                     )
+
+                    if (!fullScreenIntentGranted) {
+                        NotificationSetupCard(
+                            title = stringResource(R.string.notification_setup_full_screen_intent_title),
+                            description = stringResource(R.string.notification_setup_full_screen_intent_description),
+                            buttonLabel = stringResource(R.string.notification_setup_open_settings),
+                            soundName = null,
+                            isSet = false,
+                            isFirst = false,
+                            isLast = true,
+                            onClick = {
+                                val intent = android.content.Intent(
+                                    android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                                    android.net.Uri.parse("package:" + context.packageName),
+                                )
+                                try {
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                    // No activity handles this on some OEM skins -- nothing more
+                                    // we can do than fall through silently.
+                                }
+                            }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
