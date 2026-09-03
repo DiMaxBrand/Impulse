@@ -47,9 +47,39 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.Font
+import androidx.compose.runtime.DisposableEffect
 import androidx.graphics.shapes.RoundedPolygon
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.R
+
+/** Evaluates [compute] solely via ON_RESUME, including the very first one -- needed for anything
+ * checking a permission/settings state the user could have just changed by backing out of a
+ * Settings deep-link this same screen sent them to (e.g. "Display over other apps", full-screen
+ * call alerts). A plain `remember { compute() }` would never notice a later change.
+ *
+ * No separate eager `compute()` call at registration time: Lifecycle.addObserver() synchronously
+ * replays whatever events the observer missed to catch it up to the lifecycle's current state,
+ * so registering this observer during first composition (the activity is already at least
+ * RESUMED by then) fires a synthetic ON_RESUME immediately -- one code path covers both "just
+ * opened this screen" and "came back from Settings" instead of computing the same thing twice. */
+@Composable
+private fun rememberRefreshOnResume(compute: () -> Boolean): Boolean {
+    var state by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                state = compute()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    return state
+}
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -234,8 +264,11 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                 // to an ordinary heads-up alert instead of auto-launching the call screen (sound
                 // plays, the call screen never appears until the notification is tapped
                 // manually). Unlike everything else on this screen, this one has a real,
-                // documented settings deep-link, so it's worth surfacing here.
-                val fullScreenIntentGranted = remember {
+                // documented settings deep-link, so it's worth surfacing here. Re-checked on
+                // every resume (rememberRefreshOnResume) so the card disappears as soon as the
+                // user backs out of the settings screen this same card sent them to, having
+                // granted it -- a plain remember{} would never notice the change.
+                val fullScreenIntentGranted = rememberRefreshOnResume {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                         androidx.core.app.NotificationManagerCompat.from(context)
                             .canUseFullScreenIntent()
@@ -251,8 +284,9 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                 // (ACTION_MANAGE_OVERLAY_PERMISSION). Declared in the manifest but never actually
                 // checked or requested anywhere until now -- some OEMs (MIUI/HyperOS among them,
                 // by report) gate pop-up call UI behind it as an extra condition on top of
-                // Android's own full-screen-intent mechanism.
-                val overlayGranted = remember {
+                // Android's own full-screen-intent mechanism. Re-checked on resume, same reason
+                // as fullScreenIntentGranted above.
+                val overlayGranted = rememberRefreshOnResume {
                     android.provider.Settings.canDrawOverlays(context)
                 }
 
