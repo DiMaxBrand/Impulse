@@ -781,6 +781,12 @@ public class NotificationService {
 
     public void cancelIncomingCallNotification() {
         cancel(INCOMING_CALL_NOTIFICATION_ID);
+        // The ringtone workaround plays via a manually-started, manually-looped MediaPlayer,
+        // entirely independent of the notification channel's own sound -- cancelling the
+        // system notification does nothing to it. Without this, dismissing/answering/ending a
+        // call left it looping forever (setLooping(true)) since nothing else on any call-end
+        // path ever called stopRingtoneWorkaround().
+        stopRingtoneWorkaround();
     }
 
     public boolean stopSoundAndVibration() {
@@ -796,6 +802,10 @@ public class NotificationService {
             Log.d(Config.LOGTAG, "stopping sound and vibration for incoming call notification");
             showIncomingCallNotification(
                     jingleRtpConnection.getId(), jingleRtpConnection.getMedia(), true);
+            // Same gap as cancelIncomingCallNotification() -- the ringtone workaround's
+            // MediaPlayer is a separate sound source the notification channel knows nothing
+            // about, so "stop sound and vibration" needs to stop it explicitly too.
+            stopRingtoneWorkaround();
             return true;
         }
         return false;
