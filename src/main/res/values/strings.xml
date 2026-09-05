@@ -1392,7 +1392,7 @@
     <string name="notification_setup_overlay_description">Some devices need this permission for the incoming call screen to pop up automatically. Turn it on for Impulse to fix it.</string>
     <string name="notification_setup_done">Done</string>
     <string name="notification_setup_sound_set">Sound set</string>
-    <string name="notification_setup_skip_warning">Pop-up permissions were not enabled on the previous screen. Incoming calls will not appear automatically while the screen is off. They will still be audible, but answering will likely require unlocking the device and opening the notification shade.</string>
+    <string name="notification_setup_skip_warning">Pop-up permissions aren\'t on yet, so calls won\'t pop up automatically while the screen is off. You\'ll still hear them -- just expect to unlock the phone and open the notification shade to answer.</string>
     <string name="notification_setup_go_back">Go back</string>
     <string name="notification_setup_continue_anyway">Continue anyway</string>
 </resources>
