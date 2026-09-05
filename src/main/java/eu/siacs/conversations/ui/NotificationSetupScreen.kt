@@ -14,6 +14,9 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -457,17 +461,46 @@ fun NotificationSetupScreen(
                     }
                 }
 
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = showSkipWarning,
-                    enter = androidx.compose.animation.EnterTransition.None,
-                    exit = androidx.compose.animation.ExitTransition.None,
+            }
+
+            // Scrim + centered modal card, rather than the card sitting inline where the Done
+            // button was -- a permission warning deserves the same "stop and read this" modal
+            // treatment as any other confirmation dialog, not something easy to skim past inside
+            // the normal page flow.
+            val scrimAlpha by animateFloatAsState(
+                targetValue = if (showSkipWarning) 0.32f else 0f,
+                animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+                label = "skipWarningScrim",
+            )
+            if (scrimAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = scrimAlpha)),
+                )
+            }
+            AnimatedVisibility(
+                visible = showSkipWarning,
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) { showSkipWarning = false },
+                    contentAlignment = Alignment.Center,
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        tonalElevation = 4.dp,
+                        shape = RoundedCornerShape(28.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp,
                         modifier = Modifier
-                            .fillMaxWidth()
                             .sharedBounds(
                                 rememberSharedContentState("doneButtonOrWarning"),
                                 animatedVisibilityScope = this@AnimatedVisibility,
@@ -481,15 +514,33 @@ fun NotificationSetupScreen(
                                         },
                                     )
                                 },
-                            ),
+                            )
+                            // Consume touches so tapping inside the card doesn't dismiss it via
+                            // the outer Box's tap-outside-to-dismiss handler above.
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() },
+                            ) {},
                     ) {
-                        Column(modifier = Modifier.padding(20.dp)) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            // Hero icon -- standard elevated-card treatment for a warning dialog.
+                            Icon(
+                                imageVector = ImageVector.vectorResource(R.drawable.ic_error_24dp),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(40.dp),
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = stringResource(R.string.notification_setup_skip_warning),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
@@ -514,8 +565,8 @@ fun NotificationSetupScreen(
                 }
             }
         }
-        }
     }
+}
 }
 
 /** One scattered instance of [AutoMorphingShape] — [jitter] is a (dx, dy, rotationDurationMs)
