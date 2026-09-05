@@ -55,6 +55,12 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/action_notification_sound"
+        android:orderInCategory="76"
+        android:title="@string/notification_sound"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_accounts"
         android:orderInCategory="90"
         android:title="@string/action_accounts"
