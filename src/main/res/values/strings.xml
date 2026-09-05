@@ -1386,6 +1386,7 @@
     <string name="notification_setup_choose_ringtone">Choose ringtone</string>
     <string name="notification_setup_choose_sound">Choose sound</string>
     <string name="notification_setup_open_settings">Notification settings</string>
+    <string name="notification_setup_open_settings_generic">Open settings</string>
     <string name="notification_setup_full_screen_intent_title">Full-screen call alerts</string>
     <string name="notification_setup_full_screen_intent_description">Your device is currently blocking incoming calls from automatically popping up over the lock screen -- you\'d only see them by tapping the notification yourself. Turn this on to fix it.</string>
     <string name="notification_setup_overlay_title">Display over other apps</string>
@@ -1394,5 +1395,5 @@
     <string name="notification_setup_sound_set">Sound set</string>
     <string name="notification_setup_skip_warning">You\'ll still hear calls by unlocking the phone or reaching into the notification shade -- but going back to turn on pop-ups would make this a lot easier.</string>
     <string name="notification_setup_enable_it">Enable it</string>
-    <string name="notification_setup_continue_anyway">Continue anyway</string>
+    <string name="notification_setup_skip_action">Skip</string>
 </resources>

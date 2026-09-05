@@ -366,7 +366,7 @@ fun NotificationSetupScreen(
                         NotificationSetupCard(
                             title = stringResource(R.string.notification_setup_full_screen_intent_title),
                             description = stringResource(R.string.notification_setup_full_screen_intent_description),
-                            buttonLabel = stringResource(R.string.notification_setup_open_settings),
+                            buttonLabel = stringResource(R.string.notification_setup_open_settings_generic),
                             soundName = null,
                             isSet = fullScreenIntentGranted,
                             isFirst = false,
@@ -390,7 +390,7 @@ fun NotificationSetupScreen(
                         NotificationSetupCard(
                             title = stringResource(R.string.notification_setup_overlay_title),
                             description = stringResource(R.string.notification_setup_overlay_description),
-                            buttonLabel = stringResource(R.string.notification_setup_open_settings),
+                            buttonLabel = stringResource(R.string.notification_setup_open_settings_generic),
                             soundName = null,
                             isSet = overlayGranted,
                             isFirst = false,
@@ -553,7 +553,7 @@ fun NotificationSetupScreen(
                                         onDone()
                                     },
                                 ) {
-                                    Text(stringResource(R.string.notification_setup_continue_anyway))
+                                    Text(stringResource(R.string.notification_setup_skip_action))
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 // The actual ask -- filled (not just tonal) and rightmost, since
