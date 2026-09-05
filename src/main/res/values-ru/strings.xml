@@ -1458,7 +1458,7 @@
     <string name="notification_setup_overlay_description">Некоторым устройствам это разрешение нужно, чтобы экран входящего звонка появлялся автоматически. Включите его для Impulse, чтобы исправить.</string>
     <string name="notification_setup_done">Готово</string>
     <string name="notification_setup_sound_set">Звук выбран</string>
-    <string name="notification_setup_skip_warning">Разрешения на всплывающие окна пока не включены, поэтому звонки не будут появляться сами при выключенном экране. Вы всё равно их услышите — просто для ответа придётся разблокировать телефон и открыть шторку уведомлений.</string>
-    <string name="notification_setup_go_back">Назад</string>
+    <string name="notification_setup_skip_warning">Вы всё равно услышите звонки, разблокировав телефон или открыв шторку уведомлений — но если вернуться и включить всплывающие окна, будет намного проще.</string>
+    <string name="notification_setup_enable_it">Включить</string>
     <string name="notification_setup_continue_anyway">Всё равно продолжить</string>
 </resources>

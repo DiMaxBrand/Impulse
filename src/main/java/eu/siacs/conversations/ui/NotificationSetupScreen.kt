@@ -545,19 +545,23 @@ fun NotificationSetupScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                             ) {
+                                // De-emphasized: this is the path that leaves the problem
+                                // unsolved, so it's a plain TextButton, not the filled one.
                                 TextButton(
-                                    onClick = { showSkipWarning = false },
-                                ) {
-                                    Text(stringResource(R.string.notification_setup_go_back))
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                FilledTonalButton(
                                     onClick = {
                                         appSettings.setNotificationSetupDone()
                                         onDone()
                                     },
                                 ) {
                                     Text(stringResource(R.string.notification_setup_continue_anyway))
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                // The actual ask -- filled (not just tonal) and rightmost, since
+                                // this is the outcome the warning exists to steer people toward.
+                                Button(
+                                    onClick = { showSkipWarning = false },
+                                ) {
+                                    Text(stringResource(R.string.notification_setup_enable_it))
                                 }
                             }
                         }
