@@ -6,6 +6,11 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -20,7 +25,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -29,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,9 +89,16 @@ private fun rememberRefreshOnResume(compute: () -> Boolean): Boolean {
     return state
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
-fun NotificationSetupScreen(onDone: () -> Unit) {
+fun NotificationSetupScreen(
+    onDone: () -> Unit,
+    // Developer Options passes true: the permission cards stay visible even once granted (just
+    // with a checkmark added, same as the ringtone card), instead of disappearing -- easier to
+    // toggle a permission on/off in Settings and immediately see the card react, without it
+    // vanishing the moment it's granted.
+    alwaysShowPermissionCards: Boolean = false,
+) {
     val context = LocalContext.current
     val appSettings = remember { AppSettings(context) }
 
@@ -167,10 +182,15 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
         )
     }
 
+    // Whether tapping Done should finish immediately, or expand into a warning card first --
+    // true only when at least one permission the call screen actually depends on is missing.
+    var showSkipWarning by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
+        SharedTransitionLayout {
         Box(modifier = Modifier.fillMaxSize()) {
             // Purely decorative — three shapes, each cycling through the full MaterialShapes
             // catalog forever and rotating clockwise, scattered around the screen behind
@@ -314,6 +334,13 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                         }
                     )
 
+                    // Developer Options wants these two visible always (with a checkmark once
+                    // granted) so a tester can bounce in and out of Settings and immediately see
+                    // the card react; the real user-facing screen only shows them while the
+                    // permission is actually missing.
+                    val showFullScreenCard = alwaysShowPermissionCards || !fullScreenIntentGranted
+                    val showOverlayCard = alwaysShowPermissionCards || !overlayGranted
+
                     NotificationSetupCard(
                         title = stringResource(R.string.notification_setup_message_sound_title),
                         description = stringResource(R.string.notification_setup_message_sound_description),
@@ -321,7 +348,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                         soundName = null,
                         isSet = false,
                         isFirst = false,
-                        isLast = fullScreenIntentGranted && overlayGranted,
+                        isLast = !showFullScreenCard && !showOverlayCard,
                         onClick = {
                             val intent = android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
                                 putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
@@ -331,15 +358,15 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                         }
                     )
 
-                    if (!fullScreenIntentGranted) {
+                    if (showFullScreenCard) {
                         NotificationSetupCard(
                             title = stringResource(R.string.notification_setup_full_screen_intent_title),
                             description = stringResource(R.string.notification_setup_full_screen_intent_description),
                             buttonLabel = stringResource(R.string.notification_setup_open_settings),
                             soundName = null,
-                            isSet = false,
+                            isSet = fullScreenIntentGranted,
                             isFirst = false,
-                            isLast = overlayGranted,
+                            isLast = !showOverlayCard,
                             onClick = {
                                 val intent = android.content.Intent(
                                     android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
@@ -355,13 +382,13 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                         )
                     }
 
-                    if (!overlayGranted) {
+                    if (showOverlayCard) {
                         NotificationSetupCard(
                             title = stringResource(R.string.notification_setup_overlay_title),
                             description = stringResource(R.string.notification_setup_overlay_description),
                             buttonLabel = stringResource(R.string.notification_setup_open_settings),
                             soundName = null,
-                            isSet = false,
+                            isSet = overlayGranted,
                             isFirst = false,
                             isLast = true,
                             onClick = {
@@ -390,16 +417,103 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Button(
-                    onClick = {
-                        appSettings.setNotificationSetupDone()
-                        onDone()
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                // Tapping Done with a permission the call screen actually depends on still
+                // missing doesn't just finish silently -- it morphs into a warning card
+                // explaining the concrete consequence, via the same shared-bounds container
+                // transform technique the Developer Options version picker already uses
+                // (row -> card), rather than a plain disabled button with no explanation.
+                AnimatedVisibility(
+                    visible = !showSkipWarning,
+                    enter = EnterTransition.None,
+                    exit = ExitTransition.None,
                 ) {
-                    Text(stringResource(R.string.notification_setup_done))
+                    Button(
+                        onClick = {
+                            if (!fullScreenIntentGranted || !overlayGranted) {
+                                showSkipWarning = true
+                            } else {
+                                appSettings.setNotificationSetupDone()
+                                onDone()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sharedBounds(
+                                rememberSharedContentState("doneButtonOrWarning"),
+                                animatedVisibilityScope = this@AnimatedVisibility,
+                                boundsTransform = { _, _ ->
+                                    spring(
+                                        stiffness = 380f,
+                                        dampingRatio = if (showSkipWarning) {
+                                            Spring.DampingRatioMediumBouncy
+                                        } else {
+                                            0.8f
+                                        },
+                                    )
+                                },
+                            ),
+                    ) {
+                        Text(stringResource(R.string.notification_setup_done))
+                    }
+                }
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showSkipWarning,
+                    enter = androidx.compose.animation.EnterTransition.None,
+                    exit = androidx.compose.animation.ExitTransition.None,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        tonalElevation = 4.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sharedBounds(
+                                rememberSharedContentState("doneButtonOrWarning"),
+                                animatedVisibilityScope = this@AnimatedVisibility,
+                                boundsTransform = { _, _ ->
+                                    spring(
+                                        stiffness = 380f,
+                                        dampingRatio = if (showSkipWarning) {
+                                            Spring.DampingRatioMediumBouncy
+                                        } else {
+                                            0.8f
+                                        },
+                                    )
+                                },
+                            ),
+                    ) {
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Text(
+                                text = stringResource(R.string.notification_setup_skip_warning),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                            ) {
+                                TextButton(
+                                    onClick = { showSkipWarning = false },
+                                ) {
+                                    Text(stringResource(R.string.notification_setup_go_back))
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                FilledTonalButton(
+                                    onClick = {
+                                        appSettings.setNotificationSetupDone()
+                                        onDone()
+                                    },
+                                ) {
+                                    Text(stringResource(R.string.notification_setup_continue_anyway))
+                                }
+                            }
+                        }
+                    }
                 }
             }
+        }
         }
     }
 }

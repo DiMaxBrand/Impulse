@@ -190,6 +190,10 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                                 Intent(
                                                     this@DeveloperOptionsActivity,
                                                     eu.siacs.conversations.ui.NotificationSetupActivity::class.java,
+                                                ).putExtra(
+                                                    eu.siacs.conversations.ui.NotificationSetupActivity
+                                                        .EXTRA_ALWAYS_SHOW_PERMISSION_CARDS,
+                                                    true,
                                                 )
                                             )
                                         },

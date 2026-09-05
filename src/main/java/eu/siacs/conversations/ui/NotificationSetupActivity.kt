@@ -17,11 +17,23 @@ class NotificationSetupActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val alwaysShowPermissionCards = intent?.getBooleanExtra(EXTRA_ALWAYS_SHOW_PERMISSION_CARDS, false) ?: false
         setContent {
             AppThemeWrapper {
-                NotificationSetupScreen(onDone = { finish() })
+                NotificationSetupScreen(
+                    onDone = { finish() },
+                    alwaysShowPermissionCards = alwaysShowPermissionCards,
+                )
             }
         }
+    }
+
+    companion object {
+        /** Set by Developer Options' trigger -- keeps the permission cards visible (with a
+         * checkmark once granted) instead of hiding them, so a tester can toggle a permission
+         * on/off in Settings and immediately see the card react. */
+        const val EXTRA_ALWAYS_SHOW_PERMISSION_CARDS =
+            "eu.siacs.conversations.EXTRA_ALWAYS_SHOW_PERMISSION_CARDS"
     }
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
