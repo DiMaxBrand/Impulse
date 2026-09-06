@@ -219,3 +219,116 @@ Cherry-pick targets from `allow-deleting-messages` are noted.
 | **Retry P2P** | [ ] | Failed send, file not yet uploaded, peer online |
 | **Report & block** | [ ] | Received from stranger, server has spam reporting |
 | **Open with** | [ ] | Geo URIs / audio files when OsmAnd is installed |
+
+## Message resend: timestamp handling — plan only, not started
+
+Two existing resend paths already disagree on this, apparently by accident
+rather than design:
+
+- `XmppConnectionService.resendMessage()` (used by `sendUnsentMessages()`,
+  the automatic retry-on-reconnect path) never touches the timestamp —
+  preserves the original compose time.
+- `XmppConnectionService.resendFailedMessages()` (the manual "tap to retry"
+  action, both `ConversationFragment` and `ConversationComposeFragment`)
+  explicitly does `message.setTime(System.currentTimeMillis())` then
+  `conversation.sort()` — bumps the message to "now" and re-sorts it to
+  wherever that lands, discarding when it was actually composed.
+
+- [ ] **Plain failed → manual retry: keep the original timestamp, don't
+  re-sort.** Matches what auto-retry-on-reconnect already does, and matches
+  mainstream messenger conventions (WhatsApp/Signal/Telegram all keep a
+  retried message in its original position) — the failed state itself
+  already communicates "this didn't go out yet" without also needing to
+  move it. Remove the `setTime`/`sort()` call from `resendFailedMessages()`
+  for this case.
+- [ ] **Cancelled (`ERROR_MESSAGE_CANCELLED`) → manual resend: reset to the
+  current time.** Cancelling is a deliberate user act, not a transient
+  failure — resending it later is closer to composing a new message than
+  retrying an old one. Anti-abuse angle: without this, a message cancelled
+  and resent hours later would otherwise sit at its original (now
+  misleading) position. Needs the two cases distinguished in
+  `resendFailedMessages()` by checking `message.getErrorMessage() ==
+  Message.ERROR_MESSAGE_CANCELLED` rather than one blanket behavior for all
+  of `STATUS_SEND_FAILED`.
+- [ ] Open question, not resolved in discussion: whether there's a time
+  cutoff even for the plain-failed case (e.g. cancelled-and-resent 1 hour
+  later vs. 6 hours later treated differently) — needs a real decision
+  before implementing, not just "probably."
+
+## Automatic message resend — plan only, not started
+
+Not all `STATUS_SEND_FAILED` causes are the same kind of failure — auto-retry
+must not treat them uniformly. Sources found in the codebase:
+
+- **Server-rejected stanza** (`XmppConnection.java`) — could be transient
+  (`service-unavailable`, `remote-server-timeout`) or permanent
+  (`item-not-found`, `forbidden`, `policy-violation`).
+- **HTTP upload failed** (`HttpUploadConnection.java`) — network hiccup, or
+  the endpoint genuinely rejecting the file.
+- **File transfer failed** (`JingleFileTransferConnection.java`) — includes
+  a distinct `ERROR_MESSAGE_CANCELLED` case: the user *deliberately*
+  cancelled an upload. Auto-retrying this would re-send something the user
+  explicitly stopped — not an edge case, actively wrong if not excluded.
+- **OMEMO encryption failure** (`AxolotlService.java`) — usually a real
+  trust/device-list problem, not something a plain retry fixes.
+- **Carbon/receipt parsing errors** (`MessageParser.java`).
+
+Discussed design, user's stated preference:
+- [ ] Only retry causes that are actually transient — exclude
+  `ERROR_MESSAGE_CANCELLED` and permanent policy/trust errors outright, per
+  the list above.
+- [ ] Retry cadence: **every 5 minutes while the account is online/connected**
+  — not on a tighter loop, and not at all while offline (the existing
+  reconnect-triggered `sendUnsentMessages()` path already covers "connection
+  just came back," so this is specifically for "connection is up but this
+  particular send keeps failing").
+- [ ] No UI "retrying…" state — user explicitly doesn't think one is needed;
+  the message should just look like a normal failed message until it either
+  succeeds (see the scroll-button indicator below) or exhausts retries and
+  reverts to today's plain manual-retry state.
+- [ ] Needs a cap on attempts (not yet specified) so a permanently-failing
+  message doesn't retry forever every 5 minutes.
+
+## Scroll-to-bottom button: multifunctional redesign — plan only, not started
+
+Current behavior (`ConversationScreen.kt`): a single down-arrow FAB, appears
+once `listState.firstVisibleItemIndex > 2` (i.e. once the nearest 3 messages
+have scrolled out of view), scrolls to the newest message on tap. Confirmed
+correct via code + user's own on-device test.
+
+Discussed direction: same button, same position, but its icon and tap
+behavior change depending on what's happened off-screen while scrolled up —
+"button" per the user's own preference (spoke "indicator" out loud via
+speech-to-text but explicitly wants "button" in writing). All icons from
+**Material Symbols Rounded**, matching the rest of the app.
+
+- [ ] **New reaction off-screen** → icon becomes a heart outline (Material
+  Symbols Rounded), replacing the plain down-arrow.
+- [ ] **A message that failed to send, then got auto-resent successfully
+  (see automatic-resend above), sitting off-screen** → icon becomes an
+  exclamation mark in a circle (not the red/error-toned one used for the
+  earlier permission-warning modal — same shape, but a neutral/attention
+  tone, "nothing bad"). Tapping it does two things at once: scrolls to the
+  resent message's position, **and** — via the same shared-bounds container
+  transform already built for the notification-setup skip-warning modal
+  (scrim + centered elevated card, `SharedTransitionLayout`) — expands into
+  a centered card. Reuses that exact established component/pattern, not a
+  new one.
+  - [ ] Card wording: use the contact's actual display name, not a
+    generic "they/it" placeholder — e.g. for a contact named Dima:
+    something like "Dima's connection may have been unstable — one of
+    their messages didn't send at first, but it went through now." Exact
+    phrasing not finalized (workshopped live in conversation, no version
+    the user was happy with yet) — needs a real pass when this gets built,
+    not the placeholder draft above.
+  - [ ] Open question: is this scenario about the *other* contact's
+    message failing to send to them (delivery status) or about *my own*
+    outgoing message failing and being auto-resent — the discussion used
+    "Dima" in the example wording as if narrating the other person's
+    connectivity, but the triggering condition (auto-resend, described
+    just above) is specifically about outgoing messages *I* sent that
+    failed. Needs clarifying before implementation — the wording and the
+    mechanism as discussed don't obviously match.
+- [ ] Interaction with the existing plain "new messages below, tap to
+  scroll" behavior not yet specified — do these icon states take priority
+  over the plain arrow, coexist, or need their own separate indicator.
