@@ -347,25 +347,47 @@ one-shot dismiss-and-forget.
 - [ ] **The dialog/card** (expressive design required — matches the app's
   own stated standard that new/edited surfaces get Expressive treatment,
   not an exception here):
-  - [ ] Two emoji choices shown by default: heart and thumbs-up.
-  - [ ] Long-pressing either opens skin-tone variants — reuse the
+  - [ ] Just two emoji choices: heart and thumbs-up. Confirmed — not a
+    wider set.
+  - [ ] **Layout/ordering**: reuse the arrangement already used by the
+    existing add-reaction dialog's default suggested-reactions row (the
+    part visible before its "..." three-dot overflow) — user explicitly
+    likes that existing ordering and wants it carried over, not redesigned.
+    The existing dialog is `AddReactionDialog.java` (plain Java) launching
+    `AddReactionActivity.kt` (legacy `DataBindingUtil`/XML layout,
+    `R.layout.activity_add_reaction`) — **confirmed not yet ported to
+    Compose**, so "port the existing dialog to Compose too" (raised in the
+    same discussion) is itself real, unstarted work, not a prerequisite
+    that's already done.
+  - [ ] **Native shape-morphing** on the emoji elements themselves —
+    confirmed via live check that the *current* add-reaction dialog does
+    NOT already morph; this needs to be added fresh, using the same
+    `Morph`/`RoundedPolygon` techniques already used elsewhere in the app
+    (`AutoMorphingShape`, the Developer Options shape catalog, the chat
+    list's presence-shaped avatar frame).
+  - [ ] Long-pressing either emoji opens skin-tone variants — reuse the
     skin-tone-variant mechanism already built into `androidx.emoji2
     :emoji2-emojipicker`'s `EmojiPickerView` (confirmed: this is Google's
     own official Jetpack emoji picker, already a dependency, already used
     in `activity_add_reaction.xml` — not a third-party library), rather
     than reimplementing variant selection from scratch.
-  - [ ] A "Remember my decision" checkbox underneath the emoji choices —
-    standard dialog convention. Checking it before picking means future
-    double-taps skip the dialog entirely and apply the chosen reaction
-    directly. Leaving it unchecked means the dialog asks again next time.
-- [ ] **Persistence**: two pieces of state — the remembered emoji/skin-tone
-  choice, and whether "always ask" is still in effect (i.e. whether the
-  checkbox was ever ticked). Even after remembering a choice, the user must
-  be able to get back into the dialog deliberately (see Settings entry
-  below) to change or reset it — "remembered" must never mean "locked in
-  with no way back."
+  - [ ] A single **"Remember"** checkbox underneath the emoji choices —
+    **not** a separate "always ask" toggle; "always ask" is simply what
+    happens when "Remember" is off. Defaults to **checked** in the
+    dialog's own UI. Checked when a choice is made → that choice is
+    remembered, future double-taps skip the dialog entirely and apply it
+    directly. Unchecked → the dialog keeps asking every time, until the
+    user deliberately re-opens it via Settings (below) and re-checks it.
+- [ ] **Persistence**: a single "remembered choice" (emoji + skin tone,
+  nullable/absent = no decision made yet, first double-tap should still
+  show the dialog) plus the "Remember" boolean itself. Even once
+  remembered, the user must be able to get back into the dialog
+  deliberately (Settings entry below) to change the choice or flip back to
+  always-ask — "remembered" must never mean "locked in with no way back."
 - [ ] **Settings entry**: a new row under Settings → Interface (the natural
   home — no other existing section governs message-level behavior like
-  this), labeled **"Quick Reactions"**, opening the exact same dialog used
-  for the first double-tap — same component, not a separate settings-only
-  variant, so there's only one implementation of the picker UI to maintain.
+  this), labeled **"Quick Reactions"**, opening the *exact same* dialog
+  used for the first double-tap — architecturally, the same fragment shown
+  both ways, not a separate settings-only variant, so there's only one
+  implementation of the picker UI to maintain. Lets the user change the
+  emoji/skin-tone and toggle "Remember" back on or off.
