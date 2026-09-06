@@ -332,3 +332,40 @@ speech-to-text but explicitly wants "button" in writing). All icons from
 - [ ] Interaction with the existing plain "new messages below, tap to
   scroll" behavior not yet specified — do these icon states take priority
   over the plain arrow, coexist, or need their own separate indicator.
+
+## Double-tap quick reactions — plan only, not started
+
+Deliberately different from WhatsApp/Telegram's silent double-tap-for-heart:
+double-tapping a message should **ask** what reaction to apply — every time,
+unless the user has explicitly opted out via "remember my decision." Never a
+one-shot dismiss-and-forget.
+
+- [ ] **Trigger**: double-tap on a message bubble (chat list gesture
+  handling — needs a real double-tap detector, not just two quick single
+  taps, to avoid colliding with existing tap-to-view/long-press-for-menu
+  gestures already on the bubble).
+- [ ] **The dialog/card** (expressive design required — matches the app's
+  own stated standard that new/edited surfaces get Expressive treatment,
+  not an exception here):
+  - [ ] Two emoji choices shown by default: heart and thumbs-up.
+  - [ ] Long-pressing either opens skin-tone variants — reuse the
+    skin-tone-variant mechanism already built into `androidx.emoji2
+    :emoji2-emojipicker`'s `EmojiPickerView` (confirmed: this is Google's
+    own official Jetpack emoji picker, already a dependency, already used
+    in `activity_add_reaction.xml` — not a third-party library), rather
+    than reimplementing variant selection from scratch.
+  - [ ] A "Remember my decision" checkbox underneath the emoji choices —
+    standard dialog convention. Checking it before picking means future
+    double-taps skip the dialog entirely and apply the chosen reaction
+    directly. Leaving it unchecked means the dialog asks again next time.
+- [ ] **Persistence**: two pieces of state — the remembered emoji/skin-tone
+  choice, and whether "always ask" is still in effect (i.e. whether the
+  checkbox was ever ticked). Even after remembering a choice, the user must
+  be able to get back into the dialog deliberately (see Settings entry
+  below) to change or reset it — "remembered" must never mean "locked in
+  with no way back."
+- [ ] **Settings entry**: a new row under Settings → Interface (the natural
+  home — no other existing section governs message-level behavior like
+  this), labeled **"Quick Reactions"**, opening the exact same dialog used
+  for the first double-tap — same component, not a separate settings-only
+  variant, so there's only one implementation of the picker UI to maintain.
