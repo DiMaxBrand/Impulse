@@ -59,7 +59,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -105,13 +104,6 @@ fun UpdatesScreen(
     onChannelSelected: (UpdateChannel) -> Unit,
     onAutoCheckToggled: (Boolean) -> Unit,
     onCheckNow: () -> Unit,
-    onDownload: () -> Unit,
-    onStop: () -> Unit,
-    onContinue: () -> Unit,
-    onInstall: () -> Unit,
-    onConfirmInstall: () -> Unit,
-    onDownloadCircleTapped: () -> Unit = {},
-    onHideUpdateSheet: () -> Unit = {},
 ) {
     var channelPickerVisible by remember { mutableStateOf(false) }
     var infoChannel by remember { mutableStateOf<UpdateChannel?>(null) }
@@ -331,20 +323,9 @@ fun UpdatesScreen(
         }
     }
 
-    // ── Update flow bottom sheet ──────────────────────────────────────────
-    if (state.showUpdateSheet) {
-        ModalBottomSheet(onDismissRequest = onHideUpdateSheet) {
-            UpdateSheetContent(
-                state = state,
-                onDownload = onDownload,
-                onStop = onStop,
-                onContinue = onContinue,
-                onInstall = onInstall,
-                onConfirmInstall = onConfirmInstall,
-                onDownloadCircleTapped = onDownloadCircleTapped,
-            )
-        }
-    }
+    // Download-progress UI (the sheet) is no longer rendered inline here -- it's the shared
+    // UpdateSheetFragment, shown by UpdatesActivity via FragmentManager. See
+    // UpdatesActivity's class doc for why.
 }
 
 // ─── Channel picker: list ────────────────────────────────────────────────────
@@ -1305,5 +1286,4 @@ data class UpdatesUiState(
     val showInstallCard: Boolean = false,
     val canInstallDirectly: Boolean = true,
     val isFirstUpdate: Boolean = false,
-    val showUpdateSheet: Boolean = false,
 )
