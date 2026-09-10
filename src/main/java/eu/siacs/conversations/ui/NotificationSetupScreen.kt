@@ -106,6 +106,16 @@ fun NotificationSetupScreen(
     val context = LocalContext.current
     val appSettings = remember { AppSettings(context) }
 
+    // Asks the phone directly, rather than guessing by OEM/version: does *some* Activity on this
+    // device actually claim to handle this intent right now? resolveActivity() answers that
+    // against the real installed-component registry -- no OEM sniffing, no version table to
+    // maintain. Requires the corresponding <queries> declaration in AndroidManifest.xml on API
+    // 30+, since package-visibility rules gate what an implicit intent's resolveActivity() can
+    // see regardless of whether a handler genuinely exists.
+    fun canResolve(intent: android.content.Intent): Boolean {
+        return intent.resolveActivity(context.packageManager) != null
+    }
+
     fun isHyperOs(): Boolean {
         return try {
             val c = Class.forName("android.os.SystemProperties")
@@ -300,6 +310,16 @@ fun NotificationSetupScreen(
                         true
                     }
                 }
+                val fullScreenIntentSettingsIntent = remember {
+                    android.content.Intent(
+                        android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                        android.net.Uri.parse("package:" + context.packageName),
+                    )
+                }
+                // Below API 34 the permission itself doesn't exist, so there's nothing to resolve
+                // -- fullScreenIntentGranted is already hardcoded true there and the card never
+                // shows regardless of this check.
+                val fullScreenIntentResolvable = remember { canResolve(fullScreenIntentSettingsIntent) }
 
                 // Display over other apps (SYSTEM_ALERT_WINDOW) -- unlike the OEM-only toggles
                 // (HyperOS's "Show on Lock screen", MIUI's "Display pop-up windows", etc.), this
@@ -312,6 +332,21 @@ fun NotificationSetupScreen(
                 // as fullScreenIntentGranted above.
                 val overlayGranted = rememberRefreshOnResume {
                     android.provider.Settings.canDrawOverlays(context)
+                }
+                val overlaySettingsIntent = remember {
+                    android.content.Intent(
+                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:" + context.packageName),
+                    )
+                }
+                // The click handler below also falls back to the bare, unscoped variant on some
+                // OEMs that reject the package-scoped URI -- checked here too, so a device that
+                // only accepts the unscoped form doesn't get its card hidden as unresolvable.
+                val overlaySettingsIntentUnscoped = remember {
+                    android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                }
+                val overlayResolvable = remember {
+                    canResolve(overlaySettingsIntent) || canResolve(overlaySettingsIntentUnscoped)
                 }
 
                 // Cards -- grouped tightly (2dp, matching the app's other grouped-list rows)
@@ -342,8 +377,9 @@ fun NotificationSetupScreen(
                     // granted) so a tester can bounce in and out of Settings and immediately see
                     // the card react; the real user-facing screen only shows them while the
                     // permission is actually missing.
-                    val showFullScreenCard = alwaysShowPermissionCards || !fullScreenIntentGranted
-                    val showOverlayCard = alwaysShowPermissionCards || !overlayGranted
+                    val showFullScreenCard = (alwaysShowPermissionCards || !fullScreenIntentGranted) &&
+                        fullScreenIntentResolvable
+                    val showOverlayCard = (alwaysShowPermissionCards || !overlayGranted) && overlayResolvable
 
                     NotificationSetupCard(
                         title = stringResource(R.string.notification_setup_message_sound_title),
@@ -372,15 +408,11 @@ fun NotificationSetupScreen(
                             isFirst = false,
                             isLast = !showOverlayCard,
                             onClick = {
-                                val intent = android.content.Intent(
-                                    android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-                                    android.net.Uri.parse("package:" + context.packageName),
-                                )
                                 try {
-                                    context.startActivity(intent)
+                                    context.startActivity(fullScreenIntentSettingsIntent)
                                 } catch (_: Exception) {
-                                    // No activity handles this on some OEM skins -- nothing more
-                                    // we can do than fall through silently.
+                                    // Belt-and-suspenders -- fullScreenIntentResolvable already
+                                    // keeps this card from showing when nothing handles it.
                                 }
                             }
                         )
@@ -396,22 +428,16 @@ fun NotificationSetupScreen(
                             isFirst = false,
                             isLast = true,
                             onClick = {
-                                val intent = android.content.Intent(
-                                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    android.net.Uri.parse("package:" + context.packageName),
-                                )
                                 try {
-                                    context.startActivity(intent)
+                                    context.startActivity(overlaySettingsIntent)
                                 } catch (_: Exception) {
                                     // Some OEMs don't accept the package-scoped URI -- retry
                                     // with the bare, unscoped settings screen instead.
                                     try {
-                                        context.startActivity(
-                                            android.content.Intent(
-                                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION
-                                            )
-                                        )
+                                        context.startActivity(overlaySettingsIntentUnscoped)
                                     } catch (_: Exception) {
+                                        // Belt-and-suspenders -- overlayResolvable already keeps
+                                        // this card from showing when neither form resolves.
                                     }
                                 }
                             }

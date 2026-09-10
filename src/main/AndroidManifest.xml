@@ -78,6 +78,18 @@
         <intent>
             <action android:name="org.unifiedpush.android.connector.MESSAGE" />
         </intent>
+
+        <!-- So NotificationSetupScreen's Intent.resolveActivity() checks (whether a given
+             settings deep-link can actually fire on this device) get a real answer instead of
+             a false "nothing handles this". On API 30+, an implicit intent's visibility to
+             resolveActivity/queryIntentActivities is gated by these declarations, regardless of
+             whether a handler genuinely exists on the device. -->
+        <intent>
+            <action android:name="android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.action.MANAGE_OVERLAY_PERMISSION" />
+        </intent>
     </queries>
 
     <application
