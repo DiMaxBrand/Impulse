@@ -88,6 +88,13 @@ public class AppSettings {
     // Bump this to force the setup screen to re-run on existing installs.
     public static final int CURRENT_NOTIFICATION_SETUP_VERSION = 5;
 
+    // Double-tap quick reaction: QUICK_REACTION_EMOJI is null until a choice has ever been made
+    // (double-tap must still ask the first time regardless of QUICK_REACTION_REMEMBER's default).
+    // QUICK_REACTION_REMEMBER off means "keep asking every time" -- not a separate "always ask"
+    // toggle, just the inverse of remembering.
+    public static final String QUICK_REACTION_EMOJI = "quick_reaction_emoji";
+    public static final String QUICK_REACTION_REMEMBER = "quick_reaction_remember";
+
     private static final String LEGACY_AUTO_ACCEPT_FILE_SIZE = "524288";
     private static final String DEFAULT_AUTO_ACCEPT_FILE_SIZE = "5242880";
     private static final String LEGACY_VIDEO_COMPRESSION = "480";
@@ -637,6 +644,28 @@ public class AppSettings {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
                 .putInt(NOTIFICATION_SETUP_VERSION, CURRENT_NOTIFICATION_SETUP_VERSION)
+                .apply();
+    }
+
+    /**
+     * Null until a choice has ever been saved -- double-tap should still ask the first time
+     * regardless of {@link #isQuickReactionRemember()}'s default.
+     */
+    public String getQuickReactionEmoji() {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(QUICK_REACTION_EMOJI, null);
+    }
+
+    public boolean isQuickReactionRemember() {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean(QUICK_REACTION_REMEMBER, true);
+    }
+
+    public void setQuickReaction(final String emoji, final boolean remember) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(QUICK_REACTION_EMOJI, emoji)
+                .putBoolean(QUICK_REACTION_REMEMBER, remember)
                 .apply();
     }
 }

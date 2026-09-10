@@ -484,6 +484,9 @@
     </plurals>
     <string name="pref_quick_action_summary">Replace “Send” button with quick action</string>
     <string name="pref_quick_action">Quick Action</string>
+    <string name="pref_quick_reactions">Quick Reactions</string>
+    <string name="pref_quick_reactions_summary">Choose what double-tapping a message reacts with</string>
+    <string name="pref_quick_reactions_remember">Remember my decision</string>
     <string name="none">None</string>
     <string name="recently_used">Most recently used</string>
     <string name="choose_quick_action">Choose quick action</string>

@@ -467,6 +467,9 @@
     </plurals>
     <string name="pref_quick_action_summary">Заменить кнопку \"Отправить\" кнопкой быстрого действия</string>
     <string name="pref_quick_action">Быстрое действие</string>
+    <string name="pref_quick_reactions">Быстрые реакции</string>
+    <string name="pref_quick_reactions_summary">Выберите, какой реакцией отвечает двойное нажатие на сообщение</string>
+    <string name="pref_quick_reactions_remember">Запомнить мой выбор</string>
     <string name="none">Нет</string>
     <string name="recently_used">Последнее выбранное</string>
     <string name="choose_quick_action">Выбрать быстрое действие</string>

@@ -60,6 +60,11 @@
             android:key="start_searching"
             android:summary="@string/pref_start_search_summary"
             android:title="@string/pref_start_search" />
+        <Preference
+            android:icon="@drawable/ic_add_reaction_24dp"
+            android:key="quick_reactions"
+            android:summary="@string/pref_quick_reactions_summary"
+            android:title="@string/pref_quick_reactions" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/pref_keyboard_options">
         <SwitchPreferenceCompat

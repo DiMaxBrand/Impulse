@@ -376,6 +376,9 @@
             android:name=".ui.activity.UpdatesActivity"
             android:parentActivityName=".ui.activity.SettingsActivity" />
         <activity
+            android:name=".ui.activity.QuickReactionSettingsActivity"
+            android:parentActivityName=".ui.activity.SettingsActivity" />
+        <activity
             android:name=".ui.activity.DeveloperOptionsActivity"
             android:parentActivityName=".ui.AboutActivity" />
         <activity
