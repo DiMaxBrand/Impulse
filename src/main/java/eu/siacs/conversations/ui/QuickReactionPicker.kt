@@ -1,12 +1,8 @@
 package eu.siacs.conversations.ui
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,10 +16,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilledIconToggleButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,16 +29,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
-import androidx.graphics.shapes.Morph
 import eu.siacs.conversations.R
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** The two quick-reaction choices and their real Unicode variant sets. Heart variants are
  * distinct *colored* code points (there's no Fitzpatrick skin-tone modifier for a heart);
@@ -79,61 +75,55 @@ private fun variantsFor(baseEmoji: String): List<String> = when (baseEmoji) {
     else -> listOf(baseEmoji)
 }
 
-/** A single circular emoji button whose background shape morphs (via the same [Morph]/
- * `RoundedPolygon` technique as [AutoMorphingShape] elsewhere in the app) between a plain circle
- * and a soft "cookie" shape when selected -- native shape-morphing, not just a color/scale
- * change, matching the app's established Expressive motion language. Long-press opens a
- * tertiary-colored popup with this emoji's real Unicode variants (see [variantsFor]). */
+/** A single quick-reaction button, scaled up to the picker's original oversized-circle size.
+ * Uses Material3's own [FilledIconToggleButton] with [IconButtonDefaults.toggleableShapes] --
+ * the theme's real, built-in "checked" shape and its animated shape-by-interaction transition --
+ * instead of a bespoke Circle/Cookie [androidx.graphics.shapes.Morph] pair. That native shape is
+ * whatever the app theme resolves for a checked icon toggle button (an Expressive "cookie"-style
+ * silhouette by default), so this stays visually consistent with any other toggle button in the
+ * app rather than inventing a one-off shape pairing just for this screen.
+ *
+ * Long-press opens a tertiary-colored popup with this emoji's real Unicode variants (see
+ * [variantsFor]), detected by watching [interactionSource] for a press held past the platform's
+ * long-press timeout -- purely additive, so it never interferes with the button's own built-in
+ * click handling. One accepted trade-off from dropping the old combinedClickable: a long press
+ * still also fires the normal click (selecting the base emoji) in addition to opening the variant
+ * popup, rather than suppressing it -- picking a variant from the popup simply overrides that
+ * selection immediately after. */
 @Composable
-private fun MorphingReactionButton(
+private fun QuickReactionButton(
     emoji: String,
     selected: Boolean,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val circle = remember { MaterialShapeHelpers.circle() }
-    val cookie = remember { MaterialShapeHelpers.cookie9Sided() }
-    val morph = remember { Morph(circle, cookie) }
-    val progress = remember { Animatable(0f) }
+    val interactionSource = remember { MutableInteractionSource() }
     var showVariants by remember { mutableStateOf(false) }
+    val longPressTimeoutMs = LocalViewConfiguration.current.longPressTimeoutMillis
 
-    LaunchedEffect(selected) {
-        progress.animateTo(
-            targetValue = if (selected) 1f else 0f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow,
-            ),
-        )
-    }
-
-    val backgroundColor = if (selected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
+    LaunchedEffect(interactionSource) {
+        var pressJob: kotlinx.coroutines.Job? = null
+        interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> {
+                    pressJob = launch {
+                        delay(longPressTimeoutMs)
+                        showVariants = true
+                    }
+                }
+                is PressInteraction.Release, is PressInteraction.Cancel -> pressJob?.cancel()
+            }
+        }
     }
 
     Box(contentAlignment = Alignment.Center) {
-        Box(
-            modifier = modifier
-                .size(64.dp)
-                .combinedClickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { onSelect(emoji) },
-                    onLongClick = { showVariants = true },
-                ),
-            contentAlignment = Alignment.Center,
+        FilledIconToggleButton(
+            checked = selected,
+            onCheckedChange = { checked -> if (checked) onSelect(emoji) },
+            shapes = IconButtonDefaults.toggleableShapes(),
+            interactionSource = interactionSource,
+            modifier = modifier.size(64.dp),
         ) {
-            val reusedPath = remember { androidx.compose.ui.graphics.Path() }
-            val reusedMatrix = remember { android.graphics.Matrix() }
-            Canvas(modifier = Modifier.size(64.dp)) {
-                reusedMatrix.reset()
-                reusedMatrix.postScale(size.width, size.height)
-                morph.toPath(progress.value, reusedPath)
-                reusedPath.asAndroidPath().transform(reusedMatrix)
-                clipPath(reusedPath) { drawRect(backgroundColor) }
-            }
             Text(text = emoji, fontSize = 28.sp)
         }
 
@@ -156,14 +146,13 @@ private fun MorphingReactionButton(
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .combinedClickable(
+                                    .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
                                         onClick = {
                                             showVariants = false
                                             onSelect(variant)
                                         },
-                                        onLongClick = {},
                                     ),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -224,7 +213,7 @@ fun QuickReactionPickerContent(
             horizontalArrangement = Arrangement.Center,
         ) {
             for (choice in choices) {
-                MorphingReactionButton(
+                QuickReactionButton(
                     emoji = if (isSameFamily(selected, choice)) selected else choice,
                     selected = isSameFamily(selected, choice),
                     onSelect = { picked -> selected = picked },
