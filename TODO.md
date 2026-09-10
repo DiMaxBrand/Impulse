@@ -344,6 +344,13 @@ one-shot dismiss-and-forget.
   handling — needs a real double-tap detector, not just two quick single
   taps, to avoid colliding with existing tap-to-view/long-press-for-menu
   gestures already on the bubble).
+- [ ] **Build order, explicitly decided**: build the brand-new dialog
+  first, kept visually close to the existing add-reaction dialog's design
+  rather than porting that legacy dialog to Compose up front. Porting
+  `AddReactionActivity`/`AddReactionDialog.java` to Compose (mentioned
+  earlier in this same discussion) is the *last* step, once the new
+  dialog has proven itself — "test the waters" with the new, smaller
+  surface before touching the existing one.
 - [ ] **The dialog/card** (expressive design required — matches the app's
   own stated standard that new/edited surfaces get Expressive treatment,
   not an exception here):
@@ -356,21 +363,27 @@ one-shot dismiss-and-forget.
     The existing dialog is `AddReactionDialog.java` (plain Java) launching
     `AddReactionActivity.kt` (legacy `DataBindingUtil`/XML layout,
     `R.layout.activity_add_reaction`) — **confirmed not yet ported to
-    Compose**, so "port the existing dialog to Compose too" (raised in the
-    same discussion) is itself real, unstarted work, not a prerequisite
-    that's already done.
+    Compose**; see build-order note above.
   - [ ] **Native shape-morphing** on the emoji elements themselves —
     confirmed via live check that the *current* add-reaction dialog does
     NOT already morph; this needs to be added fresh, using the same
     `Morph`/`RoundedPolygon` techniques already used elsewhere in the app
     (`AutoMorphingShape`, the Developer Options shape catalog, the chat
     list's presence-shaped avatar frame).
-  - [ ] Long-pressing either emoji opens skin-tone variants — reuse the
-    skin-tone-variant mechanism already built into `androidx.emoji2
-    :emoji2-emojipicker`'s `EmojiPickerView` (confirmed: this is Google's
-    own official Jetpack emoji picker, already a dependency, already used
-    in `activity_add_reaction.xml` — not a third-party library), rather
-    than reimplementing variant selection from scratch.
+  - [ ] **Long-press-for-variants popup**, refined: not identical variant
+    behavior for both emoji, matching what each actually has in Unicode —
+    long-pressing the **heart** shows its real *color* variants (❤️ 🧡 💛
+    💚 💙 💜 🖤 🤍 🤎 — distinct colored heart code points, not a skin-tone
+    modifier); long-pressing **thumbs-up** shows its real Fitzpatrick
+    *skin-tone* variants (👍🏻👍🏼👍🏽👍🏾👍🏿 — an actual modifier
+    sequence). Reuse the variant-picker mechanism already built into
+    `androidx.emoji2:emoji2-emojipicker`'s `EmojiPickerView` (confirmed:
+    Google's own official Jetpack picker, already a dependency, already
+    used in `activity_add_reaction.xml`) rather than reimplementing
+    variant selection from scratch. The popup surface itself should use
+    the Material3 **tertiary** color role (`colorScheme.tertiaryContainer`
+    or similar), not primary/secondary — explicit color-role choice, not
+    just "some accent color."
   - [ ] A single **"Remember"** checkbox underneath the emoji choices —
     **not** a separate "always ask" toggle; "always ask" is simply what
     happens when "Remember" is off. Defaults to **checked** in the
