@@ -293,6 +293,7 @@ interface ConversationScreenListener {
 
     fun onSendReactions(message: Message, reactions: Set<String>)
     fun onAddReaction(message: Message)
+    fun onDoubleTapReaction(message: Message)
     fun onShowReactionDetails(message: Message, emoji: String)
     fun onScrollToMessage(message: Message)
     fun onCopyLink(message: Message)
@@ -2156,12 +2157,19 @@ private fun MessageRow(
                     Modifier
                 }
             )
-            .combinedClickable(
-                onClick = { if (selectionActive) onToggleSelected() },
-                onLongClick = { if (selectionActive) onToggleSelected() else onLongPress(message) },
-                indication = null,
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-            ),
+            // Replaced combinedClickable with a single detectTapGestures block so double-tap
+            // (quick reaction) can be recognized alongside the existing tap/long-press without
+            // two competing gesture detectors on the same node -- detectTapGestures natively
+            // disambiguates tap vs. double-tap vs. long-press together. Same trade-off every
+            // double-tap-to-react app has: a plain single tap now waits out the double-tap
+            // window before firing, which it didn't before.
+            .pointerInput(selectionActive, message.getUuid()) {
+                detectTapGestures(
+                    onTap = { if (selectionActive) onToggleSelected() },
+                    onDoubleTap = { if (!selectionActive) listener.onDoubleTapReaction(message) },
+                    onLongPress = { if (selectionActive) onToggleSelected() else onLongPress(message) },
+                )
+            },
     ) {
         Row(
             verticalAlignment = Alignment.Bottom,

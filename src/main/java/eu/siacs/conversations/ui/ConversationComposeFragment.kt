@@ -1174,6 +1174,23 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
     }
 
+    override fun onDoubleTapReaction(message: Message) {
+        val activity = activity as? XmppActivity ?: return
+        val appSettings = eu.siacs.conversations.AppSettings(activity)
+        val remembered = appSettings.quickReactionEmoji
+        if (appSettings.isQuickReactionRemember && remembered != null) {
+            applyQuickReaction(activity, message, remembered)
+        } else {
+            // No remembered choice yet, or the user opted to keep being asked -- show the same
+            // picker used by Settings -> Interface -> Quick Reactions, bound to this specific
+            // message so picking a choice also sends it, not just saves the default.
+            val conversationUuid = message.getConversation().getUuid() ?: return
+            val messageUuid = message.getUuid() ?: return
+            QuickReactionDialogFragment.newInstance(conversationUuid, messageUuid)
+                .show(parentFragmentManager, QuickReactionDialogFragment.TAG)
+        }
+    }
+
     override fun onShowReactionDetails(message: Message, emoji: String) {
         val ctx = context ?: return
         val normalized = Emoticons.normalizeToVS16(emoji)
