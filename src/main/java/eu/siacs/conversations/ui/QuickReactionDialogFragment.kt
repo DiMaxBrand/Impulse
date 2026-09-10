@@ -19,19 +19,11 @@ import androidx.fragment.app.DialogFragment
 import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.entities.Message
 
-/** Toggles [emoji] into (or out of) `message`'s own reactions and sends the result -- the one
- * place this logic lives, reused by both the double-tap trigger and this dialog's own
- * message-bound save. Unlike AddReactionActivity's picker (which never removes a reaction, since
- * it's a "browse everything and add" surface), double-tap is a single committed action on a
- * single emoji, so tapping it again when it's already your reaction removes it -- the same
- * toggle a repeated double-tap would give a user on other chat apps. */
+/** Applies [emoji] to `message`'s own reactions via [toggledReactions] and sends the result --
+ * the one place this logic lives, reused by both the double-tap trigger and this dialog's own
+ * message-bound save. */
 fun applyQuickReaction(activity: XmppActivity, message: Message, emoji: String) {
-    val aggregated = message.getAggregatedReactions()
-    val updated = if (aggregated.ourReactions.contains(emoji)) {
-        aggregated.ourReactions - emoji
-    } else {
-        aggregated.ourReactions + emoji
-    }
+    val updated = toggledReactions(message.getAggregatedReactions().ourReactions, emoji)
     activity.sendReactions(message, updated.toSet())
 }
 
@@ -40,9 +32,12 @@ fun applyQuickReaction(activity: XmppActivity, message: Message, emoji: String) 
  * full-screen destination. Matches how the existing add-reaction dialog presents (an AlertDialog
  * card over the chat, not its own screen), and the spec's own "elevated card" language.
  *
- * When shown with no arguments (the Settings entry), saving just persists the default choice.
- * When shown via [newInstance] (double-tap, first time or "keep asking"), saving both persists
- * the choice *and* applies it to that specific message immediately, via [applyQuickReaction]. */
+ * When shown with no arguments (the Settings entry), saving just persists the default choice, and
+ * the "..."/keyboard row is omitted entirely -- there's no message in that context for either to
+ * act on. When shown via [newInstance] (double-tap, first time or "keep asking"), saving both
+ * persists the choice *and* applies it to that specific message immediately, via
+ * [applyQuickReaction], and the "..." button opens [AddReactionDialogFragment] bound to the same
+ * message (replacing this dialog) while the keyboard button applies typed emoji the same way. */
 class QuickReactionDialogFragment : DialogFragment() {
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
@@ -63,19 +58,39 @@ class QuickReactionDialogFragment : DialogFragment() {
         val messageUuid = arguments?.getString(ARG_MESSAGE_UUID)
         setContent {
             ImpulseExpressiveTheme {
+                val activity = activity as? XmppActivity
+                val message = if (conversationUuid != null && messageUuid != null) {
+                    activity?.xmppConnectionService
+                        ?.findConversationByUuid(conversationUuid)
+                        ?.findMessageWithUuid(messageUuid)
+                } else {
+                    null
+                }
                 QuickReactionDialogCard(
                     onDismiss = { dismiss() },
                     onSaved = { emoji ->
-                        if (conversationUuid != null && messageUuid != null) {
-                            val activity = activity as? XmppActivity
-                            val service = activity?.xmppConnectionService
-                            val message = service
-                                ?.findConversationByUuid(conversationUuid)
-                                ?.findMessageWithUuid(messageUuid)
-                            if (activity != null && message != null) {
-                                applyQuickReaction(activity, message, emoji)
-                            }
+                        if (activity != null && message != null) {
+                            applyQuickReaction(activity, message, emoji)
                         }
+                    },
+                    onOpenMore = if (activity != null && conversationUuid != null && messageUuid != null) {
+                        {
+                            AddReactionDialogFragment.newInstance(conversationUuid, messageUuid)
+                                .show(parentFragmentManager, AddReactionDialogFragment.TAG)
+                            dismiss()
+                        }
+                    } else {
+                        null
+                    },
+                    onSubmitTyped = if (activity != null && message != null) {
+                        { emojis ->
+                            var updated = message.getAggregatedReactions().ourReactions
+                            emojis.forEach { updated = toggledReactions(updated, it) }
+                            activity.sendReactions(message, updated.toSet())
+                            dismiss()
+                        }
+                    } else {
+                        null
                     },
                 )
             }
@@ -102,7 +117,12 @@ class QuickReactionDialogFragment : DialogFragment() {
 
 @androidx.compose.runtime.Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private fun QuickReactionDialogCard(onDismiss: () -> Unit, onSaved: (emoji: String) -> Unit) {
+private fun QuickReactionDialogCard(
+    onDismiss: () -> Unit,
+    onSaved: (emoji: String) -> Unit,
+    onOpenMore: (() -> Unit)?,
+    onSubmitTyped: ((List<String>) -> Unit)?,
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val appSettings = androidx.compose.runtime.remember { AppSettings(context) }
     Surface(
@@ -120,6 +140,8 @@ private fun QuickReactionDialogCard(onDismiss: () -> Unit, onSaved: (emoji: Stri
                 onSaved(emoji)
                 onDismiss()
             },
+            onOpenMore = onOpenMore,
+            onSubmitTyped = onSubmitTyped,
         )
     }
 }
