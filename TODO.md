@@ -364,6 +364,12 @@ one-shot dismiss-and-forget.
     `AddReactionActivity.kt` (legacy `DataBindingUtil`/XML layout,
     `R.layout.activity_add_reaction`) — **confirmed not yet ported to
     Compose**; see build-order note above.
+  - [ ] **Keep the "..." three-dot overflow button**, same as the existing
+    add-reaction dialog — tapping it launches the full emoji picker. Per
+    the build-order decision above, this stays wired to the existing
+    legacy `AddReactionActivity` (View-based, `EmojiPickerView`) as-is,
+    not a new Compose picker — it already works well and isn't part of
+    what this feature is porting.
   - [ ] **Native shape-morphing** on the emoji elements themselves —
     confirmed via live check that the *current* add-reaction dialog does
     NOT already morph; this needs to be added fresh, using the same
