@@ -16,8 +16,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconToggleButtonShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -67,21 +70,24 @@ private val THUMBS_UP_VARIANTS = listOf(
     "👍🏿", // dark
 )
 
-/** One quick-reaction candidate: [baseEmoji] identifies which variant set applies (heart vs.
- * thumbs-up), [selectedEmoji] is the actual variant currently chosen (defaults to [baseEmoji]). */
-private fun variantsFor(baseEmoji: String): List<String> = when (baseEmoji) {
-    HEART_DEFAULT -> HEART_VARIANTS
-    THUMBS_UP_DEFAULT -> THUMBS_UP_VARIANTS
-    else -> listOf(baseEmoji)
+/** The full variant set for whichever family [emoji] belongs to -- membership, not an exact
+ * match against the family's *default* code point. Once a non-default variant is selected (e.g.
+ * a dark-skin-tone thumbs-up), the button's own emoji becomes that variant, so matching only
+ * THUMBS_UP_DEFAULT/HEART_DEFAULT here would fall through to the `else` branch and the popup
+ * would only ever offer the single currently-selected variant back -- that was the bug: long-
+ * press after picking a non-default variant showed just that one emoji instead of the full set. */
+private fun variantsFor(emoji: String): List<String> = when {
+    emoji == HEART_DEFAULT || emoji in HEART_VARIANTS -> HEART_VARIANTS
+    emoji == THUMBS_UP_DEFAULT || emoji in THUMBS_UP_VARIANTS -> THUMBS_UP_VARIANTS
+    else -> listOf(emoji)
 }
 
 /** A single quick-reaction button, scaled up to the picker's original oversized-circle size.
- * Uses Material3's own [FilledIconToggleButton] with [IconButtonDefaults.toggleableShapes] --
- * the theme's real, built-in "checked" shape and its animated shape-by-interaction transition --
- * instead of a bespoke Circle/Cookie [androidx.graphics.shapes.Morph] pair. That native shape is
- * whatever the app theme resolves for a checked icon toggle button (an Expressive "cookie"-style
- * silhouette by default), so this stays visually consistent with any other toggle button in the
- * app rather than inventing a one-off shape pairing just for this screen.
+ * Uses Material3's own [FilledIconToggleButton]. [shapes] is passed in by the caller so the two
+ * buttons can sit as one connected [ButtonGroup] (leading/trailing halves, not two separate
+ * floating circles) while each still keeps the theme's real, built-in "checked" shape and its
+ * animated shape-by-interaction transition for its selected state -- pops out of the connected
+ * pair into that native silhouette rather than staying a plain rectangle half.
  *
  * Long-press opens a tertiary-colored popup with this emoji's real Unicode variants (see
  * [variantsFor]), detected by watching [interactionSource] for a press held past the platform's
@@ -95,6 +101,7 @@ private fun QuickReactionButton(
     emoji: String,
     selected: Boolean,
     onSelect: (String) -> Unit,
+    shapes: IconToggleButtonShapes,
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -120,7 +127,7 @@ private fun QuickReactionButton(
         FilledIconToggleButton(
             checked = selected,
             onCheckedChange = { checked -> if (checked) onSelect(emoji) },
-            shapes = IconButtonDefaults.toggleableShapes(),
+            shapes = shapes,
             interactionSource = interactionSource,
             modifier = modifier.size(64.dp),
         ) {
@@ -212,13 +219,46 @@ fun QuickReactionPickerContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
         ) {
-            for (choice in choices) {
-                QuickReactionButton(
-                    emoji = if (isSameFamily(selected, choice)) selected else choice,
-                    selected = isSameFamily(selected, choice),
-                    onSelect = { picked -> selected = picked },
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
+            // A real connected ButtonGroup (matching the same leading/trailing-shape pattern used
+            // for the delete-message action row) -- not two separate floating buttons.
+            ButtonGroup(
+                overflowIndicator = {},
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                choices.forEachIndexed { index, choice ->
+                    val isLeading = index == 0
+                    customItem(
+                        buttonGroupContent = {
+                            // ButtonGroupDefaults' connected-shape properties are @Composable
+                            // themselves -- must be read here, inside buttonGroupContent, not
+                            // hoisted above the ButtonGroup block (same gotcha as the delete-
+                            // message action row above). The checked shape stays the theme's
+                            // native pop-out silhouette regardless of which side of the group
+                            // this button sits on -- only the resting/pressed shape is the
+                            // connected leading/trailing half.
+                            val shapes = IconToggleButtonShapes(
+                                shape = if (isLeading) {
+                                    ButtonGroupDefaults.connectedLeadingButtonShape
+                                } else {
+                                    ButtonGroupDefaults.connectedTrailingButtonShape
+                                },
+                                pressedShape = if (isLeading) {
+                                    ButtonGroupDefaults.connectedLeadingButtonPressShape
+                                } else {
+                                    ButtonGroupDefaults.connectedTrailingButtonPressShape
+                                },
+                                checkedShape = IconButtonDefaults.toggleableShapes().checkedShape,
+                            )
+                            QuickReactionButton(
+                                emoji = if (isSameFamily(selected, choice)) selected else choice,
+                                selected = isSameFamily(selected, choice),
+                                onSelect = { picked -> selected = picked },
+                                shapes = shapes,
+                            )
+                        },
+                        menuContent = {},
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
