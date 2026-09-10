@@ -1,11 +1,10 @@
 package eu.siacs.conversations.ui.fragment.settings
 
-import android.content.Intent
 import android.os.Bundle
 import com.google.android.material.color.DynamicColors
 import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.R
-import eu.siacs.conversations.ui.activity.QuickReactionSettingsActivity
+import eu.siacs.conversations.ui.QuickReactionDialogFragment
 import eu.siacs.conversations.ui.activity.SettingsActivity
 import eu.siacs.conversations.ui.util.SettingsUtils
 
@@ -36,7 +35,8 @@ class InterfaceSettingsFragment : XmppPreferenceFragment() {
             }
         findPreference<androidx.preference.Preference>("quick_reactions")
             ?.setOnPreferenceClickListener {
-                startActivity(Intent(requireContext(), QuickReactionSettingsActivity::class.java))
+                QuickReactionDialogFragment()
+                    .show(parentFragmentManager, QuickReactionDialogFragment.TAG)
                 true
             }
     }
