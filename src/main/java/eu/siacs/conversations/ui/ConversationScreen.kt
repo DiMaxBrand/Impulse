@@ -2093,6 +2093,37 @@ private fun bubbleTailShape(
         close()
     }
 
+/** Disables ripple for every interactive element inside a message row -- the audio player's
+ * Material3 Slider (its default SliderDefaults.Thumb draws a ripple/state-layer via the ambient
+ * LocalIndication, whose touch target extends past the visible thumb, close enough to the
+ * duration text next to it to read as "the time has a ripple") and the play/pause and download
+ * IconButtons all pick this up automatically since they don't specify their own indication.
+ * Matches this app's existing no-ripple design for message rows (the row's own combinedClickable
+ * already passes indication = null) -- this just extends the same choice to everything else
+ * inside, in one place, instead of hunting down and patching each control individually. */
+private object NoRippleIndicationNodeFactory : androidx.compose.foundation.IndicationNodeFactory {
+    // A fresh node per call -- Modifier.Node instances are tied to one attachment point each
+    // (onAttach/onDetach lifecycle), so sharing a single instance across every interactive
+    // element in every message row would be incorrect, not just wasteful.
+    override fun create(
+        interactionSource: androidx.compose.foundation.interaction.InteractionSource
+    ): androidx.compose.ui.node.DelegatableNode =
+        object : Modifier.Node(), androidx.compose.ui.node.DrawModifierNode {
+            override fun androidx.compose.ui.graphics.drawscope.ContentDrawScope.draw() {
+                drawContent()
+            }
+        }
+
+    // IndicationNodeFactory declares these as abstract members (indication factories are compared
+    // e.g. when CompositionLocalProvider decides whether to recompose) -- a plain `object` gets
+    // default identity-based equals/hashCode from Kotlin, but the interface still requires an
+    // explicit override to count as implemented. Since this is a singleton object, identity
+    // equality is exactly the right behavior anyway.
+    override fun equals(other: Any?): Boolean = other === this
+
+    override fun hashCode(): Int = System.identityHashCode(this)
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MessageRow(
@@ -2151,6 +2182,9 @@ private fun MessageRow(
     // The tail of a group's last bubble pokes into the screen margin so bubble bodies stay
     // aligned with the grouped bubbles above.
     val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.foundation.LocalIndication provides NoRippleIndicationNodeFactory,
+    ) {
     Box(modifier = modifier.fillMaxWidth()) {
     Column(
         modifier = Modifier
@@ -2315,6 +2349,7 @@ private fun MessageRow(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 ),
         )
+    }
     }
     }
 }
