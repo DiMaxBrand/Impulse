@@ -14,6 +14,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
+import eu.siacs.conversations.entities.Reaction;
 import eu.siacs.conversations.persistance.FileBackend;
 import eu.siacs.conversations.services.QuickConversationsService;
 import eu.siacs.conversations.ui.ConversationFragment;
@@ -23,7 +24,9 @@ import eu.siacs.conversations.utils.Random;
 import eu.siacs.conversations.xmpp.Jid;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -94,6 +97,13 @@ public class AppSettings {
     // toggle, just the inverse of remembering.
     public static final String QUICK_REACTION_EMOJI = "quick_reaction_emoji";
     public static final String QUICK_REACTION_REMEMBER = "quick_reaction_remember";
+
+    // The add-reaction dialog's shortcut row: most-recently-used emoji, most recent first,
+    // capped at MAX_RECENT_REACTION_EMOJIS. Falls back to Reaction.SUGGESTIONS until the user has
+    // actually picked something, and stays seeded with it going forward (a pick just moves that
+    // emoji to the front instead of replacing the whole fallback list).
+    private static final String RECENT_REACTION_EMOJIS = "recent_reaction_emojis";
+    private static final int MAX_RECENT_REACTION_EMOJIS = 6;
 
     private static final String LEGACY_AUTO_ACCEPT_FILE_SIZE = "524288";
     private static final String DEFAULT_AUTO_ACCEPT_FILE_SIZE = "5242880";
@@ -666,6 +676,39 @@ public class AppSettings {
                 .edit()
                 .putString(QUICK_REACTION_EMOJI, emoji)
                 .putBoolean(QUICK_REACTION_REMEMBER, remember)
+                .apply();
+    }
+
+    /**
+     * The add-reaction dialog's shortcut row, most-recently-used first. {@link
+     * Reaction#SUGGESTIONS} until the user has actually picked something from (or typed into) the
+     * dialog.
+     */
+    public List<String> getRecentReactionEmojis() {
+        final String stored =
+                PreferenceManager.getDefaultSharedPreferences(context)
+                        .getString(RECENT_REACTION_EMOJIS, null);
+        if (Strings.isNullOrEmpty(stored)) {
+            return Reaction.SUGGESTIONS;
+        }
+        return Splitter.on(',').omitEmptyStrings().splitToList(stored);
+    }
+
+    /**
+     * Moves {@code emoji} to the front of the recent list (adding it if new), capped at {@link
+     * #MAX_RECENT_REACTION_EMOJIS}.
+     */
+    public void recordReactionEmojiUsed(final String emoji) {
+        final List<String> updated = new ArrayList<>();
+        updated.add(emoji);
+        for (final String existing : getRecentReactionEmojis()) {
+            if (!existing.equals(emoji) && updated.size() < MAX_RECENT_REACTION_EMOJIS) {
+                updated.add(existing);
+            }
+        }
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(RECENT_REACTION_EMOJIS, Joiner.on(',').join(updated))
                 .apply();
     }
 }

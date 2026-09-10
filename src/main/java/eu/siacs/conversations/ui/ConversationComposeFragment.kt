@@ -1168,10 +1168,10 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onAddReaction(message: Message) {
-        val activity = activity as? XmppActivity ?: return
-        activity.addReaction(message) { reactions ->
-            activity.sendReactions(message, reactions.toSet())
-        }
+        val conversationUuid = message.getConversation().getUuid() ?: return
+        val messageUuid = message.getUuid() ?: return
+        AddReactionDialogFragment.newInstance(conversationUuid, messageUuid)
+            .show(parentFragmentManager, AddReactionDialogFragment.TAG)
     }
 
     override fun onDoubleTapReaction(message: Message) {

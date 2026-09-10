@@ -333,87 +333,52 @@ speech-to-text but explicitly wants "button" in writing). All icons from
   scroll" behavior not yet specified — do these icon states take priority
   over the plain arrow, coexist, or need their own separate indicator.
 
-## Double-tap quick reactions — plan only, not started
+## Double-tap quick reactions — shipped (1.15.0-beta.34–39)
 
 Deliberately different from WhatsApp/Telegram's silent double-tap-for-heart:
-double-tapping a message should **ask** what reaction to apply — every time,
-unless the user has explicitly opted out via "remember my decision." Never a
-one-shot dismiss-and-forget.
+double-tapping a message **asks** what reaction to apply — every time,
+unless the user has explicitly opted out via "remember my decision."
 
-- [ ] **Trigger**: double-tap on a message bubble (chat list gesture
-  handling — needs a real double-tap detector, not just two quick single
-  taps, to avoid colliding with existing tap-to-view/long-press-for-menu
-  gestures already on the bubble).
-- [ ] **Build order, explicitly decided**: build the brand-new dialog
-  first, kept visually close to the existing add-reaction dialog's design
-  rather than porting that legacy dialog to Compose up front. Porting
-  `AddReactionActivity`/`AddReactionDialog.java` to Compose (mentioned
-  earlier in this same discussion) is the *last* step, once the new
-  dialog has proven itself — "test the waters" with the new, smaller
-  surface before touching the existing one.
-- [ ] **The dialog/card** (expressive design required — matches the app's
-  own stated standard that new/edited surfaces get Expressive treatment,
-  not an exception here):
-  - [ ] Just two emoji choices: heart and thumbs-up. Confirmed — not a
-    wider set.
-  - [ ] **Layout/ordering**: reuse the arrangement already used by the
-    existing add-reaction dialog's default suggested-reactions row (the
-    part visible before its "..." three-dot overflow) — user explicitly
-    likes that existing ordering and wants it carried over, not redesigned.
-    The existing dialog is `AddReactionDialog.java` (plain Java) launching
-    `AddReactionActivity.kt` (legacy `DataBindingUtil`/XML layout,
-    `R.layout.activity_add_reaction`) — **confirmed not yet ported to
-    Compose**; see build-order note above.
-  - [ ] **Keep the "..." three-dot overflow button**, same as the existing
-    add-reaction dialog — tapping it launches the full emoji picker. Per
-    the build-order decision above, this stays wired to the existing
-    legacy `AddReactionActivity` (View-based, `EmojiPickerView`) as-is,
-    not a new Compose picker — it already works well and isn't part of
-    what this feature is porting.
-  - [ ] **Preserve the existing hint text** from the current add-reaction
-    dialog: `R.string.reaction_picker_hint` — "Don't forget the three
-    dots — they open a screen with virtually any emoji. Or tap the
-    keyboard icon to pick one straight from your own keyboard's emoji
-    picker." Also implies a second existing affordance (a keyboard-icon
-    button, separate from the three-dot one) worth carrying over
-    alongside it, not just the three dots alone.
-  - [ ] **Native shape-morphing** on the emoji elements themselves —
-    confirmed via live check that the *current* add-reaction dialog does
-    NOT already morph; this needs to be added fresh, using the same
-    `Morph`/`RoundedPolygon` techniques already used elsewhere in the app
-    (`AutoMorphingShape`, the Developer Options shape catalog, the chat
-    list's presence-shaped avatar frame).
-  - [ ] **Long-press-for-variants popup**, refined: not identical variant
-    behavior for both emoji, matching what each actually has in Unicode —
-    long-pressing the **heart** shows its real *color* variants (❤️ 🧡 💛
-    💚 💙 💜 🖤 🤍 🤎 — distinct colored heart code points, not a skin-tone
-    modifier); long-pressing **thumbs-up** shows its real Fitzpatrick
-    *skin-tone* variants (👍🏻👍🏼👍🏽👍🏾👍🏿 — an actual modifier
-    sequence). Reuse the variant-picker mechanism already built into
-    `androidx.emoji2:emoji2-emojipicker`'s `EmojiPickerView` (confirmed:
-    Google's own official Jetpack picker, already a dependency, already
-    used in `activity_add_reaction.xml`) rather than reimplementing
-    variant selection from scratch. The popup surface itself should use
-    the Material3 **tertiary** color role (`colorScheme.tertiaryContainer`
-    or similar), not primary/secondary — explicit color-role choice, not
-    just "some accent color."
-  - [ ] A single **"Remember"** checkbox underneath the emoji choices —
-    **not** a separate "always ask" toggle; "always ask" is simply what
-    happens when "Remember" is off. Defaults to **checked** in the
-    dialog's own UI. Checked when a choice is made → that choice is
-    remembered, future double-taps skip the dialog entirely and apply it
-    directly. Unchecked → the dialog keeps asking every time, until the
-    user deliberately re-opens it via Settings (below) and re-checks it.
-- [ ] **Persistence**: a single "remembered choice" (emoji + skin tone,
-  nullable/absent = no decision made yet, first double-tap should still
-  show the dialog) plus the "Remember" boolean itself. Even once
-  remembered, the user must be able to get back into the dialog
-  deliberately (Settings entry below) to change the choice or flip back to
-  always-ask — "remembered" must never mean "locked in with no way back."
-- [ ] **Settings entry**: a new row under Settings → Interface (the natural
-  home — no other existing section governs message-level behavior like
-  this), labeled **"Quick Reactions"**, opening the *exact same* dialog
-  used for the first double-tap — architecturally, the same fragment shown
-  both ways, not a separate settings-only variant, so there's only one
-  implementation of the picker UI to maintain. Lets the user change the
-  emoji/skin-tone and toggle "Remember" back on or off.
+- [x] **Trigger**: double-tap fires on the whole message row (bubble
+  included, not just the margins), via a non-consuming `awaitEachGesture`
+  watcher layered over the row's existing `combinedClickable` — see
+  `MessageRow` in `ConversationScreen.kt`.
+- [x] **Build order**: `QuickReactionPicker.kt`/`QuickReactionDialogFragment.kt`
+  built first as planned; `AddReactionDialog.java`/`AddReactionActivity.kt`
+  ported last, as `AddReactionDialogFragment.kt` — see below.
+- [x] **The dialog/card**: two choices (heart, thumbs-up), long-press for
+  real Unicode variants (heart = color variants, thumbs-up = Fitzpatrick
+  skin-tone modifiers), tertiary-colored variant popup, single "Remember"
+  checkbox (defaults checked). Buttons sit in a real connected
+  `ButtonGroup` (not two floating circles), each using Material3's own
+  native checked-state shape (`IconButtonDefaults.toggleableShapes()`) —
+  simpler and more consistent than a bespoke custom `Morph` pair, which is
+  what shipped first and was later replaced.
+- [x] **Toggle behavior**: double-tapping a message that already has your
+  quick reaction removes it (a committed single-emoji action, unlike the
+  browse-and-add `AddReactionActivity` picker, which never removes).
+- [x] **Persistence + Settings entry**: `AppSettings.getQuickReactionEmoji`/
+  `isQuickReactionRemember`/`setQuickReaction`; Settings → Interface →
+  "Quick Reactions" opens the same `QuickReactionDialogFragment` (a modal
+  overlay card, not a full-screen Activity — the first version was a full
+  Activity and got corrected).
+- [x] **`AddReactionDialog`/`AddReactionActivity` port to Compose** —
+  `AddReactionDialogFragment.kt`, wired in as the single live call site
+  (`ConversationComposeFragment.onAddReaction`; the legacy
+  `XmppActivity.addReaction()`/`AddReactionDialog.java` is now only
+  reachable from the unused legacy `ConversationFragment`/`MessageAdapter`
+  paths). Kept visually close to the original: connected shortcut row,
+  "..." button to the still-Java `AddReactionActivity`/`EmojiPickerView`
+  full picker (untouched, out of scope), keyboard-icon toggle for
+  free-form emoji text entry (multi-emoji paste/typed submit preserved),
+  `reaction_picker_hint` string kept, MUC restricted allow-list (≤6 emoji)
+  still pins the row and hides "..."/keyboard/hint. One real behavior
+  change: the shortcut row is no longer the static `Reaction.SUGGESTIONS`
+  six — it's `AppSettings.getRecentReactionEmojis()`, a most-recently-used
+  list seeded with those same six (`AppSettings.recordReactionEmojiUsed`),
+  distinct from the *quick*-reaction default which deliberately stays
+  fixed (double-tap muscle memory would be undermined by a shifting
+  target). Native shape-morphing was *not* carried over to this dialog's
+  row buttons in the end — superseded by the same
+  `IconButtonDefaults.toggleableShapes()` simplification made to
+  `QuickReactionPicker`, for the same consistency reason.
