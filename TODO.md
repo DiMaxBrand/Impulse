@@ -370,6 +370,13 @@ one-shot dismiss-and-forget.
     legacy `AddReactionActivity` (View-based, `EmojiPickerView`) as-is,
     not a new Compose picker — it already works well and isn't part of
     what this feature is porting.
+  - [ ] **Preserve the existing hint text** from the current add-reaction
+    dialog: `R.string.reaction_picker_hint` — "Don't forget the three
+    dots — they open a screen with virtually any emoji. Or tap the
+    keyboard icon to pick one straight from your own keyboard's emoji
+    picker." Also implies a second existing affordance (a keyboard-icon
+    button, separate from the three-dot one) worth carrying over
+    alongside it, not just the three dots alone.
   - [ ] **Native shape-morphing** on the emoji elements themselves —
     confirmed via live check that the *current* add-reaction dialog does
     NOT already morph; this needs to be added fresh, using the same
