@@ -19,14 +19,16 @@ import androidx.fragment.app.DialogFragment
 import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.entities.Message
 
-/** Toggles [emoji] into `message`'s own reactions (unchanged if already present, matching
- * AddReactionDialog/AddReactionActivity's existing "double-tap doesn't toggle off" behavior) and
- * sends it -- the one place this logic lives, reused by both the double-tap trigger and this
- * dialog's own message-bound save. */
+/** Toggles [emoji] into (or out of) `message`'s own reactions and sends the result -- the one
+ * place this logic lives, reused by both the double-tap trigger and this dialog's own
+ * message-bound save. Unlike AddReactionActivity's picker (which never removes a reaction, since
+ * it's a "browse everything and add" surface), double-tap is a single committed action on a
+ * single emoji, so tapping it again when it's already your reaction removes it -- the same
+ * toggle a repeated double-tap would give a user on other chat apps. */
 fun applyQuickReaction(activity: XmppActivity, message: Message, emoji: String) {
     val aggregated = message.getAggregatedReactions()
     val updated = if (aggregated.ourReactions.contains(emoji)) {
-        aggregated.ourReactions
+        aggregated.ourReactions - emoji
     } else {
         aggregated.ourReactions + emoji
     }
