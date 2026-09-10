@@ -120,6 +120,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.ui.input.pointer.pointerInput
@@ -1997,6 +1999,9 @@ private fun NewMessagesPill(count: Int, modifier: Modifier = Modifier) {
 private val CORNER_LARGE: Dp = 20.dp
 private val CORNER_SMALL: Dp = 5.dp
 private val TAIL_WIDTH: Dp = 8.dp
+// Window for the non-consuming double-tap-for-reaction watcher in MessageRow -- matches the
+// platform's own ViewConfiguration.getDoubleTapTimeout() ballpark (typically ~300ms).
+private const val DOUBLE_TAP_TIMEOUT_MS = 300L
 private val TAIL_HEIGHT: Dp = 14.dp
 
 /**
@@ -2157,18 +2162,38 @@ private fun MessageRow(
                     Modifier
                 }
             )
-            // Replaced combinedClickable with a single detectTapGestures block so double-tap
-            // (quick reaction) can be recognized alongside the existing tap/long-press without
-            // two competing gesture detectors on the same node -- detectTapGestures natively
-            // disambiguates tap vs. double-tap vs. long-press together. Same trade-off every
-            // double-tap-to-react app has: a plain single tap now waits out the double-tap
-            // window before firing, which it didn't before.
+            .combinedClickable(
+                onClick = { if (selectionActive) onToggleSelected() },
+                onLongClick = { if (selectionActive) onToggleSelected() else onLongPress(message) },
+                indication = null,
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+            )
+            // Double-tap-for-reaction, layered as a separate, purely observational detector
+            // rather than folded into the combinedClickable above -- images, links, reply
+            // cards, file rows etc. inside the bubble all have their own clickables that win
+            // Compose's normal hit-testing (children see pointer events before ancestors), so
+            // a detectTapGestures block here would only ever fire in the row's own margins, not
+            // on the bubble content itself. This watches every first-down in the Initial pass
+            // (delivered top-down, before any descendant's Main-pass clickable runs) and never
+            // calls consume() on it, so it sees taps everywhere on the row -- including the
+            // bubble -- without blocking, delaying, or altering any single-tap/long-press
+            // behavior already happening underneath.
             .pointerInput(selectionActive, message.getUuid()) {
-                detectTapGestures(
-                    onTap = { if (selectionActive) onToggleSelected() },
-                    onDoubleTap = { if (!selectionActive) listener.onDoubleTapReaction(message) },
-                    onLongPress = { if (selectionActive) onToggleSelected() else onLongPress(message) },
-                )
+                if (selectionActive) return@pointerInput
+                var lastTapUptimeMs = 0L
+                awaitEachGesture {
+                    val down = awaitFirstDown(
+                        requireUnconsumed = false,
+                        pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial,
+                    )
+                    val now = down.uptimeMillis
+                    if (now - lastTapUptimeMs <= DOUBLE_TAP_TIMEOUT_MS) {
+                        lastTapUptimeMs = 0L
+                        listener.onDoubleTapReaction(message)
+                    } else {
+                        lastTapUptimeMs = now
+                    }
+                }
             },
     ) {
         Row(
