@@ -87,7 +87,7 @@ class Reaction(
             "👎",
             "😂",
             "😮",
-            "😢"
+            "😁"
         )
 
         private val GSON: Gson = GsonBuilder()

@@ -89,7 +89,7 @@ fun buildShortcutEmojis(recent: List<String>): List<String> {
     val heartSlot = recent.firstOrNull { isHeartFamily(it) } ?: HEART_DEFAULT
     val thumbsSlot = recent.firstOrNull { isThumbsUpFamily(it) } ?: THUMBS_UP_DEFAULT
     val others = recent.filterNot { isHeartFamily(it) || isThumbsUpFamily(it) }
-    val fallback = listOf("👎", "😂", "😮", "😢")
+    val fallback = listOf("👎", "😂", "😮", "😁")
     val filler = (others + fallback).distinct().take(4)
     return listOf(heartSlot, thumbsSlot) + filler
 }
