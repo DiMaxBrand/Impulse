@@ -132,7 +132,7 @@ private fun QuickReactionDialogCard(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 6.dp,
         shadowElevation = 8.dp,
-        modifier = Modifier.widthIn(max = 400.dp),
+        modifier = Modifier.widthIn(max = rememberMaxElevatedCardWidth()),
     ) {
         QuickReactionPickerContent(
             initialEmojis = appSettings.quickReactionEmojis,

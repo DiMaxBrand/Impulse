@@ -61,17 +61,22 @@ import net.fellbaum.jemoji.EmojiManager
 private val CONNECTED_MIDDLE_SHAPE = RoundedCornerShape(16.dp)
 
 /**
- * A row of emoji buttons rendered as one connected group -- not a Material3 [androidx.compose
- * .material3.ButtonGroup] (that component collapses overflowing items behind an indicator, which
- * is exactly wrong for a shortcut row that must always show every item) but a plain [Row] with
- * each button's shape hand-assigned from [ButtonGroupDefaults]' leading/middle/trailing tokens,
- * so nothing is ever hidden. Each button is a real [FilledIconToggleButton] using
- * [IconButtonDefaults.toggleableShapes]'s native checked-state shape and the connected group's
- * own press shapes -- the built-in shape-by-interaction morph (toward a circle-like squircle on
- * press) comes for free from Material3 rather than a bespoke [androidx.graphics.shapes.Morph].
+ * A row of emoji buttons rendered as one connected [androidx.compose.material3.ButtonGroup] --
+ * with a real, always-visible overflow indicator (Material3's own three-dot
+ * [ButtonGroupDefaults.OverflowIndicator], not an empty one) and populated menu content, so items
+ * that don't fit collapse into a proper, reachable overflow menu instead of either being hidden
+ * with no way to reach them (an earlier version's actual bug) or overflowing the row's bounds off
+ * the edge of the screen (a plain non-overflowing [Row]'s failure mode once there are more items,
+ * or bigger buttons, than fit). This is what ButtonGroup is for; the earlier bug was giving it an
+ * empty [ButtonGroupDefaults.OverflowIndicator]-shaped hole instead of the real one.
  *
- * Long-press opens a tertiary-colored popup with [emoji]'s real variants (see [variantsFor]) for
- * whichever button was pressed -- covers every item in the row, not just specific hardcoded ones.
+ * Each visible button is a real [FilledIconToggleButton] using [IconButtonDefaults
+ * .toggleableShapes]'s native checked-state shape and the connected group's own press shapes --
+ * the built-in shape-by-interaction morph (toward a circle-like squircle on press) comes for free
+ * from Material3 rather than a bespoke [androidx.graphics.shapes.Morph].
+ *
+ * Long-press (on a still-visible button) opens a tertiary-colored popup with [emoji]'s real
+ * variants (see [variantsFor]) -- covers every item in the row, not just specific hardcoded ones.
  */
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -82,28 +87,48 @@ fun ReactionShortcutRow(
     modifier: Modifier = Modifier,
     buttonSize: Dp = 56.dp,
 ) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    androidx.compose.material3.ButtonGroup(
+        overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
         emojis.forEachIndexed { index, emoji ->
             val isLeading = index == 0
             val isTrailing = index == emojis.lastIndex
-            val (shape, pressShape) = when {
-                emojis.size == 1 -> CircleShape to CircleShape
-                isLeading -> ButtonGroupDefaults.connectedLeadingButtonShape to
-                    ButtonGroupDefaults.connectedLeadingButtonPressShape
-                isTrailing -> ButtonGroupDefaults.connectedTrailingButtonShape to
-                    ButtonGroupDefaults.connectedTrailingButtonPressShape
-                else -> CONNECTED_MIDDLE_SHAPE to ButtonGroupDefaults.connectedMiddleButtonPressShape
-            }
-            ReactionShortcutButton(
-                emoji = emoji,
-                checked = isChecked(emoji),
-                onPicked = onPicked,
-                shapes = IconToggleButtonShapes(
-                    shape = shape,
-                    pressedShape = pressShape,
-                    checkedShape = IconButtonDefaults.toggleableShapes().checkedShape,
-                ),
-                size = buttonSize,
+            customItem(
+                buttonGroupContent = {
+                    // ButtonGroupDefaults' connected-shape properties are @Composable themselves
+                    // -- must be read here, inside buttonGroupContent, not hoisted above the
+                    // ButtonGroup block.
+                    val (shape, pressShape) = when {
+                        emojis.size == 1 -> CircleShape to CircleShape
+                        isLeading -> ButtonGroupDefaults.connectedLeadingButtonShape to
+                            ButtonGroupDefaults.connectedLeadingButtonPressShape
+                        isTrailing -> ButtonGroupDefaults.connectedTrailingButtonShape to
+                            ButtonGroupDefaults.connectedTrailingButtonPressShape
+                        else -> CONNECTED_MIDDLE_SHAPE to ButtonGroupDefaults.connectedMiddleButtonPressShape
+                    }
+                    ReactionShortcutButton(
+                        emoji = emoji,
+                        checked = isChecked(emoji),
+                        onPicked = onPicked,
+                        shapes = IconToggleButtonShapes(
+                            shape = shape,
+                            pressedShape = pressShape,
+                            checkedShape = IconButtonDefaults.toggleableShapes().checkedShape,
+                        ),
+                        size = buttonSize,
+                    )
+                },
+                menuContent = { menuState ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(emoji, fontSize = 18.sp) },
+                        onClick = {
+                            onPicked(emoji)
+                            menuState.dismiss()
+                        },
+                    )
+                },
             )
         }
     }
