@@ -4969,7 +4969,19 @@ internal fun DeleteMessageSheet(
     val canRetract = isRetractable(message)
     val canModerate = isModeratable(message)
     val moderateInstead = canModerate && !canRetract
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+    // Same official slide-down as MessageContextSheet's own "Save file" sub-screen: every
+    // internal action (Everyone/Myself/Cancel) must run the sheet's hide() animation before
+    // actually invoking the caller's callback -- calling it directly nulls out the caller's
+    // deleteTarget/deleteGroupTarget on the next recomposition, which yanks ModalBottomSheet out
+    // of composition with no exit transition at all (the sheet just vanishes instead of sliding
+    // down). Swipe-to-dismiss/tap-outside don't need this: ModalBottomSheet's own gesture
+    // handling already runs hide() first internally before calling onDismissRequest.
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val animatedDismiss: (() -> Unit) -> Unit = { action ->
+        scope.launch { sheetState.hide() }.invokeOnCompletion { if (!sheetState.isVisible) action() }
+    }
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
                 text = stringResource(R.string.delete_message_title),
@@ -4998,7 +5010,7 @@ internal fun DeleteMessageSheet(
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
-                            onClick = { if (moderateInstead) onModerate() else onDeleteForEveryone() },
+                            onClick = { animatedDismiss { if (moderateInstead) onModerate() else onDeleteForEveryone() } },
                             shapes = androidx.compose.material3.ButtonShapes(
                                 shape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShape,
                                 pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonPressShape,
@@ -5024,7 +5036,7 @@ internal fun DeleteMessageSheet(
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
-                            onClick = onDeleteForMyself,
+                            onClick = { animatedDismiss(onDeleteForMyself) },
                             shapes = androidx.compose.material3.ButtonShapes(
                                 shape = RoundedCornerShape(CORNER_SMALL),
                                 pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonPressShape,
@@ -5038,7 +5050,7 @@ internal fun DeleteMessageSheet(
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
-                            onClick = onDismiss,
+                            onClick = { animatedDismiss(onDismiss) },
                             shapes = androidx.compose.material3.ButtonShapes(
                                 shape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShape,
                                 pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonPressShape,
@@ -5073,7 +5085,13 @@ internal fun DeleteGroupSheet(
     val canRetract = messages.isNotEmpty() && messages.all(::isRetractable)
     val canModerate = messages.isNotEmpty() && messages.all(::isModeratable)
     val moderateInstead = canModerate && !canRetract
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+    // Same official slide-down as DeleteMessageSheet/MessageContextSheet -- see that comment.
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val animatedDismiss: (() -> Unit) -> Unit = { action ->
+        scope.launch { sheetState.hide() }.invokeOnCompletion { if (!sheetState.isVisible) action() }
+    }
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
                 text = stringResource(R.string.delete_files),
@@ -5099,7 +5117,7 @@ internal fun DeleteGroupSheet(
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
-                            onClick = { if (moderateInstead) onModerate() else onDeleteForEveryone() },
+                            onClick = { animatedDismiss { if (moderateInstead) onModerate() else onDeleteForEveryone() } },
                             shapes = androidx.compose.material3.ButtonShapes(
                                 shape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShape,
                                 pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonPressShape,
@@ -5116,7 +5134,7 @@ internal fun DeleteGroupSheet(
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
-                            onClick = onDeleteForMyself,
+                            onClick = { animatedDismiss(onDeleteForMyself) },
                             shapes = androidx.compose.material3.ButtonShapes(
                                 shape = RoundedCornerShape(CORNER_SMALL),
                                 pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonPressShape,
@@ -5130,7 +5148,7 @@ internal fun DeleteGroupSheet(
                 customItem(
                     buttonGroupContent = {
                         androidx.compose.material3.Button(
-                            onClick = onDismiss,
+                            onClick = { animatedDismiss(onDismiss) },
                             shapes = androidx.compose.material3.ButtonShapes(
                                 shape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShape,
                                 pressedShape = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonPressShape,
