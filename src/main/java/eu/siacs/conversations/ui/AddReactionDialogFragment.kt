@@ -1,12 +1,13 @@
 package eu.siacs.conversations.ui
 
+import android.app.Activity
 import android.app.Dialog
-import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,8 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,10 +45,10 @@ import eu.siacs.conversations.xmpp.manager.MultiUserChatManager
  * connected row of shortcut emoji, a "..." button to the full [AddReactionActivity] picker, a
  * keyboard button that swaps the row for free-form emoji text entry, and the
  * [R.string.reaction_picker_hint] line explaining both -- all via the shared [ReactionShortcutRow]
- * / [ReactionMoreAndKeyboardRow] components also used by [QuickReactionPickerContent], so both
- * dialogs behave identically instead of drifting apart.
+ * / [ReactionKeyboardRow] components also used by [QuickReactionPickerContent], so both dialogs
+ * behave identically instead of drifting apart.
  *
- * Two real behavior changes from the legacy dialog:
+ * Real behavior changes from the legacy dialog:
  * - The shortcut row is no longer the static `Reaction.SUGGESTIONS` six -- heart and thumbs-up
  *   are always pinned first (see [buildShortcutEmojis]), then filled from [AppSettings]'s
  *   most-recently-used list. The one exception: a MUC with a restricted reaction allow-list of 6
@@ -55,8 +58,28 @@ import eu.siacs.conversations.xmpp.manager.MultiUserChatManager
  * - Tapping an emoji that's already your reaction on this message removes it (matches the
  *   double-tap quick-reaction's toggle behavior -- see [toggledReactions]), instead of the legacy
  *   picker's silent no-op.
+ * - "..." now uses [AddReactionActivity.pickerIntent]'s pick-only mode instead of letting that
+ *   Activity send the reaction directly -- the picked emoji comes back here and goes through the
+ *   exact same [AddReactionDialogCard]-internal `apply()` as a row tap or keyboard entry, so it
+ *   records into the recent list too. It didn't before: the full picker sent straight to the
+ *   server and finished, so anything picked there never fed the MRU list that decides what shows
+ *   up as a shortcut next time.
  */
 class AddReactionDialogFragment : DialogFragment() {
+
+    // Must be registered unconditionally before the fragment reaches CREATED -- a property
+    // initializer runs at construction time, before any lifecycle callback, which satisfies that.
+    private val pickEmojiLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val emoji = result.data?.getStringExtra(AddReactionActivity.EXTRA_PICKED_EMOJI)
+            if (emoji != null) pickedEmoji.value = emoji
+        }
+    }
+
+    // Bridges the launcher's callback (fires outside composition) into Compose state.
+    private val pickedEmoji = mutableStateOf<String?>(null)
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState)
@@ -82,6 +105,7 @@ class AddReactionDialogFragment : DialogFragment() {
                 if (activity != null && message != null) {
                     AddReactionDialogCard(
                         message = message,
+                        pickedEmoji = pickedEmoji,
                         onReactionsApplied = { emojis ->
                             var updated = message.getAggregatedReactions().ourReactions
                             emojis.forEach { updated = toggledReactions(updated, it) }
@@ -89,9 +113,6 @@ class AddReactionDialogFragment : DialogFragment() {
                             dismiss()
                         },
                         onOpenMore = {
-                            val intent = Intent(activity, AddReactionActivity::class.java)
-                            intent.putExtra("conversation", conversationUuid)
-                            intent.putExtra("message", messageUuid)
                             // A real, if approximate, "smoothly expand into the full picker"
                             // transition -- scales up from this card's own bounds rather than the
                             // system's default cross-fade. Anchored on the whole card (this
@@ -102,8 +123,7 @@ class AddReactionDialogFragment : DialogFragment() {
                             val options = androidx.core.app.ActivityOptionsCompat.makeScaleUpAnimation(
                                 this@apply, 0, 0, this@apply.width, this@apply.height,
                             )
-                            activity.startActivity(intent, options.toBundle())
-                            dismiss()
+                            pickEmojiLauncher.launch(AddReactionActivity.pickerIntent(activity), options)
                         },
                     )
                 }
@@ -131,6 +151,7 @@ class AddReactionDialogFragment : DialogFragment() {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun AddReactionDialogCard(
     message: Message,
+    pickedEmoji: MutableState<String?>,
     onReactionsApplied: (List<String>) -> Unit,
     onOpenMore: () -> Unit,
 ) {
@@ -174,6 +195,18 @@ private fun AddReactionDialogCard(
     fun apply(emojis: List<String>) {
         if (!restricted) emojis.forEach { appSettings.recordReactionEmojiUsed(it) }
         onReactionsApplied(emojis)
+    }
+
+    // Bridges the "..." full picker's result back into the exact same apply() path a row tap or
+    // keyboard entry uses, then consumes it -- so a pick from the full picker also records into
+    // the recent list, which it never did before (that picker used to send straight to the server
+    // and finish, bypassing this dialog's own apply() entirely).
+    LaunchedEffect(pickedEmoji.value) {
+        val picked = pickedEmoji.value
+        if (picked != null) {
+            apply(listOf(picked))
+            pickedEmoji.value = null
+        }
     }
 
     Surface(

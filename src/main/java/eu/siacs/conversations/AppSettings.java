@@ -18,6 +18,7 @@ import eu.siacs.conversations.entities.Reaction;
 import eu.siacs.conversations.persistance.FileBackend;
 import eu.siacs.conversations.services.QuickConversationsService;
 import eu.siacs.conversations.ui.ConversationFragment;
+import eu.siacs.conversations.ui.ReactionEmojisKt;
 import eu.siacs.conversations.ui.util.SendButtonAction;
 import eu.siacs.conversations.utils.Compatibility;
 import eu.siacs.conversations.utils.Random;
@@ -729,13 +730,20 @@ public class AppSettings {
 
     /**
      * Moves {@code emoji} to the front of the recent list (adding it if new), capped at {@link
-     * #MAX_RECENT_REACTION_EMOJIS}.
+     * #MAX_RECENT_REACTION_EMOJIS}. Compares by {@link ReactionEmojisKt#stripSkinTone(String)}
+     * rather than the exact string, so picking a different skin tone of something already in the
+     * list moves/updates that same slot instead of adding a second one -- multiple tones of the
+     * same emoji cluttering the history was a real bug, not a hardcoded-per-emoji edge case to
+     * special-case (this covers whichever emoji actually have tone variants, same as the rest of
+     * the reaction-variant logic in ReactionEmojis.kt).
      */
     public void recordReactionEmojiUsed(final String emoji) {
+        final String emojiBase = ReactionEmojisKt.stripSkinTone(emoji);
         final List<String> updated = new ArrayList<>();
         updated.add(emoji);
         for (final String existing : getRecentReactionEmojis()) {
-            if (!existing.equals(emoji) && updated.size() < MAX_RECENT_REACTION_EMOJIS) {
+            final String existingBase = ReactionEmojisKt.stripSkinTone(existing);
+            if (!existingBase.equals(emojiBase) && updated.size() < MAX_RECENT_REACTION_EMOJIS) {
                 updated.add(existing);
             }
         }
