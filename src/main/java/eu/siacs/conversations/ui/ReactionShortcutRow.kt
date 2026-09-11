@@ -1,7 +1,7 @@
 package eu.siacs.conversations.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +30,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,7 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -48,16 +47,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import eu.siacs.conversations.R
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import net.fellbaum.jemoji.EmojiManager
 
 // Middle items in a connected row have no single published "resting shape" token in
 // ButtonGroupDefaults (only the leading/trailing rest shapes and a middle *press* shape are
 // exposed) -- same small-corner treatment already used for the equivalent case in
-// ConversationScreen.kt's delete-message action row.
-private val CONNECTED_MIDDLE_SHAPE = RoundedCornerShape(16.dp)
+// ConversationScreen.kt's delete-message action row. Kept deliberately subtler than the checked
+// shape below it (which now reuses what this used to be) so on/off reads clearly at a glance.
+private val CONNECTED_MIDDLE_SHAPE = RoundedCornerShape(8.dp)
+
+// The checked/selected shape used everywhere in this row -- a plain, modest rounding rather than
+// Material3's own dramatic cookie/star toggleableShapes().checkedShape. Multiple variants of the
+// same emoji (say, a green heart and a blue heart) can now be checked at once (see
+// toggledReactions), so a subtler "on" shape reads better with several lit up simultaneously than
+// a shape originally designed for a single toggle popping out on its own.
+private val CHECKED_SHAPE = RoundedCornerShape(16.dp)
+
 private val BUTTON_SPACING = 2.dp
 
 /**
@@ -139,11 +144,12 @@ fun ReactionShortcutRow(
                 ReactionShortcutButton(
                     emoji = emoji,
                     checked = isChecked(emoji),
+                    isChecked = isChecked,
                     onPicked = onPicked,
                     shapes = IconToggleButtonShapes(
                         shape = shape,
                         pressedShape = pressShape,
-                        checkedShape = IconButtonDefaults.toggleableShapes().checkedShape,
+                        checkedShape = CHECKED_SHAPE,
                     ),
                     size = buttonSize,
                 )
@@ -191,39 +197,54 @@ fun ReactionShortcutRow(
 private fun ReactionShortcutButton(
     emoji: String,
     checked: Boolean,
+    isChecked: (String) -> Boolean,
     onPicked: (String) -> Unit,
     shapes: IconToggleButtonShapes,
     size: Dp,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var showVariants by remember { mutableStateOf(false) }
-    val longPressTimeoutMs = LocalViewConfiguration.current.longPressTimeoutMillis
-
-    LaunchedEffect(interactionSource) {
-        var pressJob: Job? = null
-        interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is PressInteraction.Press -> {
-                    pressJob = launch {
-                        delay(longPressTimeoutMs)
-                        if (variantsFor(emoji).size > 1) showVariants = true
-                    }
-                }
-                is PressInteraction.Release, is PressInteraction.Cancel -> pressJob?.cancel()
-            }
-        }
-    }
 
     Box(contentAlignment = Alignment.Center) {
+        // onCheckedChange is a no-op -- FilledIconToggleButton is used here purely for its visual
+        // states (shape-by-interaction, colors), driven by [checked] and the interactionSource
+        // press/release events emitted manually below. All real tap/long-press handling and
+        // suppression is owned by the pointerInput overlay beneath, via detectTapGestures --
+        // that's the one thing here that reliably does NOT also fire a tap when a long press
+        // already fired (an interactionSource-only watcher, tried previously, can observe press
+        // duration but can't prevent the button's own click from firing on release regardless).
         FilledIconToggleButton(
             checked = checked,
-            onCheckedChange = { onPicked(emoji) },
+            onCheckedChange = {},
             shapes = shapes,
             interactionSource = interactionSource,
             modifier = Modifier.size(size),
         ) {
             Text(text = emoji, fontSize = 22.sp)
         }
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .pointerInput(emoji) {
+                    detectTapGestures(
+                        onPress = { offset ->
+                            val press = PressInteraction.Press(offset)
+                            interactionSource.emit(press)
+                            val released = tryAwaitRelease()
+                            interactionSource.emit(
+                                if (released) {
+                                    PressInteraction.Release(press)
+                                } else {
+                                    PressInteraction.Cancel(press)
+                                },
+                            )
+                        },
+                        onTap = { onPicked(emoji) },
+                        onLongPress = { if (variantsFor(emoji).size > 1) showVariants = true },
+                    )
+                },
+        )
 
         if (showVariants) {
             Popup(
@@ -241,20 +262,18 @@ private fun ReactionShortcutButton(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         variantsFor(emoji).forEach { variant ->
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = androidx.compose.material3.ripple(),
-                                        onClick = {
-                                            showVariants = false
-                                            onPicked(variant)
-                                        },
-                                    ),
-                                contentAlignment = Alignment.Center,
+                            // A real toggle, not a plain tap target -- picking a variant is now
+                            // additive (toggledReactions), so more than one can be checked here
+                            // at once (e.g. both a green and a blue heart), and this shows that.
+                            FilledIconToggleButton(
+                                checked = isChecked(variant),
+                                onCheckedChange = {
+                                    onPicked(variant)
+                                    showVariants = false
+                                },
+                                modifier = Modifier.size(40.dp),
                             ) {
-                                Text(text = variant, fontSize = 22.sp)
+                                Text(text = variant, fontSize = 20.sp)
                             }
                         }
                     }

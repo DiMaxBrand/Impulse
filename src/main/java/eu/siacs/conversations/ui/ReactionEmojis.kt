@@ -43,34 +43,40 @@ fun isThumbsUpFamily(emoji: String): Boolean = stripSkinTone(emoji) == THUMBS_UP
  * second long-press after picking a non-default variant only ever offered that one variant back.
  *
  * Two sources: [HEART_VARIANTS] for hearts (hardcoded, see its own doc), and jemoji's real
- * Fitzpatrick skin-tone data (`Emoji.hasFitzpatrickComponent`/`getVariations`) for every other
- * emoji that has skin-tone variants -- not a hardcoded per-emoji list, so this covers the entire
- * shortcut row (thumbs up/down, clapping hands, praying hands, flexed biceps, waving hand, ...)
- * automatically, including anything a future change to the shortcut set adds. Neutral/base first,
- * then light to dark. Emoji with no variants of either kind return just themselves -- long-press
- * is then a no-op (no popup shown).
+ * Fitzpatrick skin-tone data (`Emoji.getVariations`) for every other emoji that has skin-tone
+ * variants -- not a hardcoded per-emoji list, so this covers the entire shortcut row (thumbs
+ * up/down, clapping hands, praying hands, flexed biceps, waving hand, ...) automatically,
+ * including anything a future change to the shortcut set adds. Neutral/base first, then light to
+ * dark. Emoji with no variants of either kind return just themselves -- long-press is then a
+ * no-op (no popup shown).
+ *
+ * Deliberately does *not* gate on `Emoji.hasFitzpatrickComponent()` -- despite the name, that
+ * flag means "this exact string already contains a modifier", not "this emoji has tone variants".
+ * Querying the plain neutral base (e.g. "👍") returns `false` for it even though `getVariations()`
+ * on that same lookup correctly returns all 5 tones -- gating on the flag was the actual bug
+ * behind "long-press does nothing on anything except heart": every other emoji has real variation
+ * data, it was just never reached.
  */
 fun variantsFor(emoji: String): List<String> {
     if (isHeartFamily(emoji)) return HEART_VARIANTS
     val base = stripSkinTone(emoji)
     val info = EmojiManager.getEmoji(base).orElse(null) ?: return listOf(emoji)
-    if (!info.hasFitzpatrickComponent()) return listOf(emoji)
-    val members = (info.getVariations().map { it.emoji } + base).distinct()
+    val variations = info.getVariations()
+    if (variations.isEmpty()) return listOf(emoji)
+    val members = (variations.map { it.emoji } + base).distinct()
     return members.sortedBy { member ->
         val toneIndex = SKIN_TONE_MODIFIERS.indexOfFirst { member.endsWith(it) }
         if (toneIndex == -1) 0 else toneIndex + 1
     }
 }
 
-/** Applies [picked] to [current]: toggles it off if it's already the exact reaction present
- * (double-tapping/tapping a message that already has your reaction removes it -- a committed
- * single-emoji action, not a browse-and-add picker); otherwise replaces any other member of
- * [picked]'s own family already present (so picking a different skin tone or heart color swaps
- * it in rather than leaving both), then adds it. */
+/** Applies [picked] to [current]: toggles it off if it's already present, otherwise adds it
+ * alongside whatever's already there. Deliberately a plain toggle, not "replace any other member
+ * of picked's family" -- picking a different skin tone or heart color is a *second* reaction, not
+ * a correction of the first; e.g. green then blue means both are now your reactions, not just
+ * blue. (An earlier version replaced within the family; that was wrong.) */
 fun toggledReactions(current: Set<String>, picked: String): Set<String> {
-    if (picked in current) return current - picked
-    val family = variantsFor(picked).toSet()
-    return (current - family) + picked
+    return if (picked in current) current - picked else current + picked
 }
 
 /** Builds the add-reaction dialog's shortcut row from the raw most-recently-used list
