@@ -1177,7 +1177,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     override fun onDoubleTapReaction(message: Message) {
         val activity = activity as? XmppActivity ?: return
         val appSettings = eu.siacs.conversations.AppSettings(activity)
-        val remembered = appSettings.quickReactionEmoji
+        val remembered = appSettings.quickReactionEmojis
         if (appSettings.isQuickReactionRemember && remembered != null) {
             applyQuickReaction(activity, message, remembered)
         } else {

@@ -1,16 +1,19 @@
 package eu.siacs.conversations.ui
 
+import android.app.Activity
 import android.app.Dialog
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -19,11 +22,13 @@ import androidx.fragment.app.DialogFragment
 import eu.siacs.conversations.AppSettings
 import eu.siacs.conversations.entities.Message
 
-/** Applies [emoji] to `message`'s own reactions via [toggledReactions] and sends the result --
- * the one place this logic lives, reused by both the double-tap trigger and this dialog's own
- * message-bound save. */
-fun applyQuickReaction(activity: XmppActivity, message: Message, emoji: String) {
-    val updated = toggledReactions(message.getAggregatedReactions().ourReactions, emoji)
+/** Applies [emojis] to `message`'s own reactions (each via [toggledReactions], in order) and
+ * sends the result -- the one place this logic lives, reused by both the double-tap trigger and
+ * this dialog's own message-bound save. Normally a single emoji, but the custom third slot can
+ * hold several (see [AppSettings.getQuickReactionCustomEmojis]). */
+fun applyQuickReaction(activity: XmppActivity, message: Message, emojis: List<String>) {
+    var updated = message.getAggregatedReactions().ourReactions
+    emojis.forEach { updated = toggledReactions(updated, it) }
     activity.sendReactions(message, updated.toSet())
 }
 
@@ -32,13 +37,27 @@ fun applyQuickReaction(activity: XmppActivity, message: Message, emoji: String) 
  * full-screen destination. Matches how the existing add-reaction dialog presents (an AlertDialog
  * card over the chat, not its own screen), and the spec's own "elevated card" language.
  *
- * When shown with no arguments (the Settings entry), saving just persists the default choice, and
- * the "..."/keyboard row is omitted entirely -- there's no message in that context for either to
- * act on. When shown via [newInstance] (double-tap, first time or "keep asking"), saving both
- * persists the choice *and* applies it to that specific message immediately, via
- * [applyQuickReaction], and the "..." button opens [AddReactionDialogFragment] bound to the same
- * message (replacing this dialog) while the keyboard button applies typed emoji the same way. */
+ * The "..."/keyboard row (and the custom third slot they edit) behaves identically in both
+ * contexts -- it's not about "acting on a message" at all, it's part of configuring what the
+ * quick-reaction defaults *are*, which is exactly as relevant from Settings as from a live
+ * double-tap. The only thing that differs by context is what picking/saving *also* does: from
+ * Settings it only persists; via [newInstance] (double-tap) it persists *and* applies the result
+ * to that specific message immediately, via [applyQuickReaction]. */
 class QuickReactionDialogFragment : DialogFragment() {
+
+    // Must be registered unconditionally before the fragment reaches CREATED -- a property
+    // initializer runs at construction time, before any lifecycle callback, which satisfies that.
+    private val pickEmojiLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val emoji = result.data?.getStringExtra(AddReactionActivity.EXTRA_PICKED_EMOJI)
+            if (emoji != null) pickedCustomEmoji.value = listOf(emoji)
+        }
+    }
+
+    // Bridges the launcher's callback (fires outside composition) into Compose state.
+    private val pickedCustomEmoji = mutableStateOf<List<String>?>(null)
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState)
@@ -68,30 +87,13 @@ class QuickReactionDialogFragment : DialogFragment() {
                 }
                 QuickReactionDialogCard(
                     onDismiss = { dismiss() },
-                    onSaved = { emoji ->
+                    onSaved = { emojis ->
                         if (activity != null && message != null) {
-                            applyQuickReaction(activity, message, emoji)
+                            applyQuickReaction(activity, message, emojis)
                         }
                     },
-                    onOpenMore = if (activity != null && conversationUuid != null && messageUuid != null) {
-                        {
-                            AddReactionDialogFragment.newInstance(conversationUuid, messageUuid)
-                                .show(parentFragmentManager, AddReactionDialogFragment.TAG)
-                            dismiss()
-                        }
-                    } else {
-                        null
-                    },
-                    onSubmitTyped = if (activity != null && message != null) {
-                        { emojis ->
-                            var updated = message.getAggregatedReactions().ourReactions
-                            emojis.forEach { updated = toggledReactions(updated, it) }
-                            activity.sendReactions(message, updated.toSet())
-                            dismiss()
-                        }
-                    } else {
-                        null
-                    },
+                    onOpenMore = { pickEmojiLauncher.launch(AddReactionActivity.pickerIntent(requireContext())) },
+                    pickedCustomEmoji = pickedCustomEmoji,
                 )
             }
         }
@@ -119,9 +121,9 @@ class QuickReactionDialogFragment : DialogFragment() {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun QuickReactionDialogCard(
     onDismiss: () -> Unit,
-    onSaved: (emoji: String) -> Unit,
-    onOpenMore: (() -> Unit)?,
-    onSubmitTyped: ((List<String>) -> Unit)?,
+    onSaved: (emojis: List<String>) -> Unit,
+    onOpenMore: () -> Unit,
+    pickedCustomEmoji: androidx.compose.runtime.MutableState<List<String>?>,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val appSettings = androidx.compose.runtime.remember { AppSettings(context) }
@@ -133,15 +135,17 @@ private fun QuickReactionDialogCard(
         modifier = Modifier.widthIn(max = 400.dp),
     ) {
         QuickReactionPickerContent(
-            initialEmoji = appSettings.quickReactionEmoji,
+            initialEmojis = appSettings.quickReactionEmojis,
             initialRemember = appSettings.isQuickReactionRemember,
-            onSave = { emoji, remember ->
-                appSettings.setQuickReaction(emoji, remember)
-                onSaved(emoji)
+            initialCustomEmojis = appSettings.quickReactionCustomEmojis,
+            pickedCustomEmoji = pickedCustomEmoji,
+            onSave = { emojis, customEmojis, remember ->
+                appSettings.setQuickReaction(emojis, remember)
+                appSettings.setQuickReactionCustomEmojis(customEmojis)
+                onSaved(emojis)
                 onDismiss()
             },
             onOpenMore = onOpenMore,
-            onSubmitTyped = onSubmitTyped,
         )
     }
 }

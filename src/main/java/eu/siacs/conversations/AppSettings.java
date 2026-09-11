@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -97,6 +98,7 @@ public class AppSettings {
     // toggle, just the inverse of remembering.
     public static final String QUICK_REACTION_EMOJI = "quick_reaction_emoji";
     public static final String QUICK_REACTION_REMEMBER = "quick_reaction_remember";
+    public static final String QUICK_REACTION_CUSTOM_EMOJI = "quick_reaction_custom_emoji";
 
     // The add-reaction dialog's shortcut row: most-recently-used emoji, most recent first,
     // capped at MAX_RECENT_REACTION_EMOJIS. Falls back to Reaction.SUGGESTIONS until the user has
@@ -659,11 +661,19 @@ public class AppSettings {
 
     /**
      * Null until a choice has ever been saved -- double-tap should still ask the first time
-     * regardless of {@link #isQuickReactionRemember()}'s default.
+     * regardless of {@link #isQuickReactionRemember()}'s default. Normally a single emoji, but the
+     * custom third slot (see {@link #getQuickReactionCustomEmojis()}) can hold several -- typing
+     * more than one emoji into that slot's keyboard entry means double-tap applies all of them at
+     * once, not just the last one.
      */
-    public String getQuickReactionEmoji() {
-        return PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(QUICK_REACTION_EMOJI, null);
+    public List<String> getQuickReactionEmojis() {
+        final String stored =
+                PreferenceManager.getDefaultSharedPreferences(context)
+                        .getString(QUICK_REACTION_EMOJI, null);
+        if (Strings.isNullOrEmpty(stored)) {
+            return null;
+        }
+        return Splitter.on(',').omitEmptyStrings().splitToList(stored);
     }
 
     public boolean isQuickReactionRemember() {
@@ -671,11 +681,34 @@ public class AppSettings {
                 .getBoolean(QUICK_REACTION_REMEMBER, true);
     }
 
-    public void setQuickReaction(final String emoji, final boolean remember) {
+    public void setQuickReaction(final List<String> emojis, final boolean remember) {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
-                .putString(QUICK_REACTION_EMOJI, emoji)
+                .putString(QUICK_REACTION_EMOJI, Joiner.on(',').join(emojis))
                 .putBoolean(QUICK_REACTION_REMEMBER, remember)
+                .apply();
+    }
+
+    /**
+     * The optional custom third quick-reaction slot, alongside the always-present heart/thumbs-up
+     * ones -- empty until the user picks one via the "..." full picker or types one (or several)
+     * via the keyboard entry, in either the Settings entry or the double-tap dialog (both edit the
+     * same persisted slot). Picking/typing again replaces it rather than adding a fourth slot.
+     */
+    public List<String> getQuickReactionCustomEmojis() {
+        final String stored =
+                PreferenceManager.getDefaultSharedPreferences(context)
+                        .getString(QUICK_REACTION_CUSTOM_EMOJI, null);
+        if (Strings.isNullOrEmpty(stored)) {
+            return Collections.emptyList();
+        }
+        return Splitter.on(',').omitEmptyStrings().splitToList(stored);
+    }
+
+    public void setQuickReactionCustomEmojis(final List<String> emojis) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(QUICK_REACTION_CUSTOM_EMOJI, Joiner.on(',').join(emojis))
                 .apply();
     }
 
