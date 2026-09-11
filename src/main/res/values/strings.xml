@@ -803,6 +803,7 @@
     <string name="delete_images">Delete Images</string>
     <string name="delete_files">Delete Files</string>
     <string name="delete_all_files">Delete all files</string>
+    <string name="delete_this_photo">This photo</string>
     <string name="deleting">Deleting…</string>
     <string name="unable_to_start_recording">Could not start recording</string>
     <string name="please_wait">Please wait…</string>

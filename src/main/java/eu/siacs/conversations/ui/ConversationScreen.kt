@@ -597,6 +597,12 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // Bottom sheet offering "All Photos" vs "Select Photos" when "Select" is tapped on a grid
     // tile's context sheet — set to the tapped tile's whole batch, null when not showing.
     var selectPopupGroup by remember { mutableStateOf<List<Message>?>(null) }
+    // Same idea for "Delete" on a grid tile, when the long-press named a specific, individually
+    // visible photo (never for the ambiguous "+N" overflow cell, which already goes straight to
+    // "Delete all files" with no need to ask) — offers "This photo" vs "Delete all files" instead
+    // of silently assuming either one.
+    var deleteChoiceTarget by remember { mutableStateOf<Message?>(null) }
+    var deleteChoiceGroup by remember { mutableStateOf<List<Message>?>(null) }
     // First-time edit/delete explainer — set by MessageContextSheet's onNeedsOnboarding, run
     // once MessageActionOnboardingSheet is dismissed (Got it), never again for that action.
     var pendingOnboarding by remember { mutableStateOf<OnboardingKind?>(null) }
@@ -699,6 +705,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             onSelectGroup = { selectPopupGroup = it },
             onSelectToDelete = { listener.onOpenMediaSelector(it, true) },
             onDeleteGroup = { state.deleteGroupTarget.value = it },
+            onDeleteChoice = { msg, group ->
+                deleteChoiceTarget = msg
+                deleteChoiceGroup = group
+            },
             onNeedsOnboarding = { kind, action ->
                 pendingOnboarding = kind
                 onboardingContinuation = action
@@ -740,6 +750,26 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 listener.onOpenMediaSelector(popupGroup, false)
             },
             onDismiss = { selectPopupGroup = null },
+        )
+    }
+    val deleteChoiceMsg = deleteChoiceTarget
+    val deleteChoiceGrp = deleteChoiceGroup
+    if (deleteChoiceMsg != null && deleteChoiceGrp != null) {
+        DeleteChoicePopupSheet(
+            onThisPhoto = {
+                deleteChoiceTarget = null
+                deleteChoiceGroup = null
+                state.deleteTarget.value = deleteChoiceMsg
+            },
+            onAllFiles = {
+                deleteChoiceTarget = null
+                deleteChoiceGroup = null
+                state.deleteGroupTarget.value = deleteChoiceGrp
+            },
+            onDismiss = {
+                deleteChoiceTarget = null
+                deleteChoiceGroup = null
+            },
         )
     }
     val groupToDelete = state.deleteGroupTarget.value
@@ -4464,6 +4494,10 @@ private fun MessageContextSheet(
     // covers "delete everything", so this item exists specifically for picking a subset).
     onSelectToDelete: (List<Message>) -> Unit = {},
     onDeleteGroup: (List<Message>) -> Unit = {},
+    // Delete tapped for a grid-tile cell that names a specific, individually visible photo (never
+    // the ambiguous overflow cell) -- hands off to a "This photo" vs "Delete all files" popup
+    // instead of silently assuming either one. See DeleteChoicePopupSheet.
+    onDeleteChoice: (Message, List<Message>) -> Unit = { _, _ -> },
     // First time editing/deleting: instead of running the action immediately, hand off to
     // ConversationScreen() to show MessageActionOnboardingSheet, then run [action] once that's
     // dismissed. Every later edit/delete for that user runs [action] straight away.
@@ -4777,7 +4811,13 @@ private fun MessageContextSheet(
         }
         add(SheetAction(R.drawable.ic_delete_24dp, deleteLabel) {
             val startDelete = {
-                if (deleteWholeGroup) onDeleteGroup(group!!) else state.deleteTarget.value = message
+                when {
+                    deleteWholeGroup -> onDeleteGroup(group!!)
+                    // A specific, individually visible photo within a grid tile -- ask which was
+                    // meant instead of silently assuming just this one (see DeleteChoicePopupSheet).
+                    group != null -> onDeleteChoice(message, group)
+                    else -> state.deleteTarget.value = message
+                }
             }
             if (onboardingPrefs.hasSeenDeleteOnboarding) {
                 startDelete()
@@ -5214,6 +5254,42 @@ private fun SelectModePopupSheet(
                 iconRes = R.drawable.ic_image_24dp,
                 label = stringResource(R.string.select_photos),
                 onClick = onSelectPhotos,
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/**
+ * Small popup shown before "Delete" actually deletes anything, when the long-press that opened
+ * the context sheet named a specific, individually visible photo in a grid tile — "This Photo"
+ * deletes just that one (same as a standalone message would), "Delete all files" deletes the
+ * whole batch instead. Never shown for the ambiguous "+N" overflow cell, which has no specific
+ * photo to offer in the first place and goes straight to "Delete all files".
+ */
+@Composable
+private fun DeleteChoicePopupSheet(
+    onThisPhoto: () -> Unit,
+    onAllFiles: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)) {
+            Text(
+                text = stringResource(R.string.delete),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 12.dp, bottom = 10.dp),
+            )
+            ExpressiveMenuItem(
+                iconRes = R.drawable.ic_image_24dp,
+                label = stringResource(R.string.delete_this_photo),
+                onClick = onThisPhoto,
+            )
+            ExpressiveMenuItem(
+                iconRes = R.drawable.ic_delete_24dp,
+                label = stringResource(R.string.delete_all_files),
+                onClick = onAllFiles,
             )
             Spacer(Modifier.height(8.dp))
         }
