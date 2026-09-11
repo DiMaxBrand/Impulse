@@ -213,22 +213,6 @@ private fun ConnectingStrip(isConnecting: Boolean) {
     }
 }
 
-/**
- * Deliberately a plain singleton, not `rememberSaveable`/a ViewModel -- the whole point is that
- * it must not depend on *which* [ConversationsOverviewFragment] instance is asking. Compose's own
- * default (`rememberLazyListState()`'s implicit saveable-state participation) only survives when
- * Android happens to keep the very same Fragment/View instance alive (e.g. popping it off the
- * back stack after backing out of a chat); a fresh instance -- cold start, a notification tap
- * recreating [ConversationsActivity], anything that goes through `initializeFragments()`'s
- * "no existing fragment" branch -- always got index 0 instead. That coin flip is what read as
- * "sometimes remembers, sometimes doesn't"; this makes it unconditional for the process's
- * lifetime instead.
- */
-private object ConversationListScrollPosition {
-    var index: Int = 0
-    var offset: Int = 0
-}
-
 @Composable
 fun ConversationList(
     conversations: List<Conversation>,
@@ -243,13 +227,8 @@ fun ConversationList(
         return
     }
 
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = ConversationListScrollPosition.index,
-        initialFirstVisibleItemScrollOffset = ConversationListScrollPosition.offset,
-    )
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        ConversationListScrollPosition.index = listState.firstVisibleItemIndex
-        ConversationListScrollPosition.offset = listState.firstVisibleItemScrollOffset
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState.firstVisibleItemIndex) {
         onFirstVisibleIndexChanged(listState.firstVisibleItemIndex)
     }
 
