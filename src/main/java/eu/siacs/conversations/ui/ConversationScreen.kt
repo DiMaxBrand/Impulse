@@ -587,6 +587,13 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // sheet's Delete action operate on the whole batch instead of silently acting on just the
     // first message it happens to represent.
     var menuTargetGroup by remember { mutableStateOf<List<Message>?>(null) }
+    // True only when the long-press specifically landed on the "+N" overflow cell (or any other
+    // cell that isn't a distinguishable single photo) -- every other grid-cell long-press names an
+    // actual, individually visible photo, so Delete should act on just that one photo there, the
+    // same as a standalone (non-grouped) message. Only the ambiguous overflow cell falls back to
+    // "the whole batch," and says so explicitly ("Delete all files") rather than silently acting
+    // on N photos when the user long-pressed what looked like a single tile.
+    var menuTargetIsOverflowCell by remember { mutableStateOf(false) }
     // Bottom sheet offering "All Photos" vs "Select Photos" when "Select" is tapped on a grid
     // tile's context sheet — set to the tapped tile's whole batch, null when not showing.
     var selectPopupGroup by remember { mutableStateOf<List<Message>?>(null) }
@@ -651,10 +658,12 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     onLongPress = {
                         menuTarget = it
                         menuTargetGroup = null
+                        menuTargetIsOverflowCell = false
                     },
-                    onLongPressGroupCell = { tapped, messages ->
+                    onLongPressGroupCell = { tapped, messages, isOverflowCell ->
                         menuTarget = tapped
                         menuTargetGroup = messages
+                        menuTargetIsOverflowCell = isOverflowCell
                     },
                     onOpenSelector = { messages -> listener.onOpenMediaSelector(messages, false) },
                     selectedUuids = selectedUuids,
@@ -683,6 +692,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         MessageContextSheet(
             message = target,
             groupMessages = menuTargetGroup,
+            groupLongPressOnOverflow = menuTargetIsOverflowCell,
             state = state,
             listener = listener,
             onSelect = { it.getUuid()?.let { uuid -> selectedUuids.add(uuid) } },
@@ -697,6 +707,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             onDismiss = {
                 menuTarget = null
                 menuTargetGroup = null
+                menuTargetIsOverflowCell = false
             },
         )
     }
@@ -1355,10 +1366,12 @@ private fun MessageList(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
-    // The specific cell that was long-pressed, plus the whole group it belongs to — the sheet
-    // tailors Reply/Open/Share/Forward to that one message, while Reaction/Pin/Delete still act
-    // on the whole group.
-    onLongPressGroupCell: (Message, List<Message>) -> Unit,
+    // The specific cell that was long-pressed, the whole group it belongs to, and whether that
+    // cell was the ambiguous "+N" overflow tile — the sheet tailors Reply/Open/Share/Forward and
+    // (unless it was the overflow tile) Delete to that one message; Reaction/Pin still act on the
+    // whole group, and Delete only falls back to the whole group when the overflow tile itself was
+    // what got long-pressed.
+    onLongPressGroupCell: (Message, List<Message>, Boolean) -> Unit,
     onOpenSelector: (List<Message>) -> Unit,
     selectedUuids: List<String>,
     onToggleSelected: (String) -> Unit,
@@ -1771,7 +1784,7 @@ private fun MessageList(
                             revision = revision,
                             highlighted = highlightKey != null && groupUuids.contains(highlightKey),
                             listener = listener,
-                            onLongPressCell = { tapped, messages -> onLongPressGroupCell(tapped, messages) },
+                            onLongPressCell = { tapped, messages, isOverflowCell -> onLongPressGroupCell(tapped, messages, isOverflowCell) },
                             onOpenSelector = onOpenSelector,
                             selectionActive = selectedUuids.isNotEmpty(),
                             selectedUuids = selectedUuids,
@@ -2404,10 +2417,9 @@ private fun MediaGroupRow(
     revision: Int,
     highlighted: Boolean = false,
     listener: ConversationScreenListener,
-    // The specific cell that was long-pressed, plus the whole group it belongs to — the sheet
-    // tailors Reply/Open/Share/Forward to that one message, while Reaction/Pin/Delete still act
-    // on the whole group.
-    onLongPressCell: (Message, List<Message>) -> Unit,
+    // The specific cell that was long-pressed, the whole group it belongs to, and whether that
+    // cell was the "+N" overflow tile — see MessageList's own onLongPressGroupCell doc.
+    onLongPressCell: (Message, List<Message>, Boolean) -> Unit,
     // "+N" tile tapped while a selection is already in progress (from this group or elsewhere) —
     // hands off to the picker screen rather than the viewer, since you can't select from inside it.
     onOpenSelector: (List<Message>) -> Unit,
@@ -2547,7 +2559,7 @@ private fun MediaGroupRow(
                                     listener.onOpenMediaGroup(messages, tapped)
                                 }
                             },
-                            onCellLongTap = { tapped -> onLongPressCell(tapped, messages) },
+                            onCellLongTap = { tapped, isOverflowCell -> onLongPressCell(tapped, messages, isOverflowCell) },
                             onOverflowSelect = { onOpenSelector(messages) },
                         )
                     }
@@ -2669,7 +2681,7 @@ private fun MediaGridContent(
     selectionActive: Boolean,
     selectedUuids: List<String>,
     onCellTap: (Message) -> Unit,
-    onCellLongTap: (Message) -> Unit,
+    onCellLongTap: (Message, Boolean) -> Unit,
     onOverflowSelect: () -> Unit,
 ) {
     // Every cell gets its own modest rounding, tightened to nest concentrically with the bubble's
@@ -2814,7 +2826,7 @@ private fun MediaGridCell(
     message: Message,
     modifier: Modifier,
     onTap: (Message) -> Unit,
-    onLongTap: (Message) -> Unit,
+    onLongTap: (Message, Boolean) -> Unit,
     revision: Int,
     selectionActive: Boolean,
     selected: Boolean,
@@ -2851,7 +2863,7 @@ private fun MediaGridCell(
     Box(
         modifier = modifier.combinedClickable(
             onClick = handleTap,
-            onLongClick = { if (selectionActive) handleTap() else onLongTap(message) },
+            onLongClick = { if (selectionActive) handleTap() else onLongTap(message, isOverflow) },
             indication = null,
             interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
         ),
@@ -4436,6 +4448,11 @@ private fun markModerationDisclaimerAcked() {
 private fun MessageContextSheet(
     message: Message,
     groupMessages: List<Message>? = null,
+    // True only when this sheet was opened by long-pressing the grid tile's "+N" overflow cell --
+    // the one cell that doesn't name a specific, individually visible photo. Every other grid-cell
+    // long-press (up to 4 photos, all fully visible, no overlay) already identifies exactly which
+    // photo the user meant, so Delete there acts on just [message], same as a standalone message.
+    groupLongPressOnOverflow: Boolean = false,
     state: ConversationScreenState,
     listener: ConversationScreenListener,
     onSelect: (Message) -> Unit,
@@ -4731,8 +4748,10 @@ private fun MessageContextSheet(
                 })
             }
         }
-        // Select to delete — a whole grid tile only, hands off to the picker screen directly (no
-        // "All Photos" popup first, since "Delete Files" right below already covers that case).
+        // Select to delete — a whole grid tile only, hands off to the picker screen directly. This
+        // is how an arbitrary *subset* of a multi-photo tile gets deleted; Delete right below acts
+        // on either just the long-pressed photo or the whole batch (see its own comment), never an
+        // in-between selection.
         if (group != null) {
             add(
                 SheetAction(R.drawable.ic_check_circle_24dp, stringResource(R.string.select_to_delete)) {
@@ -4744,19 +4763,21 @@ private fun MessageContextSheet(
         // is a self-retraction or (for someone else's message, when we're a moderator) a XEP-0425
         // moderation request instead. See DeleteMessageSheet for that gating.
         //
-        // When this sheet represents a whole grid tile (groupMessages != null), delete must act
-        // on every message in the batch, not just the single representative message it was
-        // opened with — a fixed "Delete files" label, not a per-type singular name that only
-        // describes the one message this sheet happens to hold.
+        // Only falls back to the whole grid tile when the long-press itself couldn't name a
+        // specific photo -- i.e. it landed on the ambiguous "+N" overflow cell. Every other
+        // grid-cell long-press (all photos fully visible, up to 4 of them) already identifies
+        // exactly one photo, so this acts on just [message] there, same as a standalone message —
+        // that's what "Select to delete" right above is for, picking an arbitrary subset instead.
+        val deleteWholeGroup = group != null && groupLongPressOnOverflow
         val deleteLabel = when {
-            group != null -> stringResource(R.string.delete_files)
+            deleteWholeGroup -> stringResource(R.string.delete_all_files)
             deleted -> stringResource(R.string.delete_leftover_message)
             message.isFileOrImage -> stringResource(R.string.delete_x_file, fileDescription)
             else -> stringResource(R.string.delete_message)
         }
         add(SheetAction(R.drawable.ic_delete_24dp, deleteLabel) {
             val startDelete = {
-                if (group != null) onDeleteGroup(group) else state.deleteTarget.value = message
+                if (deleteWholeGroup) onDeleteGroup(group!!) else state.deleteTarget.value = message
             }
             if (onboardingPrefs.hasSeenDeleteOnboarding) {
                 startDelete()

@@ -770,6 +770,7 @@
     <string name="show_in_chat">Показать в чате</string>
     <string name="delete_images">Удалить изображения</string>
     <string name="delete_files">Удалить файлы</string>
+    <string name="delete_all_files">Удалить все файлы</string>
     <string name="deleting">Удаление…</string>
     <string name="unable_to_start_recording">Невозможно начать запись</string>
     <string name="please_wait">Подождите…</string>
