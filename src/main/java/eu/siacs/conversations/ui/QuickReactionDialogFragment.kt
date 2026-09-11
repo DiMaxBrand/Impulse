@@ -92,7 +92,17 @@ class QuickReactionDialogFragment : DialogFragment() {
                             applyQuickReaction(activity, message, emojis)
                         }
                     },
-                    onOpenMore = { pickEmojiLauncher.launch(AddReactionActivity.pickerIntent(requireContext())) },
+                    onOpenMore = {
+                        // Approximate "smooth expand into the full picker" -- scales up from this
+                        // card's own bounds (the whole ComposeView, not just the "..." button;
+                        // a true shared-element morph across a Compose-dialog/Activity boundary
+                        // isn't meaningful, they're separate view hierarchies) rather than the
+                        // system's default cross-fade.
+                        val options = androidx.core.app.ActivityOptionsCompat.makeScaleUpAnimation(
+                            this@apply, 0, 0, this@apply.width, this@apply.height,
+                        )
+                        pickEmojiLauncher.launch(AddReactionActivity.pickerIntent(requireContext()), options)
+                    },
                     pickedCustomEmoji = pickedCustomEmoji,
                 )
             }

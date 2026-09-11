@@ -115,21 +115,21 @@ fun QuickReactionPickerContent(
                             else -> customEmojis
                         }
                     },
-                    buttonSize = 64.dp,
+                    onOpenMore = onOpenMore,
+                    hasOpenedMore = hasOpenedMore,
+                    onMoreOpened = { hasOpenedMore = true },
+                    preferredSize = 64.dp,
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        ReactionMoreAndKeyboardRow(
-            onOpenMore = onOpenMore,
+        ReactionKeyboardRow(
             onSubmitTyped = { emojis ->
                 customEmojis = emojis
                 selected = emojis
                 showKeyboardInput = false
             },
-            hasOpenedMore = hasOpenedMore,
-            onMoreOpened = { hasOpenedMore = true },
             showKeyboardInput = showKeyboardInput,
             onShowKeyboardInputChange = { showKeyboardInput = it },
         )

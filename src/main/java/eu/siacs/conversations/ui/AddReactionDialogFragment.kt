@@ -92,7 +92,17 @@ class AddReactionDialogFragment : DialogFragment() {
                             val intent = Intent(activity, AddReactionActivity::class.java)
                             intent.putExtra("conversation", conversationUuid)
                             intent.putExtra("message", messageUuid)
-                            activity.startActivity(intent)
+                            // A real, if approximate, "smoothly expand into the full picker"
+                            // transition -- scales up from this card's own bounds rather than the
+                            // system's default cross-fade. Anchored on the whole card (this
+                            // ComposeView), not the tiny "..." button specifically: a true shared-
+                            // element morph from a Compose dialog into a separate Activity isn't
+                            // meaningful (they're not the same view hierarchy), so this is the
+                            // closest real system primitive to what was asked for.
+                            val options = androidx.core.app.ActivityOptionsCompat.makeScaleUpAnimation(
+                                this@apply, 0, 0, this@apply.width, this@apply.height,
+                            )
+                            activity.startActivity(intent, options.toBundle())
                             dismiss()
                         },
                     )
@@ -184,20 +194,21 @@ private fun AddReactionDialogCard(
                         emojis = shortcutEmojis,
                         isChecked = { it in ourReactions },
                         onPicked = { emoji -> apply(listOf(emoji)) },
+                        onOpenMore = onOpenMore,
+                        hasOpenedMore = hasOpenedMore,
+                        onMoreOpened = {
+                            onboardingPrefs.hasOpenedMoreReactions = true
+                            hasOpenedMore = true
+                        },
+                        showMoreButton = !restricted,
                     )
                 }
             }
 
             if (!restricted) {
                 Spacer(modifier = Modifier.height(12.dp))
-                ReactionMoreAndKeyboardRow(
-                    onOpenMore = onOpenMore,
+                ReactionKeyboardRow(
                     onSubmitTyped = { emojis -> apply(emojis) },
-                    hasOpenedMore = hasOpenedMore,
-                    onMoreOpened = {
-                        onboardingPrefs.hasOpenedMoreReactions = true
-                        hasOpenedMore = true
-                    },
                     showKeyboardInput = showKeyboardInput,
                     onShowKeyboardInputChange = { showKeyboardInput = it },
                 )

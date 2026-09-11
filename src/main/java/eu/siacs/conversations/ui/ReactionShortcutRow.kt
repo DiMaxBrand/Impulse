@@ -6,7 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButtonShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,23 +58,34 @@ import net.fellbaum.jemoji.EmojiManager
 // exposed) -- same small-corner treatment already used for the equivalent case in
 // ConversationScreen.kt's delete-message action row.
 private val CONNECTED_MIDDLE_SHAPE = RoundedCornerShape(16.dp)
+private val BUTTON_SPACING = 2.dp
 
 /**
- * A row of emoji buttons rendered as one connected [androidx.compose.material3.ButtonGroup] --
- * with a real, always-visible overflow indicator (Material3's own three-dot
- * [ButtonGroupDefaults.OverflowIndicator], not an empty one) and populated menu content, so items
- * that don't fit collapse into a proper, reachable overflow menu instead of either being hidden
- * with no way to reach them (an earlier version's actual bug) or overflowing the row's bounds off
- * the edge of the screen (a plain non-overflowing [Row]'s failure mode once there are more items,
- * or bigger buttons, than fit). This is what ButtonGroup is for; the earlier bug was giving it an
- * empty [ButtonGroupDefaults.OverflowIndicator]-shaped hole instead of the real one.
+ * A row of emoji buttons plus a trailing "..." button, rendered as one connected group that
+ * shrinks to fit rather than either overflowing the card's bounds or hiding items with no way to
+ * reach them (both real bugs in earlier versions of this row). Not Material3's
+ * [androidx.compose.material3.ButtonGroup] -- that component collapses overflowing items behind
+ * a menu of just those items, which duplicated what "..." already does (it opens the full
+ * [AddReactionActivity] picker, where literally any emoji, overflowed shortcuts included, is
+ * reachable anyway). So instead, within [modifier]'s real available width (measured via
+ * [BoxWithConstraints], not assumed):
+ * 1. Every button (shortcuts + trailing "...") shrinks together, uniformly, from [preferredSize]
+ *    down to [minSize] before anything is dropped.
+ * 2. Only if [minSize] still doesn't fit everything are the *lowest-priority* shortcuts (the end
+ *    of [emojis] -- callers should order it accordingly, e.g. [buildShortcutEmojis]'s pinned
+ *    heart/thumbs-up first) dropped -- "..." itself is never dropped, since it's the fallback for
+ *    anything that was.
  *
- * Each visible button is a real [FilledIconToggleButton] using [IconButtonDefaults
+ * "..." sits inside the same connected group (trailing position) rather than as a separate button
+ * below -- it's not a distinct concern from the shortcuts, just the overflow valve for all of
+ * them, so it belongs in the same row rather than duplicated as its own affordance underneath.
+ *
+ * Each visible emoji button is a real [FilledIconToggleButton] using [IconButtonDefaults
  * .toggleableShapes]'s native checked-state shape and the connected group's own press shapes --
  * the built-in shape-by-interaction morph (toward a circle-like squircle on press) comes for free
  * from Material3 rather than a bespoke [androidx.graphics.shapes.Morph].
  *
- * Long-press (on a still-visible button) opens a tertiary-colored popup with [emoji]'s real
+ * Long-press (on a still-visible emoji button) opens a tertiary-colored popup with [emoji]'s real
  * variants (see [variantsFor]) -- covers every item in the row, not just specific hardcoded ones.
  */
 @Composable
@@ -84,52 +94,95 @@ fun ReactionShortcutRow(
     emojis: List<String>,
     isChecked: (String) -> Boolean,
     onPicked: (emoji: String) -> Unit,
+    onOpenMore: () -> Unit,
+    hasOpenedMore: Boolean,
+    onMoreOpened: () -> Unit,
     modifier: Modifier = Modifier,
-    buttonSize: Dp = 56.dp,
+    showMoreButton: Boolean = true,
+    preferredSize: Dp = 56.dp,
+    minSize: Dp = 40.dp,
 ) {
-    androidx.compose.material3.ButtonGroup(
-        overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState) },
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        emojis.forEachIndexed { index, emoji ->
-            val isLeading = index == 0
-            val isTrailing = index == emojis.lastIndex
-            customItem(
-                buttonGroupContent = {
-                    // ButtonGroupDefaults' connected-shape properties are @Composable themselves
-                    // -- must be read here, inside buttonGroupContent, not hoisted above the
-                    // ButtonGroup block.
-                    val (shape, pressShape) = when {
-                        emojis.size == 1 -> CircleShape to CircleShape
-                        isLeading -> ButtonGroupDefaults.connectedLeadingButtonShape to
-                            ButtonGroupDefaults.connectedLeadingButtonPressShape
-                        isTrailing -> ButtonGroupDefaults.connectedTrailingButtonShape to
-                            ButtonGroupDefaults.connectedTrailingButtonPressShape
-                        else -> CONNECTED_MIDDLE_SHAPE to ButtonGroupDefaults.connectedMiddleButtonPressShape
-                    }
-                    ReactionShortcutButton(
-                        emoji = emoji,
-                        checked = isChecked(emoji),
-                        onPicked = onPicked,
-                        shapes = IconToggleButtonShapes(
-                            shape = shape,
-                            pressedShape = pressShape,
-                            checkedShape = IconButtonDefaults.toggleableShapes().checkedShape,
-                        ),
-                        size = buttonSize,
+    BoxWithConstraints(modifier = modifier) {
+        // +1 slot reserved for the trailing "..." button (unless there isn't one), never dropped.
+        val moreSlots = if (showMoreButton) 1 else 0
+        val totalSlotsAtPreferred = emojis.size + moreSlots
+        val neededAtPreferred = preferredSize * totalSlotsAtPreferred + BUTTON_SPACING * (totalSlotsAtPreferred - 1)
+
+        val visibleCount: Int
+        val buttonSize: Dp
+        if (neededAtPreferred <= maxWidth) {
+            visibleCount = emojis.size
+            buttonSize = preferredSize
+        } else {
+            // How many slots (shortcuts + "...") fit at all, at minSize -- then how many
+            // shortcuts that leaves once "..." keeps its one reserved slot.
+            val maxSlotsAtMin = ((maxWidth + BUTTON_SPACING) / (minSize + BUTTON_SPACING))
+                .toInt()
+                .coerceAtLeast(1)
+            visibleCount = (maxSlotsAtMin - moreSlots).coerceIn(0, emojis.size)
+            val totalSlots = visibleCount + moreSlots
+            // Shrink uniformly to fill the real available width at this item count, never below
+            // minSize and never above preferredSize.
+            buttonSize = ((maxWidth - BUTTON_SPACING * (totalSlots - 1)) / totalSlots)
+                .coerceIn(minSize, preferredSize)
+        }
+        val visibleEmojis = emojis.take(visibleCount)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(BUTTON_SPACING)) {
+            visibleEmojis.forEachIndexed { index, emoji ->
+                val isLeading = index == 0
+                val (shape, pressShape) = when {
+                    isLeading -> ButtonGroupDefaults.connectedLeadingButtonShape to
+                        ButtonGroupDefaults.connectedLeadingButtonPressShape
+                    else -> CONNECTED_MIDDLE_SHAPE to ButtonGroupDefaults.connectedMiddleButtonPressShape
+                }
+                ReactionShortcutButton(
+                    emoji = emoji,
+                    checked = isChecked(emoji),
+                    onPicked = onPicked,
+                    shapes = IconToggleButtonShapes(
+                        shape = shape,
+                        pressedShape = pressShape,
+                        checkedShape = IconButtonDefaults.toggleableShapes().checkedShape,
+                    ),
+                    size = buttonSize,
+                )
+            }
+            if (showMoreButton) {
+            val (moreShape, morePressShape) = if (visibleEmojis.isEmpty()) {
+                CircleShape to CircleShape
+            } else {
+                ButtonGroupDefaults.connectedTrailingButtonShape to
+                    ButtonGroupDefaults.connectedTrailingButtonPressShape
+            }
+            Box {
+                FilledIconButton(
+                    onClick = {
+                        onMoreOpened()
+                        onOpenMore()
+                    },
+                    shapes = IconButtonDefaults.shapes(
+                        shape = moreShape,
+                        pressedShape = morePressShape,
+                    ),
+                    modifier = Modifier.size(buttonSize),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_more_horiz_24dp),
+                        contentDescription = stringResource(R.string.more_reactions),
                     )
-                },
-                menuContent = { menuState ->
-                    androidx.compose.material3.DropdownMenuItem(
-                        text = { Text(emoji, fontSize = 18.sp) },
-                        onClick = {
-                            onPicked(emoji)
-                            menuState.dismiss()
-                        },
+                }
+                if (!hasOpenedMore) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .align(Alignment.TopEnd)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.error),
                     )
-                },
-            )
+                }
+            }
+            }
         }
     }
 }
@@ -212,19 +265,14 @@ private fun ReactionShortcutButton(
 }
 
 /**
- * The "..." (full picker) + keyboard-entry affordances [R.string.reaction_picker_hint] promises,
- * shared by [AddReactionDialogFragment] and (when bound to a real message) [QuickReactionPickerContent]
- * -- both dialogs' hint text says the same thing, so both need the same two buttons underneath it,
- * not just one of them. Faithful to the legacy `AddReactionDialog`'s three-icon-state keyboard
- * button rather than a simplified one: keyboard (idle) -> close (typing, empty) -> send (typing,
- * has content), with the shortcut row/text-field swap above it staying in sync.
+ * The keyboard-entry affordance (free-form emoji text entry) and [R.string.reaction_picker_hint]
+ * underneath the shortcut row -- shared by [AddReactionDialogFragment] and
+ * [QuickReactionPickerContent]. The "..." button the hint text also mentions now lives inside
+ * [ReactionShortcutRow] itself (see its doc) rather than here.
  */
 @Composable
-fun ReactionMoreAndKeyboardRow(
-    onOpenMore: () -> Unit,
+fun ReactionKeyboardRow(
     onSubmitTyped: (List<String>) -> Unit,
-    hasOpenedMore: Boolean,
-    onMoreOpened: () -> Unit,
     showKeyboardInput: Boolean,
     onShowKeyboardInputChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -255,30 +303,6 @@ fun ReactionMoreAndKeyboardRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
     ) {
-        Box {
-            OutlinedIconButton(
-                onClick = {
-                    onMoreOpened()
-                    onOpenMore()
-                },
-                modifier = Modifier.size(56.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_more_horiz_24dp),
-                    contentDescription = stringResource(R.string.more_reactions),
-                )
-            }
-            if (!hasOpenedMore) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .align(Alignment.TopEnd)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.error),
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(8.dp))
         FilledIconButton(
             onClick = {
                 when {
