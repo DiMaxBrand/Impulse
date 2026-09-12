@@ -57,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,11 +71,15 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
@@ -442,6 +447,28 @@ private fun MediaViewerScreen(
     // there's nothing distinct from whole-history to show for a single photo.
     val inBatch = batchUuids.size > 1 && currentMessage.getUuid() in batchUuids
     var chromeVisible by remember { mutableStateOf(true) }
+    // Tapping the photo to hide the top bar also hides the system status/navigation bars, same
+    // full-immersive behavior as the stock gallery/Photos apps — and the reverse on tapping again.
+    // WindowCompat.getInsetsController() needs the Activity's real Window, not anything Compose
+    // hands out on its own, hence going through LocalView.current's hosting Activity.
+    val view = LocalView.current
+    LaunchedEffect(chromeVisible) {
+        val window = (view.context as? android.app.Activity)?.window ?: return@LaunchedEffect
+        val controller = WindowCompat.getInsetsController(window, view)
+        if (chromeVisible) {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            val window = (view.context as? android.app.Activity)?.window ?: return@onDispose
+            WindowCompat.getInsetsController(window, view).show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
     var deleteTarget by remember { mutableStateOf<Message?>(null) }
     var deleting by remember { mutableStateOf(false) }
     // Destination half of the save-button shared-bounds transform — see saveButton below and the
