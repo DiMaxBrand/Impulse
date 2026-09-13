@@ -258,3 +258,13 @@ Output APKs from the CI build land in `build/outputs/apk/conversationsFree/relea
 inside that workflow's run.
 
 AGP 9.2.1 has built-in Kotlin support — no separate Kotlin plugin needed.
+
+**Always pass `title` and `description` inputs when triggering `release.yml`.** The
+workflow accepts both (`title` optional, defaults to the bare `Impulse <version>`;
+`description` optional, prepended above the auto-generated changelog) — triggering
+without them silently produces exactly the bare-default release the "Release notes"
+section above says never to ship. Write both per that section's format (title:
+`Импульс <version>: <короткое описание>`; description: `**RU**`/`**EN**`/optional
+`**Developer notes**`) *before* calling `run_workflow`, not after — the workflow has
+no way to edit a release's title/body once created, so a release triggered without
+them can't be patched, only closed and re-triggered.
