@@ -4,6 +4,30 @@
 
 - [ ] README rebrand — remove upstream store links, update issue tracker URL, add roadmap section.
 
+## Locked ecosystem — decide the actual stance, not started
+
+New-account creation is currently hardcoded to `on-chat.ru`
+(`EditAccountActivity.getUserModeDomain()` — the username-only field shown
+whenever `jidToEdit == null`, both first-run onboarding and later "add
+account"). Editing an *already-added* account still exposes the raw JID
+field with no domain restriction, so the lock only really covers account
+*creation*, not the app in general. Left as-is deliberately for now — the
+domain isn't discoverable/advertised anywhere a stranger would stumble into
+it, so the gap is low-risk today.
+
+Needs a real decision before doing anything further, not an assumption
+either way:
+- [ ] Stay a genuinely locked single-server ecosystem (Impulse only ever
+  talks to `on-chat.ru`) — if so, the edit-existing-account path should
+  probably get the same lock, and the stale `Config.MAGIC_CREATE_DOMAIN =
+  "conversations.im"` (leftover from upstream Conversations, not actually
+  used by `getUserModeDomain()`) should be cleaned up or repointed so it
+  stops being misleading.
+- [ ] Or open it up, with the domain surfaced somewhere deliberate — an
+  "advanced options" section in new-account creation naming `on-chat.ru`
+  explicitly instead of silently hardcoding it, so someone who *does* want
+  a different server isn't just blocked with no explanation.
+
 ## Typography & UI refresh — future branch, not started
 
 Transition the app's font to **Google Sans Flex**.
