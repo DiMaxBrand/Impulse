@@ -93,6 +93,11 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     public static final String ACTION_VIEW_CONVERSATION = "eu.siacs.conversations.action.VIEW";
     public static final String EXTRA_CONVERSATION = "conversationUuid";
     public static final String EXTRA_DOWNLOAD_UUID = "eu.siacs.conversations.download_uuid";
+    // Distinct from EXTRA_DOWNLOAD_UUID above -- that one is legacy-fragment-only and triggers a
+    // download action; this one just asks ConversationComposeFragment to scroll to and highlight
+    // the given message (same mechanism a tapped reply card uses), with no download side effect.
+    // Set by NotificationService when a notification represents a single specific message.
+    public static final String EXTRA_MESSAGE_UUID = "eu.siacs.conversations.message_uuid";
     public static final String EXTRA_AS_QUOTE = "eu.siacs.conversations.as_quote";
     public static final String EXTRA_NICK = "nick";
     public static final String EXTRA_IS_PRIVATE_MESSAGE = "pm";

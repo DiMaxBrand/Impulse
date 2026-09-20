@@ -3767,10 +3767,16 @@ public class XmppConnectionService extends Service {
 
     public List<Message> markRead(
             final Conversation conversation, String upToUuid, boolean dismiss) {
-        if (dismiss) {
-            mNotificationService.clear(conversation);
-        }
         final List<Message> readMessages = conversation.markRead(upToUuid);
+        // Progressive: only drop the messages that just got marked read from the notification,
+        // not the conversation's whole notification unconditionally -- this now fires as soon as
+        // messages scroll into view (see ConversationScreen.kt's viewport-tracking effect), not
+        // just once when the conversation is fully opened/closed, so a blanket clear() here would
+        // wipe out still-unread messages further down the same conversation's backlog the instant
+        // the first visible message got marked read.
+        if (dismiss) {
+            mNotificationService.clearMessages(conversation, readMessages);
+        }
         if (readMessages.size() > 0) {
             Runnable runnable =
                     () -> {

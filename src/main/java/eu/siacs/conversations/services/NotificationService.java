@@ -943,6 +943,46 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Progressive counterpart to {@link #clearMessages(Conversation)} -- removes only
+     * [readMessages] from this conversation's notification instead of wiping the whole thing
+     * unconditionally. Used by markRead()'s dismiss path, which now fires as messages scroll into
+     * view rather than once when the whole conversation is closed/reopened (see
+     * ConversationScreen.kt's viewport-tracking effect) -- without this, the very first message
+     * scrolling into view would blow away the notification for every other still-unread message in
+     * the same conversation, not just the one that was actually read.
+     *
+     * <p>Falls through to the same full-clear behavior as clearMessages(Conversation) once
+     * [readMessages] happens to cover everything still in the shade (the conversation's whole
+     * unread backlog scrolled into view, or was the only message to begin with) -- same
+     * cancel()/mBacklogMessageCounter cleanup, not a separate code path for that case.
+     */
+    public void clearMessages(final Conversation conversation, final List<Message> readMessages) {
+        if (readMessages.isEmpty()) {
+            return;
+        }
+        synchronized (notifications) {
+            final var list = notifications.get(conversation.getUuid());
+            if (list == null) {
+                return;
+            }
+            markAsReadIfHasDirectReply(list);
+            if (!list.removeAll(readMessages)) {
+                return;
+            }
+            if (list.isEmpty()) {
+                synchronized (this.mBacklogMessageCounter) {
+                    this.mBacklogMessageCounter.remove(conversation);
+                }
+                notifications.remove(conversation.getUuid());
+                cancel(conversation.getUuid(), NOTIFICATION_ID);
+                updateNotification(false, null, true);
+            } else {
+                updateNotification(false);
+            }
+        }
+    }
+
     public void clearMissedCall(final Message message) {
         synchronized (mMissedCalls) {
             final Iterator<Map.Entry<Conversational, MissedCallsInfo>> iterator =
@@ -1499,7 +1539,10 @@ public class NotificationService {
         notificationBuilder.setWhen(conversation.getLatestMessage().getTimeSent());
         notificationBuilder.setSmallIcon(R.drawable.ic_app_icon_notification);
         notificationBuilder.setDeleteIntent(createDeleteIntent(conversation));
-        notificationBuilder.setContentIntent(createContentIntent(conversation));
+        // Deep-link to the most recent unread message this notification is actually showing,
+        // instead of just opening the conversation at its default (bottom) position.
+        notificationBuilder.setContentIntent(
+                createContentIntent(conversation, messages.get(messages.size() - 1).getUuid()));
         if (channel.equals(MESSAGES_NOTIFICATION_CHANNEL) && info != null) {
             // when do not want 'customized' notifications for silent notifications in their
             // respective channels
@@ -1720,30 +1763,32 @@ public class NotificationService {
     }
 
     private PendingIntent createContentIntent(
-            final String conversationUuid, final String downloadMessageUuid) {
+            final String conversationUuid,
+            final String downloadMessageUuid,
+            final String scrollToMessageUuid) {
         final Intent viewConversationIntent =
                 new Intent(mXmppConnectionService, ConversationsActivity.class);
         viewConversationIntent.setAction(ConversationsActivity.ACTION_VIEW_CONVERSATION);
         viewConversationIntent.putExtra(ConversationsActivity.EXTRA_CONVERSATION, conversationUuid);
+        final int actionId;
         if (downloadMessageUuid != null) {
             viewConversationIntent.putExtra(
                     ConversationsActivity.EXTRA_DOWNLOAD_UUID, downloadMessageUuid);
-            return PendingIntent.getActivity(
-                    mXmppConnectionService,
-                    generateRequestCode(conversationUuid, 8),
-                    viewConversationIntent,
-                    s()
-                            ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-                            : PendingIntent.FLAG_UPDATE_CURRENT);
+            actionId = 8;
+        } else if (scrollToMessageUuid != null) {
+            viewConversationIntent.putExtra(
+                    ConversationsActivity.EXTRA_MESSAGE_UUID, scrollToMessageUuid);
+            actionId = 11;
         } else {
-            return PendingIntent.getActivity(
-                    mXmppConnectionService,
-                    generateRequestCode(conversationUuid, 10),
-                    viewConversationIntent,
-                    s()
-                            ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-                            : PendingIntent.FLAG_UPDATE_CURRENT);
+            actionId = 10;
         }
+        return PendingIntent.getActivity(
+                mXmppConnectionService,
+                generateRequestCode(conversationUuid, actionId),
+                viewConversationIntent,
+                s()
+                        ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                        : PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     private int generateRequestCode(String uuid, int actionId) {
@@ -1756,11 +1801,23 @@ public class NotificationService {
     }
 
     private PendingIntent createDownloadIntent(final Message message) {
-        return createContentIntent(message.getConversationUuid(), message.getUuid());
+        return createContentIntent(message.getConversationUuid(), message.getUuid(), null);
     }
 
     private PendingIntent createContentIntent(final Conversational conversation) {
-        return createContentIntent(conversation.getUuid(), null);
+        return createContentIntent(conversation.getUuid(), null, null);
+    }
+
+    /**
+     * Content intent for a single-conversation notification that deep-links straight to
+     * [scrollToMessageUuid] -- reuses the exact scroll+highlight mechanism a tapped reply card
+     * already triggers (ConversationScreenState.requestScrollToUuid, wired in
+     * ConversationComposeFragment.reInit() via EXTRA_MESSAGE_UUID) rather than just opening the
+     * conversation at its default (bottom) position.
+     */
+    private PendingIntent createContentIntent(
+            final Conversational conversation, final String scrollToMessageUuid) {
+        return createContentIntent(conversation.getUuid(), null, scrollToMessageUuid);
     }
 
     private PendingIntent createDeleteIntent(final Conversation conversation) {

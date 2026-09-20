@@ -417,6 +417,14 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         ) {
             onStartRecording()
         }
+        // Notification tap deep-linking to a specific message (NotificationService's
+        // createContentIntent) -- reuses the exact same scroll+highlight mechanism a tapped reply
+        // card already triggers, including its "message not in the currently loaded window yet"
+        // fallback, rather than just opening the conversation at its default (bottom) position.
+        val messageUuid = extras.getString(ConversationsActivity.EXTRA_MESSAGE_UUID)
+        if (!messageUuid.isNullOrEmpty()) {
+            conversation.findMessageWithUuid(messageUuid)?.let(::onScrollToMessage)
+        }
         refreshMessages()
     }
 
