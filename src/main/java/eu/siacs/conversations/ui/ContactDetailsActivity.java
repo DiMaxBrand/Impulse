@@ -615,7 +615,28 @@ public class ContactDetailsActivity extends OmemoActivity
         return switch (gender) {
             case MASCULINE -> getString(R.string.contact_grammatical_gender_masculine);
             case FEMININE -> getString(R.string.contact_grammatical_gender_feminine);
-            case UNKNOWN -> getString(R.string.contact_grammatical_gender_auto);
+            // "Auto-detect" alone doesn't tell the user which grammatical form actually gets
+            // used, same info UIHelper.resolveGender() would compute for this exact contact at
+            // message-render time. Only shown in parentheses when the name-based guess actually
+            // resolved to something -- an unrecognized name (NameGenderGuesser's own UNKNOWN)
+            // stays plain "Auto-detect", not a guessed "(Masculine)" that would misrepresent a
+            // grammar-only fallback as a detected result. See NameGenderGuesser's own class doc:
+            // never surfaced as a claim about anyone's actual gender.
+            case UNKNOWN -> {
+                final NameGenderGuesser.Gender guessed =
+                        NameGenderGuesser.INSTANCE.guess(contact.getDisplayName());
+                yield switch (guessed) {
+                    case MASCULINE ->
+                            getString(
+                                    R.string.contact_grammatical_gender_auto_detected,
+                                    getString(R.string.contact_grammatical_gender_masculine));
+                    case FEMININE ->
+                            getString(
+                                    R.string.contact_grammatical_gender_auto_detected,
+                                    getString(R.string.contact_grammatical_gender_feminine));
+                    case UNKNOWN -> getString(R.string.contact_grammatical_gender_auto);
+                };
+            }
         };
     }
 

@@ -152,6 +152,7 @@
     <string name="contact_grammatical_gender_dialog_title">Грамматический род</string>
     <string name="contact_grammatical_gender_explanation">Используется только для выбора правильной формы глагола (например, «был(а) в сети») в переводах, где это зависит от рода, — например, в русском.</string>
     <string name="contact_grammatical_gender_auto">Определять автоматически</string>
+    <string name="contact_grammatical_gender_auto_detected">Определять автоматически (%s)</string>
     <string name="contact_grammatical_gender_masculine">Мужской</string>
     <string name="contact_grammatical_gender_feminine">Женский</string>
     <string name="preemptively_grant">Удовлетворять запросы на подписки</string>

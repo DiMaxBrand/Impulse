@@ -156,6 +156,7 @@
     <string name="contact_grammatical_gender_dialog_title">Grammatical gender</string>
     <string name="contact_grammatical_gender_explanation">Used only to pick the correct verb form (e.g. \"was online\") in translations that vary by gender, like Russian.</string>
     <string name="contact_grammatical_gender_auto">Auto-detect</string>
+    <string name="contact_grammatical_gender_auto_detected">Auto-detect (%s)</string>
     <string name="contact_grammatical_gender_masculine">Masculine</string>
     <string name="contact_grammatical_gender_feminine">Feminine</string>
     <string name="preemptively_grant">Preemptively grant subscription request</string>

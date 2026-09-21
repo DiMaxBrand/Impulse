@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42518
-val appVersion = "1.15.0-beta.55+2.20.0"
+val baseVersionCode = 42519
+val appVersion = "1.15.0-beta.56+2.20.0"
 
 @Suppress("DEPRECATION")
 android {
