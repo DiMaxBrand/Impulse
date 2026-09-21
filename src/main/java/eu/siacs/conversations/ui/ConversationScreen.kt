@@ -611,7 +611,6 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // until one of the batch actions in the top bar actually fires, so (like menuTarget above)
     // it lives as local Compose state rather than in ConversationScreenState.
     val selectedUuids = remember { androidx.compose.runtime.mutableStateListOf<String>() }
-    var deleteSelectedConfirm by remember { mutableStateOf(false) }
     // Back press while a selection is active should clear the selection first, not leave the
     // conversation — same "back backs out of the mode before backing out of the screen" pattern
     // as e.g. exiting search.
@@ -637,7 +636,14 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     selectedUuids.clear()
                     if (selected.isNotEmpty()) listener.onCopySelectedMessages(selected)
                 },
-                onDeleteSelected = { deleteSelectedConfirm = true },
+                // Same DeleteGroupSheet a grid-tile's whole-batch delete uses -- Everyone/Myself/
+                // Moderate, gated per-message by isRetractable()/isModeratable() same as there.
+                // A mixed selection (some retractable, some not) only lights up "myself", exactly
+                // like an ineligible grid tile already does.
+                onDeleteSelected = {
+                    state.deleteGroupTarget.value =
+                        state.messages.value.filter { it.getUuid() in selectedUuids }
+                },
             )
         },
         containerColor = MaterialTheme.colorScheme.surface,
@@ -774,33 +780,28 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     }
     val groupToDelete = state.deleteGroupTarget.value
     if (groupToDelete != null) {
+        // Doubles as the multi-select batch-delete sheet (onDeleteSelected above feeds the
+        // selection into this same state) -- selectedUuids.clear() here is a no-op for the
+        // grid-tile case (nothing was ever selected) and exits selection mode for the batch case,
+        // same as onForwardSelected/onCopySelected already do once their action fires.
         DeleteGroupSheet(
             messages = groupToDelete,
             onDeleteForEveryone = {
                 state.deleteGroupTarget.value = null
+                selectedUuids.clear()
                 listener.onDeleteMediaGroupForEveryone(groupToDelete)
             },
             onDeleteForMyself = {
                 state.deleteGroupTarget.value = null
+                selectedUuids.clear()
                 listener.onDeleteSelectedMessages(groupToDelete)
             },
             onModerate = {
                 state.deleteGroupTarget.value = null
+                selectedUuids.clear()
                 listener.onModerateMediaGroup(groupToDelete)
             },
             onDismiss = { state.deleteGroupTarget.value = null },
-        )
-    }
-    if (deleteSelectedConfirm) {
-        val selected = state.messages.value.filter { it.getUuid() in selectedUuids }
-        DeleteSelectedMessagesDialog(
-            count = selected.size,
-            onConfirm = {
-                deleteSelectedConfirm = false
-                selectedUuids.clear()
-                if (selected.isNotEmpty()) listener.onDeleteSelectedMessages(selected)
-            },
-            onDismiss = { deleteSelectedConfirm = false },
         )
     }
     val deleteTarget = state.deleteTarget.value
@@ -5333,36 +5334,6 @@ private fun ModerationDisclaimerDialog(
         confirmButton = {
             androidx.compose.material3.TextButton(onClick = { onConfirm(doNotShowAgain) }) {
                 Text(stringResource(R.string.confirm))
-            }
-        },
-        dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        },
-    )
-}
-
-/** Batch delete is local-only (same as the plain single-message "Delete for myself") — it never
- * attempts per-message retraction/moderation, since a mixed selection could have wildly different
- * eligibility per message. A confirmation is worth it here specifically because, unlike a single
- * delete, there's no per-item undo affordance once several go at once. */
-@Composable
-private fun DeleteSelectedMessagesDialog(
-    count: Int,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                androidx.compose.ui.res.pluralStringResource(R.plurals.delete_n_messages, count, count)
-            )
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.delete))
             }
         },
         dismissButton = {
