@@ -1623,8 +1623,21 @@ private fun MessageList(
     // if it fits, the natural bottom-start position already shows all of it, nothing to correct.
     // hasPositioned gates the "keep pinned to bottom" effect below so it can't fire a competing
     // scroll-to-bottom while this is still deciding; it hands off once done, either way.
+    //
+    // Keyed on newMessagesBoundary too, not just the conversation UUID -- LaunchedEffect only
+    // restarts its coroutine when its key changes, and never re-runs a completed one just
+    // because some value it closed over has since changed. On a cold start, this composable can
+    // first run before newMessagesBoundary has loaded (see its own comment above): with only the
+    // UUID as a key, that first launch would see firstUnreadUuid == null, do nothing, and
+    // complete -- and since the UUID never changes, this effect would never run again for this
+    // conversation-open even once newMessagesBoundary later resolves to the real boundary a
+    // moment after. The corrected value would be computed but never acted on, landing at the
+    // bottom regardless. newMessagesBoundary only ever transitions null -> a real value at most
+    // once per conversation-open (see its own remember key), so adding it here causes at most one
+    // extra relaunch -- exactly the one needed to actually consume the corrected value -- not a
+    // recurring one.
     val hasPositioned = remember(conversation?.getUuid()) { mutableStateOf(false) }
-    LaunchedEffect(conversation?.getUuid()) {
+    LaunchedEffect(conversation?.getUuid(), newMessagesBoundary) {
         val firstUnreadUuid = newMessagesBoundary?.first
         if (firstUnreadUuid != null) {
             snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
