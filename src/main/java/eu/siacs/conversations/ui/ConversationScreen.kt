@@ -1420,15 +1420,33 @@ private fun MessageList(
     // the scroll-driven read-marker effect below) shrinks the real unread count — the pill marks
     // "where you left off when you opened this", not a live counter that would shrink/flicker
     // under it while it's still on screen.
+    //
+    // Gated on state.messages.value actually being non-empty, not just conversation?.getUuid()
+    // changing -- XmppConnectionService.restoreMessages() loads a conversation's messages from
+    // the DB asynchronously (a background executor), while getFirstUnreadMessage() is purely
+    // in-memory-list-based. On a warm app this race never shows (the conversation's messages are
+    // already loaded), but on a cold start -- e.g. tapping a notification when Impulse wasn't
+    // already running -- this composable can run before that restore finishes. Keying only on
+    // the UUID captured `null` (the list looked empty) permanently for that whole conversation-
+    // open, even after the real messages arrived moments later, silently disabling scroll-to-
+    // first-unread and landing at the bottom instead. Re-keying on hasMessages fixes that: the
+    // remember block still only runs once messages genuinely exist, and (per remember's own
+    // semantics) never again after that for this conversation-open, since hasMessages only ever
+    // flips false->true, not back.
+    val hasMessages = state.messages.value.isNotEmpty()
     val newMessagesBoundary =
-        remember(conversation?.getUuid()) {
-            val first =
-                try {
-                    conversation?.getFirstUnreadMessage()
-                } catch (_: Exception) {
-                    null
-                }
-            if (first != null) first.getUuid() to (conversation?.unreadCount() ?: 0) else null
+        remember(conversation?.getUuid(), hasMessages) {
+            if (!hasMessages) {
+                null
+            } else {
+                val first =
+                    try {
+                        conversation?.getFirstUnreadMessage()
+                    } catch (_: Exception) {
+                        null
+                    }
+                if (first != null) first.getUuid() to (conversation?.unreadCount() ?: 0) else null
+            }
         }
     val items =
         buildChatItems(state.messages.value, newMessagesBoundary?.first, newMessagesBoundary?.second ?: 0)
