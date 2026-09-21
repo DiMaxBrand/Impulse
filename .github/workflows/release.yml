@@ -49,6 +49,12 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          # Official setup-java caching (keyed on build.gradle.kts/settings.gradle.kts/gradle
+          # wrapper hashes, restored automatically) -- every release run was spinning up a fresh
+          # VM and re-downloading every Gradle/Maven dependency from scratch, with no caching
+          # anywhere in this workflow. A cache miss (dependency change) just falls back to a
+          # normal download, so this has no downside, only a potential few-minutes-per-run win.
+          cache: gradle
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
