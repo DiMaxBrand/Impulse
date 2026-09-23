@@ -5900,10 +5900,19 @@ private fun MorphingMessageText(
                     )
                 }
                 is MorphOp.Remove -> {
+                    // scaleOut alongside shrinkHorizontally, not instead of it -- shrinkHorizontally
+                    // alone reads as barely-there inside FlowRow (its per-frame remeasure of an
+                    // animated child's width isn't as visually obvious as a plain Row's would be),
+                    // leaving only the fade visible and reading as a crossfade, not a collapse.
+                    // Scale is a graphicsLayer transform, not a layout-size change, so it's
+                    // unmistakable regardless of how FlowRow handles the width animation.
                     androidx.compose.animation.AnimatedVisibility(
                         visible = !revealed,
                         enter = androidx.compose.animation.EnterTransition.None,
                         exit = androidx.compose.animation.shrinkHorizontally(
+                            animationSpec = tween(durationMs),
+                        ) + androidx.compose.animation.scaleOut(
+                            targetScale = 0.3f,
                             animationSpec = tween(durationMs),
                         ) + androidx.compose.animation.fadeOut(animationSpec = tween(durationMs / 2)),
                     ) {
@@ -5918,6 +5927,9 @@ private fun MorphingMessageText(
                     androidx.compose.animation.AnimatedVisibility(
                         visible = revealed,
                         enter = androidx.compose.animation.expandHorizontally(
+                            animationSpec = tween(durationMs),
+                        ) + androidx.compose.animation.scaleIn(
+                            initialScale = 0.3f,
                             animationSpec = tween(durationMs),
                         ) + androidx.compose.animation.fadeIn(animationSpec = tween(durationMs, delayMillis = durationMs / 3)),
                         exit = androidx.compose.animation.ExitTransition.None,
