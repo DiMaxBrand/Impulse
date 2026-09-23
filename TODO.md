@@ -35,6 +35,65 @@ Transition the app's font to **Google Sans Flex**.
 - [ ] **Developer Options font demo** — same spirit as the shape catalog: a screen to preview Google Sans Flex, switch between it and other options live, with a few presets and something interactive to play with the variable-font axes.
 - [ ] **New Welcome Screen** — full Expressive rebuild using the new font, morphing shapes animating in the background.
 
+## Message edit: letter-level morph — plan only, blocked on Google Sans Flex, not started
+
+Discussed as part of the same brainstorm that shipped the delete slide-out
+animation (see `ConversationScreen.kt`'s `MessageRow`/`animatedDelete()` —
+same session, same spirit). Explicitly rejected as too small: a plain tint
+flash on the bubble when a correction lands. What's wanted instead is a real
+character-level morph from the old body to the new one, not a crossfade of
+the whole string.
+
+- **Default (always on)**: diff the old body against the new one
+  character-by-character (grapheme-cluster-aware, not raw `Char` — a
+  multi-codepoint emoji or ZWJ sequence has to move/collapse/appear as one
+  unit or it'll visibly break apart mid-animation). Characters removed by the
+  edit collapse (shrink toward zero width) with a blur-out; characters added
+  by the edit appear with a blur-in; characters that survive slide smoothly
+  to their new position as the collapsing/appearing ones open or close space
+  around them — not a whole-string crossfade, an actual per-character
+  reflow.
+- **Sequencing with the existing "being edited" blur**: `MessageBubble`
+  already blurs the whole bubble (`blurRadius`/`isBeingEdited`, 5.dp spring)
+  while a correction is in flight — either the user's own (`state.correcting`)
+  or a remote peer's (`remoteEditingIds`), with a pulsing "editing…"
+  indicator rendered outside the blur so it stays crisp. Today that blur just
+  clears at the same moment the underlying text has already silently swapped
+  to the new body — a cut, not a continuation. Instead: when the correction
+  actually lands, unblur back to sharp *first*, revealing the **original,
+  pre-edit** text one more time, then immediately kick off the letter-morph
+  from that sharp original to the new text. One continuous gesture instead
+  of a blur-resolve and a text-swap landing as the same indistinguishable
+  moment. This only resequences the existing blur as the morph's lead-in —
+  it doesn't reduce the diff/reflow engine's own complexity at all.
+- **Advanced mode — new Developer Options / Feature Flags toggle, off by
+  default, power-user only**: instead of every character animating together,
+  stagger each character's transition slightly in time (one after another,
+  not synchronized) and — this is the part that's actually blocked — have
+  surviving/appearing characters **stretch** through Google Sans Flex's
+  variable-width/weight axes as they resize to fill freed or opening space,
+  instead of just translating. Explicitly framed as "feels more premium but
+  takes more time" — deliberately opt-in, not the default experience.
+- **Real blockers, not just extra work**:
+  - The advanced mode's whole premise (variable-font axis stretch) needs
+    Google Sans Flex actually integrated first — still a parked,
+    not-started thread as of this writing (see this section's own two items
+    above). The staggered-timing half doesn't strictly need the font, but
+    shipping it alone without the stretch would be the interesting half of
+    "advanced mode" missing.
+  - `Modifier.blur()` is API 31+ only; minSdk is 26. Needs a real fallback
+    (scale+fade reads as the natural substitute) for pre-31 devices, not an
+    assumption blur is always available — same constraint the existing
+    editing-blur already lives with today.
+  - Per-character rendering bypasses Compose's normal text layout (line
+    breaking, RTL, ligatures) — has to reimplement enough of that by hand to
+    not visibly regress Russian text specifically, which is most of this
+    app's real traffic, not an edge case here.
+- **Effort**: large, and sequenced behind the Google Sans Flex work above for
+  the advanced mode specifically — the default (non-staggered, no font
+  stretch) variant could in principle land independently once the diff/
+  reflow engine exists, if that's ever worth doing as a separate first step.
+
 ## Bug-report tracking ID + fix notification — same category as headphones, needs stable to exist first
 
 Only makes sense once stable releases (and the post-stable hotfix branching
