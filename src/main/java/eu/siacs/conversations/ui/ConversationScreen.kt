@@ -5906,15 +5906,28 @@ private fun MorphingMessageText(
                     // leaving only the fade visible and reading as a crossfade, not a collapse.
                     // Scale is a graphicsLayer transform, not a layout-size change, so it's
                     // unmistakable regardless of how FlowRow handles the width animation.
+                    //
+                    // Spring, not tween: dampingRatio = NoBouncy is critically damped -- reaches
+                    // the target as fast as possible with zero overshoot/oscillation, "not bouncy"
+                    // as asked for, just snappy. StiffnessMediumLow keeps it quick without being
+                    // instant. FlowRow re-measures every frame off the animated width regardless of
+                    // which spec drives it, so surviving neighbors still reflow smoothly either way.
+                    val morphSpring = androidx.compose.animation.core.spring<Float>(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+                    )
                     androidx.compose.animation.AnimatedVisibility(
                         visible = !revealed,
                         enter = androidx.compose.animation.EnterTransition.None,
                         exit = androidx.compose.animation.shrinkHorizontally(
-                            animationSpec = tween(durationMs),
+                            animationSpec = androidx.compose.animation.core.spring(
+                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+                            ),
                         ) + androidx.compose.animation.scaleOut(
                             targetScale = 0.3f,
-                            animationSpec = tween(durationMs),
-                        ) + androidx.compose.animation.fadeOut(animationSpec = tween(durationMs / 2)),
+                            animationSpec = morphSpring,
+                        ) + androidx.compose.animation.fadeOut(animationSpec = morphSpring),
                     ) {
                         Text(
                             text = String(Character.toChars(op.codePoint)),
@@ -5924,19 +5937,29 @@ private fun MorphingMessageText(
                     }
                 }
                 is MorphOp.Insert -> {
+                    val morphSpring = androidx.compose.animation.core.spring<Float>(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+                    )
                     androidx.compose.animation.AnimatedVisibility(
                         visible = revealed,
                         enter = androidx.compose.animation.expandHorizontally(
-                            animationSpec = tween(durationMs),
+                            animationSpec = androidx.compose.animation.core.spring(
+                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+                            ),
                         ) + androidx.compose.animation.scaleIn(
                             initialScale = 0.3f,
-                            animationSpec = tween(durationMs),
-                        ) + androidx.compose.animation.fadeIn(animationSpec = tween(durationMs, delayMillis = durationMs / 3)),
+                            animationSpec = morphSpring,
+                        ) + androidx.compose.animation.fadeIn(animationSpec = morphSpring),
                         exit = androidx.compose.animation.ExitTransition.None,
                     ) {
                         val insertBlur by androidx.compose.animation.core.animateDpAsState(
                             targetValue = if (revealed) 0.dp else blurStartAtDp,
-                            animationSpec = tween(durationMs),
+                            animationSpec = androidx.compose.animation.core.spring(
+                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+                            ),
                             label = "morphCharBlur$index",
                         )
                         Text(
