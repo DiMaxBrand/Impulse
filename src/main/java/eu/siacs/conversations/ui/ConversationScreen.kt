@@ -1452,6 +1452,9 @@ private fun MessageList(
         buildChatItems(state.messages.value, newMessagesBoundary?.first, newMessagesBoundary?.second ?: 0)
     val listState = rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    // Declared here (not down by the effect that actually sets it) so the onScrolledToBottom
+    // effect below can gate on it too -- see that effect's own comment for why it has to.
+    val hasPositioned = remember(conversation?.getUuid()) { mutableStateOf(false) }
 
     val isTyping: Boolean =
         remember(conversation, revision) {
@@ -1523,8 +1526,22 @@ private fun MessageList(
     }
 
     // Notify when the newest message becomes visible so read markers can be sent.
+    //
+    // Gated on hasPositioned -- markRead() (what onScrolledToBottom() ultimately calls) marks
+    // the WHOLE conversation read up to its newest message, not just what's progressively
+    // scrolled into view (see that function's own comment). rememberLazyListState() with no
+    // initial index always starts at index 0 -- the bottom/newest message, in this reversed
+    // layout -- so on every fresh composition, firstVisibleItemIndex genuinely IS 0 for at least
+    // the first frame, before the scroll-to-first-unread effect below has had a chance to move
+    // away from it. Without this gate, that transient starting position reads as "the user has
+    // scrolled to the bottom" and marks an entire unread backlog as read that was never actually
+    // shown -- exactly what silently broke both scroll-to-first-unread (the messages seen as
+    // already read by the time anything else runs) and, separately, a real correctness bug on
+    // its own regardless of where the list ends up landing. hasPositioned only becomes true once
+    // the scroll-to-first-unread effect has actually run to completion, so this can no longer
+    // fire on that first, not-yet-decided frame.
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex == 0 }
+        snapshotFlow { hasPositioned.value && listState.firstVisibleItemIndex == 0 }
             .distinctUntilChanged()
             .collect { atBottom -> if (atBottom) listener.onScrolledToBottom() }
     }
@@ -1621,8 +1638,10 @@ private fun MessageList(
     // jumping straight to the bottom and silently skipping past everything unseen. Only kicks
     // in when the unread run doesn't already fit on screen together with the newest message —
     // if it fits, the natural bottom-start position already shows all of it, nothing to correct.
-    // hasPositioned gates the "keep pinned to bottom" effect below so it can't fire a competing
-    // scroll-to-bottom while this is still deciding; it hands off once done, either way.
+    // hasPositioned (declared earlier, alongside listState -- see its own comment) gates the
+    // "keep pinned to bottom" effect below, and the onScrolledToBottom effect above, so neither
+    // can fire a competing scroll-to-bottom / premature mark-read while this is still deciding;
+    // it hands off once done, either way.
     //
     // Keyed on newMessagesBoundary too, not just the conversation UUID -- LaunchedEffect only
     // restarts its coroutine when its key changes, and never re-runs a completed one just
@@ -1636,7 +1655,6 @@ private fun MessageList(
     // once per conversation-open (see its own remember key), so adding it here causes at most one
     // extra relaunch -- exactly the one needed to actually consume the corrected value -- not a
     // recurring one.
-    val hasPositioned = remember(conversation?.getUuid()) { mutableStateOf(false) }
     LaunchedEffect(conversation?.getUuid(), newMessagesBoundary) {
         val firstUnreadUuid = newMessagesBoundary?.first
         if (firstUnreadUuid != null) {
