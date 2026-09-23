@@ -1811,28 +1811,29 @@ private fun MessageList(
                 }
             }
             itemsIndexed(items, key = { _, item -> item.key }) { index, item ->
-                // All three animateItem specs are null to prevent intermittent blank bubbles.
+                // All three animateItem specs used to be null unconditionally, to prevent
+                // intermittent blank bubbles: LinkifiedMessageText used to render message text via
+                // an AndroidView-hosted TextView, whose embedded View wasn't through Android's
+                // measure/layout pass yet during the same frames animateItem()'s placement spring
+                // or enter-fade ran — a VSYNC race that could leave a bubble blank for a frame.
+                // LinkifiedMessageText has since been rewritten onto BasicText (pure Compose, see
+                // its own definition) -- that race no longer exists for ordinary text/photo/
+                // grouped-tile messages, so they get real placement/fade animation again (delete
+                // sliding a bubble out and the rest of the list smoothly closing the gap needs
+                // exactly this).
                 //
-                // fadeInSpec/fadeOutSpec = null: animateItem() triggers enter-fade whenever a slot
-                // re-enters the composition window (scroll back after leaving lookahead range).
-                // That renders items at alpha≈0 for ~300 ms — visually blank.
-                //
-                // placementSpec = null: the default placement spring animates an item from an
-                // off-screen offset to its final position over several frames. For items that
-                // contain an AndroidView (LinkifiedMessageText), the embedded TextView is created
-                // fresh by the key()-wrapped factory during those same frames but hasn't been
-                // through Android's measure/layout pass yet — its RenderNode has no valid
-                // dimensions. Whether the RenderThread draws before or after the View layout pass
-                // completes is a VSYNC race: the same message can appear blank on one scroll and
-                // fully visible on the next. Removing the placement spring eliminates the race
-                // window entirely. New messages still appear naturally at the bottom because the
-                // LaunchedEffect(newestKey) pins the list there; placement animation is not needed
-                // for the normal bottom-pinned conversation flow.
-                val itemModifier = Modifier.animateItem(
-                    fadeInSpec = null,
-                    placementSpec = null,
-                    fadeOutSpec = null,
-                )
+                // The one place a comparable AndroidView still exists is MediaThumbnailBubble's
+                // TextureView (a live local preview while a video is actively uploading, not shown
+                // once sent/received) -- still narrowly guarded here, same reasoning as before, but
+                // scoped to just that condition instead of every message in the list.
+                val riskyVideoUpload = item is ChatItem.Msg &&
+                    item.message.mimeType?.startsWith("video/") == true &&
+                    item.message.transferable?.getStatus() == eu.siacs.conversations.entities.Transferable.STATUS_UPLOADING
+                val itemModifier = if (riskyVideoUpload) {
+                    Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
+                } else {
+                    Modifier.animateItem()
+                }
                 when (item) {
                     is ChatItem.DatePill ->
                         DatePill(timestamp = item.timestamp, modifier = itemModifier)
