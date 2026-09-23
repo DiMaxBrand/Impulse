@@ -2,8 +2,6 @@ package eu.siacs.conversations.ui
 
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.drawscope.translate
 import android.text.Editable
 import androidx.activity.compose.BackHandler
 import android.text.InputType
@@ -5800,48 +5798,13 @@ private sealed interface MorphOp {
     data class Keep(val codePoint: Int) : MorphOp
     data class Remove(val codePoint: Int) : MorphOp
     data class Insert(val codePoint: Int) : MorphOp
-    /** A Remove immediately adjacent to an Insert -- one letter genuinely replaced by another at
-     * the same position, the case real outline-to-outline point morphing actually applies to (see
-     * glyphOutlinePoints/GlyphMorphChar below). Everything else (a letter merely added or removed,
-     * with nothing at that exact position to morph from/to) stays plain Remove/Insert. */
-    data class Substitute(val oldCodePoint: Int, val newCodePoint: Int) : MorphOp
 }
 
 /** Classic LCS-based diff, one op per Unicode code point (not full grapheme clusters -- a
  * multi-codepoint emoji/ZWJ sequence can split across ops; acceptable for the common case of
  * plain-text edits, a real limitation for heavy emoji use). O(n*m) time and space, which is why
- * callers cap both strings' length before ever calling this -- see MORPH_MAX_CODEPOINTS. Adjacent
- * Remove+Insert pairs (either order) are merged into Substitute as a post-pass -- the raw LCS
- * output never produces that op directly. */
+ * callers cap both strings' length before ever calling this -- see MORPH_MAX_CODEPOINTS. */
 private fun computeMorphOps(old: String, new: String): List<MorphOp> {
-    return pairAdjacentSubstitutions(computeRawMorphOps(old, new))
-}
-
-private fun pairAdjacentSubstitutions(ops: List<MorphOp>): List<MorphOp> {
-    val result = mutableListOf<MorphOp>()
-    var i = 0
-    while (i < ops.size) {
-        val cur = ops[i]
-        val next = ops.getOrNull(i + 1)
-        when {
-            cur is MorphOp.Remove && next is MorphOp.Insert -> {
-                result.add(MorphOp.Substitute(cur.codePoint, next.codePoint))
-                i += 2
-            }
-            cur is MorphOp.Insert && next is MorphOp.Remove -> {
-                result.add(MorphOp.Substitute(next.codePoint, cur.codePoint))
-                i += 2
-            }
-            else -> {
-                result.add(cur)
-                i += 1
-            }
-        }
-    }
-    return result
-}
-
-private fun computeRawMorphOps(old: String, new: String): List<MorphOp> {
     val a = old.codePoints().toArray()
     val b = new.codePoints().toArray()
     val n = a.size
@@ -5881,74 +5844,6 @@ private fun computeRawMorphOps(old: String, new: String): List<MorphOp> {
         j++
     }
     return ops
-}
-
-// ---- Real outline-to-outline point morphing, for the Substitute case ----
-// Same algorithm the JS library Metamorphosis (github.com/olicarignan/metamorphosis) validated
-// for arbitrary letter-to-letter morphing: read the glyph's actual outline from the font, flatten
-// it into a polyline, resample both letters' polylines to the same point count, then linearly
-// interpolate point-by-point. Implemented here on pure Android platform APIs (Paint.getTextPath()
-// + PathMeasure) rather than that library itself (which is JS/fontkit, not portable) -- no new
-// dependency, nothing downloaded, works on whatever font/script is actually rendering (Cyrillic
-// included, since it only ever looks at outline shape data, never anything script-specific).
-//
-// Deliberately scoped to single-contour glyphs only on both sides (no holes: c, e, l, s, v, w,
-// most digits, ...) -- a letter with a hole (o, a, b, d, p, q, g in most fonts) has more than one
-// contour, and resampling+interpolating between mismatched contour *counts* (not just point counts
-// within one contour) is a meaningfully harder correspondence problem this doesn't attempt. Falls
-// back to the existing shrink/grow treatment (GlyphMorphChar below) whenever either side isn't a
-// clean single contour, or extraction fails for any reason -- never crashes the render, worst case
-// is just not getting the fancier transition for that particular letter.
-private const val GLYPH_MORPH_SAMPLE_COUNT = 48
-
-private fun singleContourGlyphPoints(
-    codePoint: Int,
-    paint: android.graphics.Paint,
-): List<android.graphics.PointF>? {
-    return try {
-        val text = String(Character.toChars(codePoint))
-        val path = android.graphics.Path()
-        paint.getTextPath(text, 0, text.length, 0f, 0f, path)
-        if (path.isEmpty) return null
-        val measure = android.graphics.PathMeasure(path, false)
-        val length = measure.length
-        if (length <= 0f) return null
-        val coords = FloatArray(2)
-        val points = ArrayList<android.graphics.PointF>(GLYPH_MORPH_SAMPLE_COUNT)
-        for (i in 0 until GLYPH_MORPH_SAMPLE_COUNT) {
-            val distance = length * i / GLYPH_MORPH_SAMPLE_COUNT
-            measure.getPosTan(distance, coords, null)
-            points.add(android.graphics.PointF(coords[0], coords[1]))
-        }
-        // Sampled the first contour above; if there's a second one, this isn't a clean
-        // single-contour glyph (a hole, or disjoint pieces like the dots on i/j) -- bail.
-        if (measure.nextContour()) null else points
-    } catch (_: Exception) {
-        null
-    }
-}
-
-private fun interpolatedGlyphPath(
-    from: List<android.graphics.PointF>,
-    to: List<android.graphics.PointF>,
-    t: Float,
-): androidx.compose.ui.graphics.Path {
-    val path = androidx.compose.ui.graphics.Path()
-    if (from.size != to.size || from.isEmpty()) return path
-    fun lerp(a: android.graphics.PointF, b: android.graphics.PointF): androidx.compose.ui.geometry.Offset {
-        return androidx.compose.ui.geometry.Offset(
-            a.x + (b.x - a.x) * t,
-            a.y + (b.y - a.y) * t,
-        )
-    }
-    val first = lerp(from[0], to[0])
-    path.moveTo(first.x, first.y)
-    for (i in 1 until from.size) {
-        val p = lerp(from[i], to[i])
-        path.lineTo(p.x, p.y)
-    }
-    path.close()
-    return path
 }
 
 private const val MORPH_MAX_CODEPOINTS = 400
@@ -6005,173 +5900,55 @@ private fun MorphingMessageText(
                     )
                 }
                 is MorphOp.Remove -> {
-                    RemoveChar(op.codePoint, revealed, contentColor, durationMs)
+                    // scaleOut alongside shrinkHorizontally, not instead of it -- shrinkHorizontally
+                    // alone reads as barely-there inside FlowRow (its per-frame remeasure of an
+                    // animated child's width isn't as visually obvious as a plain Row's would be),
+                    // leaving only the fade visible and reading as a crossfade, not a collapse.
+                    // Scale is a graphicsLayer transform, not a layout-size change, so it's
+                    // unmistakable regardless of how FlowRow handles the width animation.
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !revealed,
+                        enter = androidx.compose.animation.EnterTransition.None,
+                        exit = androidx.compose.animation.shrinkHorizontally(
+                            animationSpec = tween(durationMs),
+                        ) + androidx.compose.animation.scaleOut(
+                            targetScale = 0.3f,
+                            animationSpec = tween(durationMs),
+                        ) + androidx.compose.animation.fadeOut(animationSpec = tween(durationMs / 2)),
+                    ) {
+                        Text(
+                            text = String(Character.toChars(op.codePoint)),
+                            color = contentColor,
+                            fontSize = 16.sp,
+                        )
+                    }
                 }
                 is MorphOp.Insert -> {
-                    InsertChar(
-                        codePoint = op.codePoint,
-                        revealed = revealed,
-                        contentColor = contentColor,
-                        durationMs = durationMs,
-                        blurStartAtDp = blurStartAtDp,
-                        canBlur = canBlur,
-                        index = index,
-                    )
-                }
-                is MorphOp.Substitute -> {
-                    GlyphMorphChar(
-                        oldCodePoint = op.oldCodePoint,
-                        newCodePoint = op.newCodePoint,
-                        revealed = revealed,
-                        contentColor = contentColor,
-                        durationMs = durationMs,
-                        blurStartAtDp = blurStartAtDp,
-                        canBlur = canBlur,
-                        index = index,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun InsertChar(
-    codePoint: Int,
-    revealed: Boolean,
-    contentColor: androidx.compose.ui.graphics.Color,
-    durationMs: Int,
-    blurStartAtDp: Dp,
-    canBlur: Boolean,
-    index: Int,
-) {
-    androidx.compose.animation.AnimatedVisibility(
-        visible = revealed,
-        enter = androidx.compose.animation.expandHorizontally(
-            animationSpec = tween(durationMs),
-        ) + androidx.compose.animation.scaleIn(
-            initialScale = 0.3f,
-            animationSpec = tween(durationMs),
-        ) + androidx.compose.animation.fadeIn(animationSpec = tween(durationMs, delayMillis = durationMs / 3)),
-        exit = androidx.compose.animation.ExitTransition.None,
-    ) {
-        val insertBlur by androidx.compose.animation.core.animateDpAsState(
-            targetValue = if (revealed) 0.dp else blurStartAtDp,
-            animationSpec = tween(durationMs),
-            label = "morphCharBlur$index",
-        )
-        Text(
-            text = String(Character.toChars(codePoint)),
-            color = contentColor,
-            fontSize = 16.sp,
-            modifier = if (canBlur && insertBlur > 0.dp) Modifier.blur(insertBlur) else Modifier,
-        )
-    }
-}
-
-/** One letter genuinely replacing another at the same position. Attempts a real outline-to-outline
- * point morph (see singleContourGlyphPoints/interpolatedGlyphPath above); falls back to the plain
- * shrink-out-then-grow-in treatment (the same one Remove/Insert use) whenever either side isn't a
- * clean single contour, or extraction fails for any reason. Either way, the first frame is always
- * the real, plain [oldCodePoint] character and the last frame is always the real, plain
- * [newCodePoint] character -- the custom-drawn interpolated path, when it's used at all, only ever
- * exists strictly between those two, never as a substitute for either resting state. */
-@Composable
-private fun GlyphMorphChar(
-    oldCodePoint: Int,
-    newCodePoint: Int,
-    revealed: Boolean,
-    contentColor: androidx.compose.ui.graphics.Color,
-    durationMs: Int,
-    blurStartAtDp: Dp,
-    canBlur: Boolean,
-    index: Int,
-) {
-    val density = LocalDensity.current
-    val textSizePx = with(density) { 16.sp.toPx() }
-    val glyphPoints = remember(oldCodePoint, newCodePoint, textSizePx) {
-        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = textSizePx
-        }
-        val fromPoints = singleContourGlyphPoints(oldCodePoint, paint)
-        val toPoints = singleContourGlyphPoints(newCodePoint, paint)
-        if (fromPoints != null && toPoints != null) {
-            Triple(paint, fromPoints, toPoints)
-        } else {
-            null
-        }
-    }
-    if (glyphPoints == null) {
-        // Not a clean single-contour pair (a hole on one side, extraction failure, ...) -- same
-        // visual treatment as an ordinary Remove immediately followed by an Insert would get.
-        RemoveChar(oldCodePoint, revealed, contentColor, durationMs)
-        InsertChar(newCodePoint, revealed, contentColor, durationMs, blurStartAtDp, canBlur, index)
-        return
-    }
-    val (paint, fromPoints, toPoints) = glyphPoints
-    val progress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (revealed) 1f else 0f,
-        animationSpec = tween(durationMs),
-        label = "glyphMorph$index",
-    )
-    val fm = paint.fontMetrics
-    val boxWidthPx = maxOf(
-        paint.measureText(String(Character.toChars(oldCodePoint))),
-        paint.measureText(String(Character.toChars(newCodePoint))),
-    )
-    val boxHeightPx = fm.descent - fm.ascent
-    val baselineYPx = -fm.ascent
-    with(density) {
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier.size(boxWidthPx.toDp(), boxHeightPx.toDp()),
-        ) {
-            when (progress) {
-                // Exact boundary frames, per this function's own doc comment -- never the
-                // interpolated path at either end, only strictly between.
-                0f -> drawContext.canvas.nativeCanvas.drawText(
-                    String(Character.toChars(oldCodePoint)), 0f, baselineYPx, paint.apply { color = contentColor.toArgb() },
-                )
-                1f -> drawContext.canvas.nativeCanvas.drawText(
-                    String(Character.toChars(newCodePoint)), 0f, baselineYPx, paint.apply { color = contentColor.toArgb() },
-                )
-                else -> {
-                    val path = interpolatedGlyphPath(fromPoints, toPoints, progress)
-                    translate(top = baselineYPx) {
-                        drawPath(path, color = contentColor)
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = revealed,
+                        enter = androidx.compose.animation.expandHorizontally(
+                            animationSpec = tween(durationMs),
+                        ) + androidx.compose.animation.scaleIn(
+                            initialScale = 0.3f,
+                            animationSpec = tween(durationMs),
+                        ) + androidx.compose.animation.fadeIn(animationSpec = tween(durationMs, delayMillis = durationMs / 3)),
+                        exit = androidx.compose.animation.ExitTransition.None,
+                    ) {
+                        val insertBlur by androidx.compose.animation.core.animateDpAsState(
+                            targetValue = if (revealed) 0.dp else blurStartAtDp,
+                            animationSpec = tween(durationMs),
+                            label = "morphCharBlur$index",
+                        )
+                        Text(
+                            text = String(Character.toChars(op.codePoint)),
+                            color = contentColor,
+                            fontSize = 16.sp,
+                            modifier = if (canBlur && insertBlur > 0.dp) Modifier.blur(insertBlur) else Modifier,
+                        )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun RemoveChar(
-    codePoint: Int,
-    revealed: Boolean,
-    contentColor: androidx.compose.ui.graphics.Color,
-    durationMs: Int,
-) {
-    // scaleOut alongside shrinkHorizontally, not instead of it -- shrinkHorizontally alone reads
-    // as barely-there inside FlowRow (its per-frame remeasure of an animated child's width isn't
-    // as visually obvious as a plain Row's would be), leaving only the fade visible and reading as
-    // a crossfade, not a collapse. Scale is a graphicsLayer transform, not a layout-size change,
-    // so it's unmistakable regardless of how FlowRow handles the width animation.
-    androidx.compose.animation.AnimatedVisibility(
-        visible = !revealed,
-        enter = androidx.compose.animation.EnterTransition.None,
-        exit = androidx.compose.animation.shrinkHorizontally(
-            animationSpec = tween(durationMs),
-        ) + androidx.compose.animation.scaleOut(
-            targetScale = 0.3f,
-            animationSpec = tween(durationMs),
-        ) + androidx.compose.animation.fadeOut(animationSpec = tween(durationMs / 2)),
-    ) {
-        Text(
-            text = String(Character.toChars(codePoint)),
-            color = contentColor,
-            fontSize = 16.sp,
-        )
     }
 }
 
