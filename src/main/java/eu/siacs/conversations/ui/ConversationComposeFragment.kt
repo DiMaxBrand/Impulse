@@ -475,8 +475,39 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             state.update(null, emptyList())
             return
         }
-        val list = ArrayList<Message>()
-        c.populateWithMessages(list)
+        val freshList = ArrayList<Message>()
+        c.populateWithMessages(freshList)
+        // A message that just disappeared from conversation.messages between this refresh and
+        // the last one -- a remote retraction/moderation reaching us, most commonly -- would
+        // otherwise just vanish the instant this runs, with no chance for MessageRow's delete
+        // slide-out (see ConversationScreen's animatedDelete()) to play at all, since that
+        // mechanism only fires for deletions *we* initiate through a delete sheet. Detect it here
+        // instead and give it the same animated exit: keep showing the message a little longer
+        // (spliced back into `merged` at roughly its old chronological position) while marking it
+        // pendingRemoval, then do the real, fully up-to-date refresh once the exit's had time to
+        // play. Excludes uuids already pending -- that's our own delete flow already handling it,
+        // don't double up.
+        val previousUuids = state.messages.value.mapNotNull { it.getUuid() }.toSet()
+        val freshUuids = freshList.mapNotNull { it.getUuid() }.toSet()
+        val newlyGone = (previousUuids - freshUuids) - state.pendingRemovalUuids.toSet()
+        val list: List<Message>
+        if (newlyGone.isNotEmpty()) {
+            val goneMessages = state.messages.value.filter { it.getUuid() in newlyGone }
+            val merged = ArrayList(freshList)
+            for (gone in goneMessages) {
+                val insertAt = merged.indexOfFirst { it.timeSent > gone.timeSent }
+                if (insertAt == -1) merged.add(gone) else merged.add(insertAt, gone)
+            }
+            list = merged
+            state.pendingRemovalUuids.addAll(newlyGone)
+            lifecycleScope.launch {
+                kotlinx.coroutines.delay(280)
+                state.pendingRemovalUuids.removeAll(newlyGone)
+                refreshMessages()
+            }
+        } else {
+            list = freshList
+        }
         state.update(c, list)
         // Sync remote-editing indicators: in-memory map (live) OR persisted DB flag (survives navigation)
         val service = getXmppConnectionService()
