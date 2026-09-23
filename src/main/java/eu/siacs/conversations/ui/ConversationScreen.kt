@@ -204,6 +204,12 @@ class ConversationScreenState {
     internal val pendingSelectionMerge = mutableStateOf<List<String>?>(null)
     // message UUIDs that a remote peer is actively editing right now
     internal val remoteEditingIds = mutableStateOf<Set<String>>(emptySet())
+    // UUIDs mid-way through the delete slide-out+collapse animation -- still present in
+    // `messages` (the actual retraction/local-delete call is deliberately deferred until the
+    // animation finishes, see ConversationScreen's animatedDelete()), but MessageRow renders them
+    // as AnimatedVisibility(visible = false) so they visually leave first and the rest of the
+    // list reflows into the gap, instead of just vanishing the instant the action fires.
+    internal val pendingRemovalUuids: SnapshotStateList<String> = mutableStateListOf()
 
     fun update(conversation: Conversation?, source: List<Message>) {
         this.conversation.value = conversation
@@ -611,6 +617,24 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // until one of the batch actions in the top bar actually fires, so (like menuTarget above)
     // it lives as local Compose state rather than in ConversationScreenState.
     val selectedUuids = remember { androidx.compose.runtime.mutableStateListOf<String>() }
+    val deleteAnimScope = androidx.compose.runtime.rememberCoroutineScope()
+    // Plays the delete slide-out+collapse animation before actually performing [action] --
+    // marking uuids as pending removal makes every matching MessageRow animate itself out
+    // (AnimatedVisibility, direction per its own outgoing/incoming alignment) while the message
+    // is still genuinely present in state.messages, so the real retraction/local-delete call
+    // (and the data actually disappearing) only happens once that's finished playing, not before.
+    fun animatedDelete(uuids: Collection<String>, action: () -> Unit) {
+        if (uuids.isEmpty()) {
+            action()
+            return
+        }
+        state.pendingRemovalUuids.addAll(uuids)
+        deleteAnimScope.launch {
+            delay(280)
+            action()
+            state.pendingRemovalUuids.removeAll(uuids)
+        }
+    }
     // Back press while a selection is active should clear the selection first, not leave the
     // conversation — same "back backs out of the mode before backing out of the screen" pattern
     // as e.g. exiting search.
@@ -784,42 +808,44 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         // selection into this same state) -- selectedUuids.clear() here is a no-op for the
         // grid-tile case (nothing was ever selected) and exits selection mode for the batch case,
         // same as onForwardSelected/onCopySelected already do once their action fires.
+        val groupUuids = groupToDelete.mapNotNull { it.getUuid() }
         DeleteGroupSheet(
             messages = groupToDelete,
             onDeleteForEveryone = {
                 state.deleteGroupTarget.value = null
                 selectedUuids.clear()
-                listener.onDeleteMediaGroupForEveryone(groupToDelete)
+                animatedDelete(groupUuids) { listener.onDeleteMediaGroupForEveryone(groupToDelete) }
             },
             onDeleteForMyself = {
                 state.deleteGroupTarget.value = null
                 selectedUuids.clear()
-                listener.onDeleteSelectedMessages(groupToDelete)
+                animatedDelete(groupUuids) { listener.onDeleteSelectedMessages(groupToDelete) }
             },
             onModerate = {
                 state.deleteGroupTarget.value = null
                 selectedUuids.clear()
-                listener.onModerateMediaGroup(groupToDelete)
+                animatedDelete(groupUuids) { listener.onModerateMediaGroup(groupToDelete) }
             },
             onDismiss = { state.deleteGroupTarget.value = null },
         )
     }
     val deleteTarget = state.deleteTarget.value
     if (deleteTarget != null) {
+        val deleteTargetUuid = listOfNotNull(deleteTarget.getUuid())
         DeleteMessageSheet(
             message = deleteTarget,
             onDeleteForEveryone = {
                 state.deleteTarget.value = null
-                listener.onDeleteForEveryone(deleteTarget)
+                animatedDelete(deleteTargetUuid) { listener.onDeleteForEveryone(deleteTarget) }
             },
             onDeleteForMyself = {
                 state.deleteTarget.value = null
-                listener.onDeleteForMyself(deleteTarget)
+                animatedDelete(deleteTargetUuid) { listener.onDeleteForMyself(deleteTarget) }
             },
             onModerate = {
                 state.deleteTarget.value = null
                 if (isModerationDisclaimerAcked()) {
-                    listener.onModerateMessage(deleteTarget)
+                    animatedDelete(deleteTargetUuid) { listener.onModerateMessage(deleteTarget) }
                 } else {
                     state.moderateTarget.value = deleteTarget
                 }
@@ -833,7 +859,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             onConfirm = { doNotShowAgain ->
                 if (doNotShowAgain) markModerationDisclaimerAcked()
                 state.moderateTarget.value = null
-                listener.onModerateMessage(moderateTarget)
+                animatedDelete(listOfNotNull(moderateTarget.getUuid())) { listener.onModerateMessage(moderateTarget) }
             },
             onDismiss = { state.moderateTarget.value = null },
         )
@@ -1856,6 +1882,7 @@ private fun MessageList(
                             onToggleSelected = {
                                 item.message.getUuid()?.let { uuid -> onToggleSelected(uuid) }
                             },
+                            isPendingRemoval = state.pendingRemovalUuids.contains(item.message.getUuid()),
                             modifier = itemModifier,
                         )
                     is ChatItem.MediaGroup -> {
@@ -2235,6 +2262,11 @@ private fun MessageRow(
     selectionActive: Boolean,
     selected: Boolean,
     onToggleSelected: () -> Unit,
+    // True while this message is mid-delete -- see ConversationScreen's animatedDelete(). Drives
+    // the slide-out+collapse exit below; the message is still genuinely in state.messages for the
+    // whole animation (the real retraction/local-delete call is deliberately deferred), it's just
+    // rendered as gone.
+    isPendingRemoval: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val message = item.message
@@ -2276,10 +2308,35 @@ private fun MessageRow(
     // The tail of a group's last bubble pokes into the screen margin so bubble bodies stay
     // aligned with the grouped bubbles above.
     val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
+    Box(modifier = modifier.fillMaxWidth()) {
+    // Delete slide-out+collapse: bubble slides toward whichever side it's aligned to (outgoing
+    // right, incoming left) while fading and its own height collapses, so the rest of the list
+    // smoothly closes the gap via the outer animateItem() placement spring on siblings (see the
+    // itemsIndexed comment above). enter = None deliberately -- a message's arrival is already
+    // covered by the "pop" spring above and animateItem()'s own fade-in; this AnimatedVisibility
+    // exists purely to own the custom exit, not to also animate entrance a second time.
+    androidx.compose.animation.AnimatedVisibility(
+        visible = !isPendingRemoval,
+        enter = androidx.compose.animation.EnterTransition.None,
+        exit = androidx.compose.animation.slideOutHorizontally(
+            targetOffsetX = { fullWidth -> if (outgoing) fullWidth else -fullWidth },
+            animationSpec = androidx.compose.animation.core.spring(
+                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                stiffness = androidx.compose.animation.core.Spring.StiffnessLow,
+            ),
+        ) + androidx.compose.animation.fadeOut(
+            animationSpec = androidx.compose.animation.core.tween(220),
+        ) + androidx.compose.animation.shrinkVertically(
+            animationSpec = androidx.compose.animation.core.spring(
+                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+            ),
+            shrinkTowards = Alignment.Top,
+        ),
+    ) {
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.foundation.LocalIndication provides NoRippleIndicationNodeFactory,
     ) {
-    Box(modifier = modifier.fillMaxWidth()) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2427,12 +2484,16 @@ private fun MessageRow(
                 ),
         )
     }
+    }
+    }
     if (selectionActive) {
         // The row's own combinedClickable above only wins hit-testing where nothing else claims
         // the tap — images, links, reply cards, file rows etc. all have their own clickables
         // further down that would otherwise still fire their normal single-message action while
         // selecting. This transparent overlay sits on top of everything and claims every tap
-        // itself instead.
+        // itself instead. Deliberately outside the AnimatedVisibility above -- it targets the
+        // outer Box (matchParentSize()), not the animated content, so it isn't affected by a
+        // delete animation that may be playing at the same time.
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -2443,7 +2504,6 @@ private fun MessageRow(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 ),
         )
-    }
     }
     }
 }
