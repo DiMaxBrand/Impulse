@@ -3345,18 +3345,27 @@ private fun MessageBubble(
     }
     var morphSettled by remember(item.key) { mutableStateOf(false) }
     val showMorph = morphEligible && !morphSettled
-    // Blur and morph run concurrently, deliberately -- the editing blur exists so the exact old
-    // wording is never clearly readable while a correction is in flight; fully clearing it
-    // *before* starting the morph would briefly show that old wording sharp, defeating the point
-    // it was blurred for in the first place. Starting both at once means the old text is never in
-    // clear focus at any single frame -- it goes from blurred-old toward sharp-new, the morph's
-    // own transition covering the moment it'd otherwise have resolved to readable.
+    // Temporary experiment flag (FeatureFlag.SEQUENTIAL_EDIT_MORPH, off by default) -- forces
+    // blur-then-morph sequencing with a full 1s morph instead of the shipped concurrent behavior,
+    // purely to compare the two side by side. See that flag's own doc comment for why concurrent
+    // is the real default: the blur exists so old wording is never clearly readable, which fully
+    // clearing it before the morph starts would briefly defeat.
+    val context = LocalContext.current
+    val sequentialMorphExperiment = remember {
+        eu.siacs.conversations.utils.FeatureFlagPreferences(context)
+            .isEnabled(eu.siacs.conversations.FeatureFlag.SEQUENTIAL_EDIT_MORPH)
+    }
+    val blurClearDurationMs = MORPH_DURATION_MS
+    val morphDurationMs = if (sequentialMorphExperiment) 1000 else MORPH_DURATION_MS
+    val morphStartDelayMs = if (sequentialMorphExperiment) blurClearDurationMs.toLong() else 0L
     val blurRadius: Dp = if (showMorph) {
         // Plain Float Animatable (dp magnitude), not Animatable<Dp, ...> -- avoids needing
-        // Dp's VectorConverter import for what's otherwise the exact same 5->0 animation.
+        // Dp's VectorConverter import for what's otherwise the exact same 5->0 animation. Always
+        // animates over blurClearDurationMs regardless of experiment mode -- only the morph's own
+        // start delay/duration change; the unblur itself paces the same either way.
         val morphBlur = remember(item.key) { Animatable(5f) }
         LaunchedEffect(item.key) {
-            morphBlur.animateTo(0f, animationSpec = tween(MORPH_DURATION_MS))
+            morphBlur.animateTo(0f, animationSpec = tween(blurClearDurationMs))
         }
         morphBlur.value.dp
     } else {
@@ -3415,6 +3424,8 @@ private fun MessageBubble(
                         new = newBody,
                         contentColor = contentColor,
                         blurStartAtDp = 5.dp,
+                        durationMs = morphDurationMs,
+                        startDelayMs = morphStartDelayMs,
                         onSettled = { morphSettled = true },
                     )
                 } else {
@@ -5856,16 +5867,23 @@ private fun MorphingMessageText(
     new: String,
     contentColor: androidx.compose.ui.graphics.Color,
     blurStartAtDp: Dp,
+    // Shipped default: MORPH_DURATION_MS, no delay (starts concurrently with the bubble's own
+    // unblur). Both overridable -- see FeatureFlag.SEQUENTIAL_EDIT_MORPH -- for the experiment
+    // that waits for the unblur to fully finish first and takes a full second once it does.
+    durationMs: Int = MORPH_DURATION_MS,
+    startDelayMs: Long = 0L,
     onSettled: () -> Unit,
 ) {
     val ops = remember(old, new) { computeMorphOps(old, new) }
     // Removed chars start visible (they're still "there" from the reader's perspective) and
-    // inserted chars start invisible; flipping both together right after the first frame is what
-    // makes every character's transition begin at the same moment.
+    // inserted chars start invisible; flipping both together right after the first frame (or
+    // after startDelayMs, in the sequential experiment) is what makes every character's
+    // transition begin at the same moment.
     var revealed by remember(old, new) { mutableStateOf(false) }
     LaunchedEffect(old, new) {
+        if (startDelayMs > 0) delay(startDelayMs)
         revealed = true
-        delay(MORPH_DURATION_MS.toLong())
+        delay(durationMs.toLong())
         onSettled()
     }
     val canBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -5886,8 +5904,8 @@ private fun MorphingMessageText(
                         visible = !revealed,
                         enter = androidx.compose.animation.EnterTransition.None,
                         exit = androidx.compose.animation.shrinkHorizontally(
-                            animationSpec = tween(MORPH_DURATION_MS),
-                        ) + androidx.compose.animation.fadeOut(animationSpec = tween(MORPH_DURATION_MS / 2)),
+                            animationSpec = tween(durationMs),
+                        ) + androidx.compose.animation.fadeOut(animationSpec = tween(durationMs / 2)),
                     ) {
                         Text(
                             text = String(Character.toChars(op.codePoint)),
@@ -5900,13 +5918,13 @@ private fun MorphingMessageText(
                     androidx.compose.animation.AnimatedVisibility(
                         visible = revealed,
                         enter = androidx.compose.animation.expandHorizontally(
-                            animationSpec = tween(MORPH_DURATION_MS),
-                        ) + androidx.compose.animation.fadeIn(animationSpec = tween(MORPH_DURATION_MS, delayMillis = MORPH_DURATION_MS / 3)),
+                            animationSpec = tween(durationMs),
+                        ) + androidx.compose.animation.fadeIn(animationSpec = tween(durationMs, delayMillis = durationMs / 3)),
                         exit = androidx.compose.animation.ExitTransition.None,
                     ) {
                         val insertBlur by androidx.compose.animation.core.animateDpAsState(
                             targetValue = if (revealed) 0.dp else blurStartAtDp,
-                            animationSpec = tween(MORPH_DURATION_MS),
+                            animationSpec = tween(durationMs),
                             label = "morphCharBlur$index",
                         )
                         Text(

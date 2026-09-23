@@ -41,4 +41,18 @@ enum class FeatureFlag(
         descriptionRes = R.string.feature_flag_emergency_mode_description,
         defaultValue = false,
     ),
+
+    /** Temporary experiment flag for the message-edit letter-morph (see
+     * [eu.siacs.conversations.ui.MorphingMessageText]). Off by default: the shipped behavior lets
+     * the editing-blur clear and the morph play concurrently, since the blur exists so the exact
+     * old wording is never clearly readable, and fully resolving it before the morph would show
+     * that wording sharp for a moment. Switching this on makes the two sequential instead --
+     * unblur fully finishes first, then a 1-second morph starts -- purely to compare the two
+     * side by side; not intended to stay as a real setting long-term. */
+    SEQUENTIAL_EDIT_MORPH(
+        key = "sequential_edit_morph",
+        titleRes = R.string.feature_flag_sequential_edit_morph_title,
+        descriptionRes = R.string.feature_flag_sequential_edit_morph_description,
+        defaultValue = false,
+    ),
 }
