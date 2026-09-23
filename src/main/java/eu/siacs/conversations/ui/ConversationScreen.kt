@@ -2274,6 +2274,17 @@ private fun MessageRow(
     val isGroupChat = message.getConversation().getMode() == Conversational.MODE_MULTI
     val showAvatarSlot = !outgoing && isGroupChat
 
+    // Consumed exactly once per fresh row instance -- a correction reassigns this very message's
+    // own uuid (see Message.pendingMorphFromBody's own doc comment), so item.key already changed
+    // by the time this row exists; remember(item.key) firing only on a genuinely new key is what
+    // makes this a one-shot read instead of replaying the morph on every recomposition or when
+    // scrolling this row back into view later.
+    val morphFromBody = remember(item.key) {
+        val pending = message.pendingMorphFromBody
+        message.pendingMorphFromBody = null
+        pending
+    }
+
     // Expressive "pop": the newest message springs in.
     val pop = remember(item.key) { Animatable(if (isNewest) 0.8f else 1f) }
     if (isNewest) {
@@ -2434,6 +2445,7 @@ private fun MessageRow(
                 outgoing = outgoing,
                 highlighted = highlighted,
                 isBeingEdited = isBeingEdited,
+                morphFromBody = morphFromBody,
                 revision = revision,
                 listener = listener,
                 onLongPress = onLongPress,
@@ -3279,6 +3291,9 @@ private fun MessageBubble(
     outgoing: Boolean,
     highlighted: Boolean,
     isBeingEdited: Boolean,
+    // Non-null exactly once, right after this message was just corrected -- see MessageRow's own
+    // comment on where this comes from and why. Null for every other row, always.
+    morphFromBody: String?,
     revision: Int,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
@@ -3307,11 +3322,50 @@ private fun MessageBubble(
         }
 
     val hasTail = item.lastOfGroup
-    val blurRadius by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (isBeingEdited) 5.dp else 0.dp,
-        animationSpec = androidx.compose.animation.core.spring(),
-        label = "editingBlur",
-    )
+    val newBody = message.body ?: ""
+    // Plain text only, both sides short enough to bound computeMorphOps' O(n*m) table, and
+    // nothing this per-character renderer doesn't understand (a link, /me, emoji-only sizing) --
+    // an ineligible edit just falls through to the plain instant-swap rendering below, same as
+    // every correction already looked before this existed. Remembered once per row so a
+    // recomposition mid-morph (e.g. revision bumping for an unrelated reason) can't re-derive a
+    // different answer partway through.
+    val morphEligible = remember(item.key) {
+        morphFromBody != null &&
+            !message.isDeleted &&
+            message.encryption != Message.ENCRYPTION_AXOLOTL_FAILED &&
+            message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
+            !message.hasMeCommand() &&
+            !message.bodyIsOnlyEmojis() &&
+            message.transferable == null &&
+            !hasBubbleThumbnailPreview(message) &&
+            morphFromBody.codePointCount(0, morphFromBody.length) <= MORPH_MAX_CODEPOINTS &&
+            newBody.codePointCount(0, newBody.length) <= MORPH_MAX_CODEPOINTS &&
+            de.gultsch.common.Linkify.getLinks(morphFromBody).isEmpty() &&
+            de.gultsch.common.Linkify.getLinks(newBody).isEmpty()
+    }
+    var morphSettled by remember(item.key) { mutableStateOf(false) }
+    val showMorph = morphEligible && !morphSettled
+    // Blur and morph run concurrently, deliberately -- the editing blur exists so the exact old
+    // wording is never clearly readable while a correction is in flight; fully clearing it
+    // *before* starting the morph would briefly show that old wording sharp, defeating the point
+    // it was blurred for in the first place. Starting both at once means the old text is never in
+    // clear focus at any single frame -- it goes from blurred-old toward sharp-new, the morph's
+    // own transition covering the moment it'd otherwise have resolved to readable.
+    val blurRadius: Dp = if (showMorph) {
+        // Plain Float Animatable (dp magnitude), not Animatable<Dp, ...> -- avoids needing
+        // Dp's VectorConverter import for what's otherwise the exact same 5->0 animation.
+        val morphBlur = remember(item.key) { Animatable(5f) }
+        LaunchedEffect(item.key) {
+            morphBlur.animateTo(0f, animationSpec = tween(MORPH_DURATION_MS))
+        }
+        morphBlur.value.dp
+    } else {
+        androidx.compose.animation.core.animateDpAsState(
+            targetValue = if (isBeingEdited) 5.dp else 0.dp,
+            animationSpec = androidx.compose.animation.core.spring(),
+            label = "editingBlur",
+        ).value
+    }
     Box {
         Surface(
             shape =
@@ -3355,13 +3409,23 @@ private fun MessageBubble(
                         ReplyCard(original = original, onClick = { onReplyCardClick(original) })
                     }
                 }
-                MessageContent(
-                    message = message,
-                    revision = revision,
-                    contentColor = contentColor,
-                    onLongPress = { onLongPress(message) },
-                    listener = listener,
-                )
+                if (showMorph) {
+                    MorphingMessageText(
+                        old = morphFromBody!!,
+                        new = newBody,
+                        contentColor = contentColor,
+                        blurStartAtDp = 5.dp,
+                        onSettled = { morphSettled = true },
+                    )
+                } else {
+                    MessageContent(
+                        message = message,
+                        revision = revision,
+                        contentColor = contentColor,
+                        onLongPress = { onLongPress(message) },
+                        listener = listener,
+                    )
+                }
                 if (!isBeingEdited) {
                     MessageFooter(message = message, outgoing = outgoing, revision = revision)
                 }
@@ -5705,6 +5769,153 @@ private fun AttachmentPreviewStrip(state: ConversationScreenState) {
                         tint = MaterialTheme.colorScheme.inverseOnSurface,
                         modifier = Modifier.padding(3.dp),
                     )
+                }
+            }
+        }
+    }
+}
+
+// ---- Message edit letter-morph ----
+// A correction reassigns the message's own uuid in place (see Message.pendingMorphFromBody's own
+// doc comment), so the row that renders the new text has no composition continuity with whatever
+// was on screen a moment ago -- MessageRow's morphFromBody plumbing is what carries the "from"
+// text across that identity change. This section is purely the diff + the character-by-character
+// render/animate of it; MessageBubble decides eligibility and when to show it instead of the
+// normal LinkifiedMessageText.
+
+private sealed interface MorphOp {
+    data class Keep(val codePoint: Int) : MorphOp
+    data class Remove(val codePoint: Int) : MorphOp
+    data class Insert(val codePoint: Int) : MorphOp
+}
+
+/** Classic LCS-based diff, one op per Unicode code point (not full grapheme clusters -- a
+ * multi-codepoint emoji/ZWJ sequence can split across ops; acceptable for the common case of
+ * plain-text edits, a real limitation for heavy emoji use). O(n*m) time and space, which is why
+ * callers cap both strings' length before ever calling this -- see MORPH_MAX_CODEPOINTS. */
+private fun computeMorphOps(old: String, new: String): List<MorphOp> {
+    val a = old.codePoints().toArray()
+    val b = new.codePoints().toArray()
+    val n = a.size
+    val m = b.size
+    val dp = Array(n + 1) { IntArray(m + 1) }
+    for (i in n - 1 downTo 0) {
+        for (j in m - 1 downTo 0) {
+            dp[i][j] = if (a[i] == b[j]) dp[i + 1][j + 1] + 1 else maxOf(dp[i + 1][j], dp[i][j + 1])
+        }
+    }
+    val ops = mutableListOf<MorphOp>()
+    var i = 0
+    var j = 0
+    while (i < n && j < m) {
+        when {
+            a[i] == b[j] -> {
+                ops.add(MorphOp.Keep(a[i]))
+                i++
+                j++
+            }
+            dp[i + 1][j] >= dp[i][j + 1] -> {
+                ops.add(MorphOp.Remove(a[i]))
+                i++
+            }
+            else -> {
+                ops.add(MorphOp.Insert(b[j]))
+                j++
+            }
+        }
+    }
+    while (i < n) {
+        ops.add(MorphOp.Remove(a[i]))
+        i++
+    }
+    while (j < m) {
+        ops.add(MorphOp.Insert(b[j]))
+        j++
+    }
+    return ops
+}
+
+private const val MORPH_MAX_CODEPOINTS = 400
+private const val MORPH_DURATION_MS = 380
+
+/** Renders [old] transitioning to [new] one code point at a time: removed characters shrink+fade
+ * out, inserted characters grow+fade(+blur where available) in, survivors just sit there -- their
+ * apparent sliding into place is free, not something this animates directly. FlowRow re-measures
+ * every frame as each child's own animated width changes, which is what makes the surviving
+ * characters look like they're organically closing/opening space around the ones that are
+ * transitioning, with no separate placement-animation system needed.
+ *
+ * [blurStartAtDp] lets the caller start these particular children already blurred (matching
+ * whatever blur radius the *bubble itself* is mid-unblur from) and resolve to sharp over the same
+ * window the morph plays, instead of a separate, later blur-in -- see MessageBubble: the point is
+ * for the old wording to never be seen fully sharp at any single frame, blur-clear and morph
+ * overlapping rather than one waiting for the other. */
+@Composable
+private fun MorphingMessageText(
+    old: String,
+    new: String,
+    contentColor: androidx.compose.ui.graphics.Color,
+    blurStartAtDp: Dp,
+    onSettled: () -> Unit,
+) {
+    val ops = remember(old, new) { computeMorphOps(old, new) }
+    // Removed chars start visible (they're still "there" from the reader's perspective) and
+    // inserted chars start invisible; flipping both together right after the first frame is what
+    // makes every character's transition begin at the same moment.
+    var revealed by remember(old, new) { mutableStateOf(false) }
+    LaunchedEffect(old, new) {
+        revealed = true
+        delay(MORPH_DURATION_MS.toLong())
+        onSettled()
+    }
+    val canBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
+    ) {
+        for ((index, op) in ops.withIndex()) {
+            when (op) {
+                is MorphOp.Keep -> {
+                    Text(
+                        text = String(Character.toChars(op.codePoint)),
+                        color = contentColor,
+                        fontSize = 16.sp,
+                    )
+                }
+                is MorphOp.Remove -> {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !revealed,
+                        enter = androidx.compose.animation.EnterTransition.None,
+                        exit = androidx.compose.animation.shrinkHorizontally(
+                            animationSpec = tween(MORPH_DURATION_MS),
+                        ) + androidx.compose.animation.fadeOut(animationSpec = tween(MORPH_DURATION_MS / 2)),
+                    ) {
+                        Text(
+                            text = String(Character.toChars(op.codePoint)),
+                            color = contentColor,
+                            fontSize = 16.sp,
+                        )
+                    }
+                }
+                is MorphOp.Insert -> {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = revealed,
+                        enter = androidx.compose.animation.expandHorizontally(
+                            animationSpec = tween(MORPH_DURATION_MS),
+                        ) + androidx.compose.animation.fadeIn(animationSpec = tween(MORPH_DURATION_MS, delayMillis = MORPH_DURATION_MS / 3)),
+                        exit = androidx.compose.animation.ExitTransition.None,
+                    ) {
+                        val insertBlur by androidx.compose.animation.core.animateDpAsState(
+                            targetValue = if (revealed) 0.dp else blurStartAtDp,
+                            animationSpec = tween(MORPH_DURATION_MS),
+                            label = "morphCharBlur$index",
+                        )
+                        Text(
+                            text = String(Character.toChars(op.codePoint)),
+                            color = contentColor,
+                            fontSize = 16.sp,
+                            modifier = if (canBlur && insertBlur > 0.dp) Modifier.blur(insertBlur) else Modifier,
+                        )
+                    }
                 }
             }
         }

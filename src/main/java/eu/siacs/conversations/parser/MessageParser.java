@@ -583,6 +583,9 @@ public class MessageParser extends AbstractParser
                             && !duplicate) {
                         synchronized (replacedMessage) {
                             final String uuid = replacedMessage.getUuid();
+                            // Captured before the uuid reassignment right below and the body
+                            // overwrite -- see the field's own doc comment on Message.
+                            replacedMessage.pendingMorphFromBody = replacedMessage.getBody();
                             replacedMessage.setUuid(UUID.randomUUID().toString());
                             replacedMessage.setBody(message.getBody());
                             // Deliberately NOT updating remoteMsgId here: the sender's <replace>

@@ -560,6 +560,10 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         if (correcting != null) {
             onEditingStopped(correcting)
             message = correcting
+            // Captured before the body overwrite and the uuid reassignment right below -- same
+            // mechanism as MessageParser's received-correction path, see Message's own doc
+            // comment on the field.
+            message.pendingMorphFromBody = message.getBody()
             message.setBody(body)
             message.putEdited(message.getUuid(), message.serverMsgId)
             message.replaceUuid(java.util.UUID.randomUUID().toString())

@@ -123,6 +123,17 @@ public class Message extends AbstractEntity
     protected boolean read = true;
     protected String remoteMsgId = null;
     private String bodyLanguage = null;
+    // Transient UI hint, deliberately never persisted to the DB (no column, no setContentValues
+    // entry) -- the body this message displayed immediately before its most recent correction
+    // landed. Needed because a correction reassigns this very message's own uuid in place (see
+    // replaceUuid() call sites in MessageParser/ConversationComposeFragment), which changes this
+    // row's Compose list key -- the freshly-keyed row that appears next has no composition
+    // continuity with whatever was on screen a moment ago to animate FROM, so this field is the
+    // only place that "from" text can travel across that identity change. Set right before the
+    // new body overwrites the old one, consumed exactly once (then nulled back out) by the first
+    // composition of the message's row after the edit, which uses it to play the letter-morph
+    // transition instead of just rendering the new body outright.
+    public String pendingMorphFromBody = null;
     protected String serverMsgId = null;
     private final Conversational conversation;
     protected Transferable transferable = null;
