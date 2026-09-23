@@ -5848,6 +5848,10 @@ private fun computeMorphOps(old: String, new: String): List<MorphOp> {
 
 private const val MORPH_MAX_CODEPOINTS = 400
 private const val MORPH_DURATION_MS = 380
+// Per-character delay between one changed letter's transition starting and the next one's --
+// small enough that even a long edit's total ripple stays quick, big enough to actually read as a
+// cascade rather than simultaneous.
+private const val MORPH_STAGGER_STEP_MS = 30L
 
 /** Renders [old] transitioning to [new] one code point at a time: removed characters shrink+fade
  * out, inserted characters grow+fade(+blur where available) in, survivors just sit there -- their
@@ -5876,14 +5880,23 @@ private fun MorphingMessageText(
 ) {
     val ops = remember(old, new) { computeMorphOps(old, new) }
     // Removed chars start visible (they're still "there" from the reader's perspective) and
-    // inserted chars start invisible; flipping both together right after the first frame (or
-    // after startDelayMs, in the sequential experiment) is what makes every character's
-    // transition begin at the same moment.
-    var revealed by remember(old, new) { mutableStateOf(false) }
+    // inserted chars start invisible; each index flips independently, staggered by
+    // MORPH_STAGGER_STEP_MS per position -- earlier letters in the edit start their own
+    // transition first, later ones follow, a ripple across the changed positions instead of every
+    // changed letter snapping into motion at the same instant.
+    val revealedStates = remember(old, new) { ops.map { mutableStateOf(false) } }
     LaunchedEffect(old, new) {
         if (startDelayMs > 0) delay(startDelayMs)
-        revealed = true
-        delay(durationMs.toLong())
+        for (i in ops.indices) {
+            launch {
+                delay(i * MORPH_STAGGER_STEP_MS)
+                revealedStates[i].value = true
+            }
+        }
+        // Rough settle estimate: the last character starts at (ops.size-1)*stagger and takes
+        // durationMs from there -- onSettled() only needs to be in the right ballpark, since all
+        // it drives is switching this composable back to the plain, settled rendering.
+        delay((ops.size - 1) * MORPH_STAGGER_STEP_MS + durationMs)
         onSettled()
     }
     val canBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -5916,6 +5929,7 @@ private fun MorphingMessageText(
                         dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
                         stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
                     )
+                    val revealed = revealedStates[index].value
                     androidx.compose.animation.AnimatedVisibility(
                         visible = !revealed,
                         enter = androidx.compose.animation.EnterTransition.None,
@@ -5941,6 +5955,7 @@ private fun MorphingMessageText(
                         dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
                         stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
                     )
+                    val revealed = revealedStates[index].value
                     androidx.compose.animation.AnimatedVisibility(
                         visible = revealed,
                         enter = androidx.compose.animation.expandHorizontally(
