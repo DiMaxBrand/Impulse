@@ -50,9 +50,17 @@ public class HttpDownloadConnection implements Transferable {
     private File file;
     private TransportSecurity transportSecurity;
     private Long expectedSize = null;
-    private int mStatus = Transferable.STATUS_UNKNOWN;
+    // Both written from the download thread (HttpConnectionManager.EXECUTOR, inside
+    // FileDownloader's copy()/run()) and read from the Compose UI thread on every
+    // transferable.getStatus()/getProgress() call -- without volatile, there's no guarantee the
+    // UI thread ever observes the download thread's latest write. It can keep reading a stale
+    // cached value, then "catch up" non-deterministically later, which is exactly what a visibly
+    // jumping progress percentage (low -> high -> low, with no real order) looks like -- not
+    // evidence of a second concurrent download (createNewDownloadConnection already guards
+    // against that, see HttpConnectionManager), just a genuine cross-thread visibility bug.
+    private volatile int mStatus = Transferable.STATUS_UNKNOWN;
     private boolean acceptedAutomatically = false;
-    private int mProgress = 0;
+    private volatile int mProgress = 0;
     private Call mostRecentCall;
 
     HttpDownloadConnection(Message message, HttpConnectionManager manager) {
