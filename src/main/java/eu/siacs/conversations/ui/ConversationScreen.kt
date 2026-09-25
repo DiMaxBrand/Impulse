@@ -4867,7 +4867,14 @@ private fun MessageContextSheet(
                     listener.onDownloadMessage(message)
                 }
             )
-        } else if (!message.isFileOrImage && message.treatAsDownloadable()) {
+        } else if (!message.isFileOrImage && message.treatAsDownloadable() && !cancelable) {
+            // `!cancelable` matters here specifically: an incoming HTTP file offer keeps
+            // isFileOrImage() == false for its *entire* download, not just before it starts --
+            // HttpDownloadConnection.updateImageBounds() only flips the message type to
+            // TYPE_FILE/TYPE_IMAGE once the transfer finishes. Without this guard,
+            // treatAsDownloadable() (which only looks at the OOB URL still sitting in the body)
+            // stayed true the whole time, so "Download" and "Cancel transmission" showed
+            // together throughout an active download, not just before it began.
             add(
                 SheetAction(
                     R.drawable.ic_download_24dp,
