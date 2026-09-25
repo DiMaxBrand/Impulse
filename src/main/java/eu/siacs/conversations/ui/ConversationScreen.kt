@@ -4842,8 +4842,12 @@ private fun MessageContextSheet(
                 }
             )
         }
-        // Open file
-        if (message.isFileOrImage && !deleted) {
+        // Open file — hidden while an incoming file is still actively downloading (transferable
+        // != null && receiving): the file isn't on disk yet, so "Open" would have nothing to
+        // open, and showing it next to "Cancel transmission" (below) was actively misleading.
+        // Not gated on `cancelable` alone: that flag also covers an *outgoing* upload, whose
+        // local file already exists and should stay openable the whole time it's uploading.
+        if (message.isFileOrImage && !deleted && !(transferable != null && receiving)) {
             add(
                 SheetAction(
                     R.drawable.ic_attach_file_24dp,
