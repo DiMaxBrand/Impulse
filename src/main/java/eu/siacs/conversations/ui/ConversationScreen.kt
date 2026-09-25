@@ -2996,7 +2996,17 @@ private fun MediaGridCell(
     val cachedBitmap = ThumbnailCache.get(uuid)
     if (cachedBitmap == null && fileBackend != null) {
         val sizePx = with(LocalDensity.current) { MEDIA_GRID_WIDTH.toPx() / 2 }.toInt()
-        LaunchedEffect(uuid) {
+        // Keyed on revision too, not just uuid -- this composable stays mounted (same LazyColumn
+        // slot, keyed on the group's first uuid) across a download's whole OFFER -> DOWNLOADING ->
+        // downloaded lifecycle, unlike the single-bubble case (MessageContent's `when` diverts
+        // STATUS_DOWNLOADING to a separate placeholder entirely, so MediaThumbnailBubble there is
+        // never even composed until the file is already fully on disk). Uuid-only meant a thumbnail
+        // fetch that raced an in-progress download and got null back was never retried -- the cell
+        // stayed on this placeholder forever, even once the file actually finished downloading, since
+        // nothing about that later completion ever caused uuid itself to change. Re-checking on every
+        // revision bump (which fires on every relevant conversation update, download completion
+        // included) means a still-empty cache gets a fresh attempt instead of a permanently stuck one.
+        LaunchedEffect(uuid, revision) {
             val bm = withContext(Dispatchers.IO) {
                 try { fileBackend.getThumbnail(message, sizePx, false, false) } catch (_: Exception) { null }
             }
