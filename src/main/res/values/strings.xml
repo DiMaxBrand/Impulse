@@ -1054,6 +1054,7 @@
     <string name="unpin_message">Unpin message</string>
     <string name="hide">Hide</string>
     <string name="pinned_message">Pinned message</string>
+    <string name="pinned_messages">Pinned messages</string>
     <string name="gpx_track">GPX track</string>
     <string name="could_not_correct_message">Could not edit message</string>
     <string name="your_avatar">Your avatar</string>

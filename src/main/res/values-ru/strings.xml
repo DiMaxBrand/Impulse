@@ -1342,6 +1342,7 @@
     <string name="unpin_message">Открепить сообщение</string>
     <string name="hide">Скрыть</string>
     <string name="pinned_message">Закреплённое сообщение</string>
+    <string name="pinned_messages">Закреплённые сообщения</string>
     <string name="attachment_choice_camera">Камера</string>
     <string name="attachment_choice_file">Файл</string>
     <string name="attachment_choice_gallery">Галерея</string>

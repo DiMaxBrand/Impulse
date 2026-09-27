@@ -195,6 +195,7 @@ class ConversationScreenState {
 
     internal val pinnedMessages = mutableStateOf<List<Message>>(emptyList())
     internal val pinnedBannerVisible = mutableStateOf(false)
+    internal val showPinnedMessagesOverlay = mutableStateOf(false)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
     internal val deleteTarget = mutableStateOf<Message?>(null)
     internal val moderateTarget = mutableStateOf<Message?>(null)
@@ -685,6 +686,18 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     onDismiss = { state.pinnedBannerVisible.value = false },
                     onUnpin = { listener.onUnpinMessage(it) },
                     onScrollTo = { listener.onScrollToMessage(it) },
+                    onLongPress = { state.showPinnedMessagesOverlay.value = true },
+                )
+            }
+            if (state.showPinnedMessagesOverlay.value && pinned.isNotEmpty()) {
+                PinnedMessagesOverlay(
+                    pinnedMessages = pinned,
+                    onDismiss = { state.showPinnedMessagesOverlay.value = false },
+                    onUnpin = { listener.onUnpinMessage(it) },
+                    onScrollTo = {
+                        listener.onScrollToMessage(it)
+                        state.showPinnedMessagesOverlay.value = false
+                    },
                 )
             }
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -903,6 +916,7 @@ private fun PinnedBanner(
     onDismiss: () -> Unit,
     onUnpin: (Message) -> Unit,
     onScrollTo: (Message) -> Unit,
+    onLongPress: () -> Unit,
 ) {
     var currentIndex by remember(pinnedMessages) { mutableIntStateOf(0) }
     val message = pinnedMessages.getOrNull(currentIndex) ?: return
@@ -924,10 +938,13 @@ private fun PinnedBanner(
             )
             Spacer(Modifier.width(8.dp))
             Column(
-                modifier = Modifier.weight(1f).clickable {
-                    onScrollTo(message)
-                    currentIndex = (currentIndex + 1) % total
-                }
+                modifier = Modifier.weight(1f).combinedClickable(
+                    onClick = {
+                        onScrollTo(message)
+                        currentIndex = (currentIndex + 1) % total
+                    },
+                    onLongClick = onLongPress,
+                )
             ) {
                 Text(
                     text = if (total > 1)
@@ -962,6 +979,81 @@ private fun PinnedBanner(
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp),
                 )
+            }
+        }
+    }
+}
+
+// A true floating card, not a ModalBottomSheet -- the request was specifically for padding on
+// every edge (including top/bottom) with all four corners rounded, which a bottom sheet (flush
+// to the screen's left/right/bottom edges, only top corners rounded) can't give. Dialog with
+// usePlatformDefaultWidth = false is the standard way to get a custom-sized floating surface
+// instead of the platform's default dialog width/margins.
+@Composable
+private fun PinnedMessagesOverlay(
+    pinnedMessages: List<Message>,
+    onDismiss: () -> Unit,
+    onUnpin: (Message) -> Unit,
+    onScrollTo: (Message) -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 6.dp,
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.pinned_messages),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_close_24dp),
+                            contentDescription = stringResource(R.string.hide),
+                        )
+                    }
+                }
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    itemsIndexed(pinnedMessages, key = { index, m -> m.getUuid() ?: index }) { _, message ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                                .clickable { onScrollTo(message) }
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = UIHelper.getMessageDisplayName(message),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                Text(
+                                    text = MessageUtils.replyPreview(message),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            IconButton(onClick = { onUnpin(message) }) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_push_pin_off_24dp),
+                                    contentDescription = stringResource(R.string.unpin_message),
+                                )
+                            }
+                        }
+                        androidx.compose.material3.HorizontalDivider()
+                    }
+                }
             }
         }
     }
