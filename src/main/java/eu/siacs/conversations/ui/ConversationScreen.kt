@@ -677,27 +677,43 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         // producing a gray gap above the top bar (especially visible when the keyboard opens).
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            val pinned = state.pinnedMessages.value
-            val bannerVisible = state.pinnedBannerVisible.value
-            if (bannerVisible && pinned.isNotEmpty()) {
+      androidx.compose.animation.SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+        val pinned = state.pinnedMessages.value
+        val bannerVisible = state.pinnedBannerVisible.value
+        val overlayVisible = state.showPinnedMessagesOverlay.value && pinned.isNotEmpty()
+        BackHandler(enabled = overlayVisible) { state.showPinnedMessagesOverlay.value = false }
+        // Scrim fades in/out independently of the container-transform below, same split the
+        // update screen's own channel-picker overlay uses.
+        val scrimAlpha by animateFloatAsState(
+            targetValue = if (overlayVisible) 0.32f else 0f,
+            animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+            label = "pinned_overlay_scrim",
+        )
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Hidden (not just covered) while the card is expanded -- it's the container-
+            // transform's actual source, matching UpdatesScreen's channel row/picker pattern.
+            AnimatedVisibility(
+                visible = bannerVisible && pinned.isNotEmpty() && !overlayVisible,
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
+            ) {
                 PinnedBanner(
                     pinnedMessages = pinned,
                     onDismiss = { state.pinnedBannerVisible.value = false },
                     onUnpin = { listener.onUnpinMessage(it) },
                     onScrollTo = { listener.onScrollToMessage(it) },
                     onLongPress = { state.showPinnedMessagesOverlay.value = true },
-                )
-            }
-            if (state.showPinnedMessagesOverlay.value && pinned.isNotEmpty()) {
-                PinnedMessagesOverlay(
-                    pinnedMessages = pinned,
-                    onDismiss = { state.showPinnedMessagesOverlay.value = false },
-                    onUnpin = { listener.onUnpinMessage(it) },
-                    onScrollTo = {
-                        listener.onScrollToMessage(it)
-                        state.showPinnedMessagesOverlay.value = false
-                    },
+                    modifier = Modifier.sharedBounds(
+                        rememberSharedContentState("pinned_card"),
+                        animatedVisibilityScope = this@AnimatedVisibility,
+                        enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        boundsTransform = androidx.compose.animation.BoundsTransform { _, _ ->
+                            spring(stiffness = 380f, dampingRatio = 0.8f)
+                        },
+                        resizeMode = androidx.compose.animation.SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    ),
                 )
             }
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -724,6 +740,43 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             }
             InputBar(state = state, listener = listener)
         }
+        if (scrimAlpha > 0f) {
+            Box(
+                modifier = Modifier.fillMaxSize()
+                    .background(Color.Black.copy(alpha = scrimAlpha))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    ) { state.showPinnedMessagesOverlay.value = false },
+            )
+        }
+        AnimatedVisibility(
+            visible = overlayVisible,
+            enter = EnterTransition.None,
+            exit = ExitTransition.None,
+        ) {
+            PinnedMessagesOverlay(
+                pinnedMessages = pinned,
+                onDismiss = { state.showPinnedMessagesOverlay.value = false },
+                onUnpin = { listener.onUnpinMessage(it) },
+                onScrollTo = {
+                    listener.onScrollToMessage(it)
+                    state.showPinnedMessagesOverlay.value = false
+                },
+                modifier = Modifier.sharedBounds(
+                    rememberSharedContentState("pinned_card"),
+                    animatedVisibilityScope = this@AnimatedVisibility,
+                    enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                    exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                    boundsTransform = androidx.compose.animation.BoundsTransform { _, _ ->
+                        spring(stiffness = 380f, dampingRatio = 0.8f)
+                    },
+                    resizeMode = androidx.compose.animation.SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                ),
+            )
+        }
+        }
+      }
     }
     // A picker-screen result to merge into the ongoing chat selection — set by the hosting
     // Fragment (which can't reach this Compose-local selectedUuids list directly, since
@@ -917,6 +970,7 @@ private fun PinnedBanner(
     onUnpin: (Message) -> Unit,
     onScrollTo: (Message) -> Unit,
     onLongPress: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var currentIndex by remember(pinnedMessages) { mutableIntStateOf(0) }
     val message = pinnedMessages.getOrNull(currentIndex) ?: return
@@ -924,7 +978,7 @@ private fun PinnedBanner(
 
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().then(modifier),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -986,45 +1040,25 @@ private fun PinnedBanner(
 
 // A true floating card, not a ModalBottomSheet -- the request was specifically for padding on
 // every edge (including top/bottom) with all four corners rounded, which a bottom sheet (flush
-// to the screen's left/right/bottom edges, only top corners rounded) can't give. Dialog with
-// usePlatformDefaultWidth = false is the standard way to get a custom-sized floating surface
-// instead of the platform's default dialog width/margins.
-// Slides down from roughly the top app bar's position on appear, and back up on dismiss --
-// short/subtle (180ms in, 140ms out; a small fraction of the card's own height, not a full
-// off-screen slide) rather than a showy full-height entrance. The Dialog's own window is shown
-// immediately; `visible` (flipped true one frame after first composition) drives the actual
-// AnimatedVisibility transition, and dismissal routes through animatedDismiss() so the slide-up
-// gets to finish playing before the Dialog itself is torn down -- same reasoning as
-// ConversationScreen's own animatedDelete() deferring its real action until the exit animation
-// is done.
+// to the screen's left/right/bottom edges, only top corners rounded) can't give.
+// Container transform, not a plain fade/slide: the banner Surface and this card's Surface share
+// a `sharedBounds` key ("pinned_card", wired up at the call site in ConversationScreen), so the
+// banner visibly grows/morphs into the full card and back -- same technique and spring
+// (stiffness 380, dampingRatio 0.8) as UpdatesScreen's settings-row -> channel-picker transform.
+// That's why this composable itself has no entrance/exit animation of its own anymore (no local
+// `visible` state, no Dialog): the outer AnimatedVisibility + sharedBounds modifier the caller
+// applies does all of it, and a real Android Dialog would open a separate window the shared-
+// element transition can't reach across.
 @Composable
 private fun PinnedMessagesOverlay(
     pinnedMessages: List<Message>,
     onDismiss: () -> Unit,
     onUnpin: (Message) -> Unit,
     onScrollTo: (Message) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    var visible by remember { mutableStateOf(false) }
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    LaunchedEffect(Unit) { visible = true }
-    val animatedDismiss: () -> Unit = {
-        scope.launch {
-            visible = false
-            delay(140)
-            onDismiss()
-        }
-    }
-    androidx.compose.ui.window.Dialog(
-        onDismissRequest = animatedDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = slideInVertically(animationSpec = tween(180)) { -it / 6 } + fadeIn(tween(180)),
-            exit = slideOutVertically(animationSpec = tween(140)) { -it / 6 } + fadeOut(tween(140)),
-        ) {
         Surface(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(24.dp).then(modifier),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 6.dp,
@@ -1039,7 +1073,7 @@ private fun PinnedMessagesOverlay(
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = animatedDismiss) {
+                    IconButton(onClick = onDismiss) {
                         Icon(
                             painter = painterResource(R.drawable.ic_close_24dp),
                             contentDescription = stringResource(R.string.hide),
@@ -1079,8 +1113,6 @@ private fun PinnedMessagesOverlay(
                 }
             }
         }
-        }
-    }
 }
 
 @Composable
