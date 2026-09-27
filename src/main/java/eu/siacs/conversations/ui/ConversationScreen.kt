@@ -989,6 +989,14 @@ private fun PinnedBanner(
 // to the screen's left/right/bottom edges, only top corners rounded) can't give. Dialog with
 // usePlatformDefaultWidth = false is the standard way to get a custom-sized floating surface
 // instead of the platform's default dialog width/margins.
+// Slides down from roughly the top app bar's position on appear, and back up on dismiss --
+// short/subtle (180ms in, 140ms out; a small fraction of the card's own height, not a full
+// off-screen slide) rather than a showy full-height entrance. The Dialog's own window is shown
+// immediately; `visible` (flipped true one frame after first composition) drives the actual
+// AnimatedVisibility transition, and dismissal routes through animatedDismiss() so the slide-up
+// gets to finish playing before the Dialog itself is torn down -- same reasoning as
+// ConversationScreen's own animatedDelete() deferring its real action until the exit animation
+// is done.
 @Composable
 private fun PinnedMessagesOverlay(
     pinnedMessages: List<Message>,
@@ -996,10 +1004,25 @@ private fun PinnedMessagesOverlay(
     onUnpin: (Message) -> Unit,
     onScrollTo: (Message) -> Unit,
 ) {
+    var visible by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    LaunchedEffect(Unit) { visible = true }
+    val animatedDismiss: () -> Unit = {
+        scope.launch {
+            visible = false
+            delay(140)
+            onDismiss()
+        }
+    }
     androidx.compose.ui.window.Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = animatedDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInVertically(animationSpec = tween(180)) { -it / 6 } + fadeIn(tween(180)),
+            exit = slideOutVertically(animationSpec = tween(140)) { -it / 6 } + fadeOut(tween(140)),
+        ) {
         Surface(
             modifier = Modifier.fillMaxSize().padding(24.dp),
             shape = RoundedCornerShape(28.dp),
@@ -1016,7 +1039,7 @@ private fun PinnedMessagesOverlay(
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = animatedDismiss) {
                         Icon(
                             painter = painterResource(R.drawable.ic_close_24dp),
                             contentDescription = stringResource(R.string.hide),
@@ -1055,6 +1078,7 @@ private fun PinnedMessagesOverlay(
                     }
                 }
             }
+        }
         }
     }
 }
