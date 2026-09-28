@@ -4562,6 +4562,20 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         ListenStatusManager.State.PAUSED -> outgoingPeerState
         else -> null
     }
+    // Image view status — same shape as the voice listen-status block above, own manager/wire
+    // protocol (see ViewStatusManager's doc for why). Video isn't wired into this yet.
+    val isImage = message.type == Message.TYPE_IMAGE
+    val viewIconState: ViewStatusManager.State? =
+        if (!isImage || footerUuid == null || !outgoing ||
+            message.conversation.getMode() != Conversational.MODE_SINGLE
+        ) {
+            null
+        } else {
+            ViewStatusManager.peerStates[footerUuid]
+                ?: if (message.viewStatus == Message.VIEW_STATUS_VIEWED)
+                    ViewStatusManager.State.VIEWED
+                else null
+        }
     val listenLabel: String? =
         if (!isAudio || footerUuid == null) {
             null
@@ -4658,7 +4672,35 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                     checkmarkPhaseForStatus(status, transferable, statusMessage.errorMessage),
                     listenIconState,
                 )
-            if (checkmarkPhase != null) {
+            if (viewIconState != null) {
+                // Image view status: a real eye asset (ic_visibility_24dp) crossfading between
+                // viewing/viewed/unknown, not folded into MessageStatusIcon's point-morph engine
+                // — that machinery exists to turn one real glyph's outline into another's over a
+                // full second (see the headphone morph); a gray-to-green-or-amber crossfade needs
+                // none of that. Kept as its own branch so it can be upgraded to a real morph later
+                // without touching the checkmark story above.
+                Spacer(Modifier.width(4.dp))
+                val viewColor = when (viewIconState) {
+                    ViewStatusManager.State.VIEWED -> LocalSuccessColors.current.success
+                    ViewStatusManager.State.UNKNOWN -> Color(0xFFF9A825)
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+                AnimatedContent(
+                    targetState = viewColor,
+                    transitionSpec = {
+                        (fadeIn(tween(180)) + scaleIn(initialScale = 0.7f, animationSpec = tween(180))) togetherWith
+                            (fadeOut(tween(140)) + scaleOut(targetScale = 0.7f, animationSpec = tween(140)))
+                    },
+                    label = "view_status_icon",
+                ) { tint ->
+                    Icon(
+                        painter = painterResource(R.drawable.ic_visibility_24dp),
+                        contentDescription = null,
+                        tint = tint,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            } else if (checkmarkPhase != null) {
                 Spacer(Modifier.width(4.dp))
                 MessageStatusIcon(
                     phase = checkmarkPhase,

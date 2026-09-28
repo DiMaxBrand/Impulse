@@ -94,6 +94,7 @@ public class Message extends AbstractEntity
     public static final String REPLIED_TO = "repliedTo";
     public static final String REMOTE_EDITING = "remoteEditing";
     public static final String LISTEN_STATUS = "listenStatus";
+    public static final String VIEW_STATUS = "viewStatus";
     public static final String ME_COMMAND = "/me ";
 
     /**
@@ -102,6 +103,13 @@ public class Message extends AbstractEntity
      * persisted — they live in ListenStatusManager only.
      */
     public static final String LISTEN_STATUS_LISTENED = "listened";
+
+    /**
+     * Terminal value for {@link #VIEW_STATUS}: on OUTGOING image/video messages, the peer's viewer
+     * definitely opened it at least once. Ephemeral (VIEWING) and best-effort (UNKNOWN, video-only)
+     * states are never persisted — they live in ViewStatusManager only.
+     */
+    public static final String VIEW_STATUS_VIEWED = "viewed";
 
     public static final String ERROR_MESSAGE_CANCELLED = "eu.siacs.conversations.cancelled";
 
@@ -148,6 +156,7 @@ public class Message extends AbstractEntity
     private String repliedTo = null;
     private boolean remoteEditing = false;
     private String listenStatus = null;
+    private String viewStatus = null;
 
     private Boolean isGeoUri = null;
     private Boolean isEmojisOnly = null;
@@ -326,6 +335,10 @@ public class Message extends AbstractEntity
         if (listenStatusIndex >= 0) {
             message.listenStatus = cursor.getString(listenStatusIndex);
         }
+        final int viewStatusIndex = cursor.getColumnIndex(VIEW_STATUS);
+        if (viewStatusIndex >= 0) {
+            message.viewStatus = cursor.getString(viewStatusIndex);
+        }
         return message;
     }
 
@@ -421,6 +434,7 @@ public class Message extends AbstractEntity
         values.put(REPLIED_TO, repliedTo);
         values.put(REMOTE_EDITING, remoteEditing ? 1 : 0);
         values.put(LISTEN_STATUS, listenStatus);
+        values.put(VIEW_STATUS, viewStatus);
         return values;
     }
 
@@ -560,6 +574,14 @@ public class Message extends AbstractEntity
 
     public void setListenStatus(final String listenStatus) {
         this.listenStatus = listenStatus;
+    }
+
+    public String getViewStatus() {
+        return viewStatus;
+    }
+
+    public void setViewStatus(final String viewStatus) {
+        this.viewStatus = viewStatus;
     }
 
     public boolean isRead() {

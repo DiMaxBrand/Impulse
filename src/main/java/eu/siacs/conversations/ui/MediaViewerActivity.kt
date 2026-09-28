@@ -350,6 +350,36 @@ private suspend fun collectMediaNewer(
     return if (result.size > needed) result.subList(0, needed) else result
 }
 
+/** Tells the sender what we're doing with their image/video — mirrors
+ * ConversationComposeFragment's sendListenStatusStanza, own namespace (see ViewStatusManager's
+ * doc for why). 1:1 chats only; only ever fires for INCOMING messages (checked by the caller). */
+private fun sendViewStatusStanza(
+    service: eu.siacs.conversations.services.XmppConnectionService,
+    message: Message,
+    wireState: String,
+) {
+    val conversation = message.conversation as? Conversation ?: return
+    if (conversation.getMode() != Conversational.MODE_SINGLE) return
+    val packet = im.conversations.android.xmpp.model.stanza.Message()
+    packet.setFrom(conversation.getAccount().jid)
+    packet.setTo(message.counterpart.asBareJid())
+    val el = eu.siacs.conversations.xml.Element(
+        "viewing",
+        eu.siacs.conversations.xml.Namespace.IMPULSE_VIEW_STATUS,
+    )
+    el.setAttribute("id", message.remoteMsgId ?: message.getUuid())
+    el.setAttribute("state", wireState)
+    packet.addChild(el)
+    // Same reasoning as listen-status: the ephemeral "viewing" transition is worthless hours
+    // later, but the terminal "viewed" is worth delivering even if the sender is offline now.
+    if (wireState == ViewStatusManager.WIRE_VIEWED) {
+        packet.addExtension(im.conversations.android.xmpp.model.hints.Store())
+    } else {
+        packet.addExtension(im.conversations.android.xmpp.model.hints.NoStore())
+    }
+    service.sendMessagePacket(conversation.getAccount(), packet)
+}
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun MediaViewerScreen(
@@ -447,6 +477,21 @@ private fun MediaViewerScreen(
     // there's nothing distinct from whole-history to show for a single photo.
     val inBatch = batchUuids.size > 1 && currentMessage.getUuid() in batchUuids
     var chromeVisible by remember { mutableStateOf(true) }
+
+    // View-status: report "viewing" the moment an incoming image's page becomes current, and
+    // "viewed" the moment it stops being current (swiped away, or the whole viewer closed) — a
+    // real DisposableEffect-style start/stop pair, not a timer, since the in-app viewer opening
+    // and closing IS the ground truth for images (same certainty voice listen-status gets from
+    // owning playback end-to-end). Video isn't wired up here — it plays in an external app, so it
+    // needs the duration+timer heuristic described in ViewStatusManager's own doc, not this.
+    DisposableEffect(currentMessage.getUuid()) {
+        val message = currentMessage
+        val reportable = message.type == Message.TYPE_IMAGE && message.status == Message.STATUS_RECEIVED
+        if (reportable) sendViewStatusStanza(service, message, ViewStatusManager.WIRE_VIEWING)
+        onDispose {
+            if (reportable) sendViewStatusStanza(service, message, ViewStatusManager.WIRE_VIEWED)
+        }
+    }
     // Tapping the photo to hide the top bar also hides the system status/navigation bars, same
     // full-immersive behavior as the stock gallery/Photos apps — and the reverse on tapping again.
     // WindowCompat.getInsetsController() needs the Activity's real Window, not anything Compose

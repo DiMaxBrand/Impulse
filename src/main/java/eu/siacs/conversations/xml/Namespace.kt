@@ -130,4 +130,5 @@ object Namespace {
     const val REPLIES = "urn:xmpp:reply:0"
     const val IMPULSE_EDITING = "im.dimax.impulse:editing:0"
     const val IMPULSE_LISTEN_STATUS = "im.dimax.impulse:listen-status:0"
+    const val IMPULSE_VIEW_STATUS = "im.dimax.impulse:view-status:0"
 }

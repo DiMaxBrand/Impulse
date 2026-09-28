@@ -915,6 +915,38 @@ public class MessageParser extends AbstractParser
             return;
         }
 
+        final eu.siacs.conversations.xml.Element viewEl =
+                original.findChild("viewing", Namespace.IMPULSE_VIEW_STATUS);
+        if (viewEl != null) {
+            final String viewId = viewEl.getAttribute("id");
+            final String viewState = viewEl.getAttribute("state");
+            if (viewId != null && viewState != null && from != null) {
+                final eu.siacs.conversations.entities.Conversation conv =
+                        mXmppConnectionService.find(account, from.asBareJid());
+                // 1:1 only. The id references a message WE sent — the peer knows it by the id
+                // on the wire, which findSentMessageWithUuidOrRemoteId resolves either way.
+                if (conv != null
+                        && conv.getMode()
+                                == eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {
+                    final eu.siacs.conversations.entities.Message found =
+                            conv.findSentMessageWithUuidOrRemoteId(viewId);
+                    if (found != null && found.getUuid() != null) {
+                        eu.siacs.conversations.ui.ViewStatusManager.onPeerTransition(
+                                found.getUuid(), viewState);
+                        // The terminal state survives restarts; ephemeral ones stay in memory.
+                        if (eu.siacs.conversations.entities.Message.VIEW_STATUS_VIEWED.equals(
+                                viewState)) {
+                            found.setViewStatus(
+                                    eu.siacs.conversations.entities.Message.VIEW_STATUS_VIEWED);
+                            mXmppConnectionService.updateMessage(found, false);
+                        }
+                        mXmppConnectionService.updateConversationUi();
+                    }
+                }
+            }
+            return;
+        }
+
         final eu.siacs.conversations.xml.Element listenEl =
                 original.findChild("listening", Namespace.IMPULSE_LISTEN_STATUS);
         if (listenEl != null) {
