@@ -350,35 +350,8 @@ private suspend fun collectMediaNewer(
     return if (result.size > needed) result.subList(0, needed) else result
 }
 
-/** Tells the sender what we're doing with their image/video — mirrors
- * ConversationComposeFragment's sendListenStatusStanza, own namespace (see ViewStatusManager's
- * doc for why). 1:1 chats only; only ever fires for INCOMING messages (checked by the caller). */
-private fun sendViewStatusStanza(
-    service: eu.siacs.conversations.services.XmppConnectionService,
-    message: Message,
-    wireState: String,
-) {
-    val conversation = message.conversation as? Conversation ?: return
-    if (conversation.getMode() != Conversational.MODE_SINGLE) return
-    val packet = im.conversations.android.xmpp.model.stanza.Message()
-    packet.setFrom(conversation.getAccount().jid)
-    packet.setTo(message.counterpart.asBareJid())
-    val el = eu.siacs.conversations.xml.Element(
-        "viewing",
-        eu.siacs.conversations.xml.Namespace.IMPULSE_VIEW_STATUS,
-    )
-    el.setAttribute("id", message.remoteMsgId ?: message.getUuid())
-    el.setAttribute("state", wireState)
-    packet.addChild(el)
-    // Same reasoning as listen-status: the ephemeral "viewing" transition is worthless hours
-    // later, but the terminal "viewed" is worth delivering even if the sender is offline now.
-    if (wireState == ViewStatusManager.WIRE_VIEWED) {
-        packet.addExtension(im.conversations.android.xmpp.model.hints.Store())
-    } else {
-        packet.addExtension(im.conversations.android.xmpp.model.hints.NoStore())
-    }
-    service.sendMessagePacket(conversation.getAccount(), packet)
-}
+// sendViewStatusStanza itself now lives in ViewStatusManager.kt (same package) -- shared with its
+// own video timer instead of duplicated here.
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -856,7 +829,13 @@ private fun MediaViewerPage(
                         .size(64.dp)
                         .clip(CircleShape)
                         .background(Color.Black.copy(alpha = 0.45f))
-                        .clickable { onOpenExternally(message) },
+                        .clickable {
+                            // Starts the view-status timer (duration + 5s) right before handing
+                            // off -- see ViewStatusManager.onVideoPlayTapped's own doc for why
+                            // this tap is the only real signal available for video.
+                            ViewStatusManager.onVideoPlayTapped(service, message, message.fileParams.runtime)
+                            onOpenExternally(message)
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(

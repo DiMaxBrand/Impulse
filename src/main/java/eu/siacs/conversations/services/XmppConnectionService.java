@@ -338,6 +338,9 @@ public class XmppConnectionService extends Service {
                         awayDueToAppExit = false;
                         refreshAllPresences();
                     }
+                    // Resolves any pending video view-status timers as "viewed" -- see
+                    // ViewStatusManager.onAppForegrounded's own doc.
+                    eu.siacs.conversations.ui.ViewStatusManager.onAppForegrounded();
                 }
             };
 

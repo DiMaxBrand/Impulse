@@ -4573,11 +4573,13 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         ListenStatusManager.State.PAUSED -> outgoingPeerState
         else -> null
     }
-    // Image view status — same shape as the voice listen-status block above, own manager/wire
-    // protocol (see ViewStatusManager's doc for why). Video isn't wired into this yet.
-    val isImage = message.type == Message.TYPE_IMAGE
+    // Image/video view status — same shape as the voice listen-status block above, own
+    // manager/wire protocol (see ViewStatusManager's doc for why). Video's VIEWED/UNKNOWN are
+    // best-effort (see ViewStatusManager.onVideoPlayTapped/onAppForegrounded), images are certain.
+    val isViewableMedia = message.type == Message.TYPE_IMAGE ||
+        (message.isFileOrImage && message.mimeType?.startsWith("video/") == true)
     val viewIconState: ViewStatusManager.State? =
-        if (!isImage || footerUuid == null || !outgoing ||
+        if (!isViewableMedia || footerUuid == null || !outgoing ||
             message.conversation.getMode() != Conversational.MODE_SINGLE
         ) {
             null
