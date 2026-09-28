@@ -310,6 +310,18 @@ class StartConversationActivity :
 
         val preferences = getPreferences()
 
+        // One-time migration: some installs ended up with "hide_offline" persisted as true even
+        // though the app has never shipped it checked by default (the checkbox itself in
+        // start_conversation.xml is android:checked="false", and the fallback below is already
+        // `false`) -- force it back off once, regardless of whatever's currently on disk, then
+        // never touch it again.
+        if (!preferences.getBoolean("hide_offline_default_migrated_v1", false)) {
+            preferences.edit()
+                .putBoolean("hide_offline", false)
+                .putBoolean("hide_offline_default_migrated_v1", true)
+                .apply()
+        }
+
         mHideOfflineContacts =
             AbstractQuickConversationsService.isConversations() && preferences.getBoolean("hide_offline", false)
 

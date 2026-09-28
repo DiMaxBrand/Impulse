@@ -1430,6 +1430,14 @@ private fun ConversationTopBar(
                         false,
                     ) ?: false
                 }
+            val isBlocked =
+                remember(conversation, revision) {
+                    try {
+                        conversation?.isBlocked() ?: false
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
             val canInvite =
                 remember(conversation, revision) {
                     try {
@@ -1522,7 +1530,10 @@ private fun ConversationTopBar(
                 if (isSingle) {
                     ExpressiveMenuItem(
                         R.drawable.ic_cancel_24dp,
-                        stringResource(R.string.action_block_contact),
+                        stringResource(
+                            if (isBlocked) R.string.action_unblock_contact
+                            else R.string.action_block_contact
+                        ),
                         dismissThen(listener::onBlockContact),
                     )
                 }
