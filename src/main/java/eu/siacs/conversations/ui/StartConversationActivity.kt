@@ -992,9 +992,14 @@ class StartConversationActivity :
             if (account.isEnabled()) {
                 for (contact in account.getRoster().getContacts()) {
                     val s = contact.getShownStatus()
+                    // A blocked contact has no presence to speak of (blocking cuts the
+                    // subscription), so it always reads as OFFLINE here regardless of its real
+                    // status -- exempting it from the Hide Offline filter means blocking someone
+                    // doesn't also make them vanish from this list.
                     if (contact.showInContactList() &&
                         contact.match(needle) &&
-                        (showOffline || s.compareTo(im.conversations.android.xmpp.model.stanza.Presence.Availability.OFFLINE) < 0)
+                        (showOffline || contact.isBlocked() ||
+                            s.compareTo(im.conversations.android.xmpp.model.stanza.Presence.Availability.OFFLINE) < 0)
                     ) {
                         contacts.add(contact)
                     }
