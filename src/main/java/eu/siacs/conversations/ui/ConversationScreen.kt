@@ -4695,6 +4695,10 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                 Spacer(Modifier.width(4.dp))
                 val viewColor = when (viewIconState) {
                     ViewStatusManager.State.VIEWED -> LocalSuccessColors.current.success
+                    // Distinct from both VIEWED (green, confirmed complete) and UNKNOWN (amber,
+                    // never came back at all) -- blue reads as "some real confirmation, just not
+                    // to completion," a stronger signal than plain UNKNOWN gets.
+                    ViewStatusManager.State.HALF_VIEWED -> Color(0xFF42A5F5)
                     ViewStatusManager.State.UNKNOWN -> Color(0xFFF9A825)
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }

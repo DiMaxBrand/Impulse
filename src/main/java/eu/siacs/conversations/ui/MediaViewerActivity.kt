@@ -451,18 +451,26 @@ private fun MediaViewerScreen(
     val inBatch = batchUuids.size > 1 && currentMessage.getUuid() in batchUuids
     var chromeVisible by remember { mutableStateOf(true) }
 
-    // View-status: report "viewing" the moment an incoming image's page becomes current, and
-    // "viewed" the moment it stops being current (swiped away, or the whole viewer closed) — a
-    // real DisposableEffect-style start/stop pair, not a timer, since the in-app viewer opening
-    // and closing IS the ground truth for images (same certainty voice listen-status gets from
-    // owning playback end-to-end). Video isn't wired up here — it plays in an external app, so it
-    // needs the duration+timer heuristic described in ViewStatusManager's own doc, not this.
+    // View-status: report "viewing" once an incoming image's page has actually been current for
+    // MIN_IMAGE_DWELL_MS (not the instant it becomes current) and "viewed" when it stops being
+    // current after that — debounced so a fast swipe-through never reports anything at all,
+    // rather than flashing gray-then-green for a photo nobody actually looked at. Video isn't
+    // wired up here — it plays in an external app, so it needs the duration+timer heuristic
+    // described in ViewStatusManager's own doc, not this.
     DisposableEffect(currentMessage.getUuid()) {
         val message = currentMessage
         val reportable = message.type == Message.TYPE_IMAGE && message.status == Message.STATUS_RECEIVED
-        if (reportable) sendViewStatusStanza(service, message, ViewStatusManager.WIRE_VIEWING)
+        var reportedViewing = false
+        val dwellJob = if (reportable) {
+            scope.launch {
+                delay(ViewStatusManager.MIN_IMAGE_DWELL_MS)
+                reportedViewing = true
+                sendViewStatusStanza(service, message, ViewStatusManager.WIRE_VIEWING)
+            }
+        } else null
         onDispose {
-            if (reportable) sendViewStatusStanza(service, message, ViewStatusManager.WIRE_VIEWED)
+            dwellJob?.cancel()
+            if (reportedViewing) sendViewStatusStanza(service, message, ViewStatusManager.WIRE_VIEWED)
         }
     }
     // Tapping the photo to hide the top bar also hides the system status/navigation bars, same
