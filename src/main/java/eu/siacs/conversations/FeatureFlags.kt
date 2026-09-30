@@ -55,4 +55,14 @@ enum class FeatureFlag(
         descriptionRes = R.string.feature_flag_sequential_edit_morph_description,
         defaultValue = false,
     ),
+
+    /** Umbrella for animations that are not yet intended for a public release; anything added
+     * here later goes behind this same flag. Currently: the chat's bottom bar arching up and
+     * springing back when the list reaches the bottom (fling or the scroll-to-bottom button). */
+    EXPERIMENTAL_ANIMATIONS(
+        key = "experimental_animations",
+        titleRes = R.string.feature_flag_experimental_animations_title,
+        descriptionRes = R.string.feature_flag_experimental_animations_description,
+        defaultValue = false,
+    ),
 }

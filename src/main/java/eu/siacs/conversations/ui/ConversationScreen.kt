@@ -105,6 +105,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -196,6 +197,10 @@ class ConversationScreenState {
     internal val pinnedMessages = mutableStateOf<List<Message>>(emptyList())
     internal val pinnedBannerVisible = mutableStateOf(false)
     internal val showPinnedMessagesOverlay = mutableStateOf(false)
+    // Bumped (event counter) by MessageList when the list reaches the bottom after being scrolled
+    // away; InputBar plays its springy arch on every change. Only ever written behind the
+    // EXPERIMENTAL_ANIMATIONS flag.
+    internal val barBump = mutableIntStateOf(0)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
     internal val deleteTarget = mutableStateOf<Message?>(null)
     internal val moderateTarget = mutableStateOf<Message?>(null)
@@ -1701,6 +1706,34 @@ private fun MessageList(
                 EntityTimeManager.isDifferentTimeZone(it) &&
                 EntityTimeManager.isNightTime(it)
         }
+
+    // EXPERIMENTAL_ANIMATIONS: signal InputBar to play its arch-and-spring when the list lands on
+    // the bottom after having been scrolled away (a fling or the scroll-to-bottom button; opening
+    // a chat already at the bottom never counts, hence the wasAway ratchet).
+    val flagContext = LocalContext.current
+    val experimentalAnimations =
+        remember { eu.siacs.conversations.utils.FeatureFlagPreferences(flagContext)
+            .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS) }
+    if (experimentalAnimations) {
+        LaunchedEffect(listState) {
+            var wasAway = false
+            snapshotFlow {
+                    Triple(
+                        hasPositioned.value,
+                        listState.firstVisibleItemIndex,
+                        listState.firstVisibleItemScrollOffset,
+                    )
+                }
+                .collect { (positioned, index, offset) ->
+                    if (!positioned) return@collect
+                    if (index >= 3) wasAway = true
+                    else if (index == 0 && offset == 0 && wasAway) {
+                        wasAway = false
+                        state.barBump.intValue++
+                    }
+                }
+        }
+    }
 
     // Request older messages when the user approaches the (chronological) top.
     LaunchedEffect(listState, revision) {
@@ -6597,8 +6630,28 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     // SharedTransitionLayout wraps the whole bar so the attach (paperclip) icon can share
     // identity between its collapsed toggle position and its slot in the expanded toolbar
     // below, instead of the two independently fading in/out as unrelated icons.
+    // EXPERIMENTAL_ANIMATIONS: the bar's own color arches up in the middle above its top edge and
+    // springs back with a few decaying bounces. `barArch` is 0 at rest; every barBump tick snaps
+    // a short rise up, then releases it on a deliberately underdamped spring (the rubber band).
+    val experimentalArch =
+        remember { eu.siacs.conversations.utils.FeatureFlagPreferences(context)
+            .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS) }
+    val barArch = remember { androidx.compose.animation.core.Animatable(0f) }
+    val archColor = MaterialTheme.colorScheme.surfaceContainer
+    if (experimentalArch) {
+        LaunchedEffect(state.barBump.intValue) {
+            if (state.barBump.intValue == 0) return@LaunchedEffect
+            barArch.snapTo(0f)
+            barArch.animateTo(1f, spring(dampingRatio = 1f, stiffness = Spring.StiffnessHigh))
+            barArch.animateTo(0f, spring(dampingRatio = 0.28f, stiffness = Spring.StiffnessLow))
+        }
+    }
+    val archModifier =
+        if (!experimentalArch) Modifier
+        else Modifier.drawBarArch(barArch, archColor)
+
     SharedTransitionLayout {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = archModifier) {
         Column {
         ComposerBanner(state, listener)
         if (hasAttachments) {
@@ -7025,4 +7078,25 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         }
     }
     } // end SharedTransitionLayout
+}
+
+/** Draws a bump above this node's top edge, the same color as the node, peaking in the middle
+ * (a quadratic curve from corner to corner) by up to 22dp * [progress]. Negative progress (the
+ * spring's undershoot) draws nothing -- the bar itself is already flat there. Drawn outside the
+ * node's bounds on purpose; nothing in the parent chain clips. */
+private fun Modifier.drawBarArch(
+    progress: androidx.compose.animation.core.Animatable<Float, *>,
+    color: Color,
+): Modifier = this.drawBehind {
+    val lift = progress.value * 22.dp.toPx()
+    if (lift > 0.5f) {
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(0f, 2f)
+            quadraticTo(size.width / 2f, -2f * lift + 2f, size.width, 2f)
+            lineTo(size.width, 6f)
+            lineTo(0f, 6f)
+            close()
+        }
+        drawPath(path, color)
+    }
 }
