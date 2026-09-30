@@ -4697,7 +4697,12 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
             val statusIconModifier = Modifier.size(14.dp).clickable(
                 indication = null,
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-            ) { StatusLegendSheetState.visible.value = true }
+            ) {
+                // viewIconState/checkmarkPhase are the values this footer last composed, i.e. the
+                // state the tapped icon is showing; the sheet bolds the matching legend row.
+                StatusLegendSheetState.current.value = legendKeyFor(viewIconState, checkmarkPhase)
+                StatusLegendSheetState.visible.value = true
+            }
             if (viewIconState != null) {
                 // Image view status: a real eye asset (ic_visibility_24dp) crossfading between
                 // viewing/viewed/unknown, not folded into MessageStatusIcon's point-morph engine
