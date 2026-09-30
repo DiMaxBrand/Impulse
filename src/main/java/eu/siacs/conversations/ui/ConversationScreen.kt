@@ -790,6 +790,9 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         }
     }
     val target = menuTarget
+    if (StatusLegendSheetState.visible.value) {
+        StatusLegendSheet(onDismiss = { StatusLegendSheetState.visible.value = false })
+    }
     if (target != null) {
         MessageContextSheet(
             message = target,
@@ -4685,6 +4688,16 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                     checkmarkPhaseForStatus(status, transferable, statusMessage.errorMessage),
                     listenIconState,
                 )
+            // Tapping (not long-pressing -- that still opens the context sheet, handled by the
+            // row's own outer combinedClickable) any status icon opens the plain-language legend
+            // explaining what it means. StatusLegendSheetState is a top-level singleton, same
+            // pattern as ThumbnailCache/ListenStatusManager/ViewStatusManager -- MessageFooter has
+            // no path back up to ConversationScreenState, and threading one through just for this
+            // would touch every call site between here and there.
+            val statusIconModifier = Modifier.size(14.dp).clickable(
+                indication = null,
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+            ) { StatusLegendSheetState.visible.value = true }
             if (viewIconState != null) {
                 // Image view status: a real eye asset (ic_visibility_24dp) crossfading between
                 // viewing/viewed/unknown, not folded into MessageStatusIcon's point-morph engine
@@ -4714,7 +4727,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                         painter = painterResource(R.drawable.ic_visibility_24dp),
                         contentDescription = null,
                         tint = tint,
-                        modifier = Modifier.size(14.dp),
+                        modifier = statusIconModifier,
                     )
                 }
             } else if (checkmarkPhase != null) {
@@ -4725,7 +4738,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                     successColor = LocalSuccessColors.current.success,
                     listenedColor = LocalSuccessColors.current.success,
                     unknownColor = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(14.dp),
+                    modifier = statusIconModifier,
                 )
             } else {
                 val statusDrawable = MessageAdapter.getMessageStatusAsDrawable(statusMessage, status)
@@ -4747,7 +4760,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                             painter = painterResource(drawableRes),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp),
+                            modifier = statusIconModifier,
                         )
                     }
                 }
