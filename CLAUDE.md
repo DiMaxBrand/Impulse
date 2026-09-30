@@ -22,6 +22,7 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 ### Release notes (GitHub Release title/description)
 
 - **Every release gets a real title**, not just stable — the in-app update sheet displays the GitHub release title verbatim as its hero text (see `releaseTitle` in `UpdateInfo`/`UpdatesScreen.kt`), so leaving RC/beta/alpha releases on the workflow's bare `Impulse <version>` default means RC-channel users never see what's actually in a build until they read the changelog separately. Write a short real title for every release, RC included.
+- **Anything behind a feature flag stays undescribed publicly**: release titles/descriptions, the flag's own in-app title/description, and anything else users can read must not explain what an unfinished flagged feature does (no "pulls a cookie out of the bar", no "arches the bar") -- people read that and expect a finished feature, then see nothing and think the app is broken. Say only something generic like "Small tweaks" / the flag's neutral one-liner. Detail belongs in commit messages and code comments only.
 - **Alpha/beta releases**: a description is optional — skip it unless there's something worth calling out. Title still applies.
 - **Release candidates**: more important to include a description too, since RC is the last stop before stable.
 - **RC → Stable promotion**: must be a pure version bump, no code changes bundled in. If something still needs fixing, ship it on another RC first, get it tested, and only promote to stable once verified — never mix code changes into the stable-promotion commit.

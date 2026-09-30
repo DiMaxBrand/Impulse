@@ -1056,7 +1056,7 @@
     <string name="pinned_message">Pinned message</string>
     <string name="pinned_messages">Pinned messages</string>
     <string name="feature_flag_experimental_animations_title">Experimental animations</string>
-    <string name="feature_flag_experimental_animations_description">Animations that are not yet intended for a public release. Currently: the bottom bar arches up and springs back when the chat is flung to the bottom, and pulling up at the very bottom pulls a six-sided cookie out of it.</string>
+    <string name="feature_flag_experimental_animations_description">Animations that are not yet intended for a public release.</string>
     <string name="status_legend_title">Status indicators</string>
     <string name="status_legend_section_all">All messages</string>
     <string name="status_legend_section_files">Photos, videos, and other files</string>

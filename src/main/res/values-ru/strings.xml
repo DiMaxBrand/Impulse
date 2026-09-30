@@ -1344,7 +1344,7 @@
     <string name="pinned_message">Закреплённое сообщение</string>
     <string name="pinned_messages">Закреплённые сообщения</string>
     <string name="feature_flag_experimental_animations_title">Экспериментальные анимации</string>
-    <string name="feature_flag_experimental_animations_description">Анимации, которые пока не предназначены для публичного релиза. Сейчас: нижняя панель выгибается и пружинит, когда чат резко пролистан до конца, а если потянуть вверх в самом низу, из неё вытягивается шестигранное «печенье».</string>
+    <string name="feature_flag_experimental_animations_description">Анимации, которые пока не предназначены для публичного релиза.</string>
     <string name="status_legend_title">Значки статуса</string>
     <string name="status_legend_section_all">Все сообщения</string>
     <string name="status_legend_section_files">Фото, видео и другие файлы</string>
