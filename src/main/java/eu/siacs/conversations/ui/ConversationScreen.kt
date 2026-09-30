@@ -104,6 +104,8 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.material3.toPath
+import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.drawBehind
@@ -204,6 +206,10 @@ class ConversationScreenState {
     internal val barBump = mutableIntStateOf(0)
     // 0..1: how hard the list arrived at the bottom (fling velocity), scaling the bump.
     internal val barBumpStrength = androidx.compose.runtime.mutableFloatStateOf(1f)
+    // Pull-up-at-the-bottom: displayed pull in px (rubber-banded) while a finger is dragging, and
+    // whether one still is; when it isn't, InputBar springs its own copy back to 0.
+    internal val barPullPx = androidx.compose.runtime.mutableFloatStateOf(0f)
+    internal val barPullDragging = mutableStateOf(false)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
     internal val deleteTarget = mutableStateOf<Message?>(null)
     internal val moderateTarget = mutableStateOf<Message?>(null)
@@ -1718,20 +1724,72 @@ private fun MessageList(
     // drag or slow scroll. The scroll-to-bottom button sets it to a fixed value instead, since a
     // programmatic scroll has no fling of its own. Read (and reset) when the bottom is reached.
     val flingSpeed = remember { floatArrayOf(0f) }
+    val experimentalAnimations =
+        remember { eu.siacs.conversations.utils.FeatureFlagPreferences(flagContext)
+            .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS) }
+    // Pull-up-at-the-bottom (the cookie): while the list is already at the bottom, a finger drag
+    // that has nowhere left to scroll accumulates into rawPull instead of being wasted. A rubber-
+    // band curve turns that into state.barPullPx (px, saturating), and letting go hands it to
+    // InputBar's spring. Also records fling speed for the arch above. One connection for both.
+    val pullDensity = androidx.compose.ui.platform.LocalDensity.current
+    val maxPullPx = with(pullDensity) { 150.dp.toPx() }
+    val rawPull = remember { floatArrayOf(0f) }
     val flingTracker =
-        remember {
+        remember(experimentalAnimations) {
             object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+                private fun publish() {
+                    state.barPullPx.floatValue =
+                        maxPullPx * (1f - kotlin.math.exp(-rawPull[0] / (maxPullPx * 1.4f)))
+                }
+
+                override fun onPreScroll(
+                    available: androidx.compose.ui.geometry.Offset,
+                    source: androidx.compose.ui.input.nestedscroll.NestedScrollSource,
+                ): androidx.compose.ui.geometry.Offset {
+                    // Dragging back down while a pull is out shrinks the pull before anything
+                    // else scrolls.
+                    if (experimentalAnimations && rawPull[0] > 0f && available.y > 0f) {
+                        val used = kotlin.math.min(rawPull[0], available.y)
+                        rawPull[0] -= used
+                        publish()
+                        if (rawPull[0] <= 0f) state.barPullDragging.value = false
+                        return androidx.compose.ui.geometry.Offset(0f, used)
+                    }
+                    return androidx.compose.ui.geometry.Offset.Zero
+                }
+
+                override fun onPostScroll(
+                    consumed: androidx.compose.ui.geometry.Offset,
+                    available: androidx.compose.ui.geometry.Offset,
+                    source: androidx.compose.ui.input.nestedscroll.NestedScrollSource,
+                ): androidx.compose.ui.geometry.Offset {
+                    if (experimentalAnimations &&
+                        source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.UserInput &&
+                        available.y < 0f &&
+                        listState.firstVisibleItemIndex == 0 &&
+                        listState.firstVisibleItemScrollOffset == 0
+                    ) {
+                        rawPull[0] -= available.y
+                        state.barPullDragging.value = true
+                        publish()
+                        return androidx.compose.ui.geometry.Offset(0f, available.y)
+                    }
+                    return androidx.compose.ui.geometry.Offset.Zero
+                }
+
                 override suspend fun onPreFling(
                     available: androidx.compose.ui.unit.Velocity
                 ): androidx.compose.ui.unit.Velocity {
                     flingSpeed[0] = kotlin.math.abs(available.y)
+                    if (rawPull[0] > 0f) {
+                        // Let go: InputBar springs the pull back to 0 from wherever it is.
+                        rawPull[0] = 0f
+                        state.barPullDragging.value = false
+                    }
                     return androidx.compose.ui.unit.Velocity.Zero
                 }
             }
         }
-    val experimentalAnimations =
-        remember { eu.siacs.conversations.utils.FeatureFlagPreferences(flagContext)
-            .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS) }
     if (experimentalAnimations) {
         LaunchedEffect(listState) {
             var wasAway = false
@@ -2040,6 +2098,10 @@ private fun MessageList(
             state = listState,
             reverseLayout = true,
             modifier = Modifier.fillMaxSize().nestedScroll(flingTracker),
+            // The stock stretch would fight the cookie for the same gesture.
+            overscrollEffect =
+                if (experimentalAnimations) null
+                else androidx.compose.foundation.rememberOverscrollEffect(),
             contentPadding =
                 androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
         ) {
@@ -6677,9 +6739,22 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
             barArch.animateTo(0f, spring(dampingRatio = 0.28f, stiffness = Spring.StiffnessLow))
         }
     }
+    // Pull-up-at-the-bottom cookie. While a finger is dragging, follow it exactly; on release,
+    // spring back underdamped so the cookie overshoots and wobbles before melting into the bar.
+    val pullAnim = remember { androidx.compose.animation.core.Animatable(0f) }
+    val cookieUnitPath = remember { normalizedCookiePath() }
+    if (experimentalArch) {
+        LaunchedEffect(state.barPullPx.floatValue, state.barPullDragging.value) {
+            if (state.barPullDragging.value) {
+                pullAnim.snapTo(state.barPullPx.floatValue)
+            } else {
+                pullAnim.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessLow))
+            }
+        }
+    }
     val archModifier =
         if (!experimentalArch) Modifier
-        else Modifier.drawBarArch(barArch, archColor)
+        else Modifier.drawBarArch(barArch, archColor).drawBarCookie(pullAnim, archColor, cookieUnitPath)
 
     SharedTransitionLayout {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = archModifier) {
@@ -7130,4 +7205,69 @@ private fun Modifier.drawBarArch(
         }
         drawPath(path, color)
     }
+}
+
+/** Material's own six-sided cookie, normalized to a 1x1 box centered on the origin (the shape's
+ * native coordinates aren't relied on), ready to be scaled to a diameter and moved. */
+private fun normalizedCookiePath(): androidx.compose.ui.graphics.Path {
+    // A Morph of the cookie with itself: the non-composable way this repo already turns a
+    // RoundedPolygon into a Compose Path (see DecorativeMorphingShape).
+    val polygon = MaterialShapeHelpers.cookie6Sided()
+    val path = androidx.compose.ui.graphics.Path()
+    androidx.graphics.shapes.Morph(polygon, polygon).toPath(0f, path)
+    val b = path.getBounds()
+    val m = android.graphics.Matrix()
+    m.postTranslate(-b.center.x, -b.center.y)
+    val maxDim = maxOf(b.width, b.height).coerceAtLeast(0.0001f)
+    m.postScale(1f / maxDim, 1f / maxDim)
+    path.asAndroidPath().transform(m)
+    return path
+}
+
+/** The pull-up cookie: pulled out from behind this node's top edge by `pull` px, a sharp
+ * vector shape (no blur/threshold trick) joined to the node by an analytic neck that starts wide,
+ * thins as the cookie rises, and finally pinches off -- the metaball look -- then springs back and
+ * merges again on release. Squashes/stretches with the spring's velocity for the jelly feel.
+ * Drawn behind the node, outside its bounds; the node's own opaque surface hides the part still
+ * "inside" the bar. */
+private fun Modifier.drawBarCookie(
+    pull: androidx.compose.animation.core.Animatable<Float, *>,
+    color: Color,
+    unitPath: androidx.compose.ui.graphics.Path,
+): Modifier = this.drawBehind {
+    val d = pull.value
+    if (d <= 1f) return@drawBehind
+    val fullR = 30.dp.toPx()
+    val r = fullR * (0.6f + 0.4f * (d / (fullR * 2f)).coerceAtMost(1f))
+    val cx = size.width / 2f
+    val cy = 0.3f * r - d
+    val bottom = cy + r
+
+    val gap = -bottom
+    val gapMax = 46.dp.toPx()
+    if (gap < gapMax) {
+        val t = (gap / gapMax).coerceIn(0f, 1f)
+        val a = r * 0.6f * (1f - t) + 0.5f
+        val b = r * (1.1f - 0.7f * t)
+        val topY = bottom - r * 0.5f
+        val g = maxOf(gap, 0f)
+        val neck = androidx.compose.ui.graphics.Path().apply {
+            moveTo(cx - b, 2f)
+            cubicTo(cx - b * 0.55f, -g * 0.15f, cx - a, topY + g * 0.35f, cx - a, topY)
+            lineTo(cx + a, topY)
+            cubicTo(cx + a, topY + g * 0.35f, cx + b * 0.55f, -g * 0.15f, cx + b, 2f)
+            close()
+        }
+        drawPath(neck, color)
+    }
+
+    val stretch = 1f + (pull.velocity / 6000f).coerceIn(-0.25f, 0.25f)
+    val m = android.graphics.Matrix()
+    m.postScale(2f * r / stretch, 2f * r * stretch)
+    m.postTranslate(cx, cy)
+    m.postRotate(d * 0.35f, cx, cy)
+    val cookie = androidx.compose.ui.graphics.Path()
+    cookie.addPath(unitPath)
+    cookie.asAndroidPath().transform(m)
+    drawPath(cookie, color)
 }
