@@ -105,6 +105,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
@@ -201,6 +202,8 @@ class ConversationScreenState {
     // away; InputBar plays its springy arch on every change. Only ever written behind the
     // EXPERIMENTAL_ANIMATIONS flag.
     internal val barBump = mutableIntStateOf(0)
+    // 0..1: how hard the list arrived at the bottom (fling velocity), scaling the bump.
+    internal val barBumpStrength = androidx.compose.runtime.mutableFloatStateOf(1f)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
     internal val deleteTarget = mutableStateOf<Message?>(null)
     internal val moderateTarget = mutableStateOf<Message?>(null)
@@ -1711,6 +1714,21 @@ private fun MessageList(
     // the bottom after having been scrolled away (a fling or the scroll-to-bottom button; opening
     // a chat already at the bottom never counts, hence the wasAway ratchet).
     val flagContext = LocalContext.current
+    // Speed (px/s) of the most recent fling, captured before the list consumes it; 0 for a plain
+    // drag or slow scroll. The scroll-to-bottom button sets it to a fixed value instead, since a
+    // programmatic scroll has no fling of its own. Read (and reset) when the bottom is reached.
+    val flingSpeed = remember { floatArrayOf(0f) }
+    val flingTracker =
+        remember {
+            object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+                override suspend fun onPreFling(
+                    available: androidx.compose.ui.unit.Velocity
+                ): androidx.compose.ui.unit.Velocity {
+                    flingSpeed[0] = kotlin.math.abs(available.y)
+                    return androidx.compose.ui.unit.Velocity.Zero
+                }
+            }
+        }
     val experimentalAnimations =
         remember { eu.siacs.conversations.utils.FeatureFlagPreferences(flagContext)
             .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS) }
@@ -1729,7 +1747,14 @@ private fun MessageList(
                     if (index >= 3) wasAway = true
                     else if (index == 0 && offset == 0 && wasAway) {
                         wasAway = false
-                        state.barBump.intValue++
+                        // Only a real fling (or the button) bounces; a slow scroll or drag just
+                        // lands. Strength ramps from 0 at 1200 px/s to full at 5000 px/s.
+                        val strength = ((flingSpeed[0] - 1200f) / 3800f).coerceIn(0f, 1f)
+                        flingSpeed[0] = 0f
+                        if (strength > 0.05f) {
+                            state.barBumpStrength.floatValue = strength
+                            state.barBump.intValue++
+                        }
                     }
                 }
         }
@@ -2014,7 +2039,7 @@ private fun MessageList(
         LazyColumn(
             state = listState,
             reverseLayout = true,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().nestedScroll(flingTracker),
             contentPadding =
                 androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
         ) {
@@ -2117,7 +2142,10 @@ private fun MessageList(
         ) {
             Box {
                 SmallFloatingActionButton(
-                    onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                    onClick = {
+                        flingSpeed[0] = 5000f
+                        scope.launch { listState.animateScrollToItem(0) }
+                    },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
                     Icon(
@@ -6642,7 +6670,10 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         LaunchedEffect(state.barBump.intValue) {
             if (state.barBump.intValue == 0) return@LaunchedEffect
             barArch.snapTo(0f)
-            barArch.animateTo(1f, spring(dampingRatio = 1f, stiffness = Spring.StiffnessHigh))
+            barArch.animateTo(
+                state.barBumpStrength.floatValue,
+                spring(dampingRatio = 1f, stiffness = Spring.StiffnessHigh),
+            )
             barArch.animateTo(0f, spring(dampingRatio = 0.28f, stiffness = Spring.StiffnessLow))
         }
     }
