@@ -8,16 +8,8 @@ fi
 
 cd "$CLAUDE_PROJECT_DIR"
 
-# Make sure the Android SDK exists BEFORE the async marker below, i.e. synchronously: a fresh
-# container may not have one at all, and a compile started while it's still downloading would
-# just fail with "SDK location not found". Instant no-op when it's already installed.
-"$CLAUDE_PROJECT_DIR/.claude/hooks/install-android-sdk.sh"
-
-# spotless (build.gradle.kts: ratchetFrom("2.21.0")) resolves that git tag, and a fresh clone has
-# none -- "No such reference '2.21.0'" fails spotlessCheck/Apply otherwise. Cheap and idempotent.
-git fetch --tags --quiet origin >/dev/null 2>&1 || true
-
-# Ensure local.properties points to the Android SDK
+# Instant setup first (before the async marker) so it's in place immediately: local.properties
+# and ANDROID_HOME point at /opt/android-sdk even while the SDK itself is still downloading.
 if [ ! -f local.properties ]; then
   echo "sdk.dir=/opt/android-sdk" > local.properties
 fi
@@ -25,8 +17,19 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo 'export ANDROID_HOME=/opt/android-sdk' >> "$CLAUDE_ENV_FILE"
 fi
 
-# Emit async marker so the session starts while the Gradle warm-up below runs in background
-echo '{"async": true, "asyncTimeout": 300000}'
+# Emit async marker so the session starts while everything below runs in the background.
+# Timeout is 15 min: a brand-new container downloads ~400 MB of SDK, then warms Gradle.
+# Trade-off: a compile started before the install finishes fails with "SDK location not found"
+# (or an SDK component missing) -- if that happens early in a session, just retry in a minute.
+echo '{"async": true, "asyncTimeout": 900000}'
+
+# spotless (build.gradle.kts: ratchetFrom("2.21.0")) resolves that git tag, and a fresh clone has
+# none -- "No such reference '2.21.0'" fails spotlessCheck/Apply otherwise. Cheap and idempotent.
+git fetch --tags --quiet origin >/dev/null 2>&1 || true
+
+# Install the Android SDK if this container doesn't have one (instant no-op otherwise). Must
+# finish before the Gradle warm-up below, which needs it.
+"$CLAUDE_PROJECT_DIR/.claude/hooks/install-android-sdk.sh"
 
 # Walk the full build task graph for the main variant without executing any tasks.
 # This downloads the Gradle wrapper, all Gradle plugins (AGP, Kotlin, Spotless),
