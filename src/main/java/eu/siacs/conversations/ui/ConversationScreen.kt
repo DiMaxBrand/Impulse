@@ -4700,7 +4700,11 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
             ) {
                 // viewIconState/checkmarkPhase are the values this footer last composed, i.e. the
                 // state the tapped icon is showing; the sheet bolds the matching legend row.
-                StatusLegendSheetState.current.value = legendKeyFor(viewIconState, checkmarkPhase)
+                StatusLegendSheetState.current.value =
+                    legendKeyFor(viewIconState, checkmarkPhase)
+                        // A failed send that isn't a deliberate cancel has no checkmark phase; it
+                        // shows the generic error glyph, which the legend lists as ERROR.
+                        ?: if (status == Message.STATUS_SEND_FAILED) StatusLegendKey.ERROR else null
                 StatusLegendSheetState.visible.value = true
             }
             if (viewIconState != null) {

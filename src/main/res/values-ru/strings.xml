@@ -1344,7 +1344,7 @@
     <string name="pinned_message">Закреплённое сообщение</string>
     <string name="pinned_messages">Закреплённые сообщения</string>
     <string name="status_legend_title">Значки статуса</string>
-    <string name="status_legend_section_text">Текстовые сообщения</string>
+    <string name="status_legend_section_all">Все сообщения</string>
     <string name="status_legend_section_files">Фото, видео и другие файлы</string>
     <string name="status_legend_section_media">Фото и видео</string>
     <string name="status_legend_section_voice">Голосовые сообщения</string>
@@ -1352,10 +1352,11 @@
     <string name="status_legend_sent">Отправлено, не доставлено</string>
     <string name="status_legend_delivered">Доставлено, не прочитано</string>
     <string name="status_legend_read">Прочитано</string>
+    <string name="status_legend_error">Не удалось отправить сообщение. Нажмите и удерживайте его, чтобы узнать причину.</string>
     <string name="status_legend_uploading">Загружается</string>
     <string name="status_legend_p2p">Отправляется напрямую на телефон получателя (файл оказался слишком большим для обычной отправки)</string>
     <string name="status_legend_cancelled">Загрузка отменена</string>
-    <string name="status_legend_files_note">После загрузки статус меняется так же, как у текстовых сообщений выше.</string>
+    <string name="status_legend_files_note">После загрузки статус меняется так же, как в разделе «Все сообщения».</string>
     <string name="status_legend_eye_viewing">Сейчас открыто или только что нажали воспроизведение</string>
     <string name="status_legend_eye_viewed">Просмотр подтверждён</string>
     <string name="status_legend_eye_half">Только для видео: вернулись в приложение, но не тогда, когда видео должно было закончиться — что-то посмотрели, но не факт, что до конца</string>

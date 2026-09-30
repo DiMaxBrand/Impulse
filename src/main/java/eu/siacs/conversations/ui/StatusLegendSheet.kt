@@ -28,7 +28,7 @@ import eu.siacs.conversations.R
 /** One entry per legend row -- what the tapped status icon currently is, so the sheet can bold
  * exactly that row. */
 enum class StatusLegendKey {
-    DOTS, SENT, DELIVERED, READ,
+    DOTS, SENT, DELIVERED, READ, ERROR,
     UPLOADING, P2P, CANCELLED,
     EYE_VIEWING, EYE_VIEWED, EYE_HALF, EYE_UNKNOWN,
     LISTENING, LISTENED, LISTEN_UNKNOWN,
@@ -92,11 +92,12 @@ fun StatusLegendSheet(onDismiss: () -> Unit) {
                 modifier = Modifier.padding(bottom = 12.dp),
             )
 
-            LegendSection(stringResource(R.string.status_legend_section_text)) {
+            LegendSection(stringResource(R.string.status_legend_section_all)) {
                 LegendItem(R.drawable.ic_more_horiz_24dp, null, R.string.status_legend_dots, current == StatusLegendKey.DOTS)
                 LegendItem(R.drawable.ic_done_24dp, null, R.string.status_legend_sent, current == StatusLegendKey.SENT)
                 LegendItem(R.drawable.ic_done_all_24dp, null, R.string.status_legend_delivered, current == StatusLegendKey.DELIVERED)
                 LegendItem(R.drawable.ic_done_all_bold_24dp, VIEWED_GREEN, R.string.status_legend_read, current == StatusLegendKey.READ)
+                LegendItem(R.drawable.ic_error_24dp, null, R.string.status_legend_error, current == StatusLegendKey.ERROR)
             }
 
             LegendSection(stringResource(R.string.status_legend_section_files)) {
