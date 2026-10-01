@@ -1,6 +1,9 @@
 package eu.siacs.conversations.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Column
@@ -91,7 +94,16 @@ internal fun DownloadProgressBar(onComplete: () -> Unit, modifier: Modifier = Mo
                 )
             }
             if (fraction > 0f) {
-                LinearWavyProgressIndicator(progress = { fraction })
+                // The download is polled every 500ms, so `fraction` arrives in steps and the bar
+                // used to jump with no animation at all. A soft spring glides it between polls;
+                // critically damped (no bounce), since a progress bar overshooting its target or
+                // briefly running backwards would read as wrong.
+                val animatedFraction by animateFloatAsState(
+                    targetValue = fraction,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
+                    label = "updateDownloadProgress",
+                )
+                LinearWavyProgressIndicator(progress = { animatedFraction.coerceIn(0f, 1f) })
             } else {
                 LinearWavyProgressIndicator()
             }
