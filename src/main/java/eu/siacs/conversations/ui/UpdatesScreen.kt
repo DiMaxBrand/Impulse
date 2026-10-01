@@ -60,7 +60,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -104,7 +106,9 @@ fun UpdatesScreen(
     onChannelSelected: (UpdateChannel) -> Unit,
     onAutoCheckToggled: (Boolean) -> Unit,
     onCheckNow: () -> Unit,
+    onMinIntervalSelected: (Int) -> Unit = {},
 ) {
+    var intervalPickerVisible by remember { mutableStateOf(false) }
     var channelPickerVisible by remember { mutableStateOf(false) }
     var infoChannel by remember { mutableStateOf<UpdateChannel?>(null) }
 
@@ -202,6 +206,26 @@ fun UpdatesScreen(
                                 onCheckedChange = onAutoCheckToggled,
                             )
                         },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
+                }
+                ExpressiveGroupRow(GroupPosition.MIDDLE) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.updates_wait_label)) },
+                        supportingContent = {
+                            Text(
+                                text = stringResource(waitOptionLabel(state.minUpdateIntervalHours)),
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        trailingContent = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_expand_more_24dp),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        modifier = Modifier.clickableRow(onClick = { intervalPickerVisible = true }),
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
                 }
@@ -321,6 +345,17 @@ fun UpdatesScreen(
                 }
             }
         }
+    }
+
+    if (intervalPickerVisible) {
+        MinIntervalDialog(
+            selectedHours = state.minUpdateIntervalHours,
+            onSelect = { hours ->
+                onMinIntervalSelected(hours)
+                intervalPickerVisible = false
+            },
+            onDismiss = { intervalPickerVisible = false },
+        )
     }
 
     // Download-progress UI (the sheet) is no longer rendered inline here -- it's the shared
@@ -1274,6 +1309,7 @@ data class UpdatesUiState(
     val currentVersion: String = "",
     val selectedChannel: UpdateChannel = UpdateChannel.STABLE,
     val autoCheck: Boolean = true,
+    val minUpdateIntervalHours: Int = 0,
     val checkStatus: CheckStatus = CheckStatus.IDLE,
     val downloadPhase: DownloadPhase = DownloadPhase.IDLE,
     val downloadProgress: Float = 0f,
@@ -1287,3 +1323,54 @@ data class UpdatesUiState(
     val canInstallDirectly: Boolean = true,
     val isFirstUpdate: Boolean = false,
 )
+
+/** The "Wait between updates" choices: hours -> label. 0 = off. */
+private val WAIT_OPTIONS = listOf(
+    0 to R.string.updates_wait_off,
+    1 to R.string.updates_wait_1h,
+    6 to R.string.updates_wait_6h,
+    12 to R.string.updates_wait_12h,
+    24 to R.string.updates_wait_1d,
+    72 to R.string.updates_wait_3d,
+    168 to R.string.updates_wait_7d,
+)
+
+private fun waitOptionLabel(hours: Int): Int =
+    WAIT_OPTIONS.firstOrNull { it.first == hours }?.second ?: R.string.updates_wait_off
+
+@Composable
+private fun MinIntervalDialog(
+    selectedHours: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.updates_wait_label)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.updates_wait_explainer),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                WAIT_OPTIONS.forEach { (hours, labelRes) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(hours) }
+                            .padding(vertical = 4.dp),
+                    ) {
+                        RadioButton(selected = hours == selectedHours, onClick = { onSelect(hours) })
+                        Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+}

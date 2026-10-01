@@ -54,6 +54,9 @@ object UpdateCheckHelper {
         // manual version picker.
         prefs.clearIfNotNewerThan(eu.siacs.conversations.BuildConfig.VERSION_NAME)
         if (!prefs.autoCheck) return
+        // "Wait between updates": stay completely quiet (no network check, nothing marked pending,
+        // no auto-download) until enough time has passed since the app was last updated.
+        if (prefs.isWithinQuietWindow(context)) return
         val result = try {
             UpdateChecker(OkHttpClient()).checkForUpdate(prefs.selectedChannel)
         } catch (_: Exception) {

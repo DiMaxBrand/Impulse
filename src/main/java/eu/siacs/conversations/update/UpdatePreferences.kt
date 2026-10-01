@@ -3,6 +3,7 @@ package eu.siacs.conversations.update
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import java.util.concurrent.TimeUnit
 
 class UpdatePreferences(context: Context) {
 
@@ -16,6 +17,29 @@ class UpdatePreferences(context: Context) {
     var autoCheck: Boolean
         get() = prefs.getBoolean(KEY_AUTO_CHECK, true)
         set(value) = prefs.edit { putBoolean(KEY_AUTO_CHECK, value) }
+
+    /** "Wait between updates", in hours; 0 = off (the default). After the app has been updated,
+     * automatic checks and the auto-popup stay quiet until this much time has passed. For people
+     * on a fast channel (beta/alpha) who don't want a nudge every time the developers publish. */
+    var minUpdateIntervalHours: Int
+        get() = prefs.getInt(KEY_MIN_INTERVAL_HOURS, 0)
+        set(value) = prefs.edit { putInt(KEY_MIN_INTERVAL_HOURS, value) }
+
+    /** True while the "wait between updates" window after the app's last install/update is still
+     * running. Measured from the OS's own package record (lastUpdateTime), so it needs no
+     * bookkeeping of our own and survives anything that updates the app, in-app or not. Only the
+     * automatic paths consult this -- the manual "Check now" deliberately ignores it. */
+    fun isWithinQuietWindow(context: Context, nowMs: Long = System.currentTimeMillis()): Boolean {
+        val hours = minUpdateIntervalHours
+        if (hours <= 0) return false
+        val lastUpdate =
+            try {
+                context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime
+            } catch (_: Exception) {
+                return false
+            }
+        return nowMs - lastUpdate < TimeUnit.HOURS.toMillis(hours.toLong())
+    }
 
     var pendingUpdateVersion: String?
         get() = prefs.getString(KEY_PENDING_VERSION, null)
@@ -131,6 +155,7 @@ class UpdatePreferences(context: Context) {
     companion object {
         private const val KEY_CHANNEL = "channel"
         private const val KEY_AUTO_CHECK = "auto_check"
+        private const val KEY_MIN_INTERVAL_HOURS = "min_update_interval_hours"
         private const val KEY_PENDING_VERSION = "pending_version"
         private const val KEY_PENDING_URL = "pending_url"
         private const val KEY_PENDING_RELEASE_NOTES = "pending_release_notes"

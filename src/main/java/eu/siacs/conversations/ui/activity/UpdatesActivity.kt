@@ -84,6 +84,10 @@ class UpdatesActivity : ActionBarActivity() {
                                 uiState = uiState.copy(autoCheck = enabled)
                             },
                             onCheckNow = { triggerManualCheck() },
+                            onMinIntervalSelected = { hours ->
+                                prefs.minUpdateIntervalHours = hours
+                                uiState = uiState.copy(minUpdateIntervalHours = hours)
+                            },
                         )
                     }
                 }
@@ -125,6 +129,7 @@ class UpdatesActivity : ActionBarActivity() {
             currentVersion = currentVersion,
             selectedChannel = prefs.selectedChannel,
             autoCheck = prefs.autoCheck,
+            minUpdateIntervalHours = prefs.minUpdateIntervalHours,
             downloadPhase = restoredPhase,
             pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
             releaseNotes = prefs.pendingReleaseNotes,

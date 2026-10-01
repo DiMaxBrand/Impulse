@@ -1318,6 +1318,15 @@
     <string name="updates_channel_label">Channel</string>
     <string name="updates_auto_check_label">Auto-check for updates</string>
     <string name="updates_check_now">Check now</string>
+    <string name="updates_wait_label">Wait between updates</string>
+    <string name="updates_wait_explainer">After Impulse has been updated, it won\'t look for or offer another update until this much time has passed. \"Check now\" always works.</string>
+    <string name="updates_wait_off">Off</string>
+    <string name="updates_wait_1h">1 hour</string>
+    <string name="updates_wait_6h">6 hours</string>
+    <string name="updates_wait_12h">12 hours</string>
+    <string name="updates_wait_1d">1 day</string>
+    <string name="updates_wait_3d">3 days</string>
+    <string name="updates_wait_7d">7 days</string>
     <string name="updates_download">Download</string>
     <string name="updates_proceed_to_install">Proceed to install</string>
     <string name="updates_stop">Stop</string>

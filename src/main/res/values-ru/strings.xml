@@ -1387,6 +1387,15 @@
     <string name="updates_channel_label">Канал</string>
     <string name="updates_auto_check_label">Автопроверка обновлений</string>
     <string name="updates_check_now">Проверить сейчас</string>
+    <string name="updates_wait_label">Пауза между обновлениями</string>
+    <string name="updates_wait_explainer">После обновления Impulse не будет искать и предлагать новое, пока не пройдёт это время. Кнопка «Проверить сейчас» работает всегда.</string>
+    <string name="updates_wait_off">Выкл.</string>
+    <string name="updates_wait_1h">1 час</string>
+    <string name="updates_wait_6h">6 часов</string>
+    <string name="updates_wait_12h">12 часов</string>
+    <string name="updates_wait_1d">1 день</string>
+    <string name="updates_wait_3d">3 дня</string>
+    <string name="updates_wait_7d">7 дней</string>
     <string name="updates_download">Загрузить</string>
     <string name="updates_proceed_to_install">Перейти к установке</string>
     <string name="updates_stop">Остановить</string>

@@ -293,6 +293,10 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         @JvmStatic
         fun shouldShow(context: Context): Boolean {
             val prefs = UpdatePreferences(context)
+            // "Wait between updates": no automatic popup during the window, even for something
+            // already pending/downloaded. The Updates screen opens the sheet directly, so a
+            // manual "Check now" is unaffected.
+            if (prefs.isWithinQuietWindow(context)) return false
             // A non-null downloadedApkPath isn't enough on its own — the file it points to can
             // go missing behind our back (the nightly ApkCleanupWorker runs on an independent
             // schedule from the download check, so it can race an in-progress/just-finished
