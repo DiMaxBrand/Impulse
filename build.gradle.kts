@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42551
-val appVersion = "1.15.0-beta.88+2.20.0"
+val baseVersionCode = 42552
+val appVersion = "1.15.0-beta.89+2.20.0"
 
 @Suppress("DEPRECATION")
 android {
@@ -180,6 +180,13 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation("androidx.activity:activity-compose:1.10.1")
+    // Compose UI (pulled in at 1.12 alpha by material3 1.5.0-alpha) routes back gestures through
+    // androidx.navigationevent, which it resolves to 1.1.0 -- and 1.1.x throws "This input is not
+    // added to any dispatcher" (IllegalStateException, crash on Xiaomi/HyperOS) when the platform's
+    // back-progress animator delivers a frame to an input that was just removed. Fixed in 1.2.0-alpha01
+    // ("ignore navigation events dispatched to disconnected inputs"); pin the newest so Gradle's
+    // highest-wins resolution lifts the transitive 1.1.0. Drop once Compose itself depends on >= 1.2.
+    implementation("androidx.navigationevent:navigationevent:1.2.0-rc01")
     implementation("androidx.lifecycle:lifecycle-process:2.9.2")
     // Pinch-zoom + pan for the full-screen media viewer. Plain "zoomable" artifact (not
     // "zoomable-image-coil") since this app decodes bitmaps itself and has no image loader.
