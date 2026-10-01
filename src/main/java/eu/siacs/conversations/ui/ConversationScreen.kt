@@ -203,6 +203,11 @@ class ConversationScreenState {
     // Bumped (event counter) by MessageList when the list reaches the bottom after being scrolled
     // away; InputBar plays its springy arch on every change. Only ever written behind the
     // EXPERIMENTAL_ANIMATIONS flag.
+    // The single rubber-band stretch (px, 0 at rest, >0 = stretched) shared by the message list
+    // (lifts) and the input bar (its top edge arches up) so the two move as one. Driven only by
+    // MessageList behind EXPERIMENTAL_ANIMATIONS; read in graphicsLayer/drawBehind so a change never
+    // recomposes anything.
+    internal val rubber = androidx.compose.animation.core.Animatable(0f)
     internal val barBump = mutableIntStateOf(0)
     // 0..1: how hard the list arrived at the bottom (fling velocity), scaling the bump.
     internal val barBumpStrength = androidx.compose.runtime.mutableFloatStateOf(1f)
@@ -1732,7 +1737,8 @@ private fun MessageList(
     // band curve turns that into state.barPullPx (px, saturating), and letting go hands it to
     // InputBar's spring. Also records fling speed for the arch above. One connection for both.
     val pullDensity = androidx.compose.ui.platform.LocalDensity.current
-    val maxPullPx = with(pullDensity) { 150.dp.toPx() }
+    val maxPullPx = with(pullDensity) { 72.dp.toPx() }
+    val impulsePx = with(pullDensity) { 28.dp.toPx() }
     val rawPull = remember { floatArrayOf(0f) }
     val flingTracker =
         remember(experimentalAnimations) {
@@ -1790,6 +1796,28 @@ private fun MessageList(
                 }
             }
         }
+    if (experimentalAnimations) {
+        // Finger pulling past the bottom: the band follows the drag exactly; on release it springs
+        // back underdamped (a couple of bounces).
+        LaunchedEffect(state.barPullPx.floatValue, state.barPullDragging.value) {
+            if (state.barPullDragging.value) {
+                state.rubber.snapTo(state.barPullPx.floatValue)
+            } else if (state.rubber.value != 0f) {
+                state.rubber.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessLow))
+            }
+        }
+        // Arriving at the bottom hard (a fling, or the scroll-to-bottom button): a quick stretch
+        // scaled by how hard, then the same underdamped release.
+        LaunchedEffect(state.barBump.intValue) {
+            if (state.barBump.intValue == 0) return@LaunchedEffect
+            state.rubber.snapTo(0f)
+            state.rubber.animateTo(
+                state.barBumpStrength.floatValue * impulsePx,
+                spring(dampingRatio = 1f, stiffness = Spring.StiffnessHigh),
+            )
+            state.rubber.animateTo(0f, spring(dampingRatio = 0.28f, stiffness = Spring.StiffnessLow))
+        }
+    }
     if (experimentalAnimations) {
         LaunchedEffect(listState) {
             var wasAway = false
@@ -2097,7 +2125,20 @@ private fun MessageList(
         LazyColumn(
             state = listState,
             reverseLayout = true,
-            modifier = Modifier.fillMaxSize().nestedScroll(flingTracker),
+            modifier =
+                Modifier.fillMaxSize()
+                    .nestedScroll(flingTracker)
+                    .then(
+                        if (experimentalAnimations) {
+                            // Lifts by 40% of the band; the bar's arch (edges at 40%, middle at
+                            // 100%) covers the strip this leaves, so the two read as one stretch.
+                            Modifier.graphicsLayer {
+                                translationY = -0.4f * state.rubber.value.coerceAtLeast(0f)
+                            }
+                        } else {
+                            Modifier
+                        }
+                    ),
             // The stock stretch would fight the cookie for the same gesture.
             overscrollEffect =
                 if (experimentalAnimations) null
@@ -2205,8 +2246,16 @@ private fun MessageList(
             Box {
                 SmallFloatingActionButton(
                     onClick = {
-                        flingSpeed[0] = 5000f
-                        scope.launch { listState.animateScrollToItem(0) }
+                        // Cleared so the fling detector doesn't also fire on arrival with a stale
+                        // speed; the band is triggered explicitly once the scroll has landed.
+                        flingSpeed[0] = 0f
+                        scope.launch {
+                            listState.animateScrollToItem(0)
+                            if (experimentalAnimations) {
+                                state.barBumpStrength.floatValue = 1f
+                                state.barBump.intValue++
+                            }
+                        }
                     },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
@@ -6720,41 +6769,16 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     // SharedTransitionLayout wraps the whole bar so the attach (paperclip) icon can share
     // identity between its collapsed toggle position and its slot in the expanded toolbar
     // below, instead of the two independently fading in/out as unrelated icons.
-    // EXPERIMENTAL_ANIMATIONS: the bar's own color arches up in the middle above its top edge and
-    // springs back with a few decaying bounces. `barArch` is 0 at rest; every barBump tick snaps
-    // a short rise up, then releases it on a deliberately underdamped spring (the rubber band).
+    // EXPERIMENTAL_ANIMATIONS: the bar's own color stretches up above its top edge by the shared
+    // rubber-band value (state.rubber), highest in the middle -- the message list lifts by the
+    // same band, see MessageList.
     val experimentalArch =
         remember { eu.siacs.conversations.utils.FeatureFlagPreferences(context)
             .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS) }
-    val barArch = remember { androidx.compose.animation.core.Animatable(0f) }
     val archColor = MaterialTheme.colorScheme.surfaceContainer
-    if (experimentalArch) {
-        LaunchedEffect(state.barBump.intValue) {
-            if (state.barBump.intValue == 0) return@LaunchedEffect
-            barArch.snapTo(0f)
-            barArch.animateTo(
-                state.barBumpStrength.floatValue,
-                spring(dampingRatio = 1f, stiffness = Spring.StiffnessHigh),
-            )
-            barArch.animateTo(0f, spring(dampingRatio = 0.28f, stiffness = Spring.StiffnessLow))
-        }
-    }
-    // Pull-up-at-the-bottom cookie. While a finger is dragging, follow it exactly; on release,
-    // spring back underdamped so the cookie overshoots and wobbles before melting into the bar.
-    val pullAnim = remember { androidx.compose.animation.core.Animatable(0f) }
-    val cookieUnitPath = remember { normalizedCookiePath() }
-    if (experimentalArch) {
-        LaunchedEffect(state.barPullPx.floatValue, state.barPullDragging.value) {
-            if (state.barPullDragging.value) {
-                pullAnim.snapTo(state.barPullPx.floatValue)
-            } else {
-                pullAnim.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessLow))
-            }
-        }
-    }
     val archModifier =
         if (!experimentalArch) Modifier
-        else Modifier.drawBarArch(barArch, archColor).drawBarCookie(pullAnim, archColor, cookieUnitPath)
+        else Modifier.drawBarArch(state.rubber, archColor)
 
     SharedTransitionLayout {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = archModifier) {
@@ -7186,88 +7210,24 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     } // end SharedTransitionLayout
 }
 
-/** Draws a bump above this node's top edge, the same color as the node, peaking in the middle
- * (a quadratic curve from corner to corner) by up to 22dp * [progress]. Negative progress (the
- * spring's undershoot) draws nothing -- the bar itself is already flat there. Drawn outside the
- * node's bounds on purpose; nothing in the parent chain clips. */
+/** Draws the bar's stretch: above this node's top edge, the same color as the node, rising by
+ * [progress] px in the middle and 40% of that at the corners (a quadratic curve between them).
+ * Negative progress (the spring's undershoot) draws nothing -- the bar is already flat there.
+ * Drawn outside the node's bounds on purpose; nothing in the parent chain clips. */
 private fun Modifier.drawBarArch(
     progress: androidx.compose.animation.core.Animatable<Float, *>,
     color: Color,
 ): Modifier = this.drawBehind {
-    val lift = progress.value * 22.dp.toPx()
+    val lift = progress.value
     if (lift > 0.5f) {
+        val edge = lift * 0.4f
         val path = androidx.compose.ui.graphics.Path().apply {
             moveTo(0f, 2f)
-            quadraticTo(size.width / 2f, -2f * lift + 2f, size.width, 2f)
-            lineTo(size.width, 6f)
-            lineTo(0f, 6f)
+            lineTo(0f, -edge)
+            quadraticTo(size.width / 2f, -2f * lift + edge, size.width, -edge)
+            lineTo(size.width, 2f)
             close()
         }
         drawPath(path, color)
     }
-}
-
-/** Material's own six-sided cookie, normalized to a 1x1 box centered on the origin (the shape's
- * native coordinates aren't relied on), ready to be scaled to a diameter and moved. */
-private fun normalizedCookiePath(): androidx.compose.ui.graphics.Path {
-    // A Morph of the cookie with itself: the non-composable way this repo already turns a
-    // RoundedPolygon into a Compose Path (see DecorativeMorphingShape).
-    val polygon = MaterialShapeHelpers.cookie6Sided()
-    val path = androidx.compose.ui.graphics.Path()
-    androidx.graphics.shapes.Morph(polygon, polygon).toPath(0f, path)
-    val b = path.getBounds()
-    val m = android.graphics.Matrix()
-    m.postTranslate(-b.center.x, -b.center.y)
-    val maxDim = maxOf(b.width, b.height).coerceAtLeast(0.0001f)
-    m.postScale(1f / maxDim, 1f / maxDim)
-    path.asAndroidPath().transform(m)
-    return path
-}
-
-/** The pull-up cookie: pulled out from behind this node's top edge by `pull` px, a sharp
- * vector shape (no blur/threshold trick) joined to the node by an analytic neck that starts wide,
- * thins as the cookie rises, and finally pinches off -- the metaball look -- then springs back and
- * merges again on release. Squashes/stretches with the spring's velocity for the jelly feel.
- * Drawn behind the node, outside its bounds; the node's own opaque surface hides the part still
- * "inside" the bar. */
-private fun Modifier.drawBarCookie(
-    pull: androidx.compose.animation.core.Animatable<Float, *>,
-    color: Color,
-    unitPath: androidx.compose.ui.graphics.Path,
-): Modifier = this.drawBehind {
-    val d = pull.value
-    if (d <= 1f) return@drawBehind
-    val fullR = 30.dp.toPx()
-    val r = fullR * (0.6f + 0.4f * (d / (fullR * 2f)).coerceAtMost(1f))
-    val cx = size.width / 2f
-    val cy = 0.3f * r - d
-    val bottom = cy + r
-
-    val gap = -bottom
-    val gapMax = 46.dp.toPx()
-    if (gap < gapMax) {
-        val t = (gap / gapMax).coerceIn(0f, 1f)
-        val a = r * 0.6f * (1f - t) + 0.5f
-        val b = r * (1.1f - 0.7f * t)
-        val topY = bottom - r * 0.5f
-        val g = maxOf(gap, 0f)
-        val neck = androidx.compose.ui.graphics.Path().apply {
-            moveTo(cx - b, 2f)
-            cubicTo(cx - b * 0.55f, -g * 0.15f, cx - a, topY + g * 0.35f, cx - a, topY)
-            lineTo(cx + a, topY)
-            cubicTo(cx + a, topY + g * 0.35f, cx + b * 0.55f, -g * 0.15f, cx + b, 2f)
-            close()
-        }
-        drawPath(neck, color)
-    }
-
-    val stretch = 1f + (pull.velocity / 6000f).coerceIn(-0.25f, 0.25f)
-    val m = android.graphics.Matrix()
-    m.postScale(2f * r / stretch, 2f * r * stretch)
-    m.postTranslate(cx, cy)
-    m.postRotate(d * 0.35f, cx, cy)
-    val cookie = androidx.compose.ui.graphics.Path()
-    cookie.addPath(unitPath)
-    cookie.asAndroidPath().transform(m)
-    drawPath(cookie, color)
 }
