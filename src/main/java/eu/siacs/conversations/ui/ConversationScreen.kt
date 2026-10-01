@@ -1737,8 +1737,8 @@ private fun MessageList(
     // band curve turns that into state.barPullPx (px, saturating), and letting go hands it to
     // InputBar's spring. Also records fling speed for the arch above. One connection for both.
     val pullDensity = androidx.compose.ui.platform.LocalDensity.current
-    val maxPullPx = with(pullDensity) { 72.dp.toPx() }
-    val impulsePx = with(pullDensity) { 28.dp.toPx() }
+    val maxPullPx = with(pullDensity) { 56.dp.toPx() }
+    val impulsePx = with(pullDensity) { 24.dp.toPx() }
     val rawPull = remember { floatArrayOf(0f) }
     val flingTracker =
         remember(experimentalAnimations) {
@@ -2134,7 +2134,7 @@ private fun MessageList(
                 androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
         ) {
             // EXPERIMENTAL_ANIMATIONS: every row lifts by the shared rubber band, scaled by how far
-            // it sits from the bottom (rubberFalloff), so neighbours separate like a stretched
+            // it sits from the bottom (rubberOffsetFactor), so neighbours separate like a stretched
             // elastic instead of the list sliding as one block. `position` counts the typing bubble
             // and the local-time row, which sit below the first message.
             val localTime = localTimeForContact
@@ -7276,22 +7276,34 @@ private fun Modifier.drawBarArch(
     }
 }
 
-/** How much of the rubber band a row at [position] (0 = lowest row) follows: 100%, then 70%, then
- * 50%, and from there it halves for every further row (25%, 12.5%, ...) until it is negligible. */
-private fun rubberFalloff(position: Int): Float =
+/** The extra slide the row at [position] (0 = lowest row) adds on top of what the rows below it
+ * already pushed: 100%, then 70%, then 50%, and from there it halves for every further row
+ * (25%, 12.5%, ...). */
+private fun rubberStep(position: Int): Float =
     when {
         position <= 0 -> 1f
         position == 1 -> 0.7f
         else -> Math.pow(0.5, (position - 1).toDouble()).toFloat()
     }
 
-/** Lifts this row by the shared rubber-band value times its falloff. Read inside graphicsLayer so
+/** Total displacement factor of the row at [position]: its own step PLUS everything below it, i.e.
+ * a chain where each row pushes the whole batch above it. Upper rows therefore always move at
+ * least as far as lower ones, so rows never slide into each other -- the gap between neighbours
+ * just opens by the upper one's step. Converges to ~2.7x the band, so the very top rows travel
+ * furthest (and may leave the screen, which is intended). */
+private fun rubberOffsetFactor(position: Int): Float {
+    var total = 0f
+    for (i in 0..position.coerceAtLeast(0)) total += rubberStep(i)
+    return total
+}
+
+/** Lifts this row by the shared rubber-band value times its chained offset factor. Read inside graphicsLayer so
  * a change only redraws, never recomposes the rows. */
 private fun Modifier.rubberLift(
     rubber: androidx.compose.animation.core.Animatable<Float, *>,
     position: Int,
 ): Modifier {
-    val factor = rubberFalloff(position)
+    val factor = rubberOffsetFactor(position)
     return this.graphicsLayer {
         val v = rubber.value
         translationY = if (v > 0f) -v * factor else 0f
