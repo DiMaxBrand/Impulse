@@ -2130,10 +2130,12 @@ private fun MessageList(
                     .nestedScroll(flingTracker)
                     .then(
                         if (experimentalAnimations) {
-                            // Lifts by 40% of the band; the bar's arch (edges at 40%, middle at
-                            // 100%) covers the strip this leaves, so the two read as one stretch.
+                            // The list is what rubber-bands: it lifts by the whole band and
+                            // settles back, leaving empty space under it while stretched. The
+                            // input bar only gets a slight lift (see drawBarArch) so it never
+                            // covers messages.
                             Modifier.graphicsLayer {
-                                translationY = -0.4f * state.rubber.value.coerceAtLeast(0f)
+                                translationY = -state.rubber.value.coerceAtLeast(0f)
                             }
                         } else {
                             Modifier
@@ -6769,9 +6771,9 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     // SharedTransitionLayout wraps the whole bar so the attach (paperclip) icon can share
     // identity between its collapsed toggle position and its slot in the expanded toolbar
     // below, instead of the two independently fading in/out as unrelated icons.
-    // EXPERIMENTAL_ANIMATIONS: the bar's own color stretches up above its top edge by the shared
-    // rubber-band value (state.rubber), highest in the middle -- the message list lifts by the
-    // same band, see MessageList.
+    // EXPERIMENTAL_ANIMATIONS: the bar's own color bumps up slightly above its top edge, driven by
+    // the shared rubber-band value (state.rubber) -- the message list does the real stretching,
+    // see MessageList.
     val experimentalArch =
         remember { eu.siacs.conversations.utils.FeatureFlagPreferences(context)
             .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS) }
@@ -7210,17 +7212,18 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     } // end SharedTransitionLayout
 }
 
-/** Draws the bar's stretch: above this node's top edge, the same color as the node, rising by
- * [progress] px in the middle and 40% of that at the corners (a quadratic curve between them).
- * Negative progress (the spring's undershoot) draws nothing -- the bar is already flat there.
- * Drawn outside the node's bounds on purpose; nothing in the parent chain clips. */
+/** Draws the bar's share of the stretch: a slight bump above this node's top edge, the same color
+ * as the node, a quarter of [progress] px (capped at 10dp) in the middle and almost nothing at the
+ * corners -- enough to read as the bar being pulled along, never enough to cover messages (the
+ * message list does the real rubber-banding). Negative progress (the spring's undershoot) draws
+ * nothing. Drawn outside the node's bounds on purpose; nothing in the parent chain clips. */
 private fun Modifier.drawBarArch(
     progress: androidx.compose.animation.core.Animatable<Float, *>,
     color: Color,
 ): Modifier = this.drawBehind {
-    val lift = progress.value
+    val lift = (progress.value * 0.25f).coerceAtMost(10.dp.toPx())
     if (lift > 0.5f) {
-        val edge = lift * 0.4f
+        val edge = lift * 0.15f
         val path = androidx.compose.ui.graphics.Path().apply {
             moveTo(0f, 2f)
             lineTo(0f, -edge)
