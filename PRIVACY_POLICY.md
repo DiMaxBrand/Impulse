@@ -24,14 +24,14 @@ If you created your account in the app (that is, on `on-chat.ru`), the server st
 - group chats and channels you created or joined;
 - technical server logs (IP address, connection time): **[WHETHER LOGS ARE KEPT AND FOR HOW LONG]**.
 
-This data is used only to run the messenger. The Developer does not use it for advertising, does not sell it, and does not pass it to third parties except as the law requires (section 9).
+This data is used only to run the messenger. The Developer does not use it for advertising, does not sell it, and does not pass it to third parties.
 
 If you connect an account on **another** server, that server's operator is a third party, not the Developer, and your data there is handled under that operator's rules.
 
 ## 3. Encryption, and who can read messages
 
 - **OMEMO is on by default.** Message content is encrypted on your device and decrypted only on your correspondents' devices. The server, including its administrator, only receives and stores encrypted data and cannot read the content.
-- **Encryption can be turned off**, for all chats in the app's settings or for a single chat. For unencrypted messages: they travel over a TLS-protected connection but are **stored on the server in readable form**, so the server administrator has a technical ability to read them. The Developer does not read users' conversations and does not use them; access is possible only in the cases the law provides for (section 9).
+- **Encryption can be turned off**, for all chats in the app's settings or for a single chat. For unencrypted messages: they travel over a TLS-protected connection but are **stored on the server in readable form**, so the server administrator has a technical ability to read them. We value users' privacy: the Developer does not read conversations, does not use them, and does not pass them to third parties.
 - Metadata (who writes to whom, and when; when you are online) is visible to the server regardless of content encryption.
 - If the privacy of your conversations matters to you, do not turn encryption off.
 
@@ -72,18 +72,14 @@ No ads, no advertising or analytics SDKs, no tracking of your activity, no comme
 ## 8. Retention and deletion
 
 - On the device: remove the account in the app or clear the app's data.
-- On `on-chat.ru`: to delete your account and its data, **[HOW TO DELETE AN ACCOUNT ON THE SERVER, E.G.: EMAIL THE ADDRESS IN SECTION 11]**. Processing time: **[TIME]**.
+- On `on-chat.ru`: to delete your account and its data, **[HOW TO DELETE AN ACCOUNT ON THE SERVER, E.G.: EMAIL THE ADDRESS IN SECTION 10]**. Processing time: **[TIME]**.
 - On other operators' servers: contact them.
 
-## 9. Disclosure required by law
-
-As operator of `on-chat.ru`, the Developer may be legally required to provide the information it holds on request of authorized state bodies. The Developer cannot read, and therefore cannot provide, the content of OMEMO-encrypted messages; metadata and unencrypted messages stored on the server may be provided as the law provides.
-
-## 10. Children
+## 9. Children
 
 The app is not aimed at children, and the Developer does not collect users' ages.
 
-## 11. Changes and contact
+## 10. Changes and contact
 
 A revised policy is published at the same address with a new effective date.
 
