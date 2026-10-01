@@ -3688,19 +3688,17 @@ private fun MessageBubble(
     }
     var morphSettled by remember(item.key) { mutableStateOf(false) }
     val showMorph = morphEligible && !morphSettled
-    // Temporary experiment flag (FeatureFlag.SEQUENTIAL_EDIT_MORPH, off by default) -- forces
-    // blur-then-morph sequencing with a full 1s morph instead of the shipped concurrent behavior,
-    // purely to compare the two side by side. See that flag's own doc comment for why concurrent
-    // is the real default: the blur exists so old wording is never clearly readable, which fully
-    // clearing it before the morph starts would briefly defeat.
-    val context = LocalContext.current
-    val sequentialMorphExperiment = remember {
-        eu.siacs.conversations.utils.FeatureFlagPreferences(context)
-            .isEnabled(eu.siacs.conversations.FeatureFlag.SEQUENTIAL_EDIT_MORPH)
-    }
+    // Two pacings, picked by whose edit this is:
+    //  - YOUR OWN edit (outgoing): blur clears fully first, then a slower 1s morph runs. The old
+    //    wording is yours, so seeing it sharp for a moment gives nothing away and the longer,
+    //    sequenced version reads nicely (this graduated from the former SEQUENTIAL_EDIT_MORPH
+    //    flag).
+    //  - An edit you RECEIVED: the fast version where the blur clears and the morph plays at the
+    //    same time. The blur exists so the sender's previous wording is never clearly readable;
+    //    fully clearing it before the morph starts would briefly show exactly that.
     val blurClearDurationMs = MORPH_DURATION_MS
-    val morphDurationMs = if (sequentialMorphExperiment) 1000 else MORPH_DURATION_MS
-    val morphStartDelayMs = if (sequentialMorphExperiment) blurClearDurationMs.toLong() else 0L
+    val morphDurationMs = if (outgoing) 1000 else MORPH_DURATION_MS
+    val morphStartDelayMs = if (outgoing) blurClearDurationMs.toLong() else 0L
     val blurRadius: Dp = if (showMorph) {
         // Plain Float Animatable (dp magnitude), not Animatable<Dp, ...> -- avoids needing
         // Dp's VectorConverter import for what's otherwise the exact same 5->0 animation. Always
@@ -6336,9 +6334,9 @@ private fun MorphingMessageText(
     new: String,
     contentColor: androidx.compose.ui.graphics.Color,
     blurStartAtDp: Dp,
-    // Shipped default: MORPH_DURATION_MS, no delay (starts concurrently with the bubble's own
-    // unblur). Both overridable -- see FeatureFlag.SEQUENTIAL_EDIT_MORPH -- for the experiment
-    // that waits for the unblur to fully finish first and takes a full second once it does.
+    // Defaults are the fast pacing for a RECEIVED edit: MORPH_DURATION_MS, no delay (starts
+    // concurrently with the bubble's own unblur). Your own edits pass a startDelayMs equal to the
+    // unblur and a full second for durationMs instead -- see MessageBubble.
     durationMs: Int = MORPH_DURATION_MS,
     startDelayMs: Long = 0L,
     onSettled: () -> Unit,
