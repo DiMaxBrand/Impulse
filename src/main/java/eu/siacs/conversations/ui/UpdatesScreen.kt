@@ -1419,28 +1419,57 @@ private fun MinIntervalContent(
     selectedHours: Int,
     onSelect: (Int) -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)) {
-        Text(
-            text = stringResource(R.string.updates_wait_label),
-            style = MaterialTheme.typography.titleLarge,
-        )
-        Text(
-            text = stringResource(R.string.updates_wait_explainer),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
-        )
-        WAIT_OPTIONS.forEach { (hours, labelRes) ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onSelect(hours) }
-                    .padding(vertical = 4.dp),
-            ) {
-                RadioButton(selected = hours == selectedHours, onClick = { onSelect(hours) })
-                Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
-            }
+    // Laid out exactly like ChannelList: hero icon + centered title on top, then one grouped
+    // surface per option (top/middle/bottom shapes, radio button leading). Scrollable: seven
+    // options plus the header is tall enough to overflow a small screen.
+    Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(top = 20.dp, bottom = 4.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_schedule_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.updates_wait_label),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.updates_wait_explainer),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
         }
+        Spacer(Modifier.height(12.dp))
+
+        WAIT_OPTIONS.forEachIndexed { index, (hours, labelRes) ->
+            val position = when {
+                index == 0 -> GroupPosition.TOP
+                index == WAIT_OPTIONS.lastIndex -> GroupPosition.BOTTOM
+                else -> GroupPosition.MIDDLE
+            }
+            ExpressiveGroupRow(position, modifier = Modifier.padding(horizontal = 12.dp)) {
+                ListItem(
+                    headlineContent = { Text(stringResource(labelRes)) },
+                    leadingContent = {
+                        RadioButton(selected = hours == selectedHours, onClick = { onSelect(hours) })
+                    },
+                    modifier = Modifier.clickableRow { onSelect(hours) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+            if (index < WAIT_OPTIONS.lastIndex) Spacer(Modifier.height(2.dp))
+        }
+        Spacer(Modifier.height(8.dp))
     }
 }
