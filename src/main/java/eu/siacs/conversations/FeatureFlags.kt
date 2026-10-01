@@ -18,7 +18,7 @@ enum class FeatureFlag(
     val defaultValue: Boolean,
 ) {
     /** Gates the "Invite" entry in Start Chat's "+" menu (invite a contact by sharing a direct
-     * download link to the latest stable release's universal APK). Off by default: the link only
+     * download link to the latest stable release's arm64 APK). Off by default: the link only
      * resolves once a stable release actually exists — see [eu.siacs.conversations.ui.InviteContent]. */
     INVITE_CONTACTS(
         key = "invite_contacts",

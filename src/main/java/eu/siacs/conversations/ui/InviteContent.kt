@@ -33,9 +33,11 @@ import eu.siacs.conversations.R
 
 // /releases/latest only ever resolves against the most recent non-prerelease (stable) release —
 // matches the flag's own "not finished, blocked on a stable release existing" rationale exactly,
-// rather than being an unrelated coincidence.
+// rather than being an unrelated coincidence. The asset is the arm64 build: that's the only APK
+// the release workflow actually publishes (a universal one doesn't exist on any release), and
+// arm64 covers essentially every current phone.
 const val INVITE_APK_URL =
-    "https://github.com/DiMaxBrand/Impulse/releases/latest/download/Impulse_universal.apk"
+    "https://github.com/DiMaxBrand/Impulse/releases/latest/download/Impulse_arm64.apk"
 
 /**
  * The card behind [eu.siacs.conversations.FeatureFlag.INVITE_CONTACTS]. Lives inline in
