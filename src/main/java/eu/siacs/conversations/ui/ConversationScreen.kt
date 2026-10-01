@@ -13,6 +13,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -2997,7 +2998,9 @@ private fun MediaGroupRow(
                 // discounts itself by tailInset on this exact side in anticipation of this, but
                 // the Surface itself was still the plain fixed width, so the tail curl was
                 // carving into (and clipping) the grid content instead of extending past it.
-                modifier = Modifier.width(if (item.lastOfGroup) MEDIA_GRID_WIDTH + TAIL_WIDTH else MEDIA_GRID_WIDTH),
+                modifier = Modifier
+                    .animatedSize(rememberExperimentalAnimations())
+                    .width(if (item.lastOfGroup) MEDIA_GRID_WIDTH + TAIL_WIDTH else MEDIA_GRID_WIDTH),
             ) {
                 Column {
                     // A small margin on every side keeps the container visible as a frame around
@@ -3716,6 +3719,7 @@ private fun MessageBubble(
             label = "editingBlur",
         ).value
     }
+    val animateSizes = rememberExperimentalAnimations()
     Box {
         Surface(
             shape =
@@ -3727,6 +3731,7 @@ private fun MessageBubble(
             color = containerColor,
             contentColor = contentColor,
             modifier = Modifier
+                .animatedSize(animateSizes)
                 .widthIn(max = if (hasTail) 320.dp + TAIL_WIDTH else 320.dp)
                 .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
         ) {
@@ -7273,6 +7278,28 @@ private fun Modifier.drawBarArch(
         drawPath(path, color)
     }
 }
+
+/** EXPERIMENTAL_ANIMATIONS, read once per composition site. */
+@Composable
+private fun rememberExperimentalAnimations(): Boolean {
+    val context = LocalContext.current
+    return remember {
+        eu.siacs.conversations.utils.FeatureFlagPreferences(context)
+            .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS)
+    }
+}
+
+/** Animates ANY change to this node's size -- a footer label appearing, a download placeholder
+ * becoming a thumbnail, a reply card loading in, the tail toggling when a neighbour arrives, a
+ * photo batch growing from 2 to 4 -- on the app's usual spatial spring (stiffness 380, damping 0.8:
+ * not fast, a touch of bounce). Must come BEFORE any size modifier it should wrap. A no-op unless
+ * [enabled]. */
+private fun Modifier.animatedSize(enabled: Boolean): Modifier =
+    if (enabled) {
+        this.animateContentSize(animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f))
+    } else {
+        this
+    }
 
 /** The extra slide the row at [position] (0 = lowest row) adds on top of what the rows below it
  * already pushed: 100%, then 70%, then 50%, and from there it halves for every further row
