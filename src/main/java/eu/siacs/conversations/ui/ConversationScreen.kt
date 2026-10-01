@@ -2125,39 +2125,34 @@ private fun MessageList(
         LazyColumn(
             state = listState,
             reverseLayout = true,
-            modifier =
-                Modifier.fillMaxSize()
-                    .nestedScroll(flingTracker)
-                    .then(
-                        if (experimentalAnimations) {
-                            // The list is what rubber-bands: it lifts by the whole band and
-                            // settles back, leaving empty space under it while stretched. The
-                            // input bar only gets a slight lift (see drawBarArch) so it never
-                            // covers messages.
-                            Modifier.graphicsLayer {
-                                translationY = -state.rubber.value.coerceAtLeast(0f)
-                            }
-                        } else {
-                            Modifier
-                        }
-                    ),
-            // The stock stretch would fight the cookie for the same gesture.
+            modifier = Modifier.fillMaxSize().nestedScroll(flingTracker),
+            // The stock stretch would fight the rubber band for the same gesture.
             overscrollEffect =
                 if (experimentalAnimations) null
                 else androidx.compose.foundation.rememberOverscrollEffect(),
             contentPadding =
                 androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
         ) {
-            if (isTyping) {
-                item(key = "typing-indicator") { TypingBubble(modifier = Modifier.animateItem()) }
-            }
+            // EXPERIMENTAL_ANIMATIONS: every row lifts by the shared rubber band, scaled by how far
+            // it sits from the bottom (rubberFalloff), so neighbours separate like a stretched
+            // elastic instead of the list sliding as one block. `position` counts the typing bubble
+            // and the local-time row, which sit below the first message.
             val localTime = localTimeForContact
+            val hasLocalTime = localTime != null && conversation != null
+            val rowsBelowMessages = (if (isTyping) 1 else 0) + (if (hasLocalTime) 1 else 0)
+            fun lift(position: Int): Modifier =
+                if (experimentalAnimations) Modifier.rubberLift(state.rubber, position) else Modifier
+            if (isTyping) {
+                item(key = "typing-indicator") {
+                    TypingBubble(modifier = Modifier.animateItem().then(lift(0)))
+                }
+            }
             if (localTime != null && conversation != null) {
                 item(key = "local-time-indicator") {
                     LocalTimeForContactRow(
                         zonedDateTime = localTime,
                         contactName = conversation.getName()?.toString() ?: "",
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier.animateItem().then(lift(if (isTyping) 1 else 0)),
                     )
                 }
             }
@@ -2180,11 +2175,12 @@ private fun MessageList(
                 val riskyVideoUpload = item is ChatItem.Msg &&
                     item.message.mimeType?.startsWith("video/") == true &&
                     item.message.transferable?.getStatus() == eu.siacs.conversations.entities.Transferable.STATUS_UPLOADING
-                val itemModifier = if (riskyVideoUpload) {
+                val baseItemModifier = if (riskyVideoUpload) {
                     Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
                 } else {
                     Modifier.animateItem()
                 }
+                val itemModifier = baseItemModifier.then(lift(rowsBelowMessages + index))
                 when (item) {
                     is ChatItem.DatePill ->
                         DatePill(timestamp = item.timestamp, modifier = itemModifier)
@@ -7232,5 +7228,27 @@ private fun Modifier.drawBarArch(
             close()
         }
         drawPath(path, color)
+    }
+}
+
+/** How much of the rubber band a row at [position] (0 = lowest row) follows: 100%, then 70%, then
+ * 50%, and from there it halves for every further row (25%, 12.5%, ...) until it is negligible. */
+private fun rubberFalloff(position: Int): Float =
+    when {
+        position <= 0 -> 1f
+        position == 1 -> 0.7f
+        else -> Math.pow(0.5, (position - 1).toDouble()).toFloat()
+    }
+
+/** Lifts this row by the shared rubber-band value times its falloff. Read inside graphicsLayer so
+ * a change only redraws, never recomposes the rows. */
+private fun Modifier.rubberLift(
+    rubber: androidx.compose.animation.core.Animatable<Float, *>,
+    position: Int,
+): Modifier {
+    val factor = rubberFalloff(position)
+    return this.graphicsLayer {
+        val v = rubber.value
+        translationY = if (v > 0f) -v * factor else 0f
     }
 }
