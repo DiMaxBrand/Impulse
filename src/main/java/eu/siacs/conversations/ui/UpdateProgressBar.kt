@@ -95,12 +95,13 @@ internal fun DownloadProgressBar(onComplete: () -> Unit, modifier: Modifier = Mo
             }
             if (fraction > 0f) {
                 // The download is polled every 500ms, so `fraction` arrives in steps and the bar
-                // used to jump with no animation at all. A soft spring glides it between polls;
-                // critically damped (no bounce), since a progress bar overshooting its target or
-                // briefly running backwards would read as wrong.
+                // used to jump with no animation at all. A soft spring glides it between polls,
+                // with a slight bounce (low-bouncy damping) -- small enough that the overshoot past
+                // each target stays subtle, and the value is clamped to 0..1 below so it can never
+                // draw past the ends.
                 val animatedFraction by animateFloatAsState(
                     targetValue = fraction,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
                     label = "updateDownloadProgress",
                 )
                 LinearWavyProgressIndicator(progress = { animatedFraction.coerceIn(0f, 1f) })
