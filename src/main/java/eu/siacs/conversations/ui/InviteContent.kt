@@ -4,7 +4,15 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,11 +25,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -148,11 +161,54 @@ private fun InviteCard(inviteUrl: String) {
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { shareInviteLink(context, inviteUrl) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.invite_share_button))
+            // Tapping "Share invite link" expands in place into one button per message language
+            // (English / Русский); the language the app is currently in goes first (left) as the
+            // filled primary option, the other one beside it as the tonal secondary. Picking one
+            // shares the invite in THAT language, whatever the app's own language is.
+            var languagePickerOpen by remember { mutableStateOf(false) }
+            val appLanguage = context.resources.configuration.locales[0].language
+            val languages = if (appLanguage == "ru") listOf("ru", "en") else listOf("en", "ru")
+            AnimatedContent(
+                targetState = languagePickerOpen,
+                transitionSpec = {
+                    (fadeIn(spring(stiffness = 1600f, dampingRatio = 1f)) togetherWith
+                        fadeOut(spring(stiffness = 1600f, dampingRatio = 1f)))
+                        .using(
+                            SizeTransform(clip = false) { _, _ ->
+                                spring(stiffness = 380f, dampingRatio = 0.8f)
+                            }
+                        )
+                },
+                label = "inviteShareExpand",
+            ) { open ->
+                if (!open) {
+                    Button(
+                        onClick = { languagePickerOpen = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.invite_share_button))
+                    }
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        languages.forEachIndexed { index, tag ->
+                            val label = stringResource(
+                                if (tag == "ru") R.string.invite_language_ru else R.string.invite_language_en
+                            )
+                            val onClick = {
+                                languagePickerOpen = false
+                                shareInviteLink(context, inviteUrl, tag)
+                            }
+                            if (index == 0) {
+                                Button(onClick = onClick, modifier = Modifier.weight(1f)) { Text(label) }
+                            } else {
+                                FilledTonalButton(onClick = onClick, modifier = Modifier.weight(1f)) { Text(label) }
+                            }
+                        }
+                    }
+                }
             }
             Spacer(Modifier.height(8.dp))
             // Right below the button, on purpose — this is the moment someone's about to pick a
@@ -189,8 +245,14 @@ private fun copyInviteLink(context: Context, url: String) {
     Toast.makeText(context, R.string.invite_link_copied, Toast.LENGTH_SHORT).show()
 }
 
-private fun shareInviteLink(context: Context, url: String) {
-    val message = context.getString(R.string.invite_share_message, url)
+/** [languageTag] ("en"/"ru") is the language of the MESSAGE, which can differ from the app's own:
+ * the string is resolved against a copy of the configuration with just that locale swapped in. */
+private fun shareInviteLink(context: Context, url: String, languageTag: String) {
+    val localized = Configuration(context.resources.configuration).apply {
+        setLocale(java.util.Locale.forLanguageTag(languageTag))
+    }
+    val message = context.createConfigurationContext(localized)
+        .getString(R.string.invite_share_message, url)
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, message)
