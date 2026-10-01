@@ -589,6 +589,37 @@ private fun MediaViewerScreen(
                 onSelect = { idx -> scope.launch { pagerState.animateScrollToPage(idx) } },
             )
         }
+        // Outgoing photo/video opened from a batch: its own status icons, bottom right above the
+        // filmstrip -- the same two-icon rendering the chat footer uses (error left, live/check
+        // icon right), for the photo currently on screen.
+        val viewerStatus =
+            if (inBatch && currentMessage.status != Message.STATUS_RECEIVED) {
+                summarizeStatus(listOf(currentMessage), null)
+            } else null
+        androidx.compose.animation.AnimatedVisibility(
+            visible = chromeVisible && viewerStatus != null && !viewerStatus.isEmpty,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(end = 14.dp, bottom = 76.dp),
+        ) {
+            if (viewerStatus != null) {
+                Box(
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.46f), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                ) {
+                    OutgoingStatusIcons(
+                        summary = viewerStatus,
+                        size = 22.dp,
+                        grayColor = Color.White.copy(alpha = 0.85f),
+                        tappable = false,
+                    )
+                }
+            }
+        }
         androidx.compose.animation.AnimatedVisibility(
             visible = deleting,
             enter = fadeIn(),

@@ -2868,7 +2868,7 @@ private const val MEDIA_GRID_MAX_CELLS = 4
  * - Only once every message has actually sent does the tile show delivered/read, and even then
  *   only once *every* message has reached that level (the least-progressed one still gates it).
  */
-private fun groupStatusRepresentative(messages: List<Message>): Message {
+internal fun groupStatusRepresentative(messages: List<Message>): Message {
     val failed = messages.firstOrNull {
         it.status == Message.STATUS_SEND_FAILED && it.errorMessage != Message.ERROR_MESSAGE_CANCELLED
     }
@@ -3066,6 +3066,7 @@ private fun MediaGroupRow(
                             revision = revision,
                             statusMessage = remember(revision) { groupStatusRepresentative(messages) },
                             groupSentCount = if (outgoing) sentCount to messages.size else null,
+                            groupMessages = messages,
                         )
                     }
                 }
@@ -4706,6 +4707,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     // group's weakest-link status keeps the checkmark itself pinned on "uploading". Null for every
     // single-message call site and once the whole group has finished.
     groupSentCount: Pair<Int, Int>? = null,
+    // The whole batch for a grid tile (null for single messages). The status icons summarize all
+    // of it -- see summarizeStatus -- instead of only the footer's own last message.
+    groupMessages: List<Message>? = null,
 ) {
     // Message is a mutated-in-place Java entity; reading `revision` here is what
     // makes Compose re-read message.status after an in-place status change.
@@ -4746,22 +4750,20 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         ListenStatusManager.State.PAUSED -> outgoingPeerState
         else -> null
     }
-    // Image/video view status — same shape as the voice listen-status block above, own
-    // manager/wire protocol (see ViewStatusManager's doc for why). Video's VIEWED/UNKNOWN are
-    // best-effort (see ViewStatusManager.onVideoPlayTapped/onAppForegrounded), images are certain.
-    val isViewableMedia = message.type == Message.TYPE_IMAGE ||
-        (message.isFileOrImage && message.mimeType?.startsWith("video/") == true)
-    val viewIconState: ViewStatusManager.State? =
-        if (!isViewableMedia || footerUuid == null || !outgoing ||
-            message.conversation.getMode() != Conversational.MODE_SINGLE
-        ) {
-            null
-        } else {
-            ViewStatusManager.peerStates[footerUuid]
-                ?: if (message.viewStatus == Message.VIEW_STATUS_VIEWED)
-                    ViewStatusManager.State.VIEWED
-                else null
-        }
+    // Everything the status icons show (error, eye, checkmark family) for this message or the
+    // whole batch, plus the "viewed 2 of 4" counts, in one place. See summarizeStatus.
+    val statusSummary =
+        if (outgoing && statusMessage.type != Message.TYPE_RTP_SESSION) {
+            summarizeStatus(
+                groupMessages ?: listOf(statusMessage),
+                if (groupMessages == null) listenIconState else null,
+            )
+        } else null
+    val viewProgressLabel = statusSummary?.let {
+        if (it.viewableCount > 1 && it.viewedCount in 1 until it.viewableCount)
+            stringResource(R.string.group_view_progress, it.viewedCount, it.viewableCount)
+        else null
+    }
     val listenLabel: String? =
         if (!isAudio || footerUuid == null) {
             null
@@ -4797,10 +4799,11 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     ) {
         val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
         val footerText = remember(
-            groupProgressLabel, listenLabel, privateLabel, privateLabelColor, fileSize, timeText, onSurfaceVariant,
+            groupProgressLabel, viewProgressLabel, listenLabel, privateLabel, privateLabelColor, fileSize, timeText, onSurfaceVariant,
         ) {
             val segments = buildList<Pair<String, Color?>> {
                 groupProgressLabel?.let { add(it to null) }
+                viewProgressLabel?.let { add(it to null) }
                 listenLabel?.let { add(it to null) }
                 privateLabel?.let { add(it to privateLabelColor) }
                 fileSize?.let { add(it to null) }
@@ -4842,108 +4845,150 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
                 modifier = Modifier.size(12.dp),
             )
         }
-        if (outgoing && statusMessage.type != Message.TYPE_RTP_SESSION) {
-            val transferable = statusMessage.transferable
-            // Waiting/uploading/p2p-offered/sent/delivered/read all morph into each other
-            // continuously — and, for a voice message once the peer does anything with it
-            // (listening, listened, or extrapolation losing track), that same morph continues
-            // right on into the headphone glyph instead of a separate icon bolted on next to the
-            // checkmark. See MessageStatusIcon for the full choreography (including how
-            // STATUS_UNSEND is split between "still sending text" and "file genuinely
-            // mid-upload", and how only a user-initiated cancel joins the morph story, not a
-            // generic send/upload error). Only that generic error glyph falls through to a plain
-            // crossfade below.
-            val checkmarkPhase =
-                voiceCheckmarkPhase(
-                    checkmarkPhaseForStatus(status, transferable, statusMessage.errorMessage),
-                    listenIconState,
-                )
-            // Tapping (not long-pressing -- that still opens the context sheet, handled by the
-            // row's own outer combinedClickable) any status icon opens the plain-language legend
-            // explaining what it means. StatusLegendSheetState is a top-level singleton, same
-            // pattern as ThumbnailCache/ListenStatusManager/ViewStatusManager -- MessageFooter has
-            // no path back up to ConversationScreenState, and threading one through just for this
-            // would touch every call site between here and there.
-            val statusIconModifier = Modifier.size(14.dp).clickable(
-                indication = null,
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-            ) {
-                // viewIconState/checkmarkPhase are the values this footer last composed, i.e. the
-                // state the tapped icon is showing; the sheet bolds the matching legend row.
-                StatusLegendSheetState.current.value =
-                    legendKeyFor(viewIconState, checkmarkPhase)
-                        // A failed send that isn't a deliberate cancel has no checkmark phase; it
-                        // shows the generic error glyph, which the legend lists as ERROR.
-                        ?: if (status == Message.STATUS_SEND_FAILED) StatusLegendKey.ERROR else null
-                StatusLegendSheetState.visible.value = true
+        if (statusSummary != null) OutgoingStatusIcons(statusSummary)
+    }
+}
+
+/**
+ * What an outgoing message's (or a whole batch's) status icons should show, in two independent
+ * slots shown side by side at full size:
+ *  - [error]: some message genuinely failed (a deliberate cancel is not an error -- it stays a
+ *    checkmark-family glyph). Lower priority than anything happening live, so it sits to the LEFT.
+ *  - the checkmark family, always on the RIGHT, either [eye] (view status: gray while any photo is
+ *    open right now, a terminal color once every one has been seen) or [phase] (waiting/uploading/
+ *    p2p/sent/delivered/read/cancelled/listening...; the batch's weakest link among the messages
+ *    that did not fail). At most one of the two is non-null.
+ * [viewedCount]/[viewableCount] feed the footer's "2 of 4 viewed" label.
+ */
+internal class StatusSummary(
+    val error: Message?,
+    val eye: ViewStatusManager.State?,
+    val phase: CheckmarkPhase?,
+    val viewedCount: Int,
+    val viewableCount: Int,
+) {
+    val isEmpty: Boolean get() = error == null && eye == null && phase == null
+}
+
+private fun isGenuineFailure(m: Message): Boolean =
+    m.status == Message.STATUS_SEND_FAILED && m.errorMessage != Message.ERROR_MESSAGE_CANCELLED
+
+private fun isViewableMedia(m: Message): Boolean =
+    m.type == Message.TYPE_IMAGE || (m.isFileOrImage && m.mimeType?.startsWith("video/") == true)
+
+private fun viewStateOf(m: Message): ViewStatusManager.State? {
+    val uuid = m.getUuid() ?: return null
+    return ViewStatusManager.peerStates[uuid]
+        ?: if (m.viewStatus == Message.VIEW_STATUS_VIEWED) ViewStatusManager.State.VIEWED else null
+}
+
+/** [listenState] is only meaningful for a single voice message (batches never hold audio). */
+internal fun summarizeStatus(
+    messages: List<Message>,
+    listenState: ListenStatusManager.State?,
+): StatusSummary {
+    val failed = messages.firstOrNull(::isGenuineFailure)
+    val rest = messages.filterNot(::isGenuineFailure)
+    if (rest.isEmpty()) return StatusSummary(failed, null, null, 0, 0)
+
+    val oneToOne = rest.first().conversation.getMode() == Conversational.MODE_SINGLE
+    val viewable = if (oneToOne) rest.filter(::isViewableMedia) else emptyList()
+    val states = viewable.map(::viewStateOf)
+    val seen = states.count {
+        it == ViewStatusManager.State.VIEWED ||
+            it == ViewStatusManager.State.HALF_VIEWED ||
+            it == ViewStatusManager.State.UNKNOWN
+    }
+    val representative = groupStatusRepresentative(rest)
+    val basePhase = voiceCheckmarkPhase(
+        checkmarkPhaseForStatus(
+            representative.status,
+            representative.transferable,
+            representative.errorMessage,
+        ),
+        listenState,
+    )
+    val eye: ViewStatusManager.State? = when {
+        // Real time wins: someone has one of these open right now.
+        states.any { it == ViewStatusManager.State.VIEWING } -> ViewStatusManager.State.VIEWING
+        // Terminal only once EVERY message in the batch has a verdict; the color is the least
+        // confident one among them.
+        viewable.isNotEmpty() && viewable.size == rest.size && seen == viewable.size ->
+            when {
+                states.all { it == ViewStatusManager.State.VIEWED } -> ViewStatusManager.State.VIEWED
+                states.any { it == ViewStatusManager.State.UNKNOWN } -> ViewStatusManager.State.UNKNOWN
+                else -> ViewStatusManager.State.HALF_VIEWED
             }
-            if (viewIconState != null) {
-                // Image view status: a real eye asset (ic_visibility_24dp) crossfading between
-                // viewing/viewed/unknown, not folded into MessageStatusIcon's point-morph engine
-                // — that machinery exists to turn one real glyph's outline into another's over a
-                // full second (see the headphone morph); a gray-to-green-or-amber crossfade needs
-                // none of that. Kept as its own branch so it can be upgraded to a real morph later
-                // without touching the checkmark story above.
-                Spacer(Modifier.width(4.dp))
-                val viewColor = when (viewIconState) {
-                    ViewStatusManager.State.VIEWED -> LocalSuccessColors.current.success
-                    // Distinct from both VIEWED (green, confirmed complete) and UNKNOWN (amber,
-                    // never came back at all) -- blue reads as "some real confirmation, just not
-                    // to completion," a stronger signal than plain UNKNOWN gets.
-                    ViewStatusManager.State.HALF_VIEWED -> Color(0xFF42A5F5)
-                    ViewStatusManager.State.UNKNOWN -> Color(0xFFF9A825)
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-                AnimatedContent(
-                    targetState = viewColor,
-                    transitionSpec = {
-                        (fadeIn(tween(180)) + scaleIn(initialScale = 0.7f, animationSpec = tween(180))) togetherWith
-                            (fadeOut(tween(140)) + scaleOut(targetScale = 0.7f, animationSpec = tween(140)))
-                    },
-                    label = "view_status_icon",
-                ) { tint ->
-                    Icon(
-                        painter = painterResource(R.drawable.ic_visibility_24dp),
-                        contentDescription = null,
-                        tint = tint,
-                        modifier = statusIconModifier,
-                    )
-                }
-            } else if (checkmarkPhase != null) {
-                Spacer(Modifier.width(4.dp))
-                MessageStatusIcon(
-                    phase = checkmarkPhase,
-                    grayColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    successColor = LocalSuccessColors.current.success,
-                    listenedColor = LocalSuccessColors.current.success,
-                    unknownColor = MaterialTheme.colorScheme.error,
-                    modifier = statusIconModifier,
-                )
-            } else {
-                val statusDrawable = MessageAdapter.getMessageStatusAsDrawable(statusMessage, status)
-                if (statusDrawable != null) {
-                    Spacer(Modifier.width(4.dp))
-                    // Upload/failed/p2p icons aren't part of that story — a dots-to-checkmark
-                    // morph makes no sense turning into an error glyph, so these just crossfade.
-                    AnimatedContent(
-                        targetState = statusDrawable,
-                        transitionSpec = {
-                            (fadeIn(tween(180)) +
-                                scaleIn(initialScale = 0.6f, animationSpec = tween(180))) togetherWith
-                                (fadeOut(tween(120)) +
-                                    scaleOut(targetScale = 0.6f, animationSpec = tween(120)))
-                        },
-                        label = "messageStatusIconFallback",
-                    ) { drawableRes ->
-                        Icon(
-                            painter = painterResource(drawableRes),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = statusIconModifier,
-                        )
-                    }
-                }
+        else -> null
+    }
+    return StatusSummary(failed, eye, if (eye == null) basePhase else null, seen, viewable.size)
+}
+
+/**
+ * Renders a [StatusSummary]: error glyph (left), then the checkmark-family icon (right), both full
+ * size. [tappable] opens the status legend (chat footer); the media viewer turns it off since the
+ * sheet lives in the chat screen. [grayColor] is the neutral tint (white-ish over the viewer).
+ */
+@Composable
+internal fun OutgoingStatusIcons(
+    summary: StatusSummary,
+    modifier: Modifier = Modifier,
+    size: Dp = 14.dp,
+    grayColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    tappable: Boolean = true,
+) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    fun iconModifier(key: StatusLegendKey?): Modifier =
+        if (!tappable) Modifier.size(size)
+        else Modifier.size(size).clickable(indication = null, interactionSource = interaction) {
+            StatusLegendSheetState.current.value = key
+            StatusLegendSheetState.visible.value = true
+        }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        if (summary.error != null) {
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                painter = painterResource(R.drawable.ic_error_24dp),
+                contentDescription = null,
+                tint = grayColor,
+                modifier = iconModifier(StatusLegendKey.ERROR),
+            )
+        }
+        val eye = summary.eye
+        val phase = summary.phase
+        if (eye != null) {
+            Spacer(Modifier.width(4.dp))
+            val viewColor = when (eye) {
+                ViewStatusManager.State.VIEWED -> LocalSuccessColors.current.success
+                ViewStatusManager.State.HALF_VIEWED -> Color(0xFF42A5F5)
+                ViewStatusManager.State.UNKNOWN -> Color(0xFFF9A825)
+                else -> grayColor
             }
+            AnimatedContent(
+                targetState = viewColor,
+                transitionSpec = {
+                    (fadeIn(tween(180)) + scaleIn(initialScale = 0.7f, animationSpec = tween(180))) togetherWith
+                        (fadeOut(tween(140)) + scaleOut(targetScale = 0.7f, animationSpec = tween(140)))
+                },
+                label = "view_status_icon",
+            ) { tint ->
+                Icon(
+                    painter = painterResource(R.drawable.ic_visibility_24dp),
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = iconModifier(legendKeyFor(eye, null)),
+                )
+            }
+        } else if (phase != null) {
+            Spacer(Modifier.width(4.dp))
+            MessageStatusIcon(
+                phase = phase,
+                grayColor = grayColor,
+                successColor = LocalSuccessColors.current.success,
+                listenedColor = LocalSuccessColors.current.success,
+                unknownColor = MaterialTheme.colorScheme.error,
+                modifier = iconModifier(legendKeyFor(null, phase)),
+            )
         }
     }
 }

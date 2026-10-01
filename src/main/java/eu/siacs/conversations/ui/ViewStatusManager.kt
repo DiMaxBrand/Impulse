@@ -47,6 +47,11 @@ object ViewStatusManager {
     const val WIRE_HALF_VIEWED = "half_viewed"
     const val WIRE_UNKNOWN = "unknown"
 
+    /** Sent after a "viewing" the viewer then backed out of too quickly to count (a video they
+     * came straight back from): clears the sender's gray eye so it returns to the plain checkmark
+     * instead of staying "viewing" forever. */
+    const val WIRE_NOT_VIEWED = "not_viewed"
+
     /** A return-to-foreground (video) or a viewer dwell (image) shorter than this never counts as
      * having actually looked at anything — no wire message is sent at all, so the sender's
      * checkmark just stays whatever it already was. */
@@ -67,6 +72,10 @@ object ViewStatusManager {
     /** Called from MessageParser when a view-status stanza arrives for one of our messages. */
     @JvmStatic
     fun onPeerTransition(uuid: String, wireState: String) {
+        if (wireState == WIRE_NOT_VIEWED) {
+            peerStates.remove(uuid)
+            return
+        }
         peerStates[uuid] = when (wireState) {
             WIRE_VIEWING -> State.VIEWING
             WIRE_VIEWED -> State.VIEWED
@@ -122,8 +131,8 @@ object ViewStatusManager {
     /** Called from XmppConnectionService's own ProcessLifecycleOwner observer whenever the app
      * returns to the foreground -- resolves every still-pending video view against how long ago
      * play was tapped, relative to that video's own duration:
-     *  - under MIN_ENGAGEMENT_MS: too fast to mean anything, silently dropped (no wire message at
-     *    all -- same "hop back to the checkmark" behavior as a too-short image glance).
+     *  - under the engagement floor (5s, or the video's own length if shorter): too fast to mean
+     *    anything -- the earlier "viewing" is taken back (WIRE_NOT_VIEWED), back to the checkmark.
      *  - within NEAR_DURATION_WINDOW_MS of the real duration (either side -- a short video
      *    finishing slightly early counts the same as one that ran a little long): VIEWED, the
      *    generous-but-real "they were gone about as long as the video runs" signal.
@@ -139,7 +148,15 @@ object ViewStatusManager {
         for (pending in resolved) {
             pending.job.cancel()
             val elapsed = now - pending.tappedAtMs
-            if (elapsed < MIN_ENGAGEMENT_MS) continue
+            // The floor can't exceed the video itself: a 3-second video watched to the end and
+            // returned from at 3-4s is a real view, not "too fast to count".
+            val floor = minOf(MIN_ENGAGEMENT_MS, pending.durationMs.toLong())
+            if (elapsed < floor) {
+                // "viewing" already went out at the tap; take it back so the sender's eye doesn't
+                // stay gray forever.
+                sendViewStatusStanza(pending.service, pending.message, WIRE_NOT_VIEWED)
+                continue
+            }
             val nearDuration = elapsed in
                 (pending.durationMs - NEAR_DURATION_WINDOW_MS)..(pending.durationMs + NEAR_DURATION_WINDOW_MS)
             val wireState = if (nearDuration) WIRE_VIEWED else WIRE_HALF_VIEWED
@@ -172,7 +189,7 @@ fun sendViewStatusStanza(
     // Same reasoning as listen-status: the ephemeral "viewing" transition is worthless hours
     // later, but the terminal "viewed" (and, for video, the best-effort "unknown") are worth
     // delivering even if the sender is offline right now.
-    if (wireState == ViewStatusManager.WIRE_VIEWING) {
+    if (wireState == ViewStatusManager.WIRE_VIEWING || wireState == ViewStatusManager.WIRE_NOT_VIEWED) {
         packet.addExtension(im.conversations.android.xmpp.model.hints.NoStore())
     } else {
         packet.addExtension(im.conversations.android.xmpp.model.hints.Store())
