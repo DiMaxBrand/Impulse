@@ -60,9 +60,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.TextButton
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -119,7 +119,7 @@ fun UpdatesScreen(
 
     // Scrim animates independently of the shared-element transition
     val scrimAlpha by animateFloatAsState(
-        targetValue = if (channelPickerVisible) 0.32f else 0f,
+        targetValue = if (channelPickerVisible || intervalPickerVisible) 0.32f else 0f,
         animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
         label = "scrim_alpha",
     )
@@ -209,25 +209,56 @@ fun UpdatesScreen(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
                 }
-                ExpressiveGroupRow(GroupPosition.MIDDLE) {
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.updates_wait_label)) },
-                        supportingContent = {
-                            Text(
-                                text = stringResource(waitOptionLabel(state.minUpdateIntervalHours)),
-                                color = MaterialTheme.colorScheme.primary,
+                // Source of the row -> picker container transform, same technique as the channel
+                // row above. The row leaves layout while the card is up, so a Spacer of its own
+                // measured height holds its place -- otherwise the "Check now" row below would
+                // jump up under the scrim.
+                val rowDensity = LocalDensity.current
+                var intervalRowHeightPx by remember { mutableStateOf(0) }
+                Box {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !intervalPickerVisible,
+                        enter = EnterTransition.None,
+                        exit = ExitTransition.None,
+                    ) {
+                        ExpressiveGroupRow(
+                            GroupPosition.MIDDLE,
+                            modifier = Modifier
+                                .onSizeChanged { intervalRowHeightPx = it.height }
+                                .sharedBounds(
+                                    rememberSharedContentState("interval_picker"),
+                                    animatedVisibilityScope = this@AnimatedVisibility,
+                                    enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                    exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                    boundsTransform = BoundsTransform { _, _ ->
+                                        spring(stiffness = 380f, dampingRatio = 0.8f)
+                                    },
+                                    resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                                ),
+                        ) {
+                            ListItem(
+                                headlineContent = { Text(stringResource(R.string.updates_wait_label)) },
+                                supportingContent = {
+                                    Text(
+                                        text = stringResource(waitOptionLabel(state.minUpdateIntervalHours)),
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_expand_more_24dp),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                modifier = Modifier.clickableRow(onClick = { intervalPickerVisible = true }),
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             )
-                        },
-                        trailingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_expand_more_24dp),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                        modifier = Modifier.clickableRow(onClick = { intervalPickerVisible = true }),
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    )
+                        }
+                    }
+                    if (intervalPickerVisible) {
+                        Spacer(Modifier.height(with(rowDensity) { intervalRowHeightPx.toDp() }))
+                    }
                 }
                 ExpressiveGroupRow(GroupPosition.BOTTOM) {
                     ListItem(
@@ -344,18 +375,61 @@ fun UpdatesScreen(
                     }
                 }
             }
+
+            // ── Wait-between-updates picker overlay — destination of its own container
+            // transform (same spring and fades as the channel picker above) ─
+            AnimatedVisibility(
+                visible = intervalPickerVisible,
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) { intervalPickerVisible = false },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp,
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp)
+                            .fillMaxWidth()
+                            .sharedBounds(
+                                rememberSharedContentState("interval_picker"),
+                                animatedVisibilityScope = this@AnimatedVisibility,
+                                enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                boundsTransform = BoundsTransform { _, _ ->
+                                    spring(stiffness = 380f, dampingRatio = 0.8f)
+                                },
+                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                            )
+                            // Consume touches so tapping inside the card doesn't dismiss it
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() },
+                            ) {},
+                    ) {
+                        MinIntervalContent(
+                            selectedHours = state.minUpdateIntervalHours,
+                            onSelect = { hours ->
+                                onMinIntervalSelected(hours)
+                                intervalPickerVisible = false
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 
-    if (intervalPickerVisible) {
-        MinIntervalDialog(
-            selectedHours = state.minUpdateIntervalHours,
-            onSelect = { hours ->
-                onMinIntervalSelected(hours)
-                intervalPickerVisible = false
-            },
-            onDismiss = { intervalPickerVisible = false },
-        )
+    androidx.activity.compose.BackHandler(enabled = intervalPickerVisible) {
+        intervalPickerVisible = false
     }
 
     // Download-progress UI (the sheet) is no longer rendered inline here -- it's the shared
@@ -1338,39 +1412,35 @@ private val WAIT_OPTIONS = listOf(
 private fun waitOptionLabel(hours: Int): Int =
     WAIT_OPTIONS.firstOrNull { it.first == hours }?.second ?: R.string.updates_wait_off
 
+/** The inside of the "Wait between updates" card; the Surface/transform shell is supplied by the
+ * screen, same split as the channel picker. */
 @Composable
-private fun MinIntervalDialog(
+private fun MinIntervalContent(
     selectedHours: Int,
     onSelect: (Int) -> Unit,
-    onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.updates_wait_label)) },
-        text = {
-            Column {
-                Text(
-                    text = stringResource(R.string.updates_wait_explainer),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                WAIT_OPTIONS.forEach { (hours, labelRes) ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(hours) }
-                            .padding(vertical = 4.dp),
-                    ) {
-                        RadioButton(selected = hours == selectedHours, onClick = { onSelect(hours) })
-                        Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
-                    }
-                }
+    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)) {
+        Text(
+            text = stringResource(R.string.updates_wait_label),
+            style = MaterialTheme.typography.titleLarge,
+        )
+        Text(
+            text = stringResource(R.string.updates_wait_explainer),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+        )
+        WAIT_OPTIONS.forEach { (hours, labelRes) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelect(hours) }
+                    .padding(vertical = 4.dp),
+            ) {
+                RadioButton(selected = hours == selectedHours, onClick = { onSelect(hours) })
+                Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        },
-    )
+        }
+    }
 }
