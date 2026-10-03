@@ -104,6 +104,9 @@ class StartConversationListState {
     // properties, which is easy to get wrong from Java call sites — avoid the ambiguity.
     val refreshing = mutableStateOf(false)
     val fabExpanded = mutableStateOf(false)
+    // One-shot request from outside Compose (the Add dialog's help link) to open the Invite card;
+    // StartConversationScreen consumes and clears it.
+    val inviteRequested = mutableStateOf(false)
 
     fun updateContacts(source: List<ListItem>) {
         contacts.clear()
@@ -178,6 +181,14 @@ private fun StartConversationScreen(
 
     var fabExpanded by state.fabExpanded
     var inviteExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.inviteRequested.value) {
+        if (state.inviteRequested.value) {
+            state.inviteRequested.value = false
+            fabExpanded = false
+            if (showInvite) inviteExpanded = true
+        }
+    }
 
     BackHandler(enabled = fabExpanded) { fabExpanded = false }
     BackHandler(enabled = inviteExpanded) { inviteExpanded = false }

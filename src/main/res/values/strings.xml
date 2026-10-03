@@ -215,6 +215,7 @@
     <string name="xmpp_address_help_impulse_qr_header">If they use Impulse: by QR code</string>
     <string name="xmpp_address_help_impulse_qr_body">Both of you open the main chats screen and tap the QR code button at the top. One of you taps \"Scan,\" the other taps \"Show\" — it doesn\'t matter who does which.</string>
     <string name="xmpp_address_help_other_app_header">If they use a different app</string>
+    <string name="xmpp_address_help_invite_link">Friend not on Impulse yet? Invite them →</string>
     <string name="xmpp_address_help_other_app_body">Check that app\'s help for how to find their address. Most apps have a clear button like \"New Chat\" or \"Add Contact\" where you can enter the address you\'re given.</string>
     <string name="password">Password</string>
     <string name="invalid_jid">This is not a valid XMPP address</string>

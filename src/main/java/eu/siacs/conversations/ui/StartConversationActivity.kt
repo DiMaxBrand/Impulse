@@ -71,7 +71,18 @@ class StartConversationActivity :
     OnUpdateBlocklist,
     CreatePrivateGroupChatDialog.CreateConferenceDialogListener,
     JoinConferenceDialog.JoinConferenceDialogListener,
-    CreatePublicChannelDialog.CreatePublicChannelDialogListener {
+    CreatePublicChannelDialog.CreatePublicChannelDialogListener,
+    EnterJidDialog.InviteHost {
+
+    // The Add contact dialog's address-help card links here ("Friend not on Impulse yet? Invite
+    // them"): the flag decides whether that link is offered at all, and openInvite() flips a state
+    // flag the Compose screen reacts to by bringing the Invite card forward.
+    override fun canOpenInvite(): Boolean =
+        FeatureFlagPreferences(this).isEnabled(FeatureFlag.INVITE_CONTACTS)
+
+    override fun openInvite() {
+        composeState.inviteRequested.value = true
+    }
 
     data class Invite(
         val uri: MiniUri.Xmpp,

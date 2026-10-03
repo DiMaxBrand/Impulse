@@ -207,7 +207,29 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         popupWindow.setOutsideTouchable(true);
         content.findViewById(R.id.xmpp_address_help_dismiss)
                 .setOnClickListener(v -> popupWindow.dismiss());
+        // "Friend not on Impulse yet? Invite them": closes this help card and the Add dialog and
+        // brings the Invite card forward. Only offered where the host can actually show it.
+        if (getActivity() instanceof InviteHost host && host.canOpenInvite()) {
+            final View inviteLink = content.findViewById(R.id.xmpp_address_help_invite_link);
+            inviteLink.setVisibility(View.VISIBLE);
+            inviteLink.setOnClickListener(
+                    v -> {
+                        popupWindow.dismiss();
+                        dismissAllowingStateLoss();
+                        host.openInvite();
+                    });
+        }
         popupWindow.showAsDropDown(binding.jidLayout);
+    }
+
+    /**
+     * Implemented by a host screen that can show an Invite card, so the address help can link to
+     * it.
+     */
+    public interface InviteHost {
+        boolean canOpenInvite();
+
+        void openInvite();
     }
 
     private void handleEnter(final DialogEnterJidBinding binding, final String account) {

@@ -206,6 +206,7 @@
     <string name="xmpp_address_help_impulse_qr_header">Если у него тоже Импульс: по QR-коду</string>
     <string name="xmpp_address_help_impulse_qr_body">Откройте оба главный экран со списком чатов и нажмите кнопку QR-кода сверху. Один из вас нажимает «Сканировать», другой — «Показать» — не важно, кто что делает.</string>
     <string name="xmpp_address_help_other_app_header">Если у него другое приложение</string>
+    <string name="xmpp_address_help_invite_link">Друга ещё нет в Импульсе? Пригласить →</string>
     <string name="xmpp_address_help_other_app_body">Посмотрите в справке этого приложения, как найти адрес. Обычно там есть понятная кнопка вроде «Новый чат» или «Добавить контакт», куда можно ввести адрес, который вам дали.</string>
     <string name="password">Пароль</string>
     <string name="invalid_jid">Недопустимый XMPP-адрес</string>

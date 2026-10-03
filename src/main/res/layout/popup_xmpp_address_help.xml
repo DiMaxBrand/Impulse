@@ -76,6 +76,22 @@
             </LinearLayout>
         </ScrollView>
 
+        <!-- Shown only when the hosting screen can actually open the Invite card; see
+             EnterJidDialog.showXmppAddressHelpPopup. -->
+        <TextView
+            android:id="@+id/xmpp_address_help_invite_link"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingVertical="8dp"
+            android:text="@string/xmpp_address_help_invite_link"
+            android:textColor="?attr/colorPrimary"
+            android:textAppearance="?attr/textAppearanceLabelLarge"
+            android:visibility="gone" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/xmpp_address_help_dismiss"
             style="@style/Widget.Material3.Button.TextButton"
