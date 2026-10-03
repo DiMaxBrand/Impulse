@@ -102,30 +102,39 @@ object ViewStatusManager {
     )
 
     /** Keyed by the INCOMING video message's local uuid -- the viewer's own pending timers, not
-     * the peer's. */
-    private val pendingVideoViews = mutableMapOf<String, PendingVideoView>()
+     * the peer's. Concurrent: written from this object's coroutines, read and cleared on the main
+     * thread by onAppForegrounded(). */
+    private val pendingVideoViews = java.util.concurrent.ConcurrentHashMap<String, PendingVideoView>()
 
     /** Called when the viewer taps a video's play button, right before handing off to the
      * external player -- Impulse has no built-in video playback yet, so this is the only real
-     * signal available. [durationMs] is the video's own known runtime (FileParams.runtime, itself
-     * already milliseconds — see AudioPlayer.formatTime's identical assumption for voice
-     * messages); a message with no known duration is silently skipped, since there is nothing
-     * honest to time a guess against. */
-    fun onVideoPlayTapped(service: XmppConnectionService, message: Message, durationMs: Int) {
+     * signal available.
+     *
+     * The video's length is read from the downloaded file here, on a background thread: a video
+     * message's body never carries a runtime (updateFileParams only writes one for audio), so
+     * FileParams.runtime is always 0 for video and relying on it silently made this a no-op -- the
+     * sender never saw the eye. The tap time is captured first, before that read, so the
+     * "how long were they gone" arithmetic still starts at the tap. A video whose length still
+     * can't be determined is skipped: there is nothing honest to time a guess against. */
+    fun onVideoPlayTapped(service: XmppConnectionService, message: Message) {
         val uuid = message.getUuid() ?: return
         if (message.status != Message.STATUS_RECEIVED) return
         val conversation = message.conversation as? Conversation ?: return
         if (conversation.getMode() != Conversational.MODE_SINGLE) return
-        if (durationMs <= 0) return
-        pendingVideoViews.remove(uuid)?.job?.cancel()
-        sendViewStatusStanza(service, message, WIRE_VIEWING)
         val tappedAtMs = System.currentTimeMillis()
-        val job = scope.launch {
-            delay(durationMs.toLong() + NEAR_DURATION_WINDOW_MS)
-            pendingVideoViews.remove(uuid)
-            sendViewStatusStanza(service, message, WIRE_UNKNOWN)
+        scope.launch(Dispatchers.IO) {
+            val durationMs = message.fileParams.runtime.takeIf { it > 0 }
+                ?: service.fileBackend.getLocalMediaRuntime(message)
+            if (durationMs <= 0) return@launch
+            pendingVideoViews.remove(uuid)?.job?.cancel()
+            sendViewStatusStanza(service, message, WIRE_VIEWING)
+            val job = scope.launch {
+                delay(durationMs.toLong() + NEAR_DURATION_WINDOW_MS)
+                pendingVideoViews.remove(uuid)
+                sendViewStatusStanza(service, message, WIRE_UNKNOWN)
+            }
+            pendingVideoViews[uuid] = PendingVideoView(service, message, job, tappedAtMs, durationMs)
         }
-        pendingVideoViews[uuid] = PendingVideoView(service, message, job, tappedAtMs, durationMs)
     }
 
     /** Called from XmppConnectionService's own ProcessLifecycleOwner observer whenever the app
@@ -143,8 +152,9 @@ object ViewStatusManager {
     fun onAppForegrounded() {
         if (pendingVideoViews.isEmpty()) return
         val now = System.currentTimeMillis()
-        val resolved = ArrayList(pendingVideoViews.values)
-        pendingVideoViews.clear()
+        // Removed one by one rather than copy-then-clear, so an entry added by a concurrent tap
+        // between the two steps can't be silently dropped.
+        val resolved = pendingVideoViews.keys.toList().mapNotNull { pendingVideoViews.remove(it) }
         for (pending in resolved) {
             pending.job.cancel()
             val elapsed = now - pending.tappedAtMs

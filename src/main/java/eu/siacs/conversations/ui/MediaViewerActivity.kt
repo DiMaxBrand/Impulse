@@ -872,7 +872,7 @@ private fun MediaViewerPage(
                             // Starts the view-status timer (duration + 5s) right before handing
                             // off -- see ViewStatusManager.onVideoPlayTapped's own doc for why
                             // this tap is the only real signal available for video.
-                            ViewStatusManager.onVideoPlayTapped(service, message, message.fileParams.runtime)
+                            ViewStatusManager.onVideoPlayTapped(service, message)
                             onOpenExternally(message)
                         },
                     contentAlignment = Alignment.Center,

@@ -1472,6 +1472,18 @@ public class FileBackend {
                         : (image ? Message.TYPE_IMAGE : Message.TYPE_FILE));
     }
 
+    /**
+     * Duration in milliseconds of this message's local media file, or 0 when unknown (not
+     * downloaded, unreadable). Needed because only audio messages carry a runtime in their body --
+     * updateFileParams() writes size and dimensions for video but never a duration -- so anything
+     * that needs a video's length has to read it from the file itself. Blocking file I/O: call off
+     * the main thread.
+     */
+    public int getLocalMediaRuntime(final Message message) {
+        final File file = getFile(message);
+        return file.exists() ? getMediaRuntime(file) : 0;
+    }
+
     private int getMediaRuntime(final File file) {
         try {
             final MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
