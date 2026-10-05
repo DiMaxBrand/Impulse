@@ -1990,6 +1990,14 @@ private fun MessageList(
     // recurring one.
     LaunchedEffect(conversation?.getUuid(), newMessagesBoundary) {
         val firstUnreadUuid = newMessagesBoundary?.first
+        if (firstUnreadUuid == null && state.messages.value.isEmpty()) {
+            // Messages are still loading (async restore). Flipping hasPositioned now would let the
+            // onScrolledToBottom effect mark the whole backlog read before the divider boundary is
+            // ever computed -- the relaunch (boundary changes) cancels this wait and takes over.
+            kotlinx.coroutines.withTimeoutOrNull(2000) {
+                snapshotFlow { state.messages.value.isNotEmpty() }.first { it }
+            }
+        }
         if (firstUnreadUuid != null) {
             snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
             // Target the divider pill itself (not the message under it -- that one can be the head
