@@ -1992,10 +1992,10 @@ private fun MessageList(
         val firstUnreadUuid = newMessagesBoundary?.first
         if (firstUnreadUuid != null) {
             snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 }
-            val targetIndex =
-                items.indexOfFirst {
-                    it is ChatItem.Msg && it.message.getUuid() == firstUnreadUuid
-                }
+            // Target the divider pill itself (not the message under it -- that one can be the head
+            // of a MediaGroup and never match as a plain Msg). Instant scrollToItem, done before
+            // hasPositioned flips, so nothing can mark-read / re-pin to the bottom mid-animation.
+            val targetIndex = items.indexOfFirst { it is ChatItem.NewMessagesPill }
             if (targetIndex > 0) {
                 val info = listState.layoutInfo
                 val target = info.visibleItemsInfo.find { it.index == targetIndex }
@@ -2004,7 +2004,9 @@ private fun MessageList(
                         target.offset >= info.viewportStartOffset &&
                         (target.offset + target.size) <= info.viewportEndOffset
                 if (!fullyVisible) {
-                    requestScroll(targetIndex, 0.7f)
+                    val viewportHeight = info.viewportSize.height
+                    val offsetPx = if (viewportHeight > 0) -(viewportHeight * 0.7f).toInt() else -800
+                    listState.scrollToItem(targetIndex, scrollOffset = offsetPx)
                 }
             }
         }
