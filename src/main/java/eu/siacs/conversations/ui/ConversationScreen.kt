@@ -1995,19 +1995,25 @@ private fun MessageList(
             // Target the divider pill itself (not the message under it -- that one can be the head
             // of a MediaGroup and never match as a plain Msg). Instant scrollToItem, done before
             // hasPositioned flips, so nothing can mark-read / re-pin to the bottom mid-animation.
-            val targetIndex = items.indexOfFirst { it is ChatItem.NewMessagesPill }
-            if (targetIndex > 0) {
+            // Lazy indices run ahead of items' own by the leading rows (typing bubble / local-time
+            // row), and the list can still be settling (history/page loads) right after the first
+            // layout, so re-check a few times and only stop once the divider is really on screen.
+            var attempts = 0
+            while (attempts < 4) {
+                val targetIndex =
+                    latestItems.value.indexOfFirst { it is ChatItem.NewMessagesPill } +
+                        latestLeadingCount.value
+                if (targetIndex <= latestLeadingCount.value) break
                 val info = listState.layoutInfo
                 val target = info.visibleItemsInfo.find { it.index == targetIndex }
-                val fullyVisible =
-                    target != null &&
-                        target.offset >= info.viewportStartOffset &&
-                        (target.offset + target.size) <= info.viewportEndOffset
-                if (!fullyVisible) {
-                    val viewportHeight = info.viewportSize.height
-                    val offsetPx = if (viewportHeight > 0) -(viewportHeight * 0.7f).toInt() else -800
-                    listState.scrollToItem(targetIndex, scrollOffset = offsetPx)
-                }
+                if (target != null && target.offset >= info.viewportStartOffset &&
+                    (target.offset + target.size) <= info.viewportEndOffset && attempts > 0
+                ) break
+                val viewportHeight = info.viewportSize.height
+                val offsetPx = if (viewportHeight > 0) -(viewportHeight * 0.7f).toInt() else -800
+                listState.scrollToItem(targetIndex, scrollOffset = offsetPx)
+                attempts++
+                kotlinx.coroutines.delay(120)
             }
         }
         hasPositioned.value = true
