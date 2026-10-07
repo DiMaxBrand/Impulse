@@ -26,6 +26,7 @@ import android.view.WindowManager;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.StringRes;
@@ -1120,49 +1121,102 @@ public class RtpSessionActivity extends XmppActivity
     @SuppressLint("RestrictedApi")
     private void updateInCallButtonConfigurationSpeaker(
             final CallIntegration.AudioDevice selectedAudioDevice, final int numberOfChoices) {
+        final var button = this.binding.inCallActionRight;
+        final int description;
         switch (selectedAudioDevice) {
             case EARPIECE -> {
-                this.binding.inCallActionRight.setImageResource(R.drawable.ic_volume_off_24dp);
-                if (numberOfChoices >= 2) {
-                    this.binding.inCallActionRight.setContentDescription(
-                            getString(R.string.call_is_using_earpiece_tap_to_switch_to_speaker));
-                    this.binding.inCallActionRight.setOnClickListener(this::switchToSpeaker);
-                } else {
-                    this.binding.inCallActionRight.setContentDescription(
-                            getString(R.string.call_is_using_earpiece));
-                    this.binding.inCallActionRight.setOnClickListener(null);
-                    this.binding.inCallActionRight.setClickable(false);
-                }
+                button.setImageResource(R.drawable.ic_volume_off_24dp);
+                description = R.string.call_is_using_earpiece;
             }
             case WIRED_HEADSET -> {
-                this.binding.inCallActionRight.setContentDescription(
-                        getString(R.string.call_is_using_wired_headset));
-                this.binding.inCallActionRight.setImageResource(R.drawable.ic_headset_mic_24dp);
-                this.binding.inCallActionRight.setOnClickListener(null);
-                this.binding.inCallActionRight.setClickable(false);
+                button.setImageResource(R.drawable.ic_headset_mic_24dp);
+                description = R.string.call_is_using_wired_headset;
             }
             case SPEAKER_PHONE -> {
-                this.binding.inCallActionRight.setImageResource(R.drawable.ic_volume_up_24dp);
-                if (numberOfChoices >= 2) {
-                    this.binding.inCallActionRight.setContentDescription(
-                            getString(R.string.call_is_using_speaker_tap_to_switch_to_earpiece));
-                    this.binding.inCallActionRight.setOnClickListener(this::switchToEarpiece);
-                } else {
-                    this.binding.inCallActionRight.setContentDescription(
-                            getString(R.string.call_is_using_speaker));
-                    this.binding.inCallActionRight.setOnClickListener(null);
-                    this.binding.inCallActionRight.setClickable(false);
-                }
+                button.setImageResource(R.drawable.ic_volume_up_24dp);
+                description = R.string.call_is_using_speaker;
             }
             case BLUETOOTH -> {
-                this.binding.inCallActionRight.setContentDescription(
-                        getString(R.string.call_is_using_bluetooth));
-                this.binding.inCallActionRight.setImageResource(R.drawable.ic_bluetooth_audio_24dp);
-                this.binding.inCallActionRight.setOnClickListener(null);
-                this.binding.inCallActionRight.setClickable(false);
+                button.setImageResource(R.drawable.ic_bluetooth_audio_24dp);
+                description = R.string.call_is_using_bluetooth;
+            }
+            default -> {
+                button.setImageResource(R.drawable.ic_volume_up_24dp);
+                description = R.string.call_is_using_speaker;
             }
         }
-        setVisibleAndShow(this.binding.inCallActionRight);
+        // Any route with an alternative opens the picker -- Bluetooth and wired headset used to be
+        // dead ends (no click listener), so a connected Bluetooth device could never be switched
+        // away from.
+        if (numberOfChoices >= 2) {
+            button.setContentDescription(getString(R.string.audio_output_choose));
+            button.setOnClickListener(this::showAudioOutputPicker);
+        } else {
+            button.setContentDescription(getString(description));
+            button.setOnClickListener(null);
+            button.setClickable(false);
+        }
+        setVisibleAndShow(button);
+    }
+
+    private void showAudioOutputPicker(final View view) {
+        resetVisibilityToggleExecutor();
+        final CallIntegration callIntegration;
+        try {
+            callIntegration = requireCallIntegration();
+        } catch (final IllegalStateException e) {
+            Toast.makeText(this, R.string.could_not_modify_call, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final var order =
+                List.of(
+                        CallIntegration.AudioDevice.BLUETOOTH,
+                        CallIntegration.AudioDevice.WIRED_HEADSET,
+                        CallIntegration.AudioDevice.EARPIECE,
+                        CallIntegration.AudioDevice.SPEAKER_PHONE);
+        final var available = callIntegration.getAudioDevices();
+        final var choices = new java.util.ArrayList<CallIntegration.AudioDevice>();
+        for (final var device : order) {
+            if (available.contains(device)) choices.add(device);
+        }
+        final var selected = callIntegration.getSelectedAudioDevice();
+        final var labels = new String[choices.size()];
+        for (int i = 0; i < labels.length; i++) {
+            labels[i] = getString(audioDeviceLabel(choices.get(i)));
+        }
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.audio_output_choose)
+                .setSingleChoiceItems(
+                        labels,
+                        choices.indexOf(selected),
+                        (dialog, which) -> {
+                            dialog.dismiss();
+                            final var device = choices.get(which);
+                            try {
+                                callIntegration.setAudioDevice(device);
+                                if (device == CallIntegration.AudioDevice.EARPIECE) {
+                                    acquireProximityWakeLock();
+                                } else {
+                                    releaseProximityWakeLock();
+                                }
+                            } catch (final IllegalStateException e) {
+                                Toast.makeText(
+                                                this,
+                                                R.string.could_not_modify_call,
+                                                Toast.LENGTH_SHORT)
+                                        .show();
+                            }
+                        })
+                .show();
+    }
+
+    private static int audioDeviceLabel(final CallIntegration.AudioDevice device) {
+        return switch (device) {
+            case BLUETOOTH -> R.string.audio_output_bluetooth;
+            case WIRED_HEADSET -> R.string.audio_output_wired_headset;
+            case EARPIECE -> R.string.audio_output_earpiece;
+            default -> R.string.audio_output_speaker;
+        };
     }
 
     @SuppressLint("RestrictedApi")

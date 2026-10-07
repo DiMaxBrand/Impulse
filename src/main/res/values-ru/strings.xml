@@ -1503,4 +1503,9 @@
     <string name="notification_setup_skip_warning">Вы всё равно услышите звонки, разблокировав телефон или открыв шторку уведомлений — но если вернуться и включить всплывающие окна, будет намного проще.</string>
     <string name="notification_setup_enable_it">Включить</string>
     <string name="notification_setup_skip_action">Пропустить</string>
+    <string name="audio_output_choose">Вывод звука</string>
+    <string name="audio_output_bluetooth">Bluetooth</string>
+    <string name="audio_output_wired_headset">Проводные наушники</string>
+    <string name="audio_output_earpiece">Разговорный динамик</string>
+    <string name="audio_output_speaker">Громкая связь</string>
 </resources>
