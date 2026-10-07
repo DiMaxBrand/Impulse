@@ -1444,4 +1444,5 @@
     <string name="audio_output_wired_headset">Wired headset</string>
     <string name="audio_output_earpiece">Earpiece</string>
     <string name="audio_output_speaker">Speaker</string>
+    <string name="call_slider_hint">Slide right to answer, left to decline</string>
 </resources>

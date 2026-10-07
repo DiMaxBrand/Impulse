@@ -11,8 +11,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.opengl.GLException;
 import android.graphics.Bitmap;
+import android.opengl.GLException;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -135,6 +135,26 @@ public class RtpSessionActivity extends XmppActivity
 
     private final Handler mHandler = new Handler();
     private final IncomingCallState incomingCallState = new IncomingCallState();
+    private static final String CALL_UI_PREFS = "call_ui";
+    private static final String PREF_SLIDER_USED = "slider_used";
+    private static final String PREF_SLIDER_HINT_SHOWN = "slider_hint_shown";
+    private static final int SLIDER_HINT_MAX_SHOWS = 2;
+    private boolean sliderHintCounted = false;
+
+    // Shows the "slide to answer" hint for someone's first couple of incoming calls only, and
+    // never again once they have actually used the slider -- so regulars never see it.
+    private void updateSliderHint() {
+        final var prefs = getSharedPreferences(CALL_UI_PREFS, MODE_PRIVATE);
+        final int shown = prefs.getInt(PREF_SLIDER_HINT_SHOWN, 0);
+        final boolean show =
+                !prefs.getBoolean(PREF_SLIDER_USED, false) && shown < SLIDER_HINT_MAX_SHOWS;
+        if (show && !sliderHintCounted) {
+            sliderHintCounted = true;
+            prefs.edit().putInt(PREF_SLIDER_HINT_SHOWN, shown + 1).apply();
+        }
+        incomingCallState.setHintVisible(show);
+    }
+
     private final Runnable mTickExecutor =
             new Runnable() {
                 @Override
@@ -205,6 +225,14 @@ public class RtpSessionActivity extends XmppActivity
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
         this.incomingCallState.setOnAccept(this::requestPermissionsAndAcceptCall);
         this.incomingCallState.setOnDecline(() -> rejectCall(null));
+        this.incomingCallState.setOnSliderUsed(
+                () -> {
+                    getSharedPreferences(CALL_UI_PREFS, MODE_PRIVATE)
+                            .edit()
+                            .putBoolean(PREF_SLIDER_USED, true)
+                            .apply();
+                    incomingCallState.setHintVisible(false);
+                });
         IncomingCallHelper.setup(this.binding.incomingCallCompose, this.incomingCallState);
 
         // Predictive back: OnBackPressedCallback instead of overriding the deprecated
@@ -946,6 +974,9 @@ public class RtpSessionActivity extends XmppActivity
             binding.incomingCallCompose.setVisibility(View.VISIBLE);
             incomingCallState.setVisible(true);
             incomingCallState.setSliderVisible(state == RtpEndUserState.INCOMING_CALL);
+            if (state == RtpEndUserState.INCOMING_CALL) {
+                updateSliderHint();
+            }
             final Contact avatarContact = contact == null ? getWith() : contact;
             new Thread(
                             () -> {

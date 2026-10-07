@@ -81,9 +81,16 @@ class IncomingCallState {
     private var visibleState by mutableStateOf(false)
     private var sliderState by mutableStateOf(true)
     private var avatarState by mutableStateOf<ImageBitmap?>(null)
+    private var hintState by mutableStateOf(false)
 
     var onAccept: Runnable? = null
     var onDecline: Runnable? = null
+    /** Fired once the slider has actually been dragged, so the first-time hint can retire. */
+    var onSliderUsed: Runnable? = null
+
+    fun setHintVisible(visible: Boolean) {
+        hintState = visible
+    }
 
     fun setVisible(visible: Boolean) {
         visibleState = visible
@@ -100,6 +107,7 @@ class IncomingCallState {
     internal val visible get() = visibleState
     internal val sliderVisible get() = sliderState
     internal val avatar get() = avatarState
+    internal val hint get() = hintState
 }
 
 object IncomingCallHelper {
@@ -138,9 +146,20 @@ internal fun IncomingCallContent(state: IncomingCallState) {
             MorphingCallAvatar(state.avatar, Modifier.size(avatarSize))
             Spacer(Modifier.weight(1f))
             if (state.sliderVisible) {
+                if (state.hint) {
+                    androidx.compose.material3.Text(
+                        text = stringResource(R.string.call_slider_hint),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 16.dp),
+                    )
+                }
                 CallSlider(
+                    nudge = state.hint,
                     onAccept = { state.onAccept?.run() },
                     onDecline = { state.onDecline?.run() },
+                    onUsed = { state.onSliderUsed?.run() },
                 )
             }
             Spacer(Modifier.height(48.dp))
@@ -223,10 +242,16 @@ private fun MorphingCallAvatar(avatar: ImageBitmap?, modifier: Modifier = Modifi
  * commits; otherwise it springs back.
  */
 @Composable
-private fun CallSlider(onAccept: () -> Unit, onDecline: () -> Unit) {
+private fun CallSlider(
+    nudge: Boolean,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+    onUsed: () -> Unit,
+) {
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
     val offset = remember { Animatable(0f) }
+    var dragging by remember { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val answerDesc = stringResource(R.string.answer_call)
@@ -265,6 +290,22 @@ private fun CallSlider(onAccept: () -> Unit, onDecline: () -> Unit) {
         val handleWidth = 112.dp
         val maxTravelPx = with(density) { ((maxWidth - handleWidth) / 2).toPx() }
         val p = if (maxTravelPx > 0f) (offset.value / maxTravelPx).coerceIn(-1f, 1f) else 0f
+
+        // First-time hint: the handle teases a short slide right, then left, then rests, until the
+        // user touches it. Stays well short of the commit threshold so it can never answer.
+        LaunchedEffect(nudge, dragging, maxTravelPx) {
+            if (!nudge || dragging || maxTravelPx <= 0f) return@LaunchedEffect
+            val nudgeSpring = spring<Float>(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow)
+            delay(1200)
+            while (true) {
+                offset.animateTo(maxTravelPx * 0.4f, nudgeSpring)
+                delay(250)
+                offset.animateTo(-maxTravelPx * 0.4f, nudgeSpring)
+                delay(250)
+                offset.animateTo(0f, nudgeSpring)
+                delay(2200)
+            }
+        }
 
         val committed = abs(p) >= SLIDER_COMMIT_FRACTION
         LaunchedEffect(committed) {
@@ -318,7 +359,12 @@ private fun CallSlider(onAccept: () -> Unit, onDecline: () -> Unit) {
                                     )
                                 }
                             },
+                        onDragStarted = {
+                            dragging = true
+                            onUsed()
+                        },
                         onDragStopped = {
+                            dragging = false
                             val end = offset.value / maxTravelPx
                             when {
                                 end <= -SLIDER_COMMIT_FRACTION -> {
