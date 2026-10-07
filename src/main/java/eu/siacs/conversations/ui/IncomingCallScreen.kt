@@ -36,6 +36,7 @@ import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -257,6 +258,8 @@ private fun CallSlider(
     val haptic = LocalHapticFeedback.current
     val offset = remember { Animatable(0f) }
     var dragging by remember { mutableStateOf(false) }
+    // 0 = not decided yet, -1 = declined, 1 = answered. Guards against firing twice.
+    var committedDirection by remember { mutableIntStateOf(0) }
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val answerDesc = stringResource(R.string.answer_call)
@@ -301,8 +304,8 @@ private fun CallSlider(
 
         // First-time hint: the handle teases a short slide right, then left, then rests, until the
         // user touches it. Stays well short of the commit threshold so it can never answer.
-        LaunchedEffect(nudge, dragging, maxTravelPx) {
-            if (!nudge || dragging || maxTravelPx <= 0f) return@LaunchedEffect
+        LaunchedEffect(nudge, dragging, committedDirection, maxTravelPx) {
+            if (!nudge || dragging || committedDirection != 0 || maxTravelPx <= 0f) return@LaunchedEffect
             val nudgeSpring = spring<Float>(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow)
             delay(1200)
             while (true) {
@@ -356,13 +359,88 @@ private fun CallSlider(
         val iconRotation =
             swayDegrees * (1f - abs(p)) + if (p < 0f) 135f * -p else -20f * p
 
+        val flingThresholdPx = with(density) { SLIDER_FLING_DP_PER_S.dp.toPx() }
+
+        // Answer/decline fires from the composition's own scope (not the gesture's), and as soon
+        // as the handle reaches an end -- not only on release. A release at the very screen edge
+        // can arrive as a cancelled gesture or be swallowed by the system's edge gestures, and
+        // when the commit waited for it, a drag all the way across did nothing.
+        fun commit(left: Boolean, velocity: Float) {
+            if (committedDirection != 0) return
+            committedDirection = if (left) -1 else 1
+            scope.launch {
+                offset.animateTo(
+                    if (left) -maxTravelPx else maxTravelPx,
+                    spring(stiffness = Spring.StiffnessMedium),
+                    initialVelocity = velocity,
+                )
+                // If the screen is still here a moment later (e.g. the microphone permission
+                // prompt was dismissed), put the handle back so it can be used again.
+                delay(900)
+                offset.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
+                committedDirection = 0
+            }
+            if (left) onDecline() else onAccept()
+        }
+
+        // The handle itself is the only touch target -- the track around it ignores touches.
         Box(
             modifier =
                 Modifier.align(Alignment.Center)
                     .offset { IntOffset(offset.value.roundToInt(), 0) }
                     .size(width = handleWidth, height = 72.dp)
                     .clip(CircleShape)
-                    .background(handleColor),
+                    .background(handleColor)
+                    // Keep the system's edge back-gesture from stealing a drag near the edge.
+                    .systemGestureExclusion()
+                    .draggable(
+                        orientation = Orientation.Horizontal,
+                        state =
+                            rememberDraggableState { delta ->
+                                if (committedDirection != 0) return@rememberDraggableState
+                                // UNDISPATCHED so the snap happens right now. Dispatched, the
+                                // last few deltas could run after the release spring started and
+                                // cancel it (Animatable lets the newest call win), leaving the
+                                // handle parked until something else moved it.
+                                scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                    offset.snapTo(
+                                        (offset.value + delta).coerceIn(-maxTravelPx, maxTravelPx)
+                                    )
+                                }
+                                val reached = offset.value / maxTravelPx
+                                if (reached <= -0.98f) commit(left = true, velocity = 0f)
+                                else if (reached >= 0.98f) commit(left = false, velocity = 0f)
+                            },
+                        onDragStarted = {
+                            dragging = true
+                            onUsed()
+                        },
+                        onDragStopped = { velocity ->
+                            dragging = false
+                            if (committedDirection != 0) return@draggable
+                            val end = offset.value / maxTravelPx
+                            val flungLeft = velocity <= -flingThresholdPx && end < -0.1f
+                            val flungRight = velocity >= flingThresholdPx && end > 0.1f
+                            when {
+                                end <= -SLIDER_COMMIT_FRACTION || flungLeft ->
+                                    commit(left = true, velocity = velocity)
+                                end >= SLIDER_COMMIT_FRACTION || flungRight ->
+                                    commit(left = false, velocity = velocity)
+                                else ->
+                                    // Carries the release velocity, so a flick back overshoots.
+                                    scope.launch {
+                                        offset.animateTo(
+                                            0f,
+                                            spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessLow,
+                                            ),
+                                            initialVelocity = velocity,
+                                        )
+                                    }
+                            }
+                        },
+                    ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -373,66 +451,5 @@ private fun CallSlider(
             )
         }
 
-        // The whole track is the touch target, not just the handle -- a thumb that lands beside
-        // the handle still drags it. Sits on top of the handle, which has no gestures of its own.
-        val flingThresholdPx = with(density) { SLIDER_FLING_DP_PER_S.dp.toPx() }
-        Box(
-            Modifier.fillMaxSize()
-                // Keep the system's edge back-gesture from stealing a drag that ends near the edge.
-                .systemGestureExclusion()
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state =
-                        rememberDraggableState { delta ->
-                            // UNDISPATCHED so the snap happens right now. Dispatched, the last
-                            // few deltas could run after onDragStopped's spring started and
-                            // cancel it (Animatable lets the newest call win), leaving the
-                            // handle parked until something else moved it.
-                            scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                                offset.snapTo(
-                                    (offset.value + delta).coerceIn(-maxTravelPx, maxTravelPx)
-                                )
-                            }
-                        },
-                    onDragStarted = {
-                        dragging = true
-                        onUsed()
-                    },
-                    onDragStopped = { velocity ->
-                        dragging = false
-                        val end = offset.value / maxTravelPx
-                        val flungLeft = velocity <= -flingThresholdPx && end < -0.1f
-                        val flungRight = velocity >= flingThresholdPx && end > 0.1f
-                        when {
-                            end <= -SLIDER_COMMIT_FRACTION || flungLeft -> {
-                                offset.animateTo(
-                                    -maxTravelPx,
-                                    spring(stiffness = Spring.StiffnessMedium),
-                                    initialVelocity = velocity,
-                                )
-                                onDecline()
-                            }
-                            end >= SLIDER_COMMIT_FRACTION || flungRight -> {
-                                offset.animateTo(
-                                    maxTravelPx,
-                                    spring(stiffness = Spring.StiffnessMedium),
-                                    initialVelocity = velocity,
-                                )
-                                onAccept()
-                            }
-                            else ->
-                                // Carries the release velocity, so a flick back overshoots.
-                                offset.animateTo(
-                                    0f,
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessLow,
-                                    ),
-                                    initialVelocity = velocity,
-                                )
-                        }
-                    },
-                )
-        )
     }
 }
