@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.opengl.GLException;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,11 +27,11 @@ import android.view.WindowManager;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.StringRes;
 import androidx.databinding.DataBindingUtil;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -49,7 +50,6 @@ import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.services.CallIntegration;
 import eu.siacs.conversations.services.CallIntegrationConnectionService;
 import eu.siacs.conversations.services.XmppConnectionService;
-import eu.siacs.conversations.ui.util.AvatarWorkerTask;
 import eu.siacs.conversations.ui.util.MainThreadExecutor;
 import eu.siacs.conversations.ui.util.Rationals;
 import eu.siacs.conversations.utils.PermissionUtils;
@@ -134,6 +134,7 @@ public class RtpSessionActivity extends XmppActivity
     private PowerManager.WakeLock mProximityWakeLock;
 
     private final Handler mHandler = new Handler();
+    private final IncomingCallState incomingCallState = new IncomingCallState();
     private final Runnable mTickExecutor =
             new Runnable() {
                 @Override
@@ -202,6 +203,9 @@ public class RtpSessionActivity extends XmppActivity
         this.binding.localVideo.setOnClickListener(this::onVideoScreenClick);
         setSupportActionBar(binding.toolbar);
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
+        this.incomingCallState.setOnAccept(this::requestPermissionsAndAcceptCall);
+        this.incomingCallState.setOnDecline(() -> rejectCall(null));
+        IncomingCallHelper.setup(this.binding.incomingCallCompose, this.incomingCallState);
 
         // Predictive back: OnBackPressedCallback instead of overriding the deprecated
         // onBackPressed() lets the system show its live back-gesture preview/animation. Still
@@ -937,19 +941,19 @@ public class RtpSessionActivity extends XmppActivity
 
     private void updateIncomingCallScreen(final RtpEndUserState state, final Contact contact) {
         if (state == RtpEndUserState.INCOMING_CALL || state == RtpEndUserState.ACCEPTING_CALL) {
-            final boolean show = getResources().getBoolean(R.bool.is_portrait_mode);
-            if (show) {
-                binding.contactPhoto.setVisibility(View.VISIBLE);
-                if (contact == null) {
-                    AvatarWorkerTask.loadAvatar(
-                            getWith(), binding.contactPhoto, R.dimen.publish_avatar_size);
-                } else {
-                    AvatarWorkerTask.loadAvatar(
-                            contact, binding.contactPhoto, R.dimen.publish_avatar_size);
-                }
-            } else {
-                binding.contactPhoto.setVisibility(View.GONE);
-            }
+            // The Compose layer replaces the old static photo and the accept/reject FABs.
+            binding.contactPhoto.setVisibility(View.GONE);
+            binding.incomingCallCompose.setVisibility(View.VISIBLE);
+            incomingCallState.setVisible(true);
+            incomingCallState.setSliderVisible(state == RtpEndUserState.INCOMING_CALL);
+            final Contact avatarContact = contact == null ? getWith() : contact;
+            new Thread(
+                            () -> {
+                                final Bitmap avatar =
+                                        avatarService().get(avatarContact, 1024, false);
+                                runOnUiThread(() -> incomingCallState.setAvatar(avatar));
+                            })
+                    .start();
             final Account account = contact == null ? getWith().getAccount() : contact.getAccount();
             binding.usingAccount.setVisibility(View.VISIBLE);
             binding.usingAccount.setText(
@@ -957,6 +961,8 @@ public class RtpSessionActivity extends XmppActivity
         } else {
             binding.usingAccount.setVisibility(View.GONE);
             binding.contactPhoto.setVisibility(View.GONE);
+            binding.incomingCallCompose.setVisibility(View.GONE);
+            incomingCallState.setVisible(false);
         }
     }
 
@@ -997,15 +1003,10 @@ public class RtpSessionActivity extends XmppActivity
             this.binding.endCall.setVisibility(View.INVISIBLE);
             this.binding.acceptCall.setVisibility(View.INVISIBLE);
         } else if (state == RtpEndUserState.INCOMING_CALL) {
-            this.binding.rejectCall.setContentDescription(getString(R.string.dismiss_call));
-            this.binding.rejectCall.setOnClickListener(this::rejectCall);
-            this.binding.rejectCall.setImageResource(R.drawable.ic_call_end_24dp);
-            this.binding.rejectCall.setVisibility(View.VISIBLE);
+            // Answer/decline lives in the Compose slider (IncomingCallScreen.kt).
+            this.binding.rejectCall.setVisibility(View.INVISIBLE);
             this.binding.endCall.setVisibility(View.INVISIBLE);
-            this.binding.acceptCall.setContentDescription(getString(R.string.answer_call));
-            this.binding.acceptCall.setOnClickListener(this::acceptCall);
-            this.binding.acceptCall.setImageResource(R.drawable.ic_call_24dp);
-            this.binding.acceptCall.setVisibility(View.VISIBLE);
+            this.binding.acceptCall.setVisibility(View.INVISIBLE);
         } else if (state == RtpEndUserState.INCOMING_CONTENT_ADD) {
             this.binding.rejectCall.setContentDescription(
                     getString(R.string.reject_switch_to_video));
