@@ -124,10 +124,12 @@ object IncomingCallHelper {
 private val CALL_AVATAR_SHAPES: List<RoundedPolygon> by lazy {
     listOf(
         MaterialShapeHelpers.circle(),
+        MaterialShapeHelpers.softBurst(),
         MaterialShapeHelpers.cookie9Sided(),
-        MaterialShapeHelpers.oval(),
-        MaterialShapeHelpers.cookie12Sided(),
-        MaterialShapeHelpers.cookie7Sided(),
+        MaterialShapeHelpers.flower(),
+        MaterialShapeHelpers.pentagon(),
+        MaterialShapeHelpers.puffy(),
+        MaterialShapeHelpers.clover8Leaf(),
     )
 }
 
@@ -156,7 +158,7 @@ internal fun IncomingCallContent(state: IncomingCallState) {
                     )
                 }
                 CallSlider(
-                    nudge = state.hint,
+                    nudge = true,
                     onAccept = { state.onAccept?.run() },
                     onDecline = { state.onDecline?.run() },
                     onUsed = { state.onSliderUsed?.run() },
@@ -181,14 +183,14 @@ private fun MorphingCallAvatar(avatar: ImageBitmap?, modifier: Modifier = Modifi
     LaunchedEffect(Unit) {
         var index = 0
         while (true) {
-            delay(2600)
+            delay(1700)
             index = (index + 1) % shapes.size
             fromShape.value = toShape.value
             toShape.value = shapes[index]
             progress.snapTo(0f)
             progress.animateTo(
                 1f,
-                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessVeryLow),
+                spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow),
             )
         }
     }
@@ -210,7 +212,7 @@ private fun MorphingCallAvatar(avatar: ImageBitmap?, modifier: Modifier = Modifi
 
     Canvas(modifier = modifier) {
         // Margin so the bounciest mid-morph bulge and the rotation never touch the canvas edge.
-        val scale = 0.9f
+        val scale = 0.76f
         val margin = (1f - scale) / 2f
         matrix.reset()
         matrix.postScale(size.width * scale, size.height * scale)
