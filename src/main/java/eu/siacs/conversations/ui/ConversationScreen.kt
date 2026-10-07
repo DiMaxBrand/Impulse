@@ -162,6 +162,7 @@ import eu.siacs.conversations.xmpp.manager.EntityTimeManager
 import eu.siacs.conversations.xmpp.manager.JingleManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -1874,9 +1875,21 @@ private fun MessageList(
     // the scroll-to-first-unread effect has actually run to completion, so this can no longer
     // fire on that first, not-yet-decided frame.
     LaunchedEffect(listState) {
+        var settledOnce = false
         snapshotFlow { hasPositioned.value && listState.firstVisibleItemIndex == 0 }
             .distinctUntilChanged()
-            .collect { atBottom -> if (atBottom) listener.onScrolledToBottom() }
+            .collectLatest { atBottom ->
+                if (!atBottom) return@collectLatest
+                // First arrival at the bottom after opening: give the scroll-to-divider a couple of
+                // seconds to take over; leaving the bottom cancels this, so nothing is marked read
+                // unless the list actually stays there. Later arrivals (user scrolled down) mark
+                // immediately.
+                if (!settledOnce) {
+                    kotlinx.coroutines.delay(2000)
+                    settledOnce = true
+                }
+                listener.onScrolledToBottom()
+            }
     }
 
     // Progressive read-marking: mark read only what has actually been on screen (present in
