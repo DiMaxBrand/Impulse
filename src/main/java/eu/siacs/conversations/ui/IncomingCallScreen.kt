@@ -14,6 +14,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
@@ -70,6 +71,7 @@ import eu.siacs.conversations.R
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -133,7 +135,8 @@ private val CALL_AVATAR_SHAPES: List<RoundedPolygon> by lazy {
     )
 }
 
-private const val SLIDER_COMMIT_FRACTION = 0.8f
+private const val SLIDER_COMMIT_FRACTION = 0.55f
+private const val SLIDER_FLING_DP_PER_S = 900f
 
 @Composable
 internal fun IncomingCallContent(state: IncomingCallState) {
@@ -290,7 +293,10 @@ private fun CallSlider(
                 }
     ) {
         val handleWidth = 112.dp
-        val maxTravelPx = with(density) { ((maxWidth - handleWidth) / 2).toPx() }
+        // Stops short of the track's ends by the same gap the handle has above and below it
+        // ((96dp track - 72dp handle) / 2), so the margin is even all the way round.
+        val edgeGap = 12.dp
+        val maxTravelPx = with(density) { ((maxWidth - handleWidth) / 2 - edgeGap).toPx() }
         val p = if (maxTravelPx > 0f) (offset.value / maxTravelPx).coerceIn(-1f, 1f) else 0f
 
         // First-time hint: the handle teases a short slide right, then left, then rests, until the
@@ -356,44 +362,7 @@ private fun CallSlider(
                     .offset { IntOffset(offset.value.roundToInt(), 0) }
                     .size(width = handleWidth, height = 72.dp)
                     .clip(CircleShape)
-                    .background(handleColor)
-                    .draggable(
-                        orientation = Orientation.Horizontal,
-                        state =
-                            rememberDraggableState { delta ->
-                                scope.launch {
-                                    offset.snapTo(
-                                        (offset.value + delta).coerceIn(-maxTravelPx, maxTravelPx)
-                                    )
-                                }
-                            },
-                        onDragStarted = {
-                            dragging = true
-                            onUsed()
-                        },
-                        onDragStopped = {
-                            dragging = false
-                            val end = offset.value / maxTravelPx
-                            when {
-                                end <= -SLIDER_COMMIT_FRACTION -> {
-                                    offset.animateTo(-maxTravelPx, spring(stiffness = Spring.StiffnessMedium))
-                                    onDecline()
-                                }
-                                end >= SLIDER_COMMIT_FRACTION -> {
-                                    offset.animateTo(maxTravelPx, spring(stiffness = Spring.StiffnessMedium))
-                                    onAccept()
-                                }
-                                else ->
-                                    offset.animateTo(
-                                        0f,
-                                        spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessLow,
-                                        ),
-                                    )
-                            }
-                        },
-                    ),
+                    .background(handleColor),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -403,5 +372,67 @@ private fun CallSlider(
                 modifier = Modifier.size(34.dp).rotate(iconRotation),
             )
         }
+
+        // The whole track is the touch target, not just the handle -- a thumb that lands beside
+        // the handle still drags it. Sits on top of the handle, which has no gestures of its own.
+        val flingThresholdPx = with(density) { SLIDER_FLING_DP_PER_S.dp.toPx() }
+        Box(
+            Modifier.fillMaxSize()
+                // Keep the system's edge back-gesture from stealing a drag that ends near the edge.
+                .systemGestureExclusion()
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state =
+                        rememberDraggableState { delta ->
+                            // UNDISPATCHED so the snap happens right now. Dispatched, the last
+                            // few deltas could run after onDragStopped's spring started and
+                            // cancel it (Animatable lets the newest call win), leaving the
+                            // handle parked until something else moved it.
+                            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                offset.snapTo(
+                                    (offset.value + delta).coerceIn(-maxTravelPx, maxTravelPx)
+                                )
+                            }
+                        },
+                    onDragStarted = {
+                        dragging = true
+                        onUsed()
+                    },
+                    onDragStopped = { velocity ->
+                        dragging = false
+                        val end = offset.value / maxTravelPx
+                        val flungLeft = velocity <= -flingThresholdPx && end < -0.1f
+                        val flungRight = velocity >= flingThresholdPx && end > 0.1f
+                        when {
+                            end <= -SLIDER_COMMIT_FRACTION || flungLeft -> {
+                                offset.animateTo(
+                                    -maxTravelPx,
+                                    spring(stiffness = Spring.StiffnessMedium),
+                                    initialVelocity = velocity,
+                                )
+                                onDecline()
+                            }
+                            end >= SLIDER_COMMIT_FRACTION || flungRight -> {
+                                offset.animateTo(
+                                    maxTravelPx,
+                                    spring(stiffness = Spring.StiffnessMedium),
+                                    initialVelocity = velocity,
+                                )
+                                onAccept()
+                            }
+                            else ->
+                                // Carries the release velocity, so a flick back overshoots.
+                                offset.animateTo(
+                                    0f,
+                                    spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow,
+                                    ),
+                                    initialVelocity = velocity,
+                                )
+                        }
+                    },
+                )
+        )
     }
 }
