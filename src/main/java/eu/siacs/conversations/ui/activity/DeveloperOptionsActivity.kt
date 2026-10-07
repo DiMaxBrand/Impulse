@@ -244,6 +244,28 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                 ExpressiveGroupRow(GroupPosition.SINGLE) {
                                     ListItem(
                                         headlineContent = {
+                                            Text(stringResource(R.string.developer_options_incoming_call_preview))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_incoming_call_preview_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            startActivity(
+                                                Intent(
+                                                    this@DeveloperOptionsActivity,
+                                                    IncomingCallPreviewActivity::class.java,
+                                                )
+                                            )
+                                        },
+                                    )
+                                }
+
+                                Spacer(Modifier.height(6.dp))
+
+                                ExpressiveGroupRow(GroupPosition.SINGLE) {
+                                    ListItem(
+                                        headlineContent = {
                                             Text(stringResource(R.string.developer_options_feature_flags))
                                         },
                                         supportingContent = {

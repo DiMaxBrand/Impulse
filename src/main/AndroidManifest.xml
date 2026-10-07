@@ -394,6 +394,9 @@
             android:name=".ui.activity.ShapeCatalogActivity"
             android:parentActivityName=".ui.activity.DeveloperOptionsActivity" />
         <activity
+            android:name=".ui.activity.IncomingCallPreviewActivity"
+            android:parentActivityName=".ui.activity.DeveloperOptionsActivity" />
+        <activity
             android:name=".ui.activity.FeatureFlagsActivity"
             android:parentActivityName=".ui.activity.DeveloperOptionsActivity" />
         <activity

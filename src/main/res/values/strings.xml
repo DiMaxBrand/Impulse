@@ -1445,4 +1445,6 @@
     <string name="audio_output_earpiece">Earpiece</string>
     <string name="audio_output_speaker">Speaker</string>
     <string name="call_slider_hint">Slide right to answer, left to decline</string>
+    <string name="developer_options_incoming_call_preview">Incoming call preview</string>
+    <string name="developer_options_incoming_call_preview_summary">Try the incoming call screen without a real call</string>
 </resources>
