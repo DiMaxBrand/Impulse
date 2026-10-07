@@ -334,11 +334,17 @@ private fun CallSlider(
             )
         }
 
+        // Blending the container colour straight into red passes through a muddy brown around the
+        // middle of the drag. So the red ramps in over the first ~40% of the travel (the brown
+        // never lingers) and the target is the error red nudged 2% lighter so it reads vivid
+        // rather than deep. Rightwards blend is unchanged.
+        val leftT = ((-p) / 0.4f).coerceIn(0f, 1f).let { it * it * (3f - 2f * it) }
+        val vividRed = lerp(colors.error, Color.White, 0.02f)
         val handleColor: Color =
-            if (p < 0f) lerp(colors.primaryContainer, colors.error, -p)
+            if (p < 0f) lerp(colors.primaryContainer, vividRed, leftT)
             else lerp(colors.primaryContainer, colors.primary, p)
         val iconColor: Color =
-            if (p < 0f) lerp(colors.onPrimaryContainer, colors.onError, -p)
+            if (p < 0f) lerp(colors.onPrimaryContainer, colors.onError, leftT)
             else lerp(colors.onPrimaryContainer, colors.onPrimary, p)
         // Idle: gentle sway. Left: handset laid flat (hang-up pose). Right: settles upright.
         val iconRotation =
