@@ -117,6 +117,23 @@ class IncomingCallState {
     private var statusState by mutableStateOf("")
     private var establishedState by mutableStateOf(false)
     private var reconnectingState by mutableStateOf(false)
+    private var endModeState by mutableStateOf(false)
+    private var secondaryIconState by mutableIntStateOf(R.drawable.ic_replay_24dp)
+    private var secondaryDescState by mutableStateOf("")
+
+    var onExit: Runnable? = null
+    var onSecondary: Runnable? = null
+
+    /**
+     * The call has ended without a connection (declined, busy, lost, failed ...). The hang-up
+     * button slides left as "exit" and a second button -- retry or leave a voicemail -- slides
+     * out from under it on the right.
+     */
+    fun setEndMode(endMode: Boolean, @DrawableRes secondaryIcon: Int, secondaryDescription: String) {
+        endModeState = endMode
+        secondaryIconState = secondaryIcon
+        secondaryDescState = secondaryDescription
+    }
 
     var onAccept: Runnable? = null
     var onDecline: Runnable? = null
@@ -184,6 +201,9 @@ class IncomingCallState {
     internal val status get() = statusState
     internal val established get() = establishedState
     internal val reconnecting get() = reconnectingState
+    internal val endMode get() = endModeState
+    internal val secondaryIcon get() = secondaryIconState
+    internal val secondaryDescription get() = secondaryDescState
 }
 
 object IncomingCallHelper {
@@ -285,7 +305,7 @@ internal fun IncomingCallContent(state: IncomingCallState) {
             }
             Spacer(Modifier.weight(1f))
             AnimatedVisibility(
-                visible = active,
+                visible = active && !state.endMode,
                 enter =
                     fadeIn(spring(stiffness = Spring.StiffnessLow)) +
                         slideInVertically(spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow)) {
@@ -324,9 +344,14 @@ internal fun IncomingCallContent(state: IncomingCallState) {
             }
             CallDock(
                 active = active,
+                endMode = state.endMode,
+                secondaryIcon = state.secondaryIcon,
+                secondaryDescription = state.secondaryDescription,
                 onAccept = { state.onAccept?.run() },
                 onDecline = { state.onDecline?.run() },
                 onHangUp = { state.onHangUp?.run() },
+                onExit = { state.onExit?.run() },
+                onSecondary = { state.onSecondary?.run() },
                 onUsed = { state.onSliderUsed?.run() },
             )
             Spacer(Modifier.height(48.dp))
@@ -507,9 +532,14 @@ private fun MorphingCallAvatar(
 @Composable
 private fun CallDock(
     active: Boolean,
+    endMode: Boolean,
+    @DrawableRes secondaryIcon: Int,
+    secondaryDescription: String,
     onAccept: () -> Unit,
     onDecline: () -> Unit,
     onHangUp: () -> Unit,
+    onExit: () -> Unit,
+    onSecondary: () -> Unit,
     onUsed: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -518,6 +548,17 @@ private fun CallDock(
     val density = LocalDensity.current
     val activeNow by rememberUpdatedState(active)
     val offset = remember { Animatable(0f) }
+    // 0 = normal, 1 = call ended without connecting: hang-up button on the left as "exit", a
+    // second action button on the right.
+    val endShift = remember { Animatable(if (endMode) 1f else 0f) }
+    LaunchedEffect(endMode) {
+        endShift.animateTo(
+            if (endMode) 1f else 0f,
+            spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow),
+        )
+    }
+    val endPath = remember { androidx.compose.ui.graphics.Path() }
+    val endMatrix = remember { android.graphics.Matrix() }
     var dragging by remember { mutableStateOf(false) }
     // 0 = not decided yet, -1 = declined, 1 = answered. Guards against firing twice.
     var committedDirection by remember { mutableIntStateOf(0) }
@@ -736,19 +777,54 @@ private fun CallDock(
             }
         }
 
+        // The second end-of-call button (retry / voicemail), drawn first so it starts out hidden
+        // underneath the hang-up button and slides out to the right of it.
+        val endShiftPx = with(density) { (HANGUP_SIZE / 2 + 12.dp).toPx() }
+        if (endShift.value > 0.01f) {
+            Box(
+                modifier =
+                    Modifier.align(Alignment.Center)
+                        .offset { IntOffset((endShiftPx * endShift.value).roundToInt(), 0) }
+                        .size(HANGUP_SIZE)
+                        .graphicsLayer {
+                            val s = 0.7f + 0.3f * endShift.value.coerceIn(0f, 1f)
+                            scaleX = s
+                            scaleY = s
+                            alpha = endShift.value.coerceIn(0f, 1f)
+                        }
+                        .semantics { contentDescription = secondaryDescription }
+                        .clickable(onClick = onSecondary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(Modifier.fillMaxSize()) {
+                    morph.toPath(1f, endPath)
+                    endMatrix.reset()
+                    endMatrix.postTranslate(size.width / 2f, size.height / 2f)
+                    endPath.asAndroidPath().transform(endMatrix)
+                    drawPath(endPath, colors.primary)
+                }
+                Icon(
+                    painterResource(secondaryIcon),
+                    contentDescription = null,
+                    tint = colors.onPrimary,
+                    modifier = Modifier.size(34.dp),
+                )
+            }
+        }
+
         // The handle itself is the only touch target -- the track around it ignores touches.
         // Canvas sized to the animated handle; the morph path is centred in it.
         Box(
             modifier =
                 Modifier.align(Alignment.Center)
-                    .offset { IntOffset(offset.value.roundToInt(), 0) }
+                    .offset { IntOffset((offset.value - endShiftPx * endShift.value).roundToInt(), 0) }
                     .size(width = handleW, height = handleH)
                     .semantics { if (hangup) contentDescription = hangUpDesc }
                     // Keep the system's edge back-gesture from stealing a drag near the edge.
                     .systemGestureExclusion()
                     .then(
                         if (hangup) {
-                            Modifier.clickable(onClick = onHangUp)
+                            Modifier.clickable(onClick = if (endMode) onExit else onHangUp)
                         } else {
                             Modifier.draggable(
                                 orientation = Orientation.Horizontal,
@@ -810,11 +886,15 @@ private fun CallDock(
                 morphPath.asAndroidPath().transform(morphMatrix)
                 drawPath(morphPath, handleColor)
             }
+            // End of a call that never got going: the hang-up handset gives way to an "exit" cross.
             Icon(
-                painterResource(R.drawable.ic_call_24dp),
+                painterResource(
+                    if (endShift.value > 0.5f) R.drawable.ic_clear_24dp else R.drawable.ic_call_24dp
+                ),
                 contentDescription = null,
                 tint = iconColor,
-                modifier = Modifier.size(34.dp).rotate(iconRotation),
+                modifier =
+                    Modifier.size(34.dp).rotate(iconRotation * (1f - endShift.value.coerceIn(0f, 1f))),
             )
         }
     }

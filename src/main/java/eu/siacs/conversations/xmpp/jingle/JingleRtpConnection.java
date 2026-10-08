@@ -86,6 +86,12 @@ public class JingleRtpConnection extends AbstractJingleConnection
                     State.SESSION_ACCEPTED);
     private static final long BUSY_TIME_OUT = 30;
 
+    // How long an established call may sit in "reconnecting" before it is given up as a lost
+    // connection. 14 s is when the call screen's reconnecting animation reaches its gem for the
+    // second time (10 steps of 1.4 s). Before this the app retried indefinitely.
+    private static final long RECONNECT_TIME_OUT = 14;
+    private ScheduledFuture<?> reconnectTimeoutFuture;
+
     private final WebRTCWrapper webRTCWrapper = new WebRTCWrapper(this);
     private final Queue<
                     Map.Entry<String, DescriptionTransport<RtpDescription, IceUdpTransportInfo>>>
@@ -2471,6 +2477,8 @@ public class JingleRtpConnection extends AbstractJingleConnection
         final boolean neverConnected =
                 !this.stateHistory.contains(PeerConnection.PeerConnectionState.CONNECTED);
 
+        updateReconnectTimeout(newState);
+
         if (newState == PeerConnection.PeerConnectionState.FAILED) {
             if (neverConnected) {
                 if (isTerminated()) {
@@ -2489,6 +2497,39 @@ public class JingleRtpConnection extends AbstractJingleConnection
             }
         }
         updateEndUserState();
+    }
+
+    // Starts the give-up clock when a call that had a duration loses its link, and stops it as
+    // soon as the link is back (or the call is over).
+    private synchronized void updateReconnectTimeout(
+            final PeerConnection.PeerConnectionState newState) {
+        final boolean linkLost =
+                newState == PeerConnection.PeerConnectionState.DISCONNECTED
+                        || newState == PeerConnection.PeerConnectionState.FAILED;
+        if (linkLost && !zeroDuration() && this.reconnectTimeoutFuture == null) {
+            this.reconnectTimeoutFuture =
+                    JingleManager.schedule(
+                            this::reconnectTimeout, RECONNECT_TIME_OUT, TimeUnit.SECONDS);
+        } else if (!linkLost && this.reconnectTimeoutFuture != null) {
+            this.reconnectTimeoutFuture.cancel(false);
+            this.reconnectTimeoutFuture = null;
+        }
+    }
+
+    private void reconnectTimeout() {
+        synchronized (this) {
+            this.reconnectTimeoutFuture = null;
+            if (isTerminated() || isPeerConnectionConnected()) {
+                return;
+            }
+        }
+        Log.d(
+                Config.LOGTAG,
+                id.account.getJid().asBareJid()
+                        + ": still reconnecting after "
+                        + RECONNECT_TIME_OUT
+                        + "s. giving up");
+        webRTCWrapper.execute(this::closeWebRTCSessionAfterFailedConnection);
     }
 
     private void restartIce() {

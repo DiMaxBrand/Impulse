@@ -144,6 +144,9 @@ public class RtpSessionActivity extends XmppActivity
     // slider, and for audio calls the whole live call. The View buttons stay for video calls.
     private boolean composeCallLayerActive = false;
     private boolean avatarRequested = false;
+    // Remembered because the connection is already gone by the time an end card is drawn.
+    private boolean lastMediaAudioOnly = false;
+    private Runnable secondaryCallAction = null;
 
     // Shows the "slide to answer" hint for someone's first couple of incoming calls only, and
     // never again once they have actually used the slider -- so regulars never see it.
@@ -230,6 +233,13 @@ public class RtpSessionActivity extends XmppActivity
         this.incomingCallState.setOnAccept(this::requestPermissionsAndAcceptCall);
         this.incomingCallState.setOnDecline(() -> rejectCall(null));
         this.incomingCallState.setOnHangUp(this::endCall);
+        this.incomingCallState.setOnExit(() -> exit(null));
+        this.incomingCallState.setOnSecondary(
+                () -> {
+                    if (secondaryCallAction != null) {
+                        secondaryCallAction.run();
+                    }
+                });
         this.incomingCallState.setOnToggleMic(this::toggleMicrophoneFromCompose);
         this.incomingCallState.setOnAudioOutput(() -> showAudioOutputPicker(null));
         this.incomingCallState.setOnSliderUsed(
@@ -978,9 +988,25 @@ public class RtpSessionActivity extends XmppActivity
 
     private void updateIncomingCallScreen(final RtpEndUserState state, final Contact contact) {
         final boolean incoming = state == RtpEndUserState.INCOMING_CALL;
-        final boolean liveAudio =
-                STATES_SHOWING_SPEAKER_CONFIGURATION.contains(state) && isAudioOnlyCall();
-        composeCallLayerActive = incoming || liveAudio;
+        final boolean audioOnly = isAudioOnlyCall();
+        final boolean liveAudio = STATES_SHOWING_SPEAKER_CONFIGURATION.contains(state) && audioOnly;
+        // An audio call that ended without (or after losing) a connection is shown by the same
+        // layer: exit on the left, retry / voicemail on the right.
+        final boolean endedAudio = END_CARD.contains(state) && audioOnly;
+        composeCallLayerActive = incoming || liveAudio || endedAudio;
+        if (endedAudio) {
+            final boolean voicemail =
+                    state == RtpEndUserState.DECLINED_OR_BUSY
+                            || state == RtpEndUserState.CONTACT_OFFLINE;
+            secondaryCallAction = voicemail ? () -> recordVoiceMail(null) : () -> retry(null);
+            incomingCallState.setEndMode(
+                    true,
+                    voicemail ? R.drawable.ic_voicemail_24dp : R.drawable.ic_replay_24dp,
+                    getString(voicemail ? R.string.record_voice_mail : R.string.try_again));
+            incomingCallState.setDurationText("");
+        } else {
+            incomingCallState.setEndMode(false, R.drawable.ic_replay_24dp, "");
+        }
         if (composeCallLayerActive) {
             // The Compose layer replaces the old static photo, the accept/reject FABs and, for
             // audio calls, the in-call buttons.
@@ -1057,6 +1083,9 @@ public class RtpSessionActivity extends XmppActivity
             final RtpEndUserState state,
             final Set<Media> media,
             final ContentAddition contentAddition) {
+        if (!media.isEmpty()) {
+            lastMediaAudioOnly = Media.audioOnly(media);
+        }
         if (state == RtpEndUserState.ENDING_CALL
                 || isPictureInPicture()
                 || this.buttonsHiddenAfterTimeout) {
@@ -1159,9 +1188,11 @@ public class RtpSessionActivity extends XmppActivity
 
     private boolean isAudioOnlyCall() {
         try {
-            return Media.audioOnly(requireOngoingRtpSession().getMedia());
+            final boolean audioOnly = Media.audioOnly(requireOngoingRtpSession().getMedia());
+            lastMediaAudioOnly = audioOnly;
+            return audioOnly;
         } catch (final IllegalStateException e) {
-            return false;
+            return lastMediaAudioOnly;
         }
     }
 
