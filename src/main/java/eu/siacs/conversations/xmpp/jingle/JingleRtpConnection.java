@@ -91,6 +91,7 @@ public class JingleRtpConnection extends AbstractJingleConnection
     // second time (10 steps of 1.4 s). Before this the app retried indefinitely.
     private static final long RECONNECT_TIME_OUT = 14;
     private ScheduledFuture<?> reconnectTimeoutFuture;
+    private final Object reconnectLock = new Object();
 
     private final WebRTCWrapper webRTCWrapper = new WebRTCWrapper(this);
     private final Queue<
@@ -2501,27 +2502,31 @@ public class JingleRtpConnection extends AbstractJingleConnection
 
     // Starts the give-up clock when a call that had a duration loses its link, and stops it as
     // soon as the link is back (or the call is over).
-    private synchronized void updateReconnectTimeout(
-            final PeerConnection.PeerConnectionState newState) {
+    private void updateReconnectTimeout(final PeerConnection.PeerConnectionState newState) {
         final boolean linkLost =
                 newState == PeerConnection.PeerConnectionState.DISCONNECTED
                         || newState == PeerConnection.PeerConnectionState.FAILED;
-        if (linkLost && !zeroDuration() && this.reconnectTimeoutFuture == null) {
-            this.reconnectTimeoutFuture =
-                    JingleManager.schedule(
-                            this::reconnectTimeout, RECONNECT_TIME_OUT, TimeUnit.SECONDS);
-        } else if (!linkLost && this.reconnectTimeoutFuture != null) {
-            this.reconnectTimeoutFuture.cancel(false);
-            this.reconnectTimeoutFuture = null;
+        // Deliberately NOT synchronized on `this`: this runs on the WebRTC callback thread, and
+        // the session's synchronized methods can be waiting on that very thread (descriptions,
+        // candidates). Taking the session lock here would deadlock the call while connecting.
+        synchronized (reconnectLock) {
+            if (linkLost && !zeroDuration() && this.reconnectTimeoutFuture == null) {
+                this.reconnectTimeoutFuture =
+                        JingleManager.schedule(
+                                this::reconnectTimeout, RECONNECT_TIME_OUT, TimeUnit.SECONDS);
+            } else if (!linkLost && this.reconnectTimeoutFuture != null) {
+                this.reconnectTimeoutFuture.cancel(false);
+                this.reconnectTimeoutFuture = null;
+            }
         }
     }
 
     private void reconnectTimeout() {
-        synchronized (this) {
+        synchronized (reconnectLock) {
             this.reconnectTimeoutFuture = null;
-            if (isTerminated() || isPeerConnectionConnected()) {
-                return;
-            }
+        }
+        if (isTerminated() || isPeerConnectionConnected()) {
+            return;
         }
         Log.d(
                 Config.LOGTAG,
