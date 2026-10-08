@@ -317,7 +317,21 @@ internal fun IncomingCallContent(state: IncomingCallState) {
     if (!state.visible) return
     val active = !state.sliderVisible
     // Video calls (once answered / outgoing) use their own full-screen layout.
-    if (state.videoCall && active) {
+    // Once both cameras are off (after video was on), the call goes back to the audio layout.
+    // A short wait first, so a brief flicker (they toggle off and straight on) doesn't flip it.
+    var seenVideo by remember { mutableStateOf(false) }
+    var audioMode by remember { mutableStateOf(false) }
+    val anyVideo = state.hasRemoteVideo || state.hasLocalVideo
+    LaunchedEffect(anyVideo) {
+        if (anyVideo) {
+            seenVideo = true
+            audioMode = false
+        } else if (seenVideo) {
+            delay(800)
+            audioMode = true
+        }
+    }
+    if (state.videoCall && active && !audioMode) {
         VideoCallContent(state)
         return
     }
@@ -395,6 +409,15 @@ internal fun IncomingCallContent(state: IncomingCallState) {
                         enabled = state.audioChoices >= 2,
                         onClick = { state.onAudioOutput?.run() },
                     )
+                    // A video call whose cameras are both off: a way to bring video back.
+                    if (state.videoCall) {
+                        CallToggleButton(
+                            checked = false,
+                            icon = R.drawable.ic_videocam_off_24dp,
+                            description = stringResource(R.string.video_is_disabled_tap_to_enable),
+                            onClick = { state.onToggleCamera?.run() },
+                        )
+                    }
                 }
             }
             val showHint = if (state.switchRequest) state.switchHint else (!active && state.hint)
