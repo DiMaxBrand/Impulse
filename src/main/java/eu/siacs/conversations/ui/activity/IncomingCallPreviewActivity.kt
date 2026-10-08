@@ -59,8 +59,16 @@ class IncomingCallPreviewActivity : ActionBarActivity() {
                             setSliderVisible(true)
                             setHintVisible(hint == 1)
                             setAvatar(fakeAvatar())
-                            onAccept = Runnable { finishRound(true) { round++ } }
+                            setAudioChoices(2)
+                            onAccept = Runnable {
+                                // Like the real thing: the call goes live and the handle
+                                // becomes the hang-up button.
+                                setSliderVisible(false)
+                                setDurationText("00:42")
+                            }
                             onDecline = Runnable { finishRound(false) { round++ } }
+                            onHangUp = Runnable { finishRound(true) { round++ } }
+                            onToggleMic = Runnable { setMicOn(!micOn) }
                         }
                     }
                     Box(Modifier.fillMaxSize().padding(top = 72.dp)) {
@@ -85,7 +93,7 @@ class IncomingCallPreviewActivity : ActionBarActivity() {
     }
 
     private fun finishRound(answered: Boolean, restart: () -> Unit) {
-        Toast.makeText(this, if (answered) "Answered" else "Declined", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, if (answered) "Hung up" else "Declined", Toast.LENGTH_SHORT).show()
         window.decorView.postDelayed(restart, 700)
     }
 

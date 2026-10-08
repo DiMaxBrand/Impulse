@@ -140,6 +140,10 @@ public class RtpSessionActivity extends XmppActivity
     private static final String PREF_SLIDER_HINT_SHOWN = "slider_hint_shown";
     private static final int SLIDER_HINT_MAX_SHOWS = 2;
     private boolean sliderHintCounted = false;
+    // True while the Compose call layer (IncomingCallScreen.kt) is showing: the incoming-call
+    // slider, and for audio calls the whole live call. The View buttons stay for video calls.
+    private boolean composeCallLayerActive = false;
+    private boolean avatarRequested = false;
 
     // Shows the "slide to answer" hint for someone's first couple of incoming calls only, and
     // never again once they have actually used the slider -- so regulars never see it.
@@ -225,6 +229,9 @@ public class RtpSessionActivity extends XmppActivity
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
         this.incomingCallState.setOnAccept(this::requestPermissionsAndAcceptCall);
         this.incomingCallState.setOnDecline(() -> rejectCall(null));
+        this.incomingCallState.setOnHangUp(this::endCall);
+        this.incomingCallState.setOnToggleMic(this::toggleMicrophoneFromCompose);
+        this.incomingCallState.setOnAudioOutput(() -> showAudioOutputPicker(null));
         this.incomingCallState.setOnSliderUsed(
                 () -> {
                     getSharedPreferences(CALL_UI_PREFS, MODE_PRIVATE)
@@ -968,23 +975,39 @@ public class RtpSessionActivity extends XmppActivity
     }
 
     private void updateIncomingCallScreen(final RtpEndUserState state, final Contact contact) {
-        if (state == RtpEndUserState.INCOMING_CALL || state == RtpEndUserState.ACCEPTING_CALL) {
-            // The Compose layer replaces the old static photo and the accept/reject FABs.
+        final boolean incoming = state == RtpEndUserState.INCOMING_CALL;
+        final boolean liveAudio =
+                STATES_SHOWING_SPEAKER_CONFIGURATION.contains(state) && isAudioOnlyCall();
+        composeCallLayerActive = incoming || liveAudio;
+        if (composeCallLayerActive) {
+            // The Compose layer replaces the old static photo, the accept/reject FABs and, for
+            // audio calls, the in-call buttons.
             binding.contactPhoto.setVisibility(View.GONE);
             binding.incomingCallCompose.setVisibility(View.VISIBLE);
             incomingCallState.setVisible(true);
-            incomingCallState.setSliderVisible(state == RtpEndUserState.INCOMING_CALL);
-            if (state == RtpEndUserState.INCOMING_CALL) {
+            incomingCallState.setSliderVisible(incoming);
+            if (incoming) {
                 updateSliderHint();
             }
-            final Contact avatarContact = contact == null ? getWith() : contact;
-            new Thread(
-                            () -> {
-                                final Bitmap avatar =
-                                        avatarService().get(avatarContact, 1024, false);
-                                runOnUiThread(() -> incomingCallState.setAvatar(avatar));
-                            })
-                    .start();
+            if (!avatarRequested) {
+                try {
+                    final Contact avatarContact = contact == null ? getWith() : contact;
+                    avatarRequested = true;
+                    new Thread(
+                                    () -> {
+                                        final Bitmap avatar =
+                                                avatarService().get(avatarContact, 1024, false);
+                                        runOnUiThread(() -> incomingCallState.setAvatar(avatar));
+                                    })
+                            .start();
+                } catch (final IllegalStateException e) {
+                    // no session to take the contact from yet; try again on the next update
+                }
+            }
+            hideLegacyCallButtons();
+            refreshComposeCallControls();
+        }
+        if (state == RtpEndUserState.INCOMING_CALL || state == RtpEndUserState.ACCEPTING_CALL) {
             final Account account = contact == null ? getWith().getAccount() : contact.getAccount();
             binding.usingAccount.setVisibility(View.VISIBLE);
             binding.usingAccount.setText(
@@ -992,6 +1015,8 @@ public class RtpSessionActivity extends XmppActivity
         } else {
             binding.usingAccount.setVisibility(View.GONE);
             binding.contactPhoto.setVisibility(View.GONE);
+        }
+        if (!composeCallLayerActive) {
             binding.incomingCallCompose.setVisibility(View.GONE);
             incomingCallState.setVisible(false);
         }
@@ -1106,8 +1131,72 @@ public class RtpSessionActivity extends XmppActivity
                 requireRtpConnection().getEndUserState(), requireRtpConnection().getMedia());
     }
 
-    @SuppressLint("RestrictedApi")
     private void updateInCallButtonConfiguration(
+            final RtpEndUserState state, final Set<Media> media) {
+        updateInCallButtonConfigurationLegacy(state, media);
+        // The Compose call layer owns these controls for audio calls; the View buttons above
+        // keep doing the work for video calls.
+        hideLegacyCallButtons();
+        refreshComposeCallControls();
+    }
+
+    private void hideLegacyCallButtons() {
+        if (!composeCallLayerActive) {
+            return;
+        }
+        this.binding.rejectCall.setVisibility(View.INVISIBLE);
+        this.binding.acceptCall.setVisibility(View.INVISIBLE);
+        this.binding.endCall.setVisibility(View.INVISIBLE);
+        this.binding.inCallActionLeft.setVisibility(View.GONE);
+        this.binding.inCallActionRight.setVisibility(View.GONE);
+        this.binding.inCallActionFarRight.setVisibility(View.GONE);
+    }
+
+    private boolean isAudioOnlyCall() {
+        try {
+            return Media.audioOnly(requireOngoingRtpSession().getMedia());
+        } catch (final IllegalStateException e) {
+            return false;
+        }
+    }
+
+    private static int audioIconFor(final CallIntegration.AudioDevice device) {
+        return switch (device) {
+            case EARPIECE -> R.drawable.ic_volume_off_24dp;
+            case WIRED_HEADSET -> R.drawable.ic_headset_mic_24dp;
+            case BLUETOOTH -> R.drawable.ic_bluetooth_audio_24dp;
+            default -> R.drawable.ic_volume_up_24dp;
+        };
+    }
+
+    // Pushes the live-call facts (mic, audio route, duration) into the Compose layer.
+    private void refreshComposeCallControls() {
+        if (!composeCallLayerActive) {
+            return;
+        }
+        try {
+            final var ongoing = requireOngoingRtpSession();
+            if (ongoing instanceof JingleRtpConnection connection) {
+                incomingCallState.setMicOn(connection.isMicrophoneEnabled());
+            }
+            final var callIntegration = ongoing.getCallIntegration();
+            incomingCallState.setAudioIcon(audioIconFor(callIntegration.getSelectedAudioDevice()));
+            incomingCallState.setAudioChoices(callIntegration.getAudioDevices().size());
+        } catch (final IllegalStateException e) {
+            // no session (yet) -- the layer keeps its previous values
+        }
+    }
+
+    private void toggleMicrophoneFromCompose() {
+        try {
+            setMicrophoneEnabled(!requireRtpConnection().isMicrophoneEnabled());
+        } catch (final IllegalStateException e) {
+            Toast.makeText(this, R.string.could_not_modify_call, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @SuppressLint("RestrictedApi")
+    private void updateInCallButtonConfigurationLegacy(
             final RtpEndUserState state, final Set<Media> media) {
         final var showButtons = !isPictureInPicture() && !buttonsHiddenAfterTimeout;
         if (STATES_CONSIDERED_CONNECTED.contains(state) && showButtons) {
@@ -1350,14 +1439,19 @@ public class RtpSessionActivity extends XmppActivity
                 this.rtpConnectionReference != null ? this.rtpConnectionReference.get() : null;
         if (connection == null || connection.getMedia().contains(Media.VIDEO)) {
             this.binding.duration.setVisibility(View.GONE);
+            this.incomingCallState.setDurationText("");
             return;
         }
         if (connection.zeroDuration()) {
             this.binding.duration.setVisibility(View.GONE);
+            this.incomingCallState.setDurationText("");
         } else {
-            this.binding.duration.setText(
-                    TimeFrameUtils.formatElapsedTime(connection.getCallDuration(), false));
-            this.binding.duration.setVisibility(View.VISIBLE);
+            final String elapsed =
+                    TimeFrameUtils.formatElapsedTime(connection.getCallDuration(), false);
+            this.binding.duration.setText(elapsed);
+            // The Compose layer shows the duration itself under the avatar.
+            this.binding.duration.setVisibility(composeCallLayerActive ? View.GONE : View.VISIBLE);
+            this.incomingCallState.setDurationText(composeCallLayerActive ? elapsed : "");
         }
     }
 
@@ -1697,6 +1791,8 @@ public class RtpSessionActivity extends XmppActivity
                     updateInCallButtonConfigurationSpeaker(
                             callIntegration.getSelectedAudioDevice(),
                             callIntegration.getAudioDevices().size());
+                    hideLegacyCallButtons();
+                    refreshComposeCallControls();
                 }
                 Log.d(
                         Config.LOGTAG,
