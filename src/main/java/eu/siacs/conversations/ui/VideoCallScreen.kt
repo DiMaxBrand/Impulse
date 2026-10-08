@@ -56,6 +56,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import eu.siacs.conversations.R
 import kotlin.math.max
 import kotlin.math.min
@@ -228,7 +229,7 @@ internal fun VideoCallContent(state: IncomingCallState) {
         // spring), let go and it slides to the nearest side; tap to swap with the main video.
         if (both) {
             Box(
-                Modifier.offset { IntOffset(pip.x.roundToInt(), pip.y.roundToInt()) }
+                Modifier.zIndex(2f).offset { IntOffset(pip.x.roundToInt(), pip.y.roundToInt()) }
                     .size(PIP_W, PIP_H)
                     .pointerInput(Unit) {
                         var target = Offset.Zero
@@ -274,7 +275,7 @@ internal fun VideoCallContent(state: IncomingCallState) {
         if (compact > 0.01f) {
             Row(
                 modifier =
-                    Modifier.align(Alignment.TopStart)
+                    Modifier.zIndex(3f).align(Alignment.TopStart)
                         .windowInsetsPadding(WindowInsets.safeDrawing)
                         .padding(EDGE)
                         .onSizeChanged {
@@ -314,7 +315,7 @@ internal fun VideoCallContent(state: IncomingCallState) {
             )
         Box(
             modifier =
-                Modifier.align(Alignment.BottomCenter)
+                Modifier.zIndex(3f).align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(horizontal = EDGE)
@@ -488,7 +489,8 @@ private fun VideoSurface(
             view
         },
         modifier =
-            Modifier.offset { IntOffset(x.roundToInt(), y.roundToInt()) }
+            Modifier.zIndex(if (overlay) 1f else 0f)
+                .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
                 .size(
                     with(density) { width.toDp() },
                     with(density) { height.toDp() },
