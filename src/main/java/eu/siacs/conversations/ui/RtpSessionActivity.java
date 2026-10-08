@@ -337,6 +337,7 @@ public class RtpSessionActivity extends XmppActivity
         this.incomingCallState.setOnAccept(this::requestPermissionsAndAcceptCall);
         this.incomingCallState.setOnDecline(() -> rejectCall(null));
         this.incomingCallState.setOnHangUp(this::endCall);
+        this.incomingCallState.setOnSwitchToVideo(this::requestPermissionAndSwitchToVideo);
         this.incomingCallState.setOnSwitchAccept(
                 () -> {
                     try {
@@ -1353,6 +1354,7 @@ public class RtpSessionActivity extends XmppActivity
         if (!composeCallLayerActive) {
             return;
         }
+        incomingCallState.setCanSwitchToVideo(isSwitchToVideoVisible());
         try {
             final var ongoing = requireOngoingRtpSession();
             if (ongoing instanceof JingleRtpConnection connection) {

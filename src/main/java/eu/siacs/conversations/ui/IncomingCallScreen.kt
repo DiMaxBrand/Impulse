@@ -129,6 +129,14 @@ class IncomingCallState {
     private var cameraSwitchableState by mutableStateOf(false)
     private var systemPipState by mutableStateOf(false)
 
+    private var canSwitchToVideoState by mutableStateOf(false)
+    var onSwitchToVideo: Runnable? = null
+
+    /** An audio call that can be upgraded to video: shows the video button. */
+    fun setCanSwitchToVideo(can: Boolean) {
+        canSwitchToVideoState = can
+    }
+
     private var switchRequestState by mutableStateOf(false)
     private var switchHintState by mutableStateOf(false)
 
@@ -250,6 +258,7 @@ class IncomingCallState {
     internal val reconnecting get() = reconnectingState
     internal val endMode get() = endModeState
     internal val switchRequest get() = switchRequestState
+    internal val canSwitchToVideo get() = canSwitchToVideoState
     internal val switchHint get() = switchHintState
     internal val videoCall get() = videoCallState
     internal val remoteVideoView get() = remoteVideoViewState
@@ -392,6 +401,27 @@ internal fun IncomingCallContent(state: IncomingCallState) {
                         scaleIn(initialScale = 0.85f),
                 exit = fadeOut(),
             ) {
+              Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Video, above and between microphone and sound: with the hang-up button below,
+                // the four make a diamond. Switches an audio call to video (what the toolbar's
+                // overflow menu used to be the only way to do), or turns the camera back on
+                // when a video call has both cameras off.
+                if (state.canSwitchToVideo || state.videoCall) {
+                    CallToggleButton(
+                        checked = false,
+                        icon = R.drawable.ic_videocam_24dp,
+                        description =
+                            stringResource(
+                                if (state.videoCall) R.string.video_is_disabled_tap_to_enable
+                                else R.string.switch_to_video
+                            ),
+                        onClick = {
+                            if (state.videoCall) state.onToggleCamera?.run()
+                            else state.onSwitchToVideo?.run()
+                        },
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
                 Row(
                     modifier = Modifier.padding(bottom = 28.dp),
                     horizontalArrangement = Arrangement.spacedBy(20.dp),
@@ -409,16 +439,8 @@ internal fun IncomingCallContent(state: IncomingCallState) {
                         enabled = state.audioChoices >= 2,
                         onClick = { state.onAudioOutput?.run() },
                     )
-                    // A video call whose cameras are both off: a way to bring video back.
-                    if (state.videoCall) {
-                        CallToggleButton(
-                            checked = false,
-                            icon = R.drawable.ic_videocam_off_24dp,
-                            description = stringResource(R.string.video_is_disabled_tap_to_enable),
-                            onClick = { state.onToggleCamera?.run() },
-                        )
-                    }
                 }
+              }
             }
             val showHint = if (state.switchRequest) state.switchHint else (!active && state.hint)
             if (showHint) {
@@ -470,6 +492,7 @@ internal fun CallToggleButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
     size: androidx.compose.ui.unit.Dp = 72.dp,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val corner by
@@ -490,7 +513,8 @@ internal fun CallToggleButton(
         )
     Box(
         modifier =
-            Modifier.size(size)
+            modifier
+                .size(size)
                 .clip(RoundedCornerShape(corner.coerceAtLeast(0.dp)))
                 .background(container)
                 .semantics { contentDescription = description }
