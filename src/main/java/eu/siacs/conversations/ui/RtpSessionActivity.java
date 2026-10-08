@@ -350,7 +350,7 @@ public class RtpSessionActivity extends XmppActivity
                     }
                 });
         this.incomingCallState.setOnToggleMic(this::toggleMicrophoneFromCompose);
-        this.incomingCallState.setOnAudioOutput(() -> showAudioOutputPicker(null));
+        this.incomingCallState.setOnAudioOutput(this::onAudioOutputPressed);
         this.incomingCallState.setOnSliderUsed(
                 () -> {
                     getSharedPreferences(CALL_UI_PREFS, MODE_PRIVATE)
@@ -1437,6 +1437,34 @@ public class RtpSessionActivity extends XmppActivity
             button.setClickable(false);
         }
         setVisibleAndShow(button);
+    }
+
+    // With only the phone's own two outputs (no Bluetooth, no wired headset) there is nothing to
+    // choose from, so the button just flips between earpiece and speaker; the list only appears
+    // when there is a real third option.
+    private void onAudioOutputPressed() {
+        try {
+            final CallIntegration callIntegration = requireCallIntegration();
+            final var available = callIntegration.getAudioDevices();
+            final boolean onlyPhoneOutputs =
+                    available.contains(CallIntegration.AudioDevice.EARPIECE)
+                            && available.contains(CallIntegration.AudioDevice.SPEAKER_PHONE)
+                            && !available.contains(CallIntegration.AudioDevice.BLUETOOTH)
+                            && !available.contains(CallIntegration.AudioDevice.WIRED_HEADSET);
+            if (onlyPhoneOutputs) {
+                if (callIntegration.getSelectedAudioDevice()
+                        == CallIntegration.AudioDevice.SPEAKER_PHONE) {
+                    switchToEarpiece(null);
+                } else {
+                    switchToSpeaker(null);
+                }
+                return;
+            }
+        } catch (final IllegalStateException e) {
+            Toast.makeText(this, R.string.could_not_modify_call, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        showAudioOutputPicker(null);
     }
 
     private void showAudioOutputPicker(final View view) {
