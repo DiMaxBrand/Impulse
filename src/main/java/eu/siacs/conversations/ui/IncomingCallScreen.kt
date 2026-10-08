@@ -129,6 +129,18 @@ class IncomingCallState {
     private var cameraSwitchableState by mutableStateOf(false)
     private var systemPipState by mutableStateOf(false)
 
+    private var switchRequestState by mutableStateOf(false)
+    private var switchHintState by mutableStateOf(false)
+
+    /** The other person asks to add video to this audio call: the slider comes back. */
+    fun setSwitchRequest(request: Boolean, showHint: Boolean) {
+        switchRequestState = request
+        switchHintState = showHint
+    }
+
+    var onSwitchAccept: Runnable? = null
+    var onSwitchDecline: Runnable? = null
+    var onSwitchUsed: Runnable? = null
     var onExit: Runnable? = null
     var onSecondary: Runnable? = null
     var onToggleCamera: Runnable? = null
@@ -237,6 +249,8 @@ class IncomingCallState {
     internal val established get() = establishedState
     internal val reconnecting get() = reconnectingState
     internal val endMode get() = endModeState
+    internal val switchRequest get() = switchRequestState
+    internal val switchHint get() = switchHintState
     internal val videoCall get() = videoCallState
     internal val remoteVideoView get() = remoteVideoViewState
     internal val localVideoView get() = localVideoViewState
@@ -286,6 +300,9 @@ private val CALL_RECONNECTING_SHAPES: List<RoundedPolygon> by lazy {
         MaterialShapeHelpers.heart(),
     )
 }
+
+private val SWITCH_BLUE = Color(0xFF2F6FED)
+private val SWITCH_GREEN = Color(0xFF2E9E57)
 
 private const val SLIDER_COMMIT_FRACTION = 0.55f
 private const val SLIDER_FLING_DP_PER_S = 900f
@@ -380,9 +397,14 @@ internal fun IncomingCallContent(state: IncomingCallState) {
                     )
                 }
             }
-            if (!active && state.hint) {
+            val showHint = if (state.switchRequest) state.switchHint else (!active && state.hint)
+            if (showHint) {
                 Text(
-                    text = stringResource(R.string.call_slider_hint),
+                    text =
+                        stringResource(
+                            if (state.switchRequest) R.string.call_switch_hint
+                            else R.string.call_slider_hint
+                        ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -394,12 +416,19 @@ internal fun IncomingCallContent(state: IncomingCallState) {
                 endMode = state.endMode,
                 secondaryIcon = state.secondaryIcon,
                 secondaryDescription = state.secondaryDescription,
-                onAccept = { state.onAccept?.run() },
-                onDecline = { state.onDecline?.run() },
+                switchRequest = state.switchRequest,
+                onAccept = {
+                    if (state.switchRequest) state.onSwitchAccept?.run() else state.onAccept?.run()
+                },
+                onDecline = {
+                    if (state.switchRequest) state.onSwitchDecline?.run() else state.onDecline?.run()
+                },
                 onHangUp = { state.onHangUp?.run() },
                 onExit = { state.onExit?.run() },
                 onSecondary = { state.onSecondary?.run() },
-                onUsed = { state.onSliderUsed?.run() },
+                onUsed = {
+                    if (state.switchRequest) state.onSwitchUsed?.run() else state.onSliderUsed?.run()
+                },
             )
             Spacer(Modifier.height(48.dp))
         }
@@ -583,6 +612,7 @@ internal fun CallDock(
     endMode: Boolean,
     @DrawableRes secondaryIcon: Int,
     secondaryDescription: String,
+    switchRequest: Boolean,
     onAccept: () -> Unit,
     onDecline: () -> Unit,
     onHangUp: () -> Unit,
@@ -591,6 +621,7 @@ internal fun CallDock(
     onUsed: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val switchNow by rememberUpdatedState(switchRequest)
     val haptic = LocalHapticFeedback.current
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
@@ -611,7 +642,15 @@ internal fun CallDock(
     // 0 = not decided yet, -1 = declined, 1 = answered. Guards against firing twice.
     var committedDirection by remember { mutableIntStateOf(0) }
     var answered by remember { mutableStateOf(false) }
-    val hangup = active || answered
+    // A request to add video mid-call (switchRequest) brings the slider back: the hang-up button
+    // opens up into the track again (the incoming-call animation in reverse) until it is answered.
+    val hangup = (active && !switchRequest) || answered
+    LaunchedEffect(switchRequest) {
+        if (!switchRequest) {
+            answered = false
+            committedDirection = 0
+        }
+    }
 
     // Born in its final form when the call is already live (outgoing / re-created activity).
     val toRed = remember { Animatable(if (hangup) 1f else 0f) }
@@ -726,15 +765,19 @@ internal fun CallDock(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    painterResource(R.drawable.ic_call_end_24dp),
+                    painterResource(
+                        if (switchRequest) R.drawable.ic_call_24dp else R.drawable.ic_call_end_24dp
+                    ),
                     contentDescription = null,
-                    tint = colors.error,
+                    tint = if (switchRequest) SWITCH_BLUE else colors.error,
                     modifier = Modifier.size(28.dp).graphicsLayer { alpha = 1f - (-p).coerceIn(0f, 1f) },
                 )
                 Icon(
-                    painterResource(R.drawable.ic_call_24dp),
+                    painterResource(
+                        if (switchRequest) R.drawable.ic_videocam_24dp else R.drawable.ic_call_24dp
+                    ),
                     contentDescription = null,
-                    tint = colors.primary,
+                    tint = if (switchRequest) SWITCH_BLUE else colors.primary,
                     modifier = Modifier.size(28.dp).graphicsLayer { alpha = 1f - p.coerceIn(0f, 1f) },
                 )
             }
@@ -770,14 +813,23 @@ internal fun CallDock(
         // rather than deep. Rightwards blend is unchanged.
         val leftT = ((-p) / 0.4f).coerceIn(0f, 1f).let { it * it * (3f - 2f * it) }
         val vividRed = lerp(colors.error, Color.White, 0.02f)
+        // Switch-to-video request: blue pill; right turns it green (camera), left keeps it blue
+        // (stay on audio).
         val dragColor: Color =
-            if (p < 0f) lerp(colors.primaryContainer, vividRed, leftT)
+            if (switchRequest) {
+                if (p > 0f) lerp(SWITCH_BLUE, SWITCH_GREEN, (p / 0.4f).coerceIn(0f, 1f)) else SWITCH_BLUE
+            } else if (p < 0f) lerp(colors.primaryContainer, vividRed, leftT)
             else lerp(colors.primaryContainer, colors.primary, p)
         val dragIcon: Color =
-            if (p < 0f) lerp(colors.onPrimaryContainer, colors.onError, leftT)
+            if (switchRequest) Color.White
+            else if (p < 0f) lerp(colors.onPrimaryContainer, colors.onError, leftT)
             else lerp(colors.onPrimaryContainer, colors.onPrimary, p)
         // Idle: gentle sway. Left: handset laid flat (hang-up pose). Right: settles upright.
-        val dragRotation = swayDegrees * (1f - abs(p)) + if (p < 0f) 135f * -p else -20f * p
+        val dragRotation =
+            if (switchRequest) swayDegrees * (1f - abs(p))
+            else swayDegrees * (1f - abs(p)) + if (p < 0f) 135f * -p else -20f * p
+        // In switch mode the handle's icon crossfades from the handset to a camera on the right.
+        val cameraAlpha = if (switchRequest) ((p - 0.15f) / 0.3f).coerceIn(0f, 1f) else 0f
 
         // On answer everything eases to the final hang-up look.
         val handleColor = lerp(dragColor, vividRed, toRed.value)
@@ -795,7 +847,7 @@ internal fun CallDock(
         fun commit(left: Boolean, velocity: Float) {
             if (committedDirection != 0) return
             committedDirection = if (left) -1 else 1
-            if (left) {
+            if (left && !switchNow) {
                 scope.launch {
                     offset.animateTo(
                         -maxTravelPx,
@@ -811,13 +863,14 @@ internal fun CallDock(
             } else {
                 answered = true
                 // Ride out the end of the drag with the release velocity; the hang-up
-                // transition (LaunchedEffect above) then brings the handle home.
-                onAccept()
+                // transition (LaunchedEffect above) then brings the handle home. In switch mode
+                // both ends end up here: either answer sends the handle home as a hang-up button.
+                if (left) onDecline() else onAccept()
                 scope.launch {
                     // If the call never became active (e.g. the microphone permission prompt
                     // was dismissed), undo the transition so the slider can be used again.
                     delay(2500)
-                    if (!activeNow) {
+                    if (!activeNow || switchNow) {
                         answered = false
                         committedDirection = 0
                     }
@@ -942,8 +995,18 @@ internal fun CallDock(
                 contentDescription = null,
                 tint = iconColor,
                 modifier =
-                    Modifier.size(34.dp).rotate(iconRotation * (1f - endShift.value.coerceIn(0f, 1f))),
+                    Modifier.size(34.dp)
+                        .rotate(iconRotation * (1f - endShift.value.coerceIn(0f, 1f)))
+                        .graphicsLayer { alpha = 1f - cameraAlpha },
             )
+            if (cameraAlpha > 0.01f) {
+                Icon(
+                    painterResource(R.drawable.ic_videocam_24dp),
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(34.dp).graphicsLayer { alpha = cameraAlpha },
+                )
+            }
         }
     }
 }

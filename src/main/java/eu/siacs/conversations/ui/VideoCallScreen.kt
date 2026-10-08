@@ -66,7 +66,8 @@ import kotlinx.coroutines.launch
 private val PIP_W = 112.dp
 private val PIP_H = 150.dp
 private val EDGE = 16.dp
-private val DOCK_BLOCK = 112.dp // 96dp track + 16dp gap below
+private val DOCK_BLOCK = 212.dp // mic+speaker row (72 + 28 gap) + 96dp dock + 16dp below
+private val CONTROLS_BLOCK = DOCK_BLOCK
 private val SIDE_BUTTON = 52.dp
 
 /**
@@ -318,30 +319,65 @@ internal fun VideoCallContent(state: IncomingCallState) {
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(horizontal = EDGE)
                     .padding(bottom = 16.dp)
-                    .height(96.dp)
+                    .height(CONTROLS_BLOCK - 16.dp)
         ) {
-            // The hang-up button (and, after a failed call, exit + retry) is the dock's handle.
-            Box(
-                Modifier.fillMaxSize().graphicsLayer {
-                    translationY = hide * (DOCK_BLOCK.toPx() + 24.dp.toPx())
-                    alpha = 1f - hide
-                }
+            // Microphone and speaker sit diagonally above the hang-up button, exactly as in an
+            // audio call, and slide down with it. The hang-up button (and, after a failed call,
+            // exit + retry) is the dock's handle.
+            Column(
+                modifier =
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().graphicsLayer {
+                        translationY = hide * (CONTROLS_BLOCK.toPx() + 24.dp.toPx())
+                        alpha = 1f - hide
+                    },
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                CallDock(
-                    active = true,
-                    endMode = state.endMode,
-                    secondaryIcon = state.secondaryIcon,
-                    secondaryDescription = state.secondaryDescription,
-                    onAccept = {},
-                    onDecline = {},
-                    onHangUp = { state.onHangUp?.run() },
-                    onExit = { state.onExit?.run() },
-                    onSecondary = { state.onSecondary?.run() },
-                    onUsed = {},
-                )
+                androidx.compose.animation.AnimatedVisibility(visible = !state.endMode) {
+                    Row(
+                        modifier = Modifier.padding(bottom = 28.dp),
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(20.dp),
+                    ) {
+                        CallToggleButton(
+                            checked = !state.micOn,
+                            icon =
+                                if (state.micOn) R.drawable.ic_mic_24dp
+                                else R.drawable.ic_mic_off_24dp,
+                            description = stringResource(R.string.call_button_mute),
+                            onClick = {
+                                tick++
+                                state.onToggleMic?.run()
+                            },
+                        )
+                        CallToggleButton(
+                            checked = false,
+                            icon = state.audioIcon,
+                            description = stringResource(R.string.audio_output_choose),
+                            enabled = state.audioChoices >= 2,
+                            onClick = {
+                                tick++
+                                state.onAudioOutput?.run()
+                            },
+                        )
+                    }
+                }
+                Box(Modifier.fillMaxWidth().height(96.dp)) {
+                    CallDock(
+                        active = true,
+                        endMode = state.endMode,
+                        secondaryIcon = state.secondaryIcon,
+                        secondaryDescription = state.secondaryDescription,
+                        switchRequest = false,
+                        onAccept = {},
+                        onDecline = {},
+                        onHangUp = { state.onHangUp?.run() },
+                        onExit = { state.onExit?.run() },
+                        onSecondary = { state.onSecondary?.run() },
+                        onUsed = {},
+                    )
+                }
             }
-            // Microphone and speaker flank the hang-up button and slide in from the sides; the
-            // camera buttons sit next to it.
+            // Only the camera buttons come in from the sides, left and right of the hang-up
+            // button, and they leave sideways when the controls are dismissed.
             val half = w / 2f
             @Composable
             fun SideButton(slotDp: Float, presence: Float, content: @Composable () -> Unit) {
@@ -349,30 +385,20 @@ internal fun VideoCallContent(state: IncomingCallState) {
                 if (presenceNow <= 0.01f) return
                 val direction = if (slotDp < 0) -1f else 1f
                 Box(
-                    Modifier.align(Alignment.Center)
+                    Modifier.align(Alignment.BottomCenter)
+                        .height(96.dp)
                         .graphicsLayer {
                             translationX =
                                 slotDp.dp.toPx() +
                                     direction * half * ((1f - presenceNow) + hide)
                             alpha = presenceNow * (1f - hide)
-                        }
+                        },
+                    contentAlignment = Alignment.Center,
                 ) {
                     content()
                 }
             }
-            SideButton(-138f, 1f) {
-                CallToggleButton(
-                    checked = !state.micOn,
-                    icon = if (state.micOn) R.drawable.ic_mic_24dp else R.drawable.ic_mic_off_24dp,
-                    description = stringResource(R.string.call_button_mute),
-                    onClick = {
-                        tick++
-                        state.onToggleMic?.run()
-                    },
-                    size = SIDE_BUTTON,
-                )
-            }
-            SideButton(-78f, 1f) {
+            SideButton(-82f, 1f) {
                 CallToggleButton(
                     checked = !hasLocal,
                     icon =
@@ -389,7 +415,7 @@ internal fun VideoCallContent(state: IncomingCallState) {
                     size = SIDE_BUTTON,
                 )
             }
-            SideButton(78f, flipPresence) {
+            SideButton(82f, flipPresence) {
                 CallToggleButton(
                     checked = false,
                     icon = R.drawable.ic_flip_camera_android_24dp,
@@ -397,19 +423,6 @@ internal fun VideoCallContent(state: IncomingCallState) {
                     onClick = {
                         tick++
                         state.onFlipCamera?.run()
-                    },
-                    size = SIDE_BUTTON,
-                )
-            }
-            SideButton(138f, 1f) {
-                CallToggleButton(
-                    checked = false,
-                    icon = state.audioIcon,
-                    description = stringResource(R.string.audio_output_choose),
-                    enabled = state.audioChoices >= 2,
-                    onClick = {
-                        tick++
-                        state.onAudioOutput?.run()
                     },
                     size = SIDE_BUTTON,
                 )

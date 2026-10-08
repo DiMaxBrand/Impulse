@@ -79,6 +79,8 @@ class IncomingCallPreviewActivity : ActionBarActivity() {
                         state.setReconnecting(reconnect == 1)
                         if (reconnect == 1) state.setStatusText("Reconnecting")
                         // Third step: what a lost call looks like -- exit left, retry right.
+                        state.setSwitchRequest(reconnect == 3, true)
+                        if (reconnect == 3) state.setStatusText("Switch to video call?")
                         state.setEndMode(reconnect == 2, eu.siacs.conversations.R.drawable.ic_replay_24dp, "Try again")
                         if (reconnect == 2) {
                             state.setEstablished(false)
@@ -91,11 +93,11 @@ class IncomingCallPreviewActivity : ActionBarActivity() {
                 }
                 // Pretend the link dropped, to watch the reconnecting shapes (answer first).
                 TextButton(
-                    onClick = { reconnect = (reconnect + 1) % 3 },
+                    onClick = { reconnect = (reconnect + 1) % 4 },
                     modifier =
                         Modifier.statusBarsPadding().align(Alignment.TopCenter),
                 ) {
-                    Text(when (reconnect) { 1 -> "Link: reconnecting"; 2 -> "Link: lost"; else -> "Link: fine" })
+                    Text(when (reconnect) { 1 -> "Link: reconnecting"; 2 -> "Link: lost"; 3 -> "Video request"; else -> "Link: fine" })
                 }
                 Column(
                     modifier =

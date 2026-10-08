@@ -218,6 +218,22 @@ public class RtpSessionActivity extends XmppActivity
         incomingCallState.setHintVisible(show);
     }
 
+    // Same idea for the "slide to switch to video" request: first couple of times only, and
+    // never again once the slider has been used.
+    private boolean switchHintWanted() {
+        final var prefs = getSharedPreferences(CALL_UI_PREFS, MODE_PRIVATE);
+        final int shown = prefs.getInt("switch_hint_shown", 0);
+        final boolean show =
+                !prefs.getBoolean("switch_used", false) && shown < SLIDER_HINT_MAX_SHOWS;
+        if (show && !switchHintCounted) {
+            switchHintCounted = true;
+            prefs.edit().putInt("switch_hint_shown", shown + 1).apply();
+        }
+        return show;
+    }
+
+    private boolean switchHintCounted = false;
+
     private final Runnable mTickExecutor =
             new Runnable() {
                 @Override
@@ -302,6 +318,30 @@ public class RtpSessionActivity extends XmppActivity
         this.incomingCallState.setOnAccept(this::requestPermissionsAndAcceptCall);
         this.incomingCallState.setOnDecline(() -> rejectCall(null));
         this.incomingCallState.setOnHangUp(this::endCall);
+        this.incomingCallState.setOnSwitchAccept(
+                () -> {
+                    try {
+                        acceptContentAdd(getPendingContentAddition());
+                    } catch (final IllegalStateException e) {
+                        Toast.makeText(this, R.string.could_not_modify_call, Toast.LENGTH_SHORT)
+                                .show();
+                    }
+                });
+        this.incomingCallState.setOnSwitchDecline(
+                () -> {
+                    try {
+                        rejectContentAdd(null);
+                    } catch (final IllegalStateException e) {
+                        Toast.makeText(this, R.string.could_not_modify_call, Toast.LENGTH_SHORT)
+                                .show();
+                    }
+                });
+        this.incomingCallState.setOnSwitchUsed(
+                () ->
+                        getSharedPreferences(CALL_UI_PREFS, MODE_PRIVATE)
+                                .edit()
+                                .putBoolean("switch_used", true)
+                                .apply());
         this.incomingCallState.setOnExit(() -> exit(null));
         this.incomingCallState.setOnSecondary(
                 () -> {
@@ -1058,7 +1098,10 @@ public class RtpSessionActivity extends XmppActivity
     private void updateIncomingCallScreen(final RtpEndUserState state, final Contact contact) {
         final boolean incoming = state == RtpEndUserState.INCOMING_CALL;
         final boolean videoCall = isVideoCall();
-        final boolean live = STATES_SHOWING_SPEAKER_CONFIGURATION.contains(state);
+        // The other side asking to add video to an audio call brings the slider back.
+        final boolean switchRequest = state == RtpEndUserState.INCOMING_CONTENT_ADD && !videoCall;
+        final boolean live = STATES_SHOWING_SPEAKER_CONFIGURATION.contains(state) || switchRequest;
+        incomingCallState.setSwitchRequest(switchRequest, switchRequest && switchHintWanted());
         // A call that ended without (or after losing) a connection is shown by the same layer:
         // exit on the left, retry / voicemail on the right.
         final boolean endedCall = END_CARD.contains(state);

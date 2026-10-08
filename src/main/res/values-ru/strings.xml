@@ -1512,4 +1512,5 @@
     <string name="developer_options_incoming_call_preview">Превью входящего звонка</string>
     <string name="developer_options_incoming_call_preview_summary">Попробовать экран входящего звонка без настоящего звонка</string>
     <string name="call_button_mute">Микрофон</string>
+    <string name="call_switch_hint">Проведите вправо, чтобы перейти на видео, влево — чтобы остаться на аудио</string>
 </resources>
