@@ -19,6 +19,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -113,6 +114,7 @@ class IncomingCallState {
     private var audioIconState by mutableIntStateOf(R.drawable.ic_volume_up_24dp)
     private var audioChoicesState by mutableIntStateOf(0)
     private var durationState by mutableStateOf("")
+    private var statusState by mutableStateOf("")
 
     var onAccept: Runnable? = null
     var onDecline: Runnable? = null
@@ -150,6 +152,11 @@ class IncomingCallState {
         audioChoicesState = count
     }
 
+    /** The call status line ("Ringing", "Connecting", ...) -- the same text the toolbar shows. */
+    fun setStatusText(text: String) {
+        statusState = text
+    }
+
     fun setDurationText(text: String) {
         durationState = text
     }
@@ -162,6 +169,7 @@ class IncomingCallState {
     internal val audioIcon get() = audioIconState
     internal val audioChoices get() = audioChoicesState
     internal val duration get() = durationState
+    internal val status get() = statusState
 }
 
 object IncomingCallHelper {
@@ -214,6 +222,24 @@ internal fun IncomingCallContent(state: IncomingCallState) {
         ) {
             Spacer(Modifier.weight(1f))
             MorphingCallAvatar(state.avatar, Modifier.size(avatarSize))
+            // Status line, cross-fading as the call moves through its states.
+            androidx.compose.animation.AnimatedContent(
+                targetState = state.status,
+                transitionSpec = {
+                    (fadeIn(spring(stiffness = Spring.StiffnessMediumLow)) togetherWith
+                        fadeOut(spring(stiffness = Spring.StiffnessMedium)))
+                        .using(androidx.compose.animation.SizeTransform(clip = false))
+                },
+                label = "callStatus",
+            ) { status ->
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
             AnimatedVisibility(
                 visible = state.duration.isNotEmpty(),
                 enter = fadeIn() + expandVertically(),

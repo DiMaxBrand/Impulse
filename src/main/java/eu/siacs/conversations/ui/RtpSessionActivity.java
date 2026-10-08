@@ -960,6 +960,8 @@ public class RtpSessionActivity extends XmppActivity
                     throw new IllegalStateException(
                             String.format("State %s has not been handled in UI", state));
         }
+        // The Compose layer shows the very same text the toolbar title does.
+        incomingCallState.setStatusText(String.valueOf(getTitle()));
     }
 
     private void updateVerifiedShield(final boolean verified) {

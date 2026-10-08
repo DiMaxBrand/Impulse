@@ -58,12 +58,14 @@ class IncomingCallPreviewActivity : ActionBarActivity() {
                             setVisible(true)
                             setSliderVisible(true)
                             setHintVisible(hint == 1)
+                            setStatusText("Incoming call")
                             setAvatar(fakeAvatar())
                             setAudioChoices(2)
                             onAccept = Runnable {
                                 // Like the real thing: the call goes live and the handle
                                 // becomes the hang-up button.
                                 setSliderVisible(false)
+                                setStatusText("Connected")
                                 setDurationText("00:42")
                             }
                             onDecline = Runnable { finishRound(false) { round++ } }
