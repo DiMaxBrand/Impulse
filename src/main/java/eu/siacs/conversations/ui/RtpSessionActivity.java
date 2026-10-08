@@ -950,9 +950,15 @@ public class RtpSessionActivity extends XmppActivity
             final JingleManager.TerminatedRtpSession terminatedRtpSession =
                     jingleManager.getTerminalSessionState(with, sessionId);
             if (terminatedRtpSession == null) {
-                throw new IllegalStateException(
+                // The call is long gone (e.g. the screen was reopened from recents or a stale
+                // notification after it ended). There is nothing to show, so just leave -- this
+                // used to crash the app.
+                Log.w(
+                        Config.LOGTAG,
                         "failed to initialize activity with running rtp session. session not"
-                                + " found");
+                                + " found. finishing");
+                finish();
+                return true;
             }
             initializeWithTerminatedSessionState(account, with, terminatedRtpSession);
             return true;

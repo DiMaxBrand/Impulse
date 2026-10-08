@@ -468,7 +468,7 @@ internal fun CallToggleButton(
     Box(
         modifier =
             Modifier.size(size)
-                .clip(RoundedCornerShape(corner))
+                .clip(RoundedCornerShape(corner.coerceAtLeast(0.dp)))
                 .background(container)
                 .semantics { contentDescription = description }
                 .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),

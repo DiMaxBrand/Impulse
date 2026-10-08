@@ -282,7 +282,7 @@ internal fun VideoCallContent(state: IncomingCallState) {
                             headerW = it.width.toFloat()
                         }
                         .graphicsLayer {
-                            alpha = compact * (1f - hide)
+                            alpha = (compact * (1f - hide)).coerceIn(0f, 1f)
                             translationX = -((1f - compact) * 60.dp.toPx() + hide * (headerW + edge))
                         }
                         .height(IntrinsicSize.Min),
@@ -391,7 +391,7 @@ internal fun VideoCallContent(state: IncomingCallState) {
                             translationX =
                                 slotDp.dp.toPx() +
                                     direction * half * ((1f - presenceNow) + hide)
-                            alpha = presenceNow * (1f - hide)
+                            alpha = (presenceNow * (1f - hide)).coerceIn(0f, 1f)
                         },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -486,12 +486,12 @@ private fun VideoSurface(
                     with(density) { height.toDp() },
                 )
                 .graphicsLayer {
-                    alpha = presence
+                    alpha = presence.coerceIn(0f, 1f)
                     val s = 0.85f + 0.15f * presence
                     scaleX = s
                     scaleY = s
                 }
-                .clip(RoundedCornerShape(with(density) { cornerPx.toDp() })),
+                .clip(RoundedCornerShape(with(density) { cornerPx.coerceAtLeast(0f).toDp() })),
         update = { v ->
             // The self-view's surface sits above the main one.
             if (v.getTag(R.id.rtp_video_overlay_tag) != overlay) {
