@@ -145,14 +145,14 @@
             android:gravity="center"
             android:visibility="gone">
 
-            <eu.siacs.conversations.ui.widget.SurfaceViewRenderer
+            <eu.siacs.conversations.ui.widget.TextureViewRenderer
                 android:id="@+id/remote_video"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:soundEffectsEnabled="false" />
         </LinearLayout>
 
-        <eu.siacs.conversations.ui.widget.SurfaceViewRenderer
+        <eu.siacs.conversations.ui.widget.TextureViewRenderer
             android:id="@+id/local_video"
             android:layout_width="@dimen/local_video_preview_width"
             android:layout_height="@dimen/local_video_preview_height"

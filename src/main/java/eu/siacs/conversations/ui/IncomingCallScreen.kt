@@ -645,11 +645,11 @@ internal fun CallDock(
     // A request to add video mid-call (switchRequest) brings the slider back: the hang-up button
     // opens up into the track again (the incoming-call animation in reverse) until it is answered.
     val hangup = (active && !switchRequest) || answered
+    // Reset both ways: `answered` is still true from answering the original call, which would
+    // otherwise keep the hang-up look and swallow the first switch request (hint, no slider).
     LaunchedEffect(switchRequest) {
-        if (!switchRequest) {
-            answered = false
-            committedDirection = 0
-        }
+        answered = false
+        committedDirection = 0
     }
 
     // Born in its final form when the call is already live (outgoing / re-created activity).

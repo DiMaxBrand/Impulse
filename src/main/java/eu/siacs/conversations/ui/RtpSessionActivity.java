@@ -53,6 +53,8 @@ import eu.siacs.conversations.services.CallIntegrationConnectionService;
 import eu.siacs.conversations.services.XmppConnectionService;
 import eu.siacs.conversations.ui.util.MainThreadExecutor;
 import eu.siacs.conversations.ui.util.Rationals;
+import eu.siacs.conversations.ui.widget.BlackFrameDetector;
+import eu.siacs.conversations.ui.widget.TextureViewRenderer;
 import eu.siacs.conversations.utils.PermissionUtils;
 import eu.siacs.conversations.utils.TimeFrameUtils;
 import eu.siacs.conversations.xmpp.Jid;
@@ -70,12 +72,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import org.webrtc.RendererCommon;
-import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoTrack;
 
 public class RtpSessionActivity extends XmppActivity
         implements XmppConnectionService.OnJingleRtpConnectionUpdate,
-                eu.siacs.conversations.ui.widget.SurfaceViewRenderer.OnAspectRatioChanged {
+                eu.siacs.conversations.ui.widget.TextureViewRenderer.OnAspectRatioChanged {
 
     public static final String EXTRA_WITH = "with";
     public static final String EXTRA_SESSION_ID = "session_id";
@@ -197,10 +198,28 @@ public class RtpSessionActivity extends XmppActivity
     }
 
     // Which of the two videos currently has a picture, for the Compose layer.
+    // "Has a picture" is stricter than "has a track": a camera that was switched off keeps its
+    // track and just sends black. Ours we know; theirs the detector notices from the frames.
     private void refreshVideoPresence() {
-        incomingCallState.setVideoPresence(
-                getRemoteVideoTrack().isPresent(), getLocalVideoTrack().isPresent());
+        boolean localOn = getLocalVideoTrack().isPresent();
+        if (localOn) {
+            try {
+                localOn = requireRtpConnection().isVideoEnabled();
+            } catch (final IllegalStateException e) {
+                localOn = false;
+            }
+        }
+        final boolean remoteOn = getRemoteVideoTrack().isPresent() && !remoteCameraOff;
+        incomingCallState.setVideoPresence(remoteOn, localOn);
     }
+
+    private volatile boolean remoteCameraOff = false;
+    private final BlackFrameDetector remoteBlackDetector =
+            new BlackFrameDetector(
+                    black -> {
+                        remoteCameraOff = black;
+                        runOnUiThread(this::refreshVideoPresence);
+                    });
 
     private Runnable secondaryCallAction = null;
 
@@ -259,7 +278,7 @@ public class RtpSessionActivity extends XmppActivity
     }
 
     private static void addSink(
-            final VideoTrack videoTrack, final SurfaceViewRenderer surfaceViewRenderer) {
+            final VideoTrack videoTrack, final TextureViewRenderer surfaceViewRenderer) {
         try {
             videoTrack.addSink(surfaceViewRenderer);
         } catch (final IllegalStateException e) {
@@ -838,6 +857,7 @@ public class RtpSessionActivity extends XmppActivity
         final Optional<VideoTrack> remoteVideo = jingleRtpConnection.getRemoteVideoTrack();
         if (remoteVideo.isPresent()) {
             remoteVideo.get().removeSink(binding.remoteVideo);
+            remoteVideo.get().removeSink(remoteBlackDetector);
         }
         final Optional<VideoTrack> localVideo = jingleRtpConnection.getLocalVideoTrack();
         if (localVideo.isPresent()) {
@@ -1025,7 +1045,7 @@ public class RtpSessionActivity extends XmppActivity
         setIntent(intent);
     }
 
-    private void ensureSurfaceViewRendererIsSetup(final SurfaceViewRenderer surfaceViewRenderer) {
+    private void ensureSurfaceViewRendererIsSetup(final TextureViewRenderer surfaceViewRenderer) {
         surfaceViewRenderer.setVisibility(View.VISIBLE);
         try {
             surfaceViewRenderer.init(requireRtpConnection().getEglBaseContext(), null);
@@ -1731,7 +1751,6 @@ public class RtpSessionActivity extends XmppActivity
         if (localVideoTrack.isPresent() && !isPictureInPicture()) {
             ensureSurfaceViewRendererIsSetup(binding.localVideo);
             // paint local view over remote view
-            binding.localVideo.setZOrderMediaOverlay(true);
             binding.localVideo.setMirror(requireRtpConnection().isFrontCamera());
             addSink(localVideoTrack.get(), binding.localVideo);
         } else {
@@ -1778,12 +1797,19 @@ public class RtpSessionActivity extends XmppActivity
         if (remoteVideoTrack.isPresent()) {
             ensureSurfaceViewRendererIsSetup(binding.remoteVideo);
             addSink(remoteVideoTrack.get(), binding.remoteVideo);
+            try {
+                remoteVideoTrack.get().addSink(remoteBlackDetector);
+            } catch (final IllegalStateException ignored) {
+                // track already disposed
+            }
             binding.remoteVideo.setScalingType(
                     RendererCommon.ScalingType.SCALE_ASPECT_FILL,
                     RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+        } else if (remoteCameraOff) {
+            remoteBlackDetector.reset();
+            remoteCameraOff = false;
         }
-        incomingCallState.setVideoPresence(
-                remoteVideoTrack.isPresent(), localVideoTrack.isPresent());
+        refreshVideoPresence();
         incomingCallState.setCameraSwitchable(requireRtpConnection().isCameraSwitchable());
         incomingCallState.setSystemPip(isPictureInPicture());
         binding.pipLocalMicOffIndicator.setVisibility(
