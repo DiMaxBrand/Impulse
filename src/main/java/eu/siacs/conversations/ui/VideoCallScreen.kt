@@ -452,6 +452,14 @@ private fun StatusLines(state: IncomingCallState, onVideo: Boolean, centered: Bo
                 fontFamily = FontFamily.Monospace,
                 color = timeColor,
             )
+        } else if (!centered) {
+            // Keep the second line's height before the call has a time: the header avatar is
+            // sized to these two lines, and with one it was a tiny dot (or looked missing).
+            Text(
+                text = " ",
+                style = MaterialTheme.typography.titleLarge,
+                fontFamily = FontFamily.Monospace,
+            )
         }
     }
 }

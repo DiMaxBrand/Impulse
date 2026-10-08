@@ -173,6 +173,28 @@ public class RtpSessionActivity extends XmppActivity
 
     private boolean videoChromeApplied = false;
 
+    // The other party for the avatar. While an outgoing call is still only a proposal there is no
+    // session to ask (getWith() throws), so fall back to the account and jid the call was
+    // started with. That gap is why the avatar was missing at the start of outgoing calls.
+    private Contact findContactForAvatar() {
+        try {
+            return getWith();
+        } catch (final IllegalStateException e) {
+            // fall through to the intent
+        }
+        try {
+            final Intent intent = getIntent();
+            final Account account = extractAccount(intent);
+            final String with = intent == null ? null : intent.getStringExtra(EXTRA_WITH);
+            if (account == null || with == null) {
+                return null;
+            }
+            return account.getRoster().getContact(Jid.of(with));
+        } catch (final RuntimeException e) {
+            return null;
+        }
+    }
+
     private boolean isVideoCall() {
         try {
             final boolean video = requireOngoingRtpSession().getMedia().contains(Media.VIDEO);
@@ -1164,18 +1186,21 @@ public class RtpSessionActivity extends XmppActivity
                 updateSliderHint();
             }
             if (!avatarRequested) {
-                try {
-                    final Contact avatarContact = contact == null ? getWith() : contact;
+                final Contact avatarContact = contact != null ? contact : findContactForAvatar();
+                if (avatarContact != null) {
                     avatarRequested = true;
                     new Thread(
                                     () -> {
                                         final Bitmap avatar =
                                                 avatarService().get(avatarContact, 1024, false);
+                                        if (avatar == null) {
+                                            // try again on the next update
+                                            avatarRequested = false;
+                                            return;
+                                        }
                                         runOnUiThread(() -> incomingCallState.setAvatar(avatar));
                                     })
                             .start();
-                } catch (final IllegalStateException e) {
-                    // no session to take the contact from yet; try again on the next update
                 }
             }
             hideLegacyCallButtons();
