@@ -802,10 +802,6 @@ internal fun CallDock(
             }
         }
 
-        val committed = abs(p) >= SLIDER_COMMIT_FRACTION
-        LaunchedEffect(committed) {
-            if (committed && !hangup) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
 
         // Blending the container colour straight into red passes through a muddy brown around the
         // middle of the drag. So the red ramps in over the first ~40% of the travel (the brown
@@ -847,6 +843,9 @@ internal fun CallDock(
         fun commit(left: Boolean, velocity: Float) {
             if (committedDirection != 0) return
             committedDirection = if (left) -1 else 1
+            // The click: the handle has reached the end (or been flung / released past the
+            // threshold) and the answer is registered, whether or not the finger is still down.
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
             if (left && !switchNow) {
                 scope.launch {
                     offset.animateTo(
@@ -943,8 +942,8 @@ internal fun CallDock(
                                             )
                                         }
                                         val reached = offset.value / maxTravelPx
-                                        if (reached <= -0.98f) commit(left = true, velocity = 0f)
-                                        else if (reached >= 0.98f) commit(left = false, velocity = 0f)
+                                        if (reached <= -0.999f) commit(left = true, velocity = 0f)
+                                        else if (reached >= 0.999f) commit(left = false, velocity = 0f)
                                     },
                                 onDragStarted = {
                                     dragging = true
