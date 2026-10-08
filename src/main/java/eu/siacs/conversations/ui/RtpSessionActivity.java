@@ -989,6 +989,8 @@ public class RtpSessionActivity extends XmppActivity
             incomingCallState.setVisible(true);
             incomingCallState.setSliderVisible(incoming);
             incomingCallState.setEstablished(STATES_CONSIDERED_CONNECTED.contains(state));
+            incomingCallState.setReconnecting(state == RtpEndUserState.RECONNECTING);
+            incomingCallState.setReconnecting(state == RtpEndUserState.RECONNECTING);
             if (incoming) {
                 updateSliderHint();
             }

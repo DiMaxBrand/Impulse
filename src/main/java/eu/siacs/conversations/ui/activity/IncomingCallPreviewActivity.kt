@@ -49,6 +49,7 @@ class IncomingCallPreviewActivity : ActionBarActivity() {
     private fun PreviewScreen(onClose: () -> Unit) {
         var round by remember { mutableIntStateOf(0) }
         var hint by remember { mutableIntStateOf(1) }
+        var reconnect by remember { mutableIntStateOf(0) }
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             Box(Modifier.fillMaxSize()) {
                 // New state per round so a committed slider starts fresh.
@@ -74,9 +75,21 @@ class IncomingCallPreviewActivity : ActionBarActivity() {
                             onToggleMic = Runnable { setMicOn(!micOn) }
                         }
                     }
+                    androidx.compose.runtime.LaunchedEffect(reconnect) {
+                        state.setReconnecting(reconnect == 1)
+                        if (reconnect == 1) state.setStatusText("Reconnecting")
+                    }
                     Box(Modifier.fillMaxSize().padding(top = 72.dp)) {
                         IncomingCallContent(state)
                     }
+                }
+                // Pretend the link dropped, to watch the reconnecting shapes (answer first).
+                TextButton(
+                    onClick = { reconnect = 1 - reconnect },
+                    modifier =
+                        Modifier.statusBarsPadding().align(Alignment.TopCenter),
+                ) {
+                    Text(if (reconnect == 1) "Reconnect: on" else "Reconnect: off")
                 }
                 Column(
                     modifier =

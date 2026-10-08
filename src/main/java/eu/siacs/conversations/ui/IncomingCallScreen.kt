@@ -116,6 +116,7 @@ class IncomingCallState {
     private var durationState by mutableStateOf("")
     private var statusState by mutableStateOf("")
     private var establishedState by mutableStateOf(false)
+    private var reconnectingState by mutableStateOf(false)
 
     var onAccept: Runnable? = null
     var onDecline: Runnable? = null
@@ -158,6 +159,11 @@ class IncomingCallState {
         statusState = text
     }
 
+    /** True while an established call has lost its link and is trying to get it back. */
+    fun setReconnecting(reconnecting: Boolean) {
+        reconnectingState = reconnecting
+    }
+
     /** True once the call is actually up (connected / reconnecting). */
     fun setEstablished(established: Boolean) {
         establishedState = established
@@ -177,6 +183,7 @@ class IncomingCallState {
     internal val duration get() = durationState
     internal val status get() = statusState
     internal val established get() = establishedState
+    internal val reconnecting get() = reconnectingState
 }
 
 object IncomingCallHelper {
@@ -205,6 +212,19 @@ private val CALL_AVATAR_SHAPES: List<RoundedPolygon> by lazy {
 // Same shape the chat list gives a contact who is in an ongoing call.
 private val CALL_ESTABLISHED_SHAPE: RoundedPolygon get() = CALL_AVATAR_SHAPES[1]
 
+// Easter egg: while the call is reconnecting the avatar runs through these, then starts over.
+private val CALL_RECONNECTING_SHAPES: List<RoundedPolygon> by lazy {
+    listOf(
+        MaterialShapeHelpers.arrow(),
+        MaterialShapeHelpers.slanted(),
+        MaterialShapeHelpers.semiCircle(),
+        MaterialShapeHelpers.gem(),
+        MaterialShapeHelpers.pixelCircle(),
+        MaterialShapeHelpers.pixelTriangle(),
+        MaterialShapeHelpers.heart(),
+    )
+}
+
 private const val SLIDER_COMMIT_FRACTION = 0.55f
 private const val SLIDER_FLING_DP_PER_S = 900f
 
@@ -231,7 +251,7 @@ internal fun IncomingCallContent(state: IncomingCallState) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.weight(1f))
-            MorphingCallAvatar(state.avatar, state.established, Modifier.size(avatarSize))
+            MorphingCallAvatar(state.avatar, state.established, state.reconnecting, Modifier.size(avatarSize))
             // Status line, cross-fading as the call moves through its states.
             androidx.compose.animation.AnimatedContent(
                 targetState = state.status,
@@ -369,6 +389,7 @@ private fun CallToggleButton(
 private fun MorphingCallAvatar(
     avatar: ImageBitmap?,
     established: Boolean,
+    reconnecting: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val shapes = CALL_AVATAR_SHAPES
@@ -376,10 +397,29 @@ private fun MorphingCallAvatar(
     val toShape = remember { mutableStateOf(shapes[0]) }
     val progress = remember { Animatable(1f) }
     val establishedNow by rememberUpdatedState(established)
+    val reconnectingNow by rememberUpdatedState(reconnecting)
 
     LaunchedEffect(Unit) {
         var index = 0
         while (true) {
+            if (reconnectingNow) {
+                // Starts straight away (no wait for the first shape), then a step every 1.4 s.
+                var step = 0
+                while (reconnectingNow) {
+                    fromShape.value = toShape.value
+                    toShape.value = CALL_RECONNECTING_SHAPES[step % CALL_RECONNECTING_SHAPES.size]
+                    step++
+                    progress.snapTo(0f)
+                    progress.animateTo(
+                        1f,
+                        spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow),
+                    )
+                    kotlinx.coroutines.withTimeoutOrNull(1400) {
+                        snapshotFlow { reconnectingNow }.first { !it }
+                    }
+                }
+                continue
+            }
             if (establishedNow) {
                 // Once the call is up it settles on the chat list's "ongoing call" shape and
                 // stops changing (the slow turn goes on). A morph already under way finishes
