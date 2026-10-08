@@ -121,8 +121,43 @@ class IncomingCallState {
     private var secondaryIconState by mutableIntStateOf(R.drawable.ic_replay_24dp)
     private var secondaryDescState by mutableStateOf("")
 
+    private var videoCallState by mutableStateOf(false)
+    private var remoteVideoViewState by mutableStateOf<android.view.View?>(null)
+    private var localVideoViewState by mutableStateOf<android.view.View?>(null)
+    private var hasRemoteVideoState by mutableStateOf(false)
+    private var hasLocalVideoState by mutableStateOf(false)
+    private var cameraSwitchableState by mutableStateOf(false)
+    private var systemPipState by mutableStateOf(false)
+
     var onExit: Runnable? = null
     var onSecondary: Runnable? = null
+    var onToggleCamera: Runnable? = null
+    var onFlipCamera: Runnable? = null
+
+    /** Video call layout (full-screen video, corner self-view) instead of the audio one. */
+    fun setVideoCall(video: Boolean) {
+        videoCallState = video
+    }
+
+    /** The two WebRTC renderers; the Compose layer hosts them (the activity detaches them). */
+    fun setVideoViews(remote: android.view.View?, local: android.view.View?) {
+        remoteVideoViewState = remote
+        localVideoViewState = local
+    }
+
+    fun setVideoPresence(remote: Boolean, local: Boolean) {
+        hasRemoteVideoState = remote
+        hasLocalVideoState = local
+    }
+
+    fun setCameraSwitchable(switchable: Boolean) {
+        cameraSwitchableState = switchable
+    }
+
+    /** The system's picture-in-picture window: show nothing but the main video. */
+    fun setSystemPip(pip: Boolean) {
+        systemPipState = pip
+    }
 
     /**
      * The call has ended without a connection (declined, busy, lost, failed ...). The hang-up
@@ -202,6 +237,13 @@ class IncomingCallState {
     internal val established get() = establishedState
     internal val reconnecting get() = reconnectingState
     internal val endMode get() = endModeState
+    internal val videoCall get() = videoCallState
+    internal val remoteVideoView get() = remoteVideoViewState
+    internal val localVideoView get() = localVideoViewState
+    internal val hasRemoteVideo get() = hasRemoteVideoState
+    internal val hasLocalVideo get() = hasLocalVideoState
+    internal val cameraSwitchable get() = cameraSwitchableState
+    internal val systemPip get() = systemPipState
     internal val secondaryIcon get() = secondaryIconState
     internal val secondaryDescription get() = secondaryDescState
 }
@@ -257,6 +299,11 @@ private val TRACK_HEIGHT = 96.dp
 internal fun IncomingCallContent(state: IncomingCallState) {
     if (!state.visible) return
     val active = !state.sliderVisible
+    // Video calls (once answered / outgoing) use their own full-screen layout.
+    if (state.videoCall && active) {
+        VideoCallContent(state)
+        return
+    }
     BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp)) {
         val baseAvatar = min(min(maxWidth.value, 320f), maxHeight.value * 0.45f).dp
         // The avatar gives up room to the controls once the call is live.
@@ -364,17 +411,18 @@ internal fun IncomingCallContent(state: IncomingCallState) {
  * rounded square with the primary colour -- the Expressive "shape says state" treatment.
  */
 @Composable
-private fun CallToggleButton(
+internal fun CallToggleButton(
     checked: Boolean,
     @DrawableRes icon: Int,
     description: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    size: androidx.compose.ui.unit.Dp = 72.dp,
 ) {
     val colors = MaterialTheme.colorScheme
     val corner by
         animateDpAsState(
-            if (checked) 22.dp else 36.dp,
+            if (checked) size * 0.3f else size / 2,
             spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
             label = "toggleCorner",
         )
@@ -390,7 +438,7 @@ private fun CallToggleButton(
         )
     Box(
         modifier =
-            Modifier.size(72.dp)
+            Modifier.size(size)
                 .clip(RoundedCornerShape(corner))
                 .background(container)
                 .semantics { contentDescription = description }
@@ -401,7 +449,7 @@ private fun CallToggleButton(
             painterResource(icon),
             contentDescription = null,
             tint = content,
-            modifier = Modifier.size(30.dp),
+            modifier = Modifier.size(size * 0.42f),
         )
     }
 }
@@ -411,11 +459,12 @@ private fun CallToggleButton(
  * slowly turns. Only the clip outline rotates -- the photo itself stays upright.
  */
 @Composable
-private fun MorphingCallAvatar(
+internal fun MorphingCallAvatar(
     avatar: ImageBitmap?,
     established: Boolean,
     reconnecting: Boolean,
     modifier: Modifier = Modifier,
+    scale: Float = 0.76f,
 ) {
     val shapes = CALL_AVATAR_SHAPES
     val fromShape = remember { mutableStateOf(shapes[0]) }
@@ -494,7 +543,6 @@ private fun MorphingCallAvatar(
 
     Canvas(modifier = modifier) {
         // Margin so the bounciest mid-morph bulge and the rotation never touch the canvas edge.
-        val scale = 0.76f
         val margin = (1f - scale) / 2f
         matrix.reset()
         matrix.postScale(size.width * scale, size.height * scale)
@@ -530,7 +578,7 @@ private fun MorphingCallAvatar(
  * morphs into a red squircle -- the hang-up button. Outgoing calls start in that final form.
  */
 @Composable
-private fun CallDock(
+internal fun CallDock(
     active: Boolean,
     endMode: Boolean,
     @DrawableRes secondaryIcon: Int,

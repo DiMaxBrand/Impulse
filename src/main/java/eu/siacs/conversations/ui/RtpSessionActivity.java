@@ -23,6 +23,7 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
@@ -146,6 +147,61 @@ public class RtpSessionActivity extends XmppActivity
     private boolean avatarRequested = false;
     // Remembered because the connection is already gone by the time an end card is drawn.
     private boolean lastMediaAudioOnly = false;
+    private boolean lastMediaHasVideo = false;
+
+    // Full-screen video: the Compose layer extends under the (now hidden) app bar.
+    private void applyVideoChrome(final boolean videoFull) {
+        final var params =
+                (android.widget.RelativeLayout.LayoutParams)
+                        binding.incomingCallCompose.getLayoutParams();
+        if (videoFull) {
+            params.removeRule(android.widget.RelativeLayout.BELOW);
+            binding.appBarLayout.setVisibility(View.GONE);
+            binding.usingAccount.setVisibility(View.GONE);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        } else {
+            params.addRule(android.widget.RelativeLayout.BELOW, R.id.app_bar_layout);
+            if (videoChromeApplied) {
+                binding.appBarLayout.setVisibility(isPictureInPicture() ? View.GONE : View.VISIBLE);
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            }
+        }
+        videoChromeApplied = videoFull;
+        binding.incomingCallCompose.setLayoutParams(params);
+    }
+
+    private boolean videoChromeApplied = false;
+
+    private boolean isVideoCall() {
+        try {
+            final boolean video = requireOngoingRtpSession().getMedia().contains(Media.VIDEO);
+            lastMediaHasVideo = video;
+            return video;
+        } catch (final IllegalStateException e) {
+            return lastMediaHasVideo;
+        }
+    }
+
+    private void toggleCameraFromCompose() {
+        try {
+            if (requireRtpConnection().isVideoEnabled()) {
+                disableVideo(null);
+            } else {
+                enableVideo(null);
+            }
+        } catch (final IllegalStateException e) {
+            Toast.makeText(this, R.string.could_not_modify_call, Toast.LENGTH_SHORT).show();
+        }
+        hideLegacyCallButtons();
+        refreshVideoPresence();
+    }
+
+    // Which of the two videos currently has a picture, for the Compose layer.
+    private void refreshVideoPresence() {
+        incomingCallState.setVideoPresence(
+                getRemoteVideoTrack().isPresent(), getLocalVideoTrack().isPresent());
+    }
+
     private Runnable secondaryCallAction = null;
 
     // Shows the "slide to answer" hint for someone's first couple of incoming calls only, and
@@ -226,8 +282,21 @@ public class RtpSessionActivity extends XmppActivity
                                     | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         }
         this.binding = DataBindingUtil.setContentView(this, R.layout.activity_rtp_session);
-        this.binding.remoteVideo.setOnClickListener(this::onVideoScreenClick);
-        this.binding.localVideo.setOnClickListener(this::onVideoScreenClick);
+        // The Compose call layer hosts the two renderers (and handles taps on them), so take
+        // them out of the View layout.
+        for (final View video : new View[] {this.binding.remoteVideo, this.binding.localVideo}) {
+            if (video.getParent() instanceof ViewGroup parent) {
+                parent.removeView(video);
+            }
+            video.setClickable(false);
+        }
+        this.incomingCallState.setVideoViews(this.binding.remoteVideo, this.binding.localVideo);
+        this.incomingCallState.setOnToggleCamera(this::toggleCameraFromCompose);
+        this.incomingCallState.setOnFlipCamera(
+                () -> {
+                    switchCamera(null);
+                    hideLegacyCallButtons();
+                });
         setSupportActionBar(binding.toolbar);
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
         this.incomingCallState.setOnAccept(this::requestPermissionsAndAcceptCall);
@@ -988,13 +1057,18 @@ public class RtpSessionActivity extends XmppActivity
 
     private void updateIncomingCallScreen(final RtpEndUserState state, final Contact contact) {
         final boolean incoming = state == RtpEndUserState.INCOMING_CALL;
-        final boolean audioOnly = isAudioOnlyCall();
-        final boolean liveAudio = STATES_SHOWING_SPEAKER_CONFIGURATION.contains(state) && audioOnly;
-        // An audio call that ended without (or after losing) a connection is shown by the same
-        // layer: exit on the left, retry / voicemail on the right.
-        final boolean endedAudio = END_CARD.contains(state) && audioOnly;
-        composeCallLayerActive = incoming || liveAudio || endedAudio;
-        if (endedAudio) {
+        final boolean videoCall = isVideoCall();
+        final boolean live = STATES_SHOWING_SPEAKER_CONFIGURATION.contains(state);
+        // A call that ended without (or after losing) a connection is shown by the same layer:
+        // exit on the left, retry / voicemail on the right.
+        final boolean endedCall = END_CARD.contains(state);
+        composeCallLayerActive = incoming || live || endedCall;
+        incomingCallState.setVideoCall(videoCall);
+        incomingCallState.setSystemPip(isPictureInPicture());
+        // Video: the layer takes the whole screen (no app bar, system bars out of the way).
+        final boolean videoFull = live && videoCall;
+        applyVideoChrome(videoFull);
+        if (endedCall) {
             final boolean voicemail =
                     state == RtpEndUserState.DECLINED_OR_BUSY
                             || state == RtpEndUserState.CONTACT_OFFLINE;
@@ -1015,7 +1089,6 @@ public class RtpSessionActivity extends XmppActivity
             incomingCallState.setVisible(true);
             incomingCallState.setSliderVisible(incoming);
             incomingCallState.setEstablished(STATES_CONSIDERED_CONNECTED.contains(state));
-            incomingCallState.setReconnecting(state == RtpEndUserState.RECONNECTING);
             incomingCallState.setReconnecting(state == RtpEndUserState.RECONNECTING);
             if (incoming) {
                 updateSliderHint();
@@ -1040,7 +1113,7 @@ public class RtpSessionActivity extends XmppActivity
         }
         if (state == RtpEndUserState.INCOMING_CALL || state == RtpEndUserState.ACCEPTING_CALL) {
             final Account account = contact == null ? getWith().getAccount() : contact.getAccount();
-            binding.usingAccount.setVisibility(View.VISIBLE);
+            binding.usingAccount.setVisibility(videoFull ? View.GONE : View.VISIBLE);
             binding.usingAccount.setText(
                     getString(R.string.using_account, account.getJid().asBareJid().toString()));
         } else {
@@ -1085,6 +1158,7 @@ public class RtpSessionActivity extends XmppActivity
             final ContentAddition contentAddition) {
         if (!media.isEmpty()) {
             lastMediaAudioOnly = Media.audioOnly(media);
+            lastMediaHasVideo = media.contains(Media.VIDEO);
         }
         if (state == RtpEndUserState.ENDING_CALL
                 || isPictureInPicture()
@@ -1473,7 +1547,8 @@ public class RtpSessionActivity extends XmppActivity
     private void updateCallDuration() {
         final JingleRtpConnection connection =
                 this.rtpConnectionReference != null ? this.rtpConnectionReference.get() : null;
-        if (connection == null || connection.getMedia().contains(Media.VIDEO)) {
+        if (connection == null
+                || (connection.getMedia().contains(Media.VIDEO) && !composeCallLayerActive)) {
             this.binding.duration.setVisibility(View.GONE);
             this.incomingCallState.setDurationText("");
             return;
@@ -1561,6 +1636,10 @@ public class RtpSessionActivity extends XmppActivity
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             return;
         }
+        if (STATES_SHOWING_SPEAKER_CONFIGURATION.contains(state) && isVideoCall()) {
+            updateVideoViewsCompose(state);
+            return;
+        }
         if (isPictureInPicture() && STATES_SHOWING_PIP_PLACEHOLDER.contains(state)) {
             binding.localVideo.setVisibility(View.GONE);
             binding.remoteVideoWrapper.setVisibility(View.GONE);
@@ -1606,6 +1685,42 @@ public class RtpSessionActivity extends XmppActivity
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             binding.remoteVideoWrapper.setVisibility(View.GONE);
             binding.pipLocalMicOffIndicator.setVisibility(View.GONE);
+        }
+    }
+
+    // Video call views when the Compose layer is on screen: the layer places the renderers; this
+    // only initialises them, connects the tracks and reports which of them have a picture.
+    private void updateVideoViewsCompose(final RtpEndUserState state) {
+        final Optional<VideoTrack> localVideoTrack = getLocalVideoTrack();
+        final Optional<VideoTrack> remoteVideoTrack = getRemoteVideoTrack();
+        if (localVideoTrack.isPresent()) {
+            ensureSurfaceViewRendererIsSetup(binding.localVideo);
+            binding.localVideo.setMirror(requireRtpConnection().isFrontCamera());
+            addSink(localVideoTrack.get(), binding.localVideo);
+        }
+        if (remoteVideoTrack.isPresent()) {
+            ensureSurfaceViewRendererIsSetup(binding.remoteVideo);
+            addSink(remoteVideoTrack.get(), binding.remoteVideo);
+            binding.remoteVideo.setScalingType(
+                    RendererCommon.ScalingType.SCALE_ASPECT_FILL,
+                    RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+        }
+        incomingCallState.setVideoPresence(
+                remoteVideoTrack.isPresent(), localVideoTrack.isPresent());
+        incomingCallState.setCameraSwitchable(requireRtpConnection().isCameraSwitchable());
+        incomingCallState.setSystemPip(isPictureInPicture());
+        binding.pipLocalMicOffIndicator.setVisibility(
+                isPictureInPicture() && !requireRtpConnection().isMicrophoneEnabled()
+                        ? View.VISIBLE
+                        : View.GONE);
+        if (isPictureInPicture()) {
+            binding.appBarLayout.setVisibility(View.GONE);
+            final boolean waiting = STATES_SHOWING_PIP_PLACEHOLDER.contains(state);
+            binding.pipPlaceholder.setVisibility(waiting ? View.VISIBLE : View.GONE);
+            binding.pipWarning.setVisibility(View.GONE);
+            binding.pipWaiting.setVisibility(waiting ? View.VISIBLE : View.GONE);
+        } else {
+            binding.pipPlaceholder.setVisibility(View.GONE);
         }
     }
 
