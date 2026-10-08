@@ -115,6 +115,7 @@ class IncomingCallState {
     private var audioChoicesState by mutableIntStateOf(0)
     private var durationState by mutableStateOf("")
     private var statusState by mutableStateOf("")
+    private var establishedState by mutableStateOf(false)
 
     var onAccept: Runnable? = null
     var onDecline: Runnable? = null
@@ -157,6 +158,11 @@ class IncomingCallState {
         statusState = text
     }
 
+    /** True once the call is actually up (connected / reconnecting). */
+    fun setEstablished(established: Boolean) {
+        establishedState = established
+    }
+
     fun setDurationText(text: String) {
         durationState = text
     }
@@ -170,6 +176,7 @@ class IncomingCallState {
     internal val audioChoices get() = audioChoicesState
     internal val duration get() = durationState
     internal val status get() = statusState
+    internal val established get() = establishedState
 }
 
 object IncomingCallHelper {
@@ -194,6 +201,9 @@ private val CALL_AVATAR_SHAPES: List<RoundedPolygon> by lazy {
         MaterialShapeHelpers.clover8Leaf(),
     )
 }
+
+// Same shape the chat list gives a contact who is in an ongoing call.
+private val CALL_ESTABLISHED_SHAPE: RoundedPolygon get() = CALL_AVATAR_SHAPES[1]
 
 private const val SLIDER_COMMIT_FRACTION = 0.55f
 private const val SLIDER_FLING_DP_PER_S = 900f
@@ -221,7 +231,7 @@ internal fun IncomingCallContent(state: IncomingCallState) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.weight(1f))
-            MorphingCallAvatar(state.avatar, Modifier.size(avatarSize))
+            MorphingCallAvatar(state.avatar, state.established, Modifier.size(avatarSize))
             // Status line, cross-fading as the call moves through its states.
             androidx.compose.animation.AnimatedContent(
                 targetState = state.status,
@@ -356,16 +366,41 @@ private fun CallToggleButton(
  * slowly turns. Only the clip outline rotates -- the photo itself stays upright.
  */
 @Composable
-private fun MorphingCallAvatar(avatar: ImageBitmap?, modifier: Modifier = Modifier) {
+private fun MorphingCallAvatar(
+    avatar: ImageBitmap?,
+    established: Boolean,
+    modifier: Modifier = Modifier,
+) {
     val shapes = CALL_AVATAR_SHAPES
     val fromShape = remember { mutableStateOf(shapes[0]) }
     val toShape = remember { mutableStateOf(shapes[0]) }
     val progress = remember { Animatable(1f) }
+    val establishedNow by rememberUpdatedState(established)
 
     LaunchedEffect(Unit) {
         var index = 0
         while (true) {
-            delay(1700)
+            if (establishedNow) {
+                // Once the call is up it settles on the chat list's "ongoing call" shape and
+                // stops changing (the slow turn goes on). A morph already under way finishes
+                // first, since this only looks at the flag between steps.
+                if (toShape.value !== CALL_ESTABLISHED_SHAPE) {
+                    fromShape.value = toShape.value
+                    toShape.value = CALL_ESTABLISHED_SHAPE
+                    progress.snapTo(0f)
+                    progress.animateTo(
+                        1f,
+                        spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow),
+                    )
+                }
+                snapshotFlow { establishedNow }.first { !it }
+                continue
+            }
+            val becameEstablished =
+                kotlinx.coroutines.withTimeoutOrNull(1700) {
+                    snapshotFlow { establishedNow }.first { it }
+                } != null
+            if (becameEstablished) continue
             index = (index + 1) % shapes.size
             fromShape.value = toShape.value
             toShape.value = shapes[index]

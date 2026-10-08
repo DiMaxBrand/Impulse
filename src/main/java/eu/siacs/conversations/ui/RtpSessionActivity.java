@@ -988,6 +988,7 @@ public class RtpSessionActivity extends XmppActivity
             binding.incomingCallCompose.setVisibility(View.VISIBLE);
             incomingCallState.setVisible(true);
             incomingCallState.setSliderVisible(incoming);
+            incomingCallState.setEstablished(STATES_CONSIDERED_CONNECTED.contains(state));
             if (incoming) {
                 updateSliderHint();
             }

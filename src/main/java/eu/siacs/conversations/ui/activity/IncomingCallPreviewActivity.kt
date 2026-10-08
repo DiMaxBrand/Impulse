@@ -66,6 +66,7 @@ class IncomingCallPreviewActivity : ActionBarActivity() {
                                 // becomes the hang-up button.
                                 setSliderVisible(false)
                                 setStatusText("Connected")
+                                setEstablished(true)
                                 setDurationText("00:42")
                             }
                             onDecline = Runnable { finishRound(false) { round++ } }
