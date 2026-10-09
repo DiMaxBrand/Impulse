@@ -16,6 +16,7 @@ import eu.siacs.conversations.BuildConfig
 import eu.siacs.conversations.Config
 import eu.siacs.conversations.services.XmppConnectionService
 import eu.siacs.conversations.update.SilentInstaller
+import eu.siacs.conversations.update.UpdateNotifications
 import eu.siacs.conversations.update.UpdateCheckHelper
 import eu.siacs.conversations.update.UpdatePreferences
 import java.io.File
@@ -62,6 +63,16 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : Worker(con
         val path = prefs.downloadedApkPath ?: return
         val file = File(android.net.Uri.parse(path).path ?: path)
         if (!file.exists()) return
+        if (prefs.silentInstallBroken) {
+            // This phone refuses silent installs (Xiaomi does): don't try again every night. Leave
+            // one quiet "update ready" notification per version; the update sheet installs it.
+            val version = prefs.downloadedVersion
+            if (version != null && prefs.readyNotifiedVersion != version) {
+                prefs.readyNotifiedVersion = version
+                UpdateNotifications.postReadyToInstall(context, null)
+            }
+            return
+        }
         // Written before the install: the process is replaced by it.
         prefs.rememberJustUpdated()
         if (!SilentInstaller.install(context, file)) {

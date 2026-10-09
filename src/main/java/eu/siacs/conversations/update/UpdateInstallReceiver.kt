@@ -1,17 +1,12 @@
 package eu.siacs.conversations.update
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import eu.siacs.conversations.Config
-import eu.siacs.conversations.R
 
 /** Result of a [SilentInstaller] session. Success never really arrives here (the app is replaced
  * and restarted); the useful cases are "Android wants the user to confirm" (post a notification,
@@ -54,48 +49,26 @@ class UpdateInstallReceiver : BroadcastReceiver() {
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 confirm ?: return
-                confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                notifyConfirm(context, confirm)
+                UpdateNotifications.postReadyToInstall(context, confirm)
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> {
+                val prefs = UpdatePreferences(context)
                 // Failed: forget the "just updated" marker so no false "Impulse was updated" shows.
-                UpdatePreferences(context).clearJustUpdated()
+                prefs.clearJustUpdated()
+                // The phone refused the silent session outright (Xiaomi's installer answers
+                // "INSTALL_FAILED_ABORTED: Permission denied"). Stop trying it every night; the
+                // update waits for the user via a quiet notification and the update sheet instead.
+                // (A deliberate cancel of a confirmation screen is not "refused".)
+                if (message?.contains("Permission denied", ignoreCase = true) == true ||
+                    status == PackageInstaller.STATUS_FAILURE_BLOCKED
+                ) {
+                    prefs.silentInstallBroken = true
+                }
+                if (prefs.downloadedApkExists() && message?.contains("cancel", ignoreCase = true) != true) {
+                    UpdateNotifications.postReadyToInstall(context, null)
+                }
             }
         }
-    }
-
-    private fun notifyConfirm(context: Context, confirm: Intent) {
-        val manager = context.getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    context.getString(R.string.update_channel_name),
-                    NotificationManager.IMPORTANCE_LOW,
-                )
-            )
-        }
-        val pending =
-            PendingIntent.getActivity(
-                context,
-                147,
-                confirm,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-        val notification =
-            NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_system_update_24dp)
-                .setContentTitle(context.getString(R.string.update_ready_notification_title))
-                .setContentText(context.getString(R.string.update_ready_notification_text))
-                .setContentIntent(pending)
-                .setAutoCancel(true)
-                .build()
-        manager.notify(NOTIFICATION_ID, notification)
-    }
-
-    private companion object {
-        const val CHANNEL_ID = "app_updates"
-        const val NOTIFICATION_ID = 90018
     }
 }

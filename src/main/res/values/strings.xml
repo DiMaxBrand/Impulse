@@ -1491,4 +1491,6 @@
     <string name="support_contact_name">Impulse support</string>
     <string name="updates_allow_install_label">Allow Impulse to install updates</string>
     <string name="updates_allow_install_description">Turned off on this phone, so updates can not install by themselves. Tap to turn it on.</string>
+    <string name="update_ready_open_notification_text">A new version is downloaded. Tap to install it.</string>
+    <string name="developer_options_silent_update_test_refused">This phone refuses silent installs from apps (Xiaomi does). The overnight update will download the new version and leave a quiet \"update ready\" notification instead; tapping it opens the update sheet.</string>
 </resources>

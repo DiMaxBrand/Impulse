@@ -584,7 +584,12 @@ private fun DeveloperOptionsActivity.describeInstallResult(
             android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION ->
                 getString(R.string.developer_options_silent_update_test_pending)
             else ->
-                getString(R.string.developer_options_silent_update_test_failed, result.status)
+                getString(R.string.developer_options_silent_update_test_failed, result.status) +
+                    if (result.message?.contains("Permission denied", ignoreCase = true) == true) {
+                        "\n\n" + getString(R.string.developer_options_silent_update_test_refused)
+                    } else {
+                        ""
+                    }
         }
     return summary + "\n\n" + installDiagnostics(result)
 }

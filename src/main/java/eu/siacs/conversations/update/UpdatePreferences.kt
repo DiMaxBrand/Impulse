@@ -136,6 +136,19 @@ class UpdatePreferences(context: Context) {
         return UpdateChecker.compareSemver(remembered, current) == 0
     }
 
+    /** True once this phone has refused a silent install session outright (seen on Xiaomi:
+     * "INSTALL_FAILED_ABORTED: Permission denied"). The nightly run then stops trying and just
+     * leaves a quiet "update ready" notification. Cleared by the Developer Options test, so it
+     * can be re-checked after a system update. */
+    var silentInstallBroken: Boolean
+        get() = prefs.getBoolean(KEY_SILENT_BROKEN, false)
+        set(value) = prefs.edit { putBoolean(KEY_SILENT_BROKEN, value) }
+
+    /** The version a plain "update ready" notification was already posted for (once only). */
+    var readyNotifiedVersion: String?
+        get() = prefs.getString(KEY_READY_NOTIFIED, null)
+        set(value) = prefs.edit { putString(KEY_READY_NOTIFIED, value) }
+
     /** Whether the nightly background update may install by itself (on by default). */
     var nightlyInstall: Boolean
         get() = prefs.getBoolean(KEY_NIGHTLY_INSTALL, true)
@@ -231,5 +244,7 @@ class UpdatePreferences(context: Context) {
         private const val KEY_JUST_UPDATED_NOTES = "just_updated_notes"
         private const val KEY_NIGHTLY_INSTALL = "nightly_install"
         private const val KEY_SHEET_SEEN_VERSION = "sheet_seen_version"
+        private const val KEY_SILENT_BROKEN = "silent_install_broken"
+        private const val KEY_READY_NOTIFIED = "ready_notified_version"
     }
 }

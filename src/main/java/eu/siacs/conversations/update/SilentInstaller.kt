@@ -35,6 +35,9 @@ object SilentInstaller {
      */
     fun testInstall(context: Context): String? {
         val prefs = UpdatePreferences(context)
+        // A test is also how a phone gets re-checked after a system update: forget an earlier
+        // refusal so the nightly run is allowed to try again if this one works.
+        prefs.silentInstallBroken = false
         val newer = prefs.downloadedApkPath?.let { path ->
             File(android.net.Uri.parse(path).path ?: path)
         }

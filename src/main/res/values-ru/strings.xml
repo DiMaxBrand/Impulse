@@ -1555,4 +1555,6 @@
     <string name="support_contact_name">Поддержка Импульса</string>
     <string name="updates_allow_install_label">Разрешить Импульсу устанавливать обновления</string>
     <string name="updates_allow_install_description">На этом телефоне выключено, поэтому обновления не могут устанавливаться сами. Нажмите, чтобы включить.</string>
+    <string name="update_ready_open_notification_text">Новая версия скачана. Нажмите, чтобы установить.</string>
+    <string name="developer_options_silent_update_test_refused">Этот телефон не разрешает приложениям тихую установку (Xiaomi так делает). Ночное обновление скачает новую версию и оставит тихое уведомление «Обновление готово»; нажатие откроет окно обновления.</string>
 </resources>
