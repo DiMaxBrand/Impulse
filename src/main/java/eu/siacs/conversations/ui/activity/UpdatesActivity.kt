@@ -88,6 +88,10 @@ class UpdatesActivity : ActionBarActivity() {
                                 prefs.minUpdateIntervalHours = hours
                                 uiState = uiState.copy(minUpdateIntervalHours = hours)
                             },
+                            onNightlyInstallToggled = { enabled ->
+                                prefs.nightlyInstall = enabled
+                                uiState = uiState.copy(nightlyInstall = enabled)
+                            },
                         )
                     }
                 }
@@ -130,6 +134,7 @@ class UpdatesActivity : ActionBarActivity() {
             selectedChannel = prefs.selectedChannel,
             autoCheck = prefs.autoCheck,
             minUpdateIntervalHours = prefs.minUpdateIntervalHours,
+            nightlyInstall = prefs.nightlyInstall,
             downloadPhase = restoredPhase,
             pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
             releaseNotes = prefs.pendingReleaseNotes,

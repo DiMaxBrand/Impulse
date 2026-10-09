@@ -1527,4 +1527,6 @@
     <string name="updated_sheet_title">Импульс обновлён!</string>
     <string name="updated_sheet_whats_new">Что нового:</string>
     <string name="updated_sheet_dismiss">Закрыть</string>
+    <string name="updates_nightly_label">Обновляться ночью</string>
+    <string name="updates_nightly_description">Около 2:30 ночи, если вы не в звонке и не в приложении, Импульс сам устанавливает скачанное обновление.</string>
 </resources>

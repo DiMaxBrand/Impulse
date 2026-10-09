@@ -107,6 +107,7 @@ fun UpdatesScreen(
     onAutoCheckToggled: (Boolean) -> Unit,
     onCheckNow: () -> Unit,
     onMinIntervalSelected: (Int) -> Unit = {},
+    onNightlyInstallToggled: (Boolean) -> Unit = {},
 ) {
     var intervalPickerVisible by remember { mutableStateOf(false) }
     var channelPickerVisible by remember { mutableStateOf(false) }
@@ -204,6 +205,21 @@ fun UpdatesScreen(
                             Switch(
                                 checked = state.autoCheck,
                                 onCheckedChange = onAutoCheckToggled,
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
+                }
+                ExpressiveGroupRow(GroupPosition.MIDDLE) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.updates_nightly_label)) },
+                        supportingContent = {
+                            Text(stringResource(R.string.updates_nightly_description))
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = state.nightlyInstall,
+                                onCheckedChange = onNightlyInstallToggled,
                             )
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -1384,6 +1400,7 @@ data class UpdatesUiState(
     val selectedChannel: UpdateChannel = UpdateChannel.STABLE,
     val autoCheck: Boolean = true,
     val minUpdateIntervalHours: Int = 0,
+    val nightlyInstall: Boolean = true,
     val checkStatus: CheckStatus = CheckStatus.IDLE,
     val downloadPhase: DownloadPhase = DownloadPhase.IDLE,
     val downloadProgress: Float = 0f,

@@ -58,7 +58,6 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
                         val path = prefs.downloadedApkPath ?: return@UpdateSheetContent
                         installInitiated = true
                         prefs.hasInstalledUpdate = true
-                        prefs.rememberJustUpdated()
                         UpdateDownloader.installApk(requireActivity(), path)
                     },
                     onDownloadCircleTapped = {

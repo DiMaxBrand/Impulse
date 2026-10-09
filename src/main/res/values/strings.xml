@@ -1463,4 +1463,6 @@
     <string name="updated_sheet_title">Impulse was updated!</string>
     <string name="updated_sheet_whats_new">See what\'s new:</string>
     <string name="updated_sheet_dismiss">Dismiss</string>
+    <string name="updates_nightly_label">Update overnight</string>
+    <string name="updates_nightly_description">Around 2:30 at night, when you are not on a call or in the app, Impulse installs a downloaded update by itself.</string>
 </resources>
