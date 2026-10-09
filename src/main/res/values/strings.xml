@@ -1451,4 +1451,10 @@
     <string name="call_switch_hint">Slide right to switch to video, slide left to keep audio only</string>
     <string name="call_permissions_missing_title">Calls may not pop up</string>
     <string name="call_permissions_missing_text">Your phone switched off a call permission for Impulse. Tap to turn it back on.</string>
+    <string name="call_permission_dialog_title">Allow incoming calls to pop up</string>
+    <string name="call_permission_dialog_overlay">Your phone switched off \"Display over other apps\" for Impulse. Without it, calls may only show up as a notification. Turn it back on?</string>
+    <string name="call_permission_dialog_full_screen">Your phone switched off full-screen call alerts for Impulse. Without it, calls only show up as a notification. Turn it back on?</string>
+    <string name="call_permission_dialog_open">Open settings</string>
+    <string name="call_permission_dialog_later">Not now</string>
+    <string name="call_permission_dialog_never">Don\'t remind me</string>
 </resources>

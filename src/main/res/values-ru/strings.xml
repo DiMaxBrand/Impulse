@@ -1515,4 +1515,10 @@
     <string name="call_switch_hint">Проведите вправо, чтобы перейти на видео, влево — чтобы остаться на аудио</string>
     <string name="call_permissions_missing_title">Звонки могут не появляться</string>
     <string name="call_permissions_missing_text">Телефон отключил для Импульса разрешение для звонков. Нажмите, чтобы включить его снова.</string>
+    <string name="call_permission_dialog_title">Разрешить всплывающие звонки</string>
+    <string name="call_permission_dialog_overlay">Телефон отключил для Импульса «Поверх других окон». Без него звонок может появиться только как уведомление. Включить снова?</string>
+    <string name="call_permission_dialog_full_screen">Телефон отключил для Импульса полноэкранные оповещения о звонках. Без них звонок появляется только как уведомление. Включить снова?</string>
+    <string name="call_permission_dialog_open">Открыть настройки</string>
+    <string name="call_permission_dialog_later">Не сейчас</string>
+    <string name="call_permission_dialog_never">Больше не напоминать</string>
 </resources>

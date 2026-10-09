@@ -198,17 +198,64 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         return sound == null || sound.equals(android.net.Uri.EMPTY) || sound.toString().isEmpty();
     }
 
+    // A phone switched off a permission the call pop-up needs. Ask for just that one.
+    private void showCallPermissionDialog() {
+        final boolean overlayMissing = !Settings.canDrawOverlays(this);
+        final Intent settingsIntent;
+        final int message;
+        if (overlayMissing) {
+            settingsIntent =
+                    new Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:" + getPackageName()));
+            message = R.string.call_permission_dialog_overlay;
+        } else if (android.os.Build.VERSION.SDK_INT
+                >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            settingsIntent =
+                    new Intent(
+                            Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                            Uri.parse("package:" + getPackageName()));
+            message = R.string.call_permission_dialog_full_screen;
+        } else {
+            return;
+        }
+        new MaterialAlertDialogBuilder(this)
+                .setIcon(R.drawable.ic_call_24dp)
+                .setTitle(R.string.call_permission_dialog_title)
+                .setMessage(message)
+                .setPositiveButton(
+                        R.string.call_permission_dialog_open,
+                        (dialog, which) -> {
+                            try {
+                                startActivity(settingsIntent);
+                            } catch (final RuntimeException e) {
+                                startActivity(new Intent(this, NotificationSetupActivity.class));
+                            }
+                        })
+                .setNegativeButton(R.string.call_permission_dialog_later, null)
+                .setNeutralButton(
+                        R.string.call_permission_dialog_never,
+                        (dialog, which) ->
+                                getPreferences()
+                                        .edit()
+                                        .putBoolean("call_permission_nag_disabled", true)
+                                        .apply())
+                .show();
+    }
+
     private void scheduleNotificationSetupIfNeeded() {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
         final eu.siacs.conversations.AppSettings appSettings =
                 new eu.siacs.conversations.AppSettings(this);
         if (appSettings.isNotificationSetupDone()) {
             // The one-time setup is done, but phones sometimes switch the call permissions off
-            // again later. Bring the setup screen back (whose cards show only what is missing),
-            // at most once a day.
+            // again later. Ask about exactly the missing one, in a small dialog, at most once a
+            // day -- and never again if the user chose "Don't remind me".
             final long dayMs = 24L * 60 * 60 * 1000;
             final long last = getPreferences().getLong("last_call_permission_nag", 0L);
-            if (CallPermissions.anyMissing(this) && System.currentTimeMillis() - last > dayMs) {
+            if (!getPreferences().getBoolean("call_permission_nag_disabled", false)
+                    && CallPermissions.anyMissing(this)
+                    && System.currentTimeMillis() - last > dayMs) {
                 getPreferences()
                         .edit()
                         .putLong("last_call_permission_nag", System.currentTimeMillis())
@@ -217,8 +264,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                         .postDelayed(
                                 () -> {
                                     if (isFinishing() || isDestroyed()) return;
-                                    startActivity(
-                                            new Intent(this, NotificationSetupActivity.class));
+                                    showCallPermissionDialog();
                                 },
                                 2000);
             }
