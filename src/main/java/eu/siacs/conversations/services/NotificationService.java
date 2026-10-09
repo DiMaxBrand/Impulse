@@ -624,6 +624,7 @@ public class NotificationService {
 
     public synchronized void startRinging(
             final AbstractJingleConnection.Id id, final Set<Media> media) {
+        XmppConnectionService.markRinging();
         showIncomingCallNotification(id, media, false);
         notifyMissingCallPermissionsIfNeeded();
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O

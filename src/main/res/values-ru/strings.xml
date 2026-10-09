@@ -1521,4 +1521,10 @@
     <string name="call_permission_dialog_open">Открыть настройки</string>
     <string name="call_permission_dialog_later">Не сейчас</string>
     <string name="call_permission_dialog_never">Больше не напоминать</string>
+    <string name="update_channel_name">Обновления приложения</string>
+    <string name="update_ready_notification_title">Обновление готово</string>
+    <string name="update_ready_notification_text">Нажмите, чтобы завершить обновление Импульса.</string>
+    <string name="updated_sheet_title">Импульс обновлён!</string>
+    <string name="updated_sheet_whats_new">Что нового:</string>
+    <string name="updated_sheet_dismiss">Закрыть</string>
 </resources>

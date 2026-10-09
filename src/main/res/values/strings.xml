@@ -1457,4 +1457,10 @@
     <string name="call_permission_dialog_open">Open settings</string>
     <string name="call_permission_dialog_later">Not now</string>
     <string name="call_permission_dialog_never">Don\'t remind me</string>
+    <string name="update_channel_name">App updates</string>
+    <string name="update_ready_notification_title">Update ready</string>
+    <string name="update_ready_notification_text">Tap to finish updating Impulse.</string>
+    <string name="updated_sheet_title">Impulse was updated!</string>
+    <string name="updated_sheet_whats_new">See what\'s new:</string>
+    <string name="updated_sheet_dismiss">Dismiss</string>
 </resources>

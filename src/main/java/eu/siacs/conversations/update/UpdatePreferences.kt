@@ -81,6 +81,54 @@ class UpdatePreferences(context: Context) {
         get() = prefs.getLong(KEY_SHEET_DISMISSED_UNTIL, 0L)
         set(value) = prefs.edit { putLong(KEY_SHEET_DISMISSED_UNTIL, value) }
 
+    // ---- "Impulse was updated" ---------------------------------------------------------------
+    // Written just before an install is handed to the system (title / notes / version of the
+    // build being installed); read back on the first launch of that version to show what's new.
+
+    var justUpdatedVersion: String?
+        get() = prefs.getString(KEY_JUST_UPDATED_VERSION, null)
+        set(value) = prefs.edit { putString(KEY_JUST_UPDATED_VERSION, value) }
+
+    var justUpdatedTitle: String?
+        get() = prefs.getString(KEY_JUST_UPDATED_TITLE, null)
+        set(value) = prefs.edit { putString(KEY_JUST_UPDATED_TITLE, value) }
+
+    var justUpdatedNotes: String?
+        get() = prefs.getString(KEY_JUST_UPDATED_NOTES, null)
+        set(value) = prefs.edit { putString(KEY_JUST_UPDATED_NOTES, value) }
+
+    /** Remembers the update about to be installed so the next launch can announce it. */
+    fun rememberJustUpdated() {
+        val version = downloadedVersion ?: pendingUpdateVersion ?: return
+        prefs.edit {
+            putString(KEY_JUST_UPDATED_VERSION, version)
+            putString(KEY_JUST_UPDATED_TITLE, pendingReleaseTitle)
+            putString(KEY_JUST_UPDATED_NOTES, pendingReleaseNotes)
+        }
+    }
+
+    fun clearJustUpdated() {
+        prefs.edit {
+            remove(KEY_JUST_UPDATED_VERSION)
+            remove(KEY_JUST_UPDATED_TITLE)
+            remove(KEY_JUST_UPDATED_NOTES)
+        }
+    }
+
+    /** True when the version now running is the one [rememberJustUpdated] recorded. */
+    fun justUpdatedMatchesRunning(currentVersionRaw: String): Boolean {
+        val remembered = justUpdatedVersion?.let { UpdateChecker.parseVersion(it) } ?: return false
+        val current =
+            UpdateChecker.parseVersion(UpdateChecker.stripBuildMeta(currentVersionRaw))
+                ?: return false
+        return UpdateChecker.compareSemver(remembered, current) == 0
+    }
+
+    /** Whether the nightly background update may install by itself (on by default). */
+    var nightlyInstall: Boolean
+        get() = prefs.getBoolean(KEY_NIGHTLY_INSTALL, true)
+        set(value) = prefs.edit { putBoolean(KEY_NIGHTLY_INSTALL, value) }
+
     fun clearPending() {
         prefs.edit {
             remove(KEY_PENDING_VERSION)
@@ -166,5 +214,9 @@ class UpdatePreferences(context: Context) {
         private const val KEY_HAS_INSTALLED = "has_installed_update"
         private const val KEY_DOWNLOADED_VERSION = "downloaded_version"
         private const val KEY_SHEET_DISMISSED_UNTIL = "sheet_dismissed_until"
+        private const val KEY_JUST_UPDATED_VERSION = "just_updated_version"
+        private const val KEY_JUST_UPDATED_TITLE = "just_updated_title"
+        private const val KEY_JUST_UPDATED_NOTES = "just_updated_notes"
+        private const val KEY_NIGHTLY_INSTALL = "nightly_install"
     }
 }

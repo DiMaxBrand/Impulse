@@ -1475,13 +1475,29 @@ public class XmppConnectionService extends Service {
         toggleForegroundService(false);
     }
 
+    // Read by the nightly self-update from a WorkManager thread, which may run in a process where
+    // no service instance is handy: static and volatile. An update replaces the app, which would
+    // cut a call off, so it must never start during one -- or while a call is ringing.
+    private static volatile boolean callInProgress = false;
+    private static volatile long lastRingingMs = 0L;
+
+    public static void markRinging() {
+        lastRingingMs = System.currentTimeMillis();
+    }
+
+    public static boolean isCallBusy() {
+        return callInProgress || System.currentTimeMillis() - lastRingingMs < 90_000L;
+    }
+
     public void setOngoingCall(
             AbstractJingleConnection.Id id, Set<Media> media, final boolean reconnecting) {
+        callInProgress = true;
         ongoingCall.set(new OngoingCall(id, media, reconnecting));
         toggleForegroundService(false);
     }
 
     public void removeOngoingCall() {
+        callInProgress = false;
         ongoingCall.set(null);
         toggleForegroundService(false);
     }

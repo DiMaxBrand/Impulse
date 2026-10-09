@@ -683,7 +683,7 @@ fun UpdateSheetContent(
 // whole column of them. Deliberately a separate Surface with its own small gap (not one seamless
 // merged shape) — the *panel* is what's being revealed here, not something inside the button.
 @Composable
-private fun ReleaseNotesSection(releaseNotes: String?, modifier: Modifier = Modifier) {
+internal fun ReleaseNotesSection(releaseNotes: String?, modifier: Modifier = Modifier) {
     if (releaseNotes.isNullOrBlank()) return
     var expanded by remember(releaseNotes) { mutableStateOf(false) }
     val spatialSpring = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)

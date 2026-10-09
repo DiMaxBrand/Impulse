@@ -200,22 +200,26 @@ public class ConversationsActivity extends QrCodeProcessingActivity
 
     // A phone switched off a permission the call pop-up needs. Ask for just that one.
     private void showCallPermissionDialog() {
-        final boolean overlayMissing = !Settings.canDrawOverlays(this);
+        // Full-screen call alerts first: that is the one Android 14+ most often turns off on its
+        // own. "Display over other apps" is asked about only if that one is fine.
+        final boolean fullScreenMissing =
+                android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                        && !androidx.core.app.NotificationManagerCompat.from(this)
+                                .canUseFullScreenIntent();
         final Intent settingsIntent;
         final int message;
-        if (overlayMissing) {
-            settingsIntent =
-                    new Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:" + getPackageName()));
-            message = R.string.call_permission_dialog_overlay;
-        } else if (android.os.Build.VERSION.SDK_INT
-                >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (fullScreenMissing) {
             settingsIntent =
                     new Intent(
                             Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
                             Uri.parse("package:" + getPackageName()));
             message = R.string.call_permission_dialog_full_screen;
+        } else if (!Settings.canDrawOverlays(this)) {
+            settingsIntent =
+                    new Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:" + getPackageName()));
+            message = R.string.call_permission_dialog_overlay;
         } else {
             return;
         }
@@ -628,7 +632,21 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         // returns, so a version detected by *this* check wouldn't show until some later resume
         // without the onChecked callback re-running the same logic once that fetch completes.
         UpdateCheckHelper.checkOnLaunchIfEligible(this, this::maybeShowUpdateSheet);
-        maybeShowUpdateSheet();
+        if (!maybeShowUpdatedSheet()) {
+            maybeShowUpdateSheet();
+        }
+    }
+
+    // "Impulse was updated!" on the first launch after an update. Returns true when it is (now)
+    // showing, so the "update available" sheet doesn't pile on top of it.
+    private boolean maybeShowUpdatedSheet() {
+        if (isFinishing() || getSupportFragmentManager().isStateSaved()) return false;
+        if (getSupportFragmentManager().findFragmentByTag(UpdatedSheetFragment.TAG) != null) {
+            return true;
+        }
+        if (!UpdatedSheetFragment.shouldShow(this)) return false;
+        new UpdatedSheetFragment().show(getSupportFragmentManager(), UpdatedSheetFragment.TAG);
+        return true;
     }
 
     private void maybeShowUpdateSheet() {
