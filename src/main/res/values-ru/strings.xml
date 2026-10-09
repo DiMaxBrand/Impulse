@@ -1497,7 +1497,7 @@
     <string name="notification_setup_full_screen_intent_title">Полноэкранные уведомления о звонках</string>
     <string name="notification_setup_full_screen_intent_description">Сейчас ваше устройство блокирует автоматическое появление входящих звонков поверх заблокированного экрана — вы увидите их, только если сами откроете уведомление. Включите это, чтобы исправить.</string>
     <string name="notification_setup_overlay_title">Отображение поверх других приложений</string>
-    <string name="notification_setup_overlay_description">Некоторым устройствам это разрешение нужно, чтобы экран входящего звонка появлялся автоматически. Включите его для Impulse, чтобы исправить.</string>
+    <string name="notification_setup_overlay_description">Некоторым устройствам это разрешение нужно, чтобы экран входящего звонка появлялся автоматически. Включите его для Impulse, чтобы исправить. На телефонах Samsung также отключите для Impulse пункт «Удалять разрешения, если приложение не используется», иначе Android может снова выключить это разрешение.</string>
     <string name="notification_setup_done">Готово</string>
     <string name="notification_setup_sound_set">Звук выбран</string>
     <string name="notification_setup_skip_warning">Вы всё равно услышите звонки, разблокировав телефон или открыв шторку уведомлений — но если вернуться и включить всплывающие окна, будет намного проще.</string>
@@ -1513,4 +1513,6 @@
     <string name="developer_options_incoming_call_preview_summary">Попробовать экран входящего звонка без настоящего звонка</string>
     <string name="call_button_mute">Микрофон</string>
     <string name="call_switch_hint">Проведите вправо, чтобы перейти на видео, влево — чтобы остаться на аудио</string>
+    <string name="call_permissions_missing_title">Звонки могут не появляться</string>
+    <string name="call_permissions_missing_text">Телефон отключил для Импульса разрешение для звонков. Нажмите, чтобы включить его снова.</string>
 </resources>

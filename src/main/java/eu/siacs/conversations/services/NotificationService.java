@@ -625,11 +625,55 @@ public class NotificationService {
     public synchronized void startRinging(
             final AbstractJingleConnection.Id id, final Set<Media> media) {
         showIncomingCallNotification(id, media, false);
+        notifyMissingCallPermissionsIfNeeded();
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
                 && needsRingtoneWorkaround()) {
             final Uri ringtone = new AppSettings(mXmppConnectionService).getWorkaroundCallSound();
             startRingtoneWorkaround(ringtone);
         }
+    }
+
+    private static final int MISSING_CALL_PERMISSIONS_NOTIFICATION_ID = 90017;
+    private static final long MISSING_CALL_PERMISSIONS_MIN_INTERVAL_MS = 6L * 60 * 60 * 1000;
+    private long lastMissingCallPermissionsNotification = 0L;
+
+    // Phones sometimes switch the "display over other apps" / full-screen-call permissions off
+    // again on their own (auto-reset for unused apps, resets after an update). When a call comes
+    // in and one is missing, leave a notification that opens the setup screen to fix it -- at
+    // most every few hours, so it can't nag.
+    private void notifyMissingCallPermissionsIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        if (now - lastMissingCallPermissionsNotification < MISSING_CALL_PERMISSIONS_MIN_INTERVAL_MS
+                || !eu.siacs.conversations.ui.CallPermissions.anyMissing(mXmppConnectionService)) {
+            return;
+        }
+        lastMissingCallPermissionsNotification = now;
+        final Intent intent =
+                new Intent(
+                        mXmppConnectionService,
+                        eu.siacs.conversations.ui.NotificationSetupActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        final Notification.Builder builder =
+                new Notification.Builder(mXmppConnectionService, "error")
+                        .setSmallIcon(R.drawable.ic_error_24dp)
+                        .setContentTitle(
+                                mXmppConnectionService.getString(
+                                        R.string.call_permissions_missing_title))
+                        .setContentText(
+                                mXmppConnectionService.getString(
+                                        R.string.call_permissions_missing_text))
+                        .setAutoCancel(true)
+                        .setContentIntent(
+                                PendingIntent.getActivity(
+                                        mXmppConnectionService,
+                                        146,
+                                        intent,
+                                        PendingIntent.FLAG_IMMUTABLE
+                                                | PendingIntent.FLAG_UPDATE_CURRENT));
+        notify(MISSING_CALL_PERMISSIONS_NOTIFICATION_ID, builder.build());
     }
 
     private void showIncomingCallNotification(

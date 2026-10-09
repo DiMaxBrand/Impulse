@@ -1433,7 +1433,7 @@
     <string name="notification_setup_full_screen_intent_title">Full-screen call alerts</string>
     <string name="notification_setup_full_screen_intent_description">Your device is currently blocking incoming calls from automatically popping up over the lock screen -- you\'d only see them by tapping the notification yourself. Turn this on to fix it.</string>
     <string name="notification_setup_overlay_title">Display over other apps</string>
-    <string name="notification_setup_overlay_description">Some devices need this permission for the incoming call screen to pop up automatically. Turn it on for Impulse to fix it.</string>
+    <string name="notification_setup_overlay_description">Some devices need this permission for the incoming call screen to pop up automatically. Turn it on for Impulse to fix it. On Samsung phones also switch off \"Remove permissions if app isn\'t used\" for Impulse, or Android may turn it off again.</string>
     <string name="notification_setup_done">Done</string>
     <string name="notification_setup_sound_set">Sound set</string>
     <string name="notification_setup_skip_warning">You\'ll still hear calls by unlocking the phone or reaching into the notification shade -- but going back to turn on pop-ups would make this a lot easier.</string>
@@ -1449,4 +1449,6 @@
     <string name="developer_options_incoming_call_preview_summary">Try the incoming call screen without a real call</string>
     <string name="call_button_mute">Microphone</string>
     <string name="call_switch_hint">Slide right to switch to video, slide left to keep audio only</string>
+    <string name="call_permissions_missing_title">Calls may not pop up</string>
+    <string name="call_permissions_missing_text">Your phone switched off a call permission for Impulse. Tap to turn it back on.</string>
 </resources>

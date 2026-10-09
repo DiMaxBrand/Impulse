@@ -372,7 +372,26 @@ public class WebRTCWrapper {
                                 TrackWrapper.id(VideoTrack.class),
                                 videoSourceWrapper.getVideoSource());
         this.localVideoTrack = TrackWrapper.addTrack(peerConnection, videoTrack);
+        preferResolutionOverFrameRate(this.localVideoTrack);
         return true;
+    }
+
+    // When bandwidth gets short WebRTC has to give something up. By default it balances
+    // resolution and frame rate, which shows up as the picture turning soft. Ask it to hold the
+    // resolution and drop frames instead -- a crisper (if less smooth) picture. Best effort: the
+    // sender may not accept parameters before the session is negotiated.
+    private static void preferResolutionOverFrameRate(final TrackWrapper<VideoTrack> track) {
+        try {
+            final var sender = track.getRtpSender();
+            final var parameters = sender.getParameters();
+            parameters.degradationPreference =
+                    org.webrtc.RtpParameters.DegradationPreference.MAINTAIN_RESOLUTION;
+            if (!sender.setParameters(parameters)) {
+                Log.d(Config.LOGTAG, "video sender rejected degradation preference");
+            }
+        } catch (final RuntimeException e) {
+            Log.d(Config.LOGTAG, "could not set video degradation preference", e);
+        }
     }
 
     private void removeVideoTrack(final PeerConnection peerConnection) {

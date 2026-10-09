@@ -202,7 +202,28 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
         final eu.siacs.conversations.AppSettings appSettings =
                 new eu.siacs.conversations.AppSettings(this);
-        if (appSettings.isNotificationSetupDone()) return;
+        if (appSettings.isNotificationSetupDone()) {
+            // The one-time setup is done, but phones sometimes switch the call permissions off
+            // again later. Bring the setup screen back (whose cards show only what is missing),
+            // at most once a day.
+            final long dayMs = 24L * 60 * 60 * 1000;
+            final long last = getPreferences().getLong("last_call_permission_nag", 0L);
+            if (CallPermissions.anyMissing(this) && System.currentTimeMillis() - last > dayMs) {
+                getPreferences()
+                        .edit()
+                        .putLong("last_call_permission_nag", System.currentTimeMillis())
+                        .apply();
+                binding.getRoot()
+                        .postDelayed(
+                                () -> {
+                                    if (isFinishing() || isDestroyed()) return;
+                                    startActivity(
+                                            new Intent(this, NotificationSetupActivity.class));
+                                },
+                                2000);
+            }
+            return;
+        }
         binding.getRoot()
                 .postDelayed(
                         () -> {
