@@ -88,6 +88,23 @@ class UpdatesActivity : ActionBarActivity() {
                                 prefs.minUpdateIntervalHours = hours
                                 uiState = uiState.copy(minUpdateIntervalHours = hours)
                             },
+                            onAllowInstallApps = {
+                                // The "Install unknown apps" page for Impulse specifically.
+                                try {
+                                    startActivity(
+                                        android.content.Intent(
+                                            android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                            android.net.Uri.parse("package:$packageName"),
+                                        )
+                                    )
+                                } catch (_: RuntimeException) {
+                                    startActivity(
+                                        android.content.Intent(
+                                            android.provider.Settings.ACTION_SECURITY_SETTINGS
+                                        )
+                                    )
+                                }
+                            },
                             onNightlyInstallToggled = { enabled ->
                                 prefs.nightlyInstall = enabled
                                 uiState = uiState.copy(nightlyInstall = enabled)
@@ -135,6 +152,7 @@ class UpdatesActivity : ActionBarActivity() {
             autoCheck = prefs.autoCheck,
             minUpdateIntervalHours = prefs.minUpdateIntervalHours,
             nightlyInstall = prefs.nightlyInstall,
+            canInstallApps = packageManager.canRequestPackageInstalls(),
             downloadPhase = restoredPhase,
             pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
             releaseNotes = prefs.pendingReleaseNotes,

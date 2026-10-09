@@ -1553,4 +1553,6 @@
     <string name="stranger_banner_text">Этого человека нет в ваших контактах.</string>
     <string name="stranger_banner_add">Добавить в контакты</string>
     <string name="support_contact_name">Поддержка Импульса</string>
+    <string name="updates_allow_install_label">Разрешить Импульсу устанавливать обновления</string>
+    <string name="updates_allow_install_description">На этом телефоне выключено, поэтому обновления не могут устанавливаться сами. Нажмите, чтобы включить.</string>
 </resources>

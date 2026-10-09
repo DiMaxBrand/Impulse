@@ -108,6 +108,7 @@ fun UpdatesScreen(
     onCheckNow: () -> Unit,
     onMinIntervalSelected: (Int) -> Unit = {},
     onNightlyInstallToggled: (Boolean) -> Unit = {},
+    onAllowInstallApps: () -> Unit = {},
 ) {
     var intervalPickerVisible by remember { mutableStateOf(false) }
     var channelPickerVisible by remember { mutableStateOf(false) }
@@ -209,6 +210,29 @@ fun UpdatesScreen(
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
+                }
+                // Without the "install unknown apps" permission Impulse cannot install anything by
+                // itself -- the overnight update would skip silently. Shown only while it is off.
+                if (!state.canInstallApps) {
+                    ExpressiveGroupRow(GroupPosition.MIDDLE) {
+                        ListItem(
+                            headlineContent = {
+                                Text(stringResource(R.string.updates_allow_install_label))
+                            },
+                            supportingContent = {
+                                Text(stringResource(R.string.updates_allow_install_description))
+                            },
+                            trailingContent = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_expand_more_24dp),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            modifier = Modifier.clickableRow(onClick = onAllowInstallApps),
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                    }
                 }
                 ExpressiveGroupRow(GroupPosition.MIDDLE) {
                     ListItem(
@@ -1401,6 +1425,7 @@ data class UpdatesUiState(
     val autoCheck: Boolean = true,
     val minUpdateIntervalHours: Int = 0,
     val nightlyInstall: Boolean = true,
+    val canInstallApps: Boolean = true,
     val checkStatus: CheckStatus = CheckStatus.IDLE,
     val downloadPhase: DownloadPhase = DownloadPhase.IDLE,
     val downloadProgress: Float = 0f,

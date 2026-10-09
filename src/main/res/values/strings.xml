@@ -1489,4 +1489,6 @@
     <string name="stranger_banner_text">This person is not in your contacts.</string>
     <string name="stranger_banner_add">Add to contacts</string>
     <string name="support_contact_name">Impulse support</string>
+    <string name="updates_allow_install_label">Allow Impulse to install updates</string>
+    <string name="updates_allow_install_description">Turned off on this phone, so updates can not install by themselves. Tap to turn it on.</string>
 </resources>
