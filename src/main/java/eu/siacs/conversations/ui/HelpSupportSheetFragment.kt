@@ -107,11 +107,18 @@ class HelpSupportSheetFragment : BottomSheetDialogFragment() {
                                 ::openUpdates,
                             )
                             HelpRow(
-                                GroupPosition.BOTTOM,
+                                GroupPosition.MIDDLE,
                                 R.drawable.ic_info_outline_24dp,
                                 R.string.help_copy_title,
                                 R.string.help_copy_summary,
                                 ::copyDeviceInfo,
+                            )
+                            HelpRow(
+                                GroupPosition.BOTTOM,
+                                R.drawable.ic_chat_24dp,
+                                R.string.help_contact_title,
+                                R.string.help_contact_summary,
+                                ::contactDeveloper,
                             )
                         }
                         Spacer(Modifier.height(24.dp))
@@ -162,6 +169,20 @@ class HelpSupportSheetFragment : BottomSheetDialogFragment() {
         }
     }
 
+    // Opens a chat with the support address inside Impulse itself (the app handles xmpp: links;
+    // with several accounts it asks which one to write from).
+    private fun contactDeveloper() {
+        val intent =
+            Intent(Intent.ACTION_VIEW, android.net.Uri.parse("xmpp:$SUPPORT_JID?message"))
+                .setPackage(requireContext().packageName)
+        try {
+            startActivity(intent)
+            dismiss()
+        } catch (_: RuntimeException) {
+            Toast.makeText(requireContext(), SUPPORT_JID, Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun openSoundSetup() {
         startActivity(Intent(requireContext(), NotificationSetupActivity::class.java))
         dismiss()
@@ -184,5 +205,6 @@ class HelpSupportSheetFragment : BottomSheetDialogFragment() {
 
     companion object {
         const val TAG = "HelpSupportSheet"
+        const val SUPPORT_JID = "support@on-chat.ru"
     }
 }

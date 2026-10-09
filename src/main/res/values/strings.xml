@@ -1484,4 +1484,6 @@
     <string name="help_copy_title">Copy info for support</string>
     <string name="help_copy_summary">Copies the app version and phone model, to paste into a message</string>
     <string name="help_copy_done">Copied</string>
+    <string name="help_contact_title">Write to the developer</string>
+    <string name="help_contact_summary">Opens a chat with the support address</string>
 </resources>

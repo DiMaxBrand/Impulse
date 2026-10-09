@@ -1548,4 +1548,6 @@
     <string name="help_copy_title">Скопировать данные для поддержки</string>
     <string name="help_copy_summary">Копирует версию приложения и модель телефона, чтобы вставить в сообщение</string>
     <string name="help_copy_done">Скопировано</string>
+    <string name="help_contact_title">Написать разработчику</string>
+    <string name="help_contact_summary">Открывает чат с адресом поддержки</string>
 </resources>
