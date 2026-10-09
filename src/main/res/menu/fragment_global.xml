@@ -14,6 +14,12 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/action_help_support"
+        android:orderInCategory="95"
+        android:title="@string/help_and_support"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_settings"
         android:orderInCategory="100"
         android:title="@string/action_settings"

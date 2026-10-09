@@ -1472,4 +1472,16 @@
     <string name="developer_options_silent_update_test_success">Installed. (The app normally restarts before you can read this.)</string>
     <string name="developer_options_silent_update_test_pending">Android wants a confirmation, so this was not silent. Common reasons: Impulse is not yet the recorded installer (the first update never is), Play Protect wants to scan the app, Auto Blocker, or Android limiting how often it allows silent updates. The overnight update would post an \"Update ready\" notification here.</string>
     <string name="developer_options_silent_update_test_failed">The install failed (status %1$d).</string>
+    <string name="help_and_support">Help and support</string>
+    <string name="help_sheet_intro">Something not working? Try these first.</string>
+    <string name="help_calls_title">Calls do not pop up</string>
+    <string name="help_calls_summary">Turns the call permission back on if your phone switched it off</string>
+    <string name="help_calls_all_good">The call permissions are all on.</string>
+    <string name="help_sounds_title">Sounds are wrong or missing</string>
+    <string name="help_sounds_summary">Choose the ringtone and the message sound again</string>
+    <string name="help_updates_title">Update problems</string>
+    <string name="help_updates_summary">Open the Updates screen to check or install an update</string>
+    <string name="help_copy_title">Copy info for support</string>
+    <string name="help_copy_summary">Copies the app version and phone model, to paste into a message</string>
+    <string name="help_copy_done">Copied</string>
 </resources>

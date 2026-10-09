@@ -12,6 +12,22 @@ import androidx.core.app.NotificationManagerCompat
  * them instead of trusting the one-time setup.
  */
 object CallPermissions {
+    /** Settings page for the first missing permission (full-screen call alerts first, then
+     * "display over other apps"), or null when both are on. */
+    @JvmStatic
+    fun fixIntent(context: Context): android.content.Intent? {
+        val packageUri = android.net.Uri.parse("package:" + context.packageName)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            !NotificationManagerCompat.from(context).canUseFullScreenIntent()
+        ) {
+            return android.content.Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, packageUri)
+        }
+        if (!Settings.canDrawOverlays(context)) {
+            return android.content.Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, packageUri)
+        }
+        return null
+    }
+
     @JvmStatic
     fun anyMissing(context: Context): Boolean {
         val overlay = Settings.canDrawOverlays(context)

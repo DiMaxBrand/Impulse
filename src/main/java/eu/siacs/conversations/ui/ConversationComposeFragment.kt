@@ -1194,6 +1194,10 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             .show()
     }
 
+    override fun onOpenHelp() {
+        HelpSupportSheetFragment().show(parentFragmentManager, HelpSupportSheetFragment.TAG)
+    }
+
     override fun onBlockContact() {
         val c = conversation ?: return
         val activity = activity as? XmppActivity ?: return

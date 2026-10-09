@@ -1536,4 +1536,16 @@
     <string name="developer_options_silent_update_test_success">Установлено. (Обычно приложение перезапускается раньше, чем это можно прочитать.)</string>
     <string name="developer_options_silent_update_test_pending">Android просит подтверждение, значит установка была не тихой. Частые причины: Импульс ещё не записан как установщик (первое обновление им никогда не бывает), Play Protect хочет проверить приложение, Auto Blocker или ограничение Android на частоту тихих обновлений. Ночное обновление здесь покажет уведомление «Обновление готово».</string>
     <string name="developer_options_silent_update_test_failed">Установка не удалась (статус %1$d).</string>
+    <string name="help_and_support">Помощь и поддержка</string>
+    <string name="help_sheet_intro">Что-то не работает? Попробуйте сначала это.</string>
+    <string name="help_calls_title">Звонки не всплывают</string>
+    <string name="help_calls_summary">Включает разрешение для звонков, если телефон его отключил</string>
+    <string name="help_calls_all_good">Все разрешения для звонков включены.</string>
+    <string name="help_sounds_title">Нет звука или он не тот</string>
+    <string name="help_sounds_summary">Выбрать мелодию звонка и звук сообщений заново</string>
+    <string name="help_updates_title">Проблемы с обновлением</string>
+    <string name="help_updates_summary">Открыть экран обновлений, чтобы проверить или установить обновление</string>
+    <string name="help_copy_title">Скопировать данные для поддержки</string>
+    <string name="help_copy_summary">Копирует версию приложения и модель телефона, чтобы вставить в сообщение</string>
+    <string name="help_copy_done">Скопировано</string>
 </resources>

@@ -87,6 +87,10 @@ class ConversationsOverviewFragment : XmppFragment() {
 
         override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
             return when (menuItem.itemId) {
+                R.id.action_help_support -> {
+                    HelpSupportSheetFragment().show(parentFragmentManager, HelpSupportSheetFragment.TAG)
+                    true
+                }
                 R.id.action_settings -> {
                     startActivity(Intent(requireContext(), SettingsActivity::class.java))
                     true

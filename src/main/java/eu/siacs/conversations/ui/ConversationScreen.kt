@@ -261,6 +261,9 @@ class ConversationScreenState {
 interface ConversationScreenListener {
     fun onBackPressed()
 
+    /** "Help and support" in the chat's overflow menu. */
+    fun onOpenHelp()
+
     fun onSendTextMessage(body: String)
 
     fun onAttachImage()
@@ -1564,6 +1567,11 @@ private fun ConversationTopBar(
                     R.drawable.ic_archive_24dp,
                     stringResource(R.string.action_archive_chat),
                     dismissThen(listener::onArchiveConversation),
+                )
+                ExpressiveMenuItem(
+                    R.drawable.ic_help_24dp,
+                    stringResource(R.string.help_and_support),
+                    dismissThen(listener::onOpenHelp),
                 )
             }
             }
