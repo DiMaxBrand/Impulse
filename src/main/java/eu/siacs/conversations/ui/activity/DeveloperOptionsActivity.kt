@@ -221,10 +221,34 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                     AlertDialog(
                                         onDismissRequest = { silentTestResult = null },
                                         title = { Text(stringResource(R.string.developer_options_silent_update_test)) },
-                                        text = { Text(text) },
+                                        text = {
+                                            Text(
+                                                text,
+                                                modifier = Modifier.verticalScroll(rememberScrollState()),
+                                            )
+                                        },
                                         confirmButton = {
                                             TextButton(onClick = { silentTestResult = null }) {
                                                 Text(stringResource(android.R.string.ok))
+                                            }
+                                        },
+                                        dismissButton = {
+                                            TextButton(
+                                                onClick = {
+                                                    val clipboard =
+                                                        getSystemService(CLIPBOARD_SERVICE)
+                                                            as android.content.ClipboardManager
+                                                    clipboard.setPrimaryClip(
+                                                        android.content.ClipData.newPlainText("Impulse", text)
+                                                    )
+                                                    Toast.makeText(
+                                                        this@DeveloperOptionsActivity,
+                                                        R.string.help_copy_done,
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
+                                                }
+                                            ) {
+                                                Text(stringResource(android.R.string.copy))
                                             }
                                         },
                                     )
@@ -553,15 +577,63 @@ class DeveloperOptionsActivity : ActionBarActivity() {
 private fun DeveloperOptionsActivity.describeInstallResult(
     result: InstallStatusBus.Result
 ): String {
-    val detail = result.message?.takeIf { it.isNotBlank() }
-    return when (result.status) {
-        android.content.pm.PackageInstaller.STATUS_SUCCESS ->
-            getString(R.string.developer_options_silent_update_test_success)
-        android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION ->
-            getString(R.string.developer_options_silent_update_test_pending) +
-                (detail?.let { "\n\n$it" } ?: "")
-        else ->
-            getString(R.string.developer_options_silent_update_test_failed, result.status) +
-                (detail?.let { "\n\n$it" } ?: "")
+    val summary =
+        when (result.status) {
+            android.content.pm.PackageInstaller.STATUS_SUCCESS ->
+                getString(R.string.developer_options_silent_update_test_success)
+            android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION ->
+                getString(R.string.developer_options_silent_update_test_pending)
+            else ->
+                getString(R.string.developer_options_silent_update_test_failed, result.status)
+        }
+    return summary + "\n\n" + installDiagnostics(result)
+}
+
+// The "log" for the silent-update test: what Android answered plus the facts that decide whether
+// an update can be silent, so one screenshot (or the Copy button) is enough to tell why not.
+private fun DeveloperOptionsActivity.installDiagnostics(result: InstallStatusBus.Result): String {
+    val statusName =
+        when (result.status) {
+            android.content.pm.PackageInstaller.STATUS_SUCCESS -> "SUCCESS"
+            android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION -> "PENDING_USER_ACTION"
+            android.content.pm.PackageInstaller.STATUS_FAILURE -> "FAILURE"
+            android.content.pm.PackageInstaller.STATUS_FAILURE_ABORTED -> "FAILURE_ABORTED"
+            android.content.pm.PackageInstaller.STATUS_FAILURE_BLOCKED -> "FAILURE_BLOCKED"
+            android.content.pm.PackageInstaller.STATUS_FAILURE_CONFLICT -> "FAILURE_CONFLICT"
+            android.content.pm.PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> "FAILURE_INCOMPATIBLE"
+            android.content.pm.PackageInstaller.STATUS_FAILURE_INVALID -> "FAILURE_INVALID"
+            android.content.pm.PackageInstaller.STATUS_FAILURE_STORAGE -> "FAILURE_STORAGE"
+            else -> "?"
+        }
+    val installer =
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                val source = packageManager.getInstallSourceInfo(packageName)
+                "installer of record: ${source.installingPackageName ?: "none"}\n" +
+                    "initiating: ${source.initiatingPackageName ?: "none"}\n" +
+                    "originating: ${if (android.os.Build.VERSION.SDK_INT >= 34) source.originatingPackageName ?: "none" else "n/a"}"
+            } else {
+                @Suppress("DEPRECATION")
+                "installer of record: ${packageManager.getInstallerPackageName(packageName) ?: "none"}"
+            }
+        } catch (e: Exception) {
+            "installer of record: unknown ($e)"
+        }
+    val silentPermission =
+        checkSelfPermission("android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION") ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+    return buildString {
+        appendLine("--- details ---")
+        appendLine("status: ${result.status} ($statusName)")
+        appendLine("message: ${result.message?.takeIf { it.isNotBlank() } ?: "(none)"}")
+        result.extra?.let { appendLine(it) }
+        appendLine(installer)
+        appendLine("can install apps: ${packageManager.canRequestPackageInstalls()}")
+        appendLine("UPDATE_PACKAGES_WITHOUT_USER_ACTION granted: $silentPermission")
+        appendLine("Impulse ${eu.siacs.conversations.BuildConfig.VERSION_NAME}")
+        append(
+            "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}, Android " +
+                "${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})"
+        )
     }
 }

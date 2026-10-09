@@ -21,17 +21,39 @@ class UpdateInstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
-        Log.d(Config.LOGTAG, "update install status=$status message=$message")
-        InstallStatusBus.publish(status, message)
+        @Suppress("DEPRECATION")
+        val confirm: Intent? =
+            if (status != PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                null
+            } else if (Build.VERSION.SDK_INT >= 33) {
+                intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+            } else {
+                intent.getParcelableExtra(Intent.EXTRA_INTENT)
+            }
+        // Who is asking for the confirmation is the most useful clue about why the install was
+        // not silent (the system installer, Play Protect, a Samsung component ...).
+        val askedBy =
+            confirm?.let {
+                "confirmation asked by: " +
+                    (it.component?.flattenToShortString() ?: it.`package` ?: "?") +
+                    (it.action?.let { action -> "\naction: $action" } ?: "")
+            }
+        val requestedPackage = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME)
+        val otherPackage =
+            intent.getStringExtra(PackageInstaller.EXTRA_OTHER_PACKAGE_NAME)
+        val extra =
+            listOfNotNull(
+                    askedBy,
+                    requestedPackage?.let { "package: $it" },
+                    otherPackage?.let { "other package: $it" },
+                )
+                .joinToString("\n")
+                .ifEmpty { null }
+        Log.d(Config.LOGTAG, "update install status=$status message=$message extra=$extra")
+        InstallStatusBus.publish(status, message, extra)
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                @Suppress("DEPRECATION")
-                val confirm =
-                    if (Build.VERSION.SDK_INT >= 33) {
-                        intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
-                    } else {
-                        intent.getParcelableExtra(Intent.EXTRA_INTENT)
-                    } ?: return
+                confirm ?: return
                 confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 notifyConfirm(context, confirm)
             }

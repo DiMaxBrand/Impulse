@@ -8,13 +8,18 @@ import kotlinx.coroutines.flow.StateFlow
  * Developer Options test). The nightly update itself never reads this.
  */
 object InstallStatusBus {
-    data class Result(val status: Int, val message: String?, val at: Long = System.nanoTime())
+    data class Result(
+        val status: Int,
+        val message: String?,
+        val extra: String? = null,
+        val at: Long = System.nanoTime(),
+    )
 
     private val state = MutableStateFlow<Result?>(null)
     val last: StateFlow<Result?> = state
 
-    fun publish(status: Int, message: String?) {
-        state.value = Result(status, message)
+    fun publish(status: Int, message: String?, extra: String? = null) {
+        state.value = Result(status, message, extra)
     }
 
     fun consume() {
