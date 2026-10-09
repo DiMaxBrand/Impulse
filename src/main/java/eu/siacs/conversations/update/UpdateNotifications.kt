@@ -56,4 +56,44 @@ object UpdateNotifications {
                 .build()
         manager.notify(NOTIFICATION_ID, notification)
     }
+
+    private const val BUG_FIXED_NOTIFICATION_ID = 90019
+
+    /** A report this phone sent is named in the notes of the release just found: tell the
+     * reporter, with the same quiet channel as the other update notices. */
+    fun postBugFixed(context: Context, ids: List<String>, version: String) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL_ID,
+                    context.getString(R.string.update_channel_name),
+                    NotificationManager.IMPORTANCE_LOW,
+                )
+            )
+        }
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+        val pending =
+            PendingIntent.getActivity(
+                context,
+                148,
+                launch,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val notification =
+            NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_system_update_24dp)
+                .setContentTitle(context.getString(R.string.bug_fixed_notification_title))
+                .setContentText(
+                    context.getString(
+                        R.string.bug_fixed_notification_text,
+                        ids.joinToString(", "),
+                        version,
+                    )
+                )
+                .setContentIntent(pending)
+                .setAutoCancel(true)
+                .build()
+        manager.notify(BUG_FIXED_NOTIFICATION_ID, notification)
+    }
 }

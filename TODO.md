@@ -76,39 +76,41 @@ not the default experience.
 
 ## Bug-report tracking ID + fix notification — same category as headphones, needs stable to exist first
 
+> **Built (1.15.0-beta.141).** `BugReportRegistry` stores the IDs; `ExceptionHelper.trackedReport()` adds the header; "Report a problem" in Help and support sends a manual report the same way; `UpdateCheckHelper.performCheck()` matches IDs in the release notes it just fetched (latest release of the reporter's channel only — a fix named in an older release that was skipped is not seen) and posts a notification; the Updates screen card shows the waiting IDs and turns into a "ask support" wording after 14 days. Entries are dropped after 45 days.
+
 Only makes sense once stable releases (and the post-stable hotfix branching
 rule in `CLAUDE.md`) are real — a report's fix might land as a hotfix on the
 stable channel specifically, not through the reporter's next regular update,
 so "did this ship yet" can't just mean "is there a newer version."
 
-- [ ] Every report sent via `ExceptionHelper.checkForCrash()` /
+- [x] Every report sent via `ExceptionHelper.checkForCrash()` /
   `reportCaughtException()` gets a short random tracking ID generated at
   send time (format: `BUG-XXXX`, e.g. `BUG-7F3K` — short enough to hand-type
   into a release description, distinctive enough not to false-match
   unrelated numbers already in release notes like version/RC numbers).
-  - [ ] Report text includes the ID plus a line aimed at whoever reads it in
+  - [x] Report text includes the ID plus a line aimed at whoever reads it in
     the support chat (the dev, not the reporter): "Include this ID in the
     release description to notify the reporting user when it ships."
-  - [ ] Report text also includes the reporter's current update channel
+  - [x] Report text also includes the reporter's current update channel
     (`UpdatePreferences.selectedChannel` or equivalent) — the fix needs to
     be targeted and verified against the right channel.
-  - [ ] Both report dialogs (`crash_report_message` and
+  - [x] Both report dialogs (`crash_report_message` and
     `error_report_message`) get an added line telling the *reporter*:
     something like "If fixed, you'll be notified here — please don't switch
     update channels until then," since the fix ships to whichever channel
     they were on when they reported it.
-  - [ ] App persists every pending ID locally — DB table vs. a
+  - [x] App persists every pending ID locally — DB table vs. a
     `SharedPreferences`-backed class matching the existing
     `UpdatePreferences`/`OnboardingPreferences` pattern is an open
     implementation choice, not decided yet. Either way: store the ID,
     channel, and timestamp sent; drop it once matched (or after the
     long-pending cutoff below, whichever comes first) so this doesn't grow
     unbounded.
-  - [ ] After each update check (already fetches release notes/changelog
+  - [x] After each update check (already fetches release notes/changelog
     text), scan the new release's notes for any locally-stored ID. On a
     match, fire a notification: the reported issue was fixed in this
     release, and drop the ID from local storage.
-  - [ ] Updates screen (`UpdatesScreen.kt`/`UpdatesActivity` — there's a lot
+  - [x] Updates screen (`UpdatesScreen.kt`/`UpdatesActivity` — there's a lot
     of empty space below the "Check Now" button already) gets a card,
     visible only while at least one pending ID exists: "Waiting for a fix
     from the developer" + the ID(s). If a report has been pending longer
@@ -200,7 +202,7 @@ screen. Backlog:
   - [ ] Reset `hasInstalledUpdate` (the "first update" flag)
 - [ ] **Crash/diagnostics**
   - [ ] Trigger a test crash, to confirm the crash-reporting pipeline reaches `support@on-chat.ru` end to end
-  - [ ] One-tap "copy debug info" (version name/code, DB schema version, device model, Android version) for bug reports
+  - [x] One-tap "copy debug info" (version name/code, DB schema version, device model, Android version) for bug reports — done: "Copy info for support" in Help and support (version, phone, Android; no DB schema yet)
 - [ ] **Storage**
   - [ ] Cache/media size breakdown with a clear button per category (avatars, attachments, etc.)
 

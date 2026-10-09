@@ -153,6 +153,8 @@ class UpdatesActivity : ActionBarActivity() {
             minUpdateIntervalHours = prefs.minUpdateIntervalHours,
             nightlyInstall = prefs.nightlyInstall,
             canInstallApps = packageManager.canRequestPackageInstalls(),
+            pendingBugReportIds = eu.siacs.conversations.update.BugReportRegistry(this).pending().map { it.id },
+            bugReportsStale = eu.siacs.conversations.update.BugReportRegistry(this).hasStale(),
             downloadPhase = restoredPhase,
             pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
             releaseNotes = prefs.pendingReleaseNotes,

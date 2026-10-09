@@ -1557,4 +1557,17 @@
     <string name="updates_allow_install_description">На этом телефоне выключено, поэтому обновления не могут устанавливаться сами. Нажмите, чтобы включить.</string>
     <string name="update_ready_open_notification_text">Новая версия скачана. Нажмите, чтобы установить.</string>
     <string name="developer_options_silent_update_test_refused">Этот телефон не разрешает приложениям тихую установку (Xiaomi так делает). Ночное обновление скачает новую версию и оставит тихое уведомление «Обновление готово»; нажатие откроет окно обновления.</string>
+    <string name="bug_report_fixed_notice">Когда ошибку исправят, приложение сообщит вам об этом. Пожалуйста, не меняйте канал обновлений до тех пор: исправление выйдет в том канале, на котором вы сейчас.</string>
+    <string name="bug_waiting_title">Ждём исправления от разработчика</string>
+    <string name="bug_waiting_text">Когда выйдет версия с исправлением, вы узнаете об этом здесь.</string>
+    <string name="bug_waiting_stale_title">Исправления по вашему отчёту пока нет</string>
+    <string name="bug_waiting_stale_text">Прошло уже время. Если это всё ещё важно, напишите в поддержку из «Помощи и поддержки» и укажите номер отчёта.</string>
+    <string name="bug_fixed_notification_title">Ваша ошибка исправлена</string>
+    <string name="bug_fixed_notification_text">%1$s исправлено в %2$s. Обновитесь, чтобы получить исправление.</string>
+    <string name="help_report_title">Сообщить о проблеме</string>
+    <string name="help_report_summary">Опишите, что пошло не так. Вам сообщат, когда это исправят.</string>
+    <string name="help_report_dialog_message">Что пошло не так? Отчёт уйдёт разработчику вместе с версией приложения и моделью телефона и получит номер, чтобы вам сообщили об исправлении.</string>
+    <string name="help_report_hint">Опишите проблему</string>
+    <string name="help_report_sent">Отправлено. Номер отчёта: %1$s</string>
+    <string name="help_report_no_account">Сначала добавьте учётную запись, чтобы отправить отчёт.</string>
 </resources>

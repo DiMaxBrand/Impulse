@@ -65,6 +65,12 @@ object UpdateCheckHelper {
         if (result !is UpdateChecker.CheckResult.UpdateAvailable) return
         val info = result.info
 
+        // Release notes that name a bug-report ID this phone sent mean that report is fixed here.
+        val fixed = BugReportRegistry(context).matchFixed(info.releaseNotes)
+        if (fixed.isNotEmpty()) {
+            UpdateNotifications.postBugFixed(context, fixed.map { it.id }, info.versionName)
+        }
+
         prefs.pendingUpdateVersion = info.versionName
         prefs.pendingUpdateUrl = info.downloadUrl
         prefs.pendingReleaseNotes = info.releaseNotes

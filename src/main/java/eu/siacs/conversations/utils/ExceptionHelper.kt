@@ -11,6 +11,8 @@ import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.ui.XmppActivity
+import eu.siacs.conversations.update.BugReportRegistry
+import eu.siacs.conversations.update.UpdatePreferences
 import java.io.File
 import java.io.IOException
 
@@ -51,7 +53,8 @@ object ExceptionHelper {
             activity.getString(R.string.crash_report_title, activity.getString(R.string.app_name))
         )
         builder.setMessage(
-            activity.getString(R.string.crash_report_message, activity.getString(R.string.app_name))
+            activity.getString(R.string.crash_report_message, activity.getString(R.string.app_name)) +
+                "\n\n" + activity.getString(R.string.bug_report_fixed_notice)
         )
         builder.setPositiveButton(activity.getText(R.string.send_now)) { _, _ ->
             Log.d(
@@ -60,7 +63,7 @@ object ExceptionHelper {
             )
             val conversation: Conversation =
                 service.findOrCreateConversation(account, Config.BUG_REPORTS, false, true)
-            val message = Message(conversation, report, Message.ENCRYPTION_NONE)
+            val message = Message(conversation, trackedReport(activity, report), Message.ENCRYPTION_NONE)
             service.sendMessage(message)
         }
         // Plain dismiss, not "never again" — a one-tap permanent opt-out is too easy to hit by
@@ -94,12 +97,13 @@ object ExceptionHelper {
             activity.getString(R.string.error_report_title, activity.getString(R.string.app_name))
         )
         builder.setMessage(
-            activity.getString(R.string.error_report_message, activity.getString(R.string.app_name))
+            activity.getString(R.string.error_report_message, activity.getString(R.string.app_name)) +
+                "\n\n" + activity.getString(R.string.bug_report_fixed_notice)
         )
         builder.setPositiveButton(activity.getText(R.string.send_now)) { _, _ ->
             val conversation: Conversation =
                 service.findOrCreateConversation(account, Config.BUG_REPORTS, false, true)
-            val message = Message(conversation, report, Message.ENCRYPTION_NONE)
+            val message = Message(conversation, trackedReport(activity, report), Message.ENCRYPTION_NONE)
             service.sendMessage(message)
         }
         // Plain dismiss, not "never again" — a one-tap permanent opt-out is too easy to hit by
@@ -109,6 +113,27 @@ object ExceptionHelper {
         builder.setNegativeButton(activity.getText(R.string.not_now), null)
         builder.create().show()
         return true
+    }
+
+    /**
+     * Gives [report] a tracking ID (BUG-XXXX), remembers it together with the reporter's update
+     * channel, and returns the text to send: a header for whoever reads it (the developer) plus
+     * the report. When a later release's notes mention the ID, the reporter is told it was fixed.
+     */
+    @JvmStatic
+    fun trackedReport(context: Context, report: String): String =
+        trackedReportWithId(context, report).second
+
+    @JvmStatic
+    fun trackedReportWithId(context: Context, report: String): Pair<String, String> {
+        val channel = UpdatePreferences(context).selectedChannel.id
+        val id = BugReportRegistry(context).register(channel)
+        val header =
+            "Report ID: $id\n" +
+                "Update channel: $channel\n" +
+                "(For whoever reads this: put \"$id\" in the release description of the release " +
+                "that fixes it, and the reporter is notified when it ships.)\n\n"
+        return id to header + report
     }
 
     @JvmStatic

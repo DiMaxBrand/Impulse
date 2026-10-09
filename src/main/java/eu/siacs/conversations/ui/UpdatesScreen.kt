@@ -332,6 +332,45 @@ fun UpdatesScreen(
                     }
                 }
 
+                // Reports this phone has sent that have not been matched to a fix yet. After a
+                // couple of weeks without a match the wording stops promising an automatic
+                // notice and points at support instead (the ID may never have been added to a
+                // release).
+                if (state.pendingBugReportIds.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    androidx.compose.material3.Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                            Text(
+                                text =
+                                    stringResource(
+                                        if (state.bugReportsStale) R.string.bug_waiting_stale_title
+                                        else R.string.bug_waiting_title
+                                    ),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                text = state.pendingBugReportIds.joinToString(", "),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                            Text(
+                                text =
+                                    stringResource(
+                                        if (state.bugReportsStale) R.string.bug_waiting_stale_text
+                                        else R.string.bug_waiting_text
+                                    ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                    }
+                }
             }
 
             // ── Scrim (animated independently) ───────────────────────────
@@ -1426,6 +1465,8 @@ data class UpdatesUiState(
     val minUpdateIntervalHours: Int = 0,
     val nightlyInstall: Boolean = true,
     val canInstallApps: Boolean = true,
+    val pendingBugReportIds: List<String> = emptyList(),
+    val bugReportsStale: Boolean = false,
     val checkStatus: CheckStatus = CheckStatus.IDLE,
     val downloadPhase: DownloadPhase = DownloadPhase.IDLE,
     val downloadProgress: Float = 0f,

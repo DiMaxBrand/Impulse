@@ -114,6 +114,13 @@ class HelpSupportSheetFragment : BottomSheetDialogFragment() {
                                 ::copyDeviceInfo,
                             )
                             HelpRow(
+                                GroupPosition.MIDDLE,
+                                R.drawable.ic_error_24dp,
+                                R.string.help_report_title,
+                                R.string.help_report_summary,
+                                ::reportProblem,
+                            )
+                            HelpRow(
                                 GroupPosition.BOTTOM,
                                 R.drawable.ic_chat_24dp,
                                 R.string.help_contact_title,
@@ -181,6 +188,71 @@ class HelpSupportSheetFragment : BottomSheetDialogFragment() {
         } catch (_: RuntimeException) {
             Toast.makeText(requireContext(), SUPPORT_JID, Toast.LENGTH_LONG).show()
         }
+    }
+
+    // "Report a problem": the person describes what went wrong, and it goes to the support chat
+    // like a crash report does -- with a tracking ID (BUG-XXXX) so they are told when it is fixed.
+    private fun reportProblem() {
+        val context = requireContext()
+        val activity = activity as? XmppActivity
+        val service = activity?.xmppConnectionService
+        val account = service?.let { eu.siacs.conversations.utils.AccountUtils.getFirstEnabled(it) }
+        if (service == null || account == null) {
+            Toast.makeText(context, R.string.help_report_no_account, Toast.LENGTH_LONG).show()
+            return
+        }
+        val input =
+            android.widget.EditText(context).apply {
+                setHint(R.string.help_report_hint)
+                minLines = 3
+                gravity = android.view.Gravity.TOP
+                inputType =
+                    android.text.InputType.TYPE_CLASS_TEXT or
+                        android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                        android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            }
+        val padding = (20 * resources.displayMetrics.density).toInt()
+        val container =
+            android.widget.FrameLayout(context).apply {
+                setPadding(padding, padding / 2, padding, 0)
+                addView(input)
+            }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+            .setIcon(R.drawable.ic_error_24dp)
+            .setTitle(R.string.help_report_title)
+            .setMessage(R.string.help_report_dialog_message)
+            .setView(container)
+            .setPositiveButton(R.string.send_now) { _, _ ->
+                val written = input.text.toString().trim()
+                val body =
+                    "User report:\n" +
+                        (written.ifEmpty { "(no description)" }) +
+                        "\n\nVersion: ${BuildConfig.APP_NAME} ${BuildConfig.VERSION_NAME}\n" +
+                        "Manufacturer: ${Build.MANUFACTURER}\n" +
+                        "Device: ${Build.DEVICE} (${Build.MODEL})\n" +
+                        "Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
+                val (id, text) =
+                    eu.siacs.conversations.utils.ExceptionHelper.trackedReportWithId(context, body)
+                val conversation =
+                    service.findOrCreateConversation(
+                        account,
+                        eu.siacs.conversations.Config.BUG_REPORTS,
+                        false,
+                        true,
+                    )
+                service.sendMessage(
+                    eu.siacs.conversations.entities.Message(
+                        conversation,
+                        text,
+                        eu.siacs.conversations.entities.Message.ENCRYPTION_NONE,
+                    )
+                )
+                Toast.makeText(context, getString(R.string.help_report_sent, id), Toast.LENGTH_LONG)
+                    .show()
+                dismiss()
+            }
+            .setNegativeButton(R.string.not_now, null)
+            .show()
     }
 
     private fun openSoundSetup() {

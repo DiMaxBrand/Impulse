@@ -1493,4 +1493,17 @@
     <string name="updates_allow_install_description">Turned off on this phone, so updates can not install by themselves. Tap to turn it on.</string>
     <string name="update_ready_open_notification_text">A new version is downloaded. Tap to install it.</string>
     <string name="developer_options_silent_update_test_refused">This phone refuses silent installs from apps (Xiaomi does). The overnight update will download the new version and leave a quiet \"update ready\" notification instead; tapping it opens the update sheet.</string>
+    <string name="bug_report_fixed_notice">If it gets fixed, you will be told in the app. Please do not switch update channels until then: the fix goes to the channel you are on now.</string>
+    <string name="bug_waiting_title">Waiting for a fix from the developer</string>
+    <string name="bug_waiting_text">You will be told here when a release that fixes this arrives.</string>
+    <string name="bug_waiting_stale_title">Still no fix for your report</string>
+    <string name="bug_waiting_stale_text">It has been a while. If it still matters, write to support from Help and support and mention the ID.</string>
+    <string name="bug_fixed_notification_title">Your report was fixed</string>
+    <string name="bug_fixed_notification_text">%1$s is fixed in %2$s. Update to get the fix.</string>
+    <string name="help_report_title">Report a problem</string>
+    <string name="help_report_summary">Describe what went wrong. You will be told when it is fixed.</string>
+    <string name="help_report_dialog_message">What went wrong? The report goes to the developer with your app version and phone model, and gets a number so you can be told when it is fixed.</string>
+    <string name="help_report_hint">Describe the problem</string>
+    <string name="help_report_sent">Sent. Report number %1$s</string>
+    <string name="help_report_no_account">Add an account first to send a report.</string>
 </resources>
