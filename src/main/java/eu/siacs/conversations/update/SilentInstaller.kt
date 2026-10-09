@@ -26,6 +26,27 @@ object SilentInstaller {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             context.packageManager.canRequestPackageInstalls()
 
+    /**
+     * Developer Options test: runs the same silent install the nightly update uses and returns
+     * what it tried to install -- a newer downloaded update if one is ready, otherwise the
+     * app's own APK (the current version) over itself. The result arrives later on
+     * [InstallStatusBus]; if the install succeeds the app is replaced and restarts, so there may
+     * be no result to show at all. Returns null when the session could not even be started.
+     */
+    fun testInstall(context: Context): String? {
+        val prefs = UpdatePreferences(context)
+        val newer = prefs.downloadedApkPath?.let { path ->
+            File(android.net.Uri.parse(path).path ?: path)
+        }
+        val (file, label) =
+            if (newer != null && newer.exists() && UpdateChecker.isNewerThanInstalled(prefs.downloadedVersion)) {
+                newer to "the downloaded update ${prefs.downloadedVersion}"
+            } else {
+                File(context.applicationInfo.sourceDir) to "the installed version again"
+            }
+        return if (install(context, file)) label else null
+    }
+
     /** Returns true if the session was committed (not that the install already succeeded). */
     fun install(context: Context, apk: File): Boolean {
         return try {

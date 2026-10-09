@@ -97,9 +97,21 @@ class UpdatePreferences(context: Context) {
         get() = prefs.getString(KEY_JUST_UPDATED_NOTES, null)
         set(value) = prefs.edit { putString(KEY_JUST_UPDATED_NOTES, value) }
 
-    /** Remembers the update about to be installed so the next launch can announce it. */
+    /** The version whose update sheet (with its release notes) the user has already been shown.
+     * Announcing "Impulse was updated -- see what's new" for it afterwards would repeat what they
+     * were just told, so the overnight install skips the announcement in that case. */
+    var updateSheetSeenVersion: String?
+        get() = prefs.getString(KEY_SHEET_SEEN_VERSION, null)
+        set(value) = prefs.edit { putString(KEY_SHEET_SEEN_VERSION, value) }
+
+    /** Remembers the update about to be installed so the next launch can announce it -- unless
+     * the user already saw this version's notes in the update sheet. */
     fun rememberJustUpdated() {
         val version = downloadedVersion ?: pendingUpdateVersion ?: return
+        if (updateSheetSeenVersion == version) {
+            clearJustUpdated()
+            return
+        }
         prefs.edit {
             putString(KEY_JUST_UPDATED_VERSION, version)
             putString(KEY_JUST_UPDATED_TITLE, pendingReleaseTitle)
@@ -218,5 +230,6 @@ class UpdatePreferences(context: Context) {
         private const val KEY_JUST_UPDATED_TITLE = "just_updated_title"
         private const val KEY_JUST_UPDATED_NOTES = "just_updated_notes"
         private const val KEY_NIGHTLY_INSTALL = "nightly_install"
+        private const val KEY_SHEET_SEEN_VERSION = "sheet_seen_version"
     }
 }

@@ -1465,4 +1465,11 @@
     <string name="updated_sheet_dismiss">Dismiss</string>
     <string name="updates_nightly_label">Update overnight</string>
     <string name="updates_nightly_description">Around 2:30 at night, when you are not on a call or in the app, Impulse installs a downloaded update by itself.</string>
+    <string name="developer_options_silent_update_test">Test silent update</string>
+    <string name="developer_options_silent_update_test_summary">Runs the overnight silent install now and reports what Android answered</string>
+    <string name="developer_options_silent_update_test_started">Trying a silent install of %1$s. If it works the app restarts.</string>
+    <string name="developer_options_silent_update_test_not_started">The install session could not even be started (permission to install apps missing, or the system refused).</string>
+    <string name="developer_options_silent_update_test_success">Installed. (The app normally restarts before you can read this.)</string>
+    <string name="developer_options_silent_update_test_pending">Android wants a confirmation, so this was not silent. Common reasons: Impulse is not yet the recorded installer (the first update never is), Play Protect wants to scan the app, Auto Blocker, or Android limiting how often it allows silent updates. The overnight update would post an \"Update ready\" notification here.</string>
+    <string name="developer_options_silent_update_test_failed">The install failed (status %1$d).</string>
 </resources>

@@ -75,6 +75,11 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         initState()
         resumeActiveDownload()
+        // The user has now been shown this version's notes; an overnight install of it won't
+        // announce them again afterwards.
+        (prefs.pendingUpdateVersion ?: prefs.downloadedVersion)?.let {
+            prefs.updateSheetSeenVersion = it
+        }
     }
 
     override fun onDismiss(dialog: DialogInterface) {

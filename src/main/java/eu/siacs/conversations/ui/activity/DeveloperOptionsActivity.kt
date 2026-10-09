@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -63,6 +64,8 @@ import eu.siacs.conversations.ui.ExpressiveGroupRow
 import eu.siacs.conversations.ui.GroupPosition
 import eu.siacs.conversations.ui.ImpulseExpressiveTheme
 import eu.siacs.conversations.ui.UpdateSheetFragment
+import eu.siacs.conversations.update.InstallStatusBus
+import eu.siacs.conversations.update.SilentInstaller
 import eu.siacs.conversations.update.UpdateChecker
 import eu.siacs.conversations.update.UpdateInfo
 import eu.siacs.conversations.update.UpdatePreferences
@@ -170,6 +173,60 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                         },
                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                         modifier = Modifier.clickable { showUpdateSheet() },
+                                    )
+                                }
+
+                                Spacer(Modifier.height(6.dp))
+
+                                // Runs the nightly update's silent install on demand and reports
+                                // what Android answered (silent success, "needs confirmation",
+                                // or an error) -- for finding out what a given phone allows.
+                                var silentTestRunning by remember { mutableStateOf(false) }
+                                var silentTestResult by remember { mutableStateOf<String?>(null) }
+                                LaunchedEffect(silentTestRunning) {
+                                    if (!silentTestRunning) return@LaunchedEffect
+                                    InstallStatusBus.consume()
+                                    InstallStatusBus.last.collect { result ->
+                                        if (result != null) {
+                                            silentTestResult = describeInstallResult(result)
+                                            silentTestRunning = false
+                                        }
+                                    }
+                                }
+                                ExpressiveGroupRow(GroupPosition.SINGLE) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_silent_update_test))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_silent_update_test_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            val tried = SilentInstaller.testInstall(this@DeveloperOptionsActivity)
+                                            if (tried == null) {
+                                                silentTestResult = getString(R.string.developer_options_silent_update_test_not_started)
+                                            } else {
+                                                Toast.makeText(
+                                                    this@DeveloperOptionsActivity,
+                                                    getString(R.string.developer_options_silent_update_test_started, tried),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                                silentTestRunning = true
+                                            }
+                                        },
+                                    )
+                                }
+                                silentTestResult?.let { text ->
+                                    AlertDialog(
+                                        onDismissRequest = { silentTestResult = null },
+                                        title = { Text(stringResource(R.string.developer_options_silent_update_test)) },
+                                        text = { Text(text) },
+                                        confirmButton = {
+                                            TextButton(onClick = { silentTestResult = null }) {
+                                                Text(stringResource(android.R.string.ok))
+                                            }
+                                        },
                                     )
                                 }
 
@@ -490,5 +547,21 @@ class DeveloperOptionsActivity : ActionBarActivity() {
         val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS)
             .setData(Uri.fromParts("package", packageName, null))
         startActivity(intent)
+    }
+}
+
+private fun DeveloperOptionsActivity.describeInstallResult(
+    result: InstallStatusBus.Result
+): String {
+    val detail = result.message?.takeIf { it.isNotBlank() }
+    return when (result.status) {
+        android.content.pm.PackageInstaller.STATUS_SUCCESS ->
+            getString(R.string.developer_options_silent_update_test_success)
+        android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION ->
+            getString(R.string.developer_options_silent_update_test_pending) +
+                (detail?.let { "\n\n$it" } ?: "")
+        else ->
+            getString(R.string.developer_options_silent_update_test_failed, result.status) +
+                (detail?.let { "\n\n$it" } ?: "")
     }
 }

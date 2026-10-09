@@ -1529,4 +1529,11 @@
     <string name="updated_sheet_dismiss">Закрыть</string>
     <string name="updates_nightly_label">Обновляться ночью</string>
     <string name="updates_nightly_description">Около 2:30 ночи, если вы не в звонке и не в приложении, Импульс сам устанавливает скачанное обновление.</string>
+    <string name="developer_options_silent_update_test">Тест тихого обновления</string>
+    <string name="developer_options_silent_update_test_summary">Запускает ночную тихую установку сейчас и показывает ответ Android</string>
+    <string name="developer_options_silent_update_test_started">Пробую тихую установку: %1$s. Если получится, приложение перезапустится.</string>
+    <string name="developer_options_silent_update_test_not_started">Не удалось даже начать установку (нет разрешения на установку приложений или система отказала).</string>
+    <string name="developer_options_silent_update_test_success">Установлено. (Обычно приложение перезапускается раньше, чем это можно прочитать.)</string>
+    <string name="developer_options_silent_update_test_pending">Android просит подтверждение, значит установка была не тихой. Частые причины: Импульс ещё не записан как установщик (первое обновление им никогда не бывает), Play Protect хочет проверить приложение, Auto Blocker или ограничение Android на частоту тихих обновлений. Ночное обновление здесь покажет уведомление «Обновление готово».</string>
+    <string name="developer_options_silent_update_test_failed">Установка не удалась (статус %1$d).</string>
 </resources>
