@@ -58,6 +58,9 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
                         val path = prefs.downloadedApkPath ?: return@UpdateSheetContent
                         installInitiated = true
                         prefs.hasInstalledUpdate = true
+                        // A manual install never announces itself afterwards, even if the overnight
+                        // run had already marked this same version.
+                        prefs.clearJustUpdated()
                         UpdateDownloader.installApk(requireActivity(), path)
                     },
                     onDownloadCircleTapped = {
