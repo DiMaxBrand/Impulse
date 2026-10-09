@@ -475,6 +475,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             state.update(null, emptyList())
             return
         }
+        try {
+            addSupportContactIfNeeded(c)
+        } catch (_: RuntimeException) {
+            // best effort; the banner still offers "Add to contacts"
+        }
         val freshList = ArrayList<Message>()
         c.populateWithMessages(freshList)
         // A message that just disappeared from conversation.messages between this refresh and
@@ -1193,6 +1198,31 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
             .show()
     }
+
+    override fun onAddContact() {
+        val c = conversation ?: return
+        getXmppConnectionService()?.createContact(c.getContact())
+    }
+
+    // Writing to the support address from the Help sheet: save it as a contact named "Impulse
+    // support" so its replies arrive like any other contact's. Roster entry only -- no request
+    // to see the user's online status goes out.
+    private fun addSupportContactIfNeeded(c: Conversation) {
+        val contact = c.getContact()
+        if (!contact.getAddress().asBareJid().toString().equals(
+                HelpSupportSheetFragment.SUPPORT_JID,
+                ignoreCase = true,
+            )
+        ) return
+        if (contact.showInContactList() || supportContactRequested == c.getUuid()) return
+        supportContactRequested = c.getUuid()
+        contact.setServerName(getString(R.string.support_contact_name))
+        contact.getAccount().getXmppConnection()
+            .getManager(eu.siacs.conversations.xmpp.manager.RosterManager::class.java)
+            .addRosterItem(contact, null)
+    }
+
+    private var supportContactRequested: String? = null
 
     override fun onOpenHelp() {
         HelpSupportSheetFragment().show(parentFragmentManager, HelpSupportSheetFragment.TAG)

@@ -1550,4 +1550,7 @@
     <string name="help_copy_done">Скопировано</string>
     <string name="help_contact_title">Написать разработчику</string>
     <string name="help_contact_summary">Открывает чат с адресом поддержки</string>
+    <string name="stranger_banner_text">Этого человека нет в ваших контактах.</string>
+    <string name="stranger_banner_add">Добавить в контакты</string>
+    <string name="support_contact_name">Поддержка Импульса</string>
 </resources>

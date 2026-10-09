@@ -264,6 +264,9 @@ interface ConversationScreenListener {
     /** "Help and support" in the chat's overflow menu. */
     fun onOpenHelp()
 
+    /** The banner shown for someone who is not in the user's contacts: add them. */
+    fun onAddContact()
+
     fun onSendTextMessage(body: String)
 
     fun onAttachImage()
@@ -714,6 +717,45 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         )
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // Someone who is not in the user's contacts has written: say so, and offer the two
+            // sensible answers. (The old chat screen had a "received message from stranger" bar
+            // with Block; this one showed nothing, so a stranger looked like any contact.)
+            val strangerRevision = state.revision.intValue
+            val isStranger =
+                remember(conversation, strangerRevision) {
+                    conversation != null &&
+                        try {
+                            conversation.isWithStranger() &&
+                                conversation.countMessages() != 0 &&
+                                !conversation.isBlocked()
+                        } catch (_: Exception) {
+                            false
+                        }
+                }
+            AnimatedVisibility(visible = isStranger) {
+                androidx.compose.material3.Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                        Text(
+                            text = stringResource(R.string.stranger_banner_text),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            androidx.compose.material3.TextButton(onClick = { listener.onBlockContact() }) {
+                                Text(stringResource(R.string.block))
+                            }
+                            androidx.compose.material3.TextButton(onClick = { listener.onAddContact() }) {
+                                Text(stringResource(R.string.stranger_banner_add))
+                            }
+                        }
+                    }
+                }
+            }
             // Hidden (not just covered) while the card is expanded -- it's the container-
             // transform's actual source, matching UpdatesScreen's channel row/picker pattern.
             AnimatedVisibility(
