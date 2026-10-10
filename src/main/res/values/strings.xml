@@ -1506,4 +1506,6 @@
     <string name="help_report_hint">Describe the problem</string>
     <string name="help_report_sent">Sent. Report number %1$s</string>
     <string name="help_report_no_account">Add an account first to send a report.</string>
+    <string name="bug_fixed_title">Fixed — update to get it</string>
+    <string name="bug_fixed_text">The fix is in a newer version. It installs overnight, or tap Install in the update sheet.</string>
 </resources>

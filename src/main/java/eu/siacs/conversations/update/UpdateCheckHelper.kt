@@ -53,6 +53,8 @@ object UpdateCheckHelper {
         // (UpdateCheckWorker, checkOnLaunchIfEligible), never right after the developer-options
         // manual version picker.
         prefs.clearIfNotNewerThan(eu.siacs.conversations.BuildConfig.VERSION_NAME)
+        // A fix that is now installed no longer needs to be tracked.
+        BugReportRegistry(context).dropInstalled(eu.siacs.conversations.BuildConfig.VERSION_NAME)
         if (!prefs.autoCheck) return
         // "Wait between updates": stay completely quiet (no network check, nothing marked pending,
         // no auto-download) until enough time has passed since the app was last updated.
@@ -66,9 +68,15 @@ object UpdateCheckHelper {
         val info = result.info
 
         // Release notes that name a bug-report ID this phone sent mean that report is fixed here.
-        val fixed = BugReportRegistry(context).matchFixed(info.releaseNotes)
+        // Scans every release newer than the installed one, not only the latest. The entry then
+        // stays (and the Updates card keeps saying "fixed in X") until that version is installed.
+        val fixed = BugReportRegistry(context).matchFixed(result.newerReleases)
         if (fixed.isNotEmpty()) {
-            UpdateNotifications.postBugFixed(context, fixed.map { it.id }, info.versionName)
+            UpdateNotifications.postBugFixed(
+                context,
+                fixed.map { it.id },
+                fixed.mapNotNull { it.fixedIn }.firstOrNull() ?: info.versionName,
+            )
         }
 
         prefs.pendingUpdateVersion = info.versionName

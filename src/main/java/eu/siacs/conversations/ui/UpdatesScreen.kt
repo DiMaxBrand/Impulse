@@ -336,6 +336,37 @@ fun UpdatesScreen(
                 // couple of weeks without a match the wording stops promising an automatic
                 // notice and points at support instead (the ID may never have been added to a
                 // release).
+                // Fixed already, waiting for the update to be installed (overnight or by the
+                // Install button): stays until then.
+                if (state.fixedBugReports.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    androidx.compose.material3.Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                            Text(
+                                text = stringResource(R.string.bug_fixed_title),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            state.fixedBugReports.forEach { (id, version) ->
+                                Text(
+                                    text = "$id  →  ${eu.siacs.conversations.update.UpdateChecker.stripBuildMeta(version)}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                )
+                            }
+                            Text(
+                                text = stringResource(R.string.bug_fixed_text),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                    }
+                }
                 if (state.pendingBugReportIds.isNotEmpty()) {
                     Spacer(Modifier.height(16.dp))
                     androidx.compose.material3.Surface(
@@ -1466,6 +1497,7 @@ data class UpdatesUiState(
     val nightlyInstall: Boolean = true,
     val canInstallApps: Boolean = true,
     val pendingBugReportIds: List<String> = emptyList(),
+    val fixedBugReports: List<Pair<String, String>> = emptyList(),
     val bugReportsStale: Boolean = false,
     val checkStatus: CheckStatus = CheckStatus.IDLE,
     val downloadPhase: DownloadPhase = DownloadPhase.IDLE,

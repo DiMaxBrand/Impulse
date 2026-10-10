@@ -29,6 +29,18 @@ class UpdateChecker(private val client: OkHttpClient) {
             ?: return CheckResult.UpToDate
         val (bestTriple, bestRelease) = best
 
+        // Notes of every release on this channel newer than what is installed, not just the
+        // newest: several can be published between two checks, and a bug-report ID may be named
+        // in any of them.
+        val newer = releases
+            .filter { releaseMatchesChannel(it.optString("tag_name"), channel) }
+            .mapNotNull { release ->
+                val tag = release.optString("tag_name")
+                val version = parseVersion(tag) ?: return@mapNotNull null
+                if (compareSemver(version, current) <= 0) return@mapNotNull null
+                NewerRelease(tag, release.optString("body"))
+            }
+
         val cmp = compareSemver(bestTriple.first, current)
         return when {
             cmp > 0 -> CheckResult.UpdateAvailable(
@@ -38,15 +50,22 @@ class UpdateChecker(private val client: OkHttpClient) {
                     downloadUrl = bestTriple.second,
                     releaseNotes = bestRelease.optString("body"),
                     releaseTitle = bestRelease.optString("name"),
-                )
+                ),
+                newer,
             )
             cmp < 0 -> CheckResult.ChannelBehind
             else -> CheckResult.UpToDate
         }
     }
 
+    /** A release newer than the installed version, as far as bug-report matching needs it. */
+    data class NewerRelease(val versionName: String, val notes: String)
+
     sealed class CheckResult {
-        data class UpdateAvailable(val info: UpdateInfo) : CheckResult()
+        data class UpdateAvailable(
+            val info: UpdateInfo,
+            val newerReleases: List<NewerRelease> = emptyList(),
+        ) : CheckResult()
         object UpToDate : CheckResult()
         // The best release on this channel is older than what is currently installed.
         // Shown when the user switches to a less-cutting-edge channel mid-cycle.

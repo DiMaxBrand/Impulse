@@ -132,6 +132,7 @@ class UpdatesActivity : ActionBarActivity() {
     }
 
     private fun initState() {
+        eu.siacs.conversations.update.BugReportRegistry(this).dropInstalled(BuildConfig.VERSION_NAME)
         val rawVersion = BuildConfig.VERSION_NAME
         val currentVersion = UpdateChecker.stripBuildMeta(rawVersion)
         val downloadedPath = prefs.downloadedApkPath
@@ -153,7 +154,8 @@ class UpdatesActivity : ActionBarActivity() {
             minUpdateIntervalHours = prefs.minUpdateIntervalHours,
             nightlyInstall = prefs.nightlyInstall,
             canInstallApps = packageManager.canRequestPackageInstalls(),
-            pendingBugReportIds = eu.siacs.conversations.update.BugReportRegistry(this).pending().map { it.id },
+            pendingBugReportIds = eu.siacs.conversations.update.BugReportRegistry(this).waiting().map { it.id },
+            fixedBugReports = eu.siacs.conversations.update.BugReportRegistry(this).fixed().map { it.id to (it.fixedIn ?: "") },
             bugReportsStale = eu.siacs.conversations.update.BugReportRegistry(this).hasStale(),
             downloadPhase = restoredPhase,
             pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
