@@ -36,6 +36,49 @@ object UpdateCheckHelper {
         }
     }
 
+    /**
+     * Marks the bug reports this phone sent as fixed when any release newer than the installed
+     * one names their ID, and posts the one-time notification for the newly matched. Shared by
+     * the automatic checks and the Updates screen's manual "Check now" -- the manual one used to
+     * skip this, so a fix could stay "waiting" however often you pressed it.
+     */
+    @JvmStatic
+    fun matchBugReports(context: Context, releaseNotes: List<UpdateChecker.NewerRelease>) {
+        val registry = BugReportRegistry(context)
+        val fixed = registry.matchFixed(releaseNotes)
+        if (fixed.isNotEmpty()) {
+            // A fix named in a version that is already installed is just as true -- say so
+            // (and the entry is dropped right below), instead of the "update to get it" wording.
+            val installed =
+                fixed.filter {
+                    val v = it.fixedIn?.let { name -> UpdateChecker.parseVersion(name) }
+                    val current =
+                        UpdateChecker.parseVersion(
+                            UpdateChecker.stripBuildMeta(eu.siacs.conversations.BuildConfig.VERSION_NAME)
+                        )
+                    v != null && current != null && UpdateChecker.compareSemver(v, current) <= 0
+                }
+            val pending = fixed - installed.toSet()
+            if (pending.isNotEmpty()) {
+                UpdateNotifications.postBugFixed(
+                    context,
+                    pending.map { it.id },
+                    pending.mapNotNull { it.fixedIn }.first(),
+                    alreadyInstalled = false,
+                )
+            }
+            if (installed.isNotEmpty()) {
+                UpdateNotifications.postBugFixed(
+                    context,
+                    installed.map { it.id },
+                    installed.mapNotNull { it.fixedIn }.first(),
+                    alreadyInstalled = true,
+                )
+            }
+        }
+        registry.dropInstalled(eu.siacs.conversations.BuildConfig.VERSION_NAME)
+    }
+
     /** Checks for an update and updates prefs accordingly (auto-downloads on wifi, or marks it
      * pending so the sheet shows a manual Download button otherwise). Pure logic, no UI/Activity
      * coupling — shared between [UpdateCheckWorker] and [checkOnLaunchIfEligible]. The sheet
@@ -59,25 +102,19 @@ object UpdateCheckHelper {
         // "Wait between updates": stay completely quiet (no network check, nothing marked pending,
         // no auto-download) until enough time has passed since the app was last updated.
         if (prefs.isWithinQuietWindow(context)) return
+        val checker = UpdateChecker(OkHttpClient())
         val result = try {
-            UpdateChecker(OkHttpClient()).checkForUpdate(prefs.selectedChannel)
+            checker.checkForUpdate(prefs.selectedChannel)
         } catch (_: Exception) {
             null
         } ?: return
+        // Release notes that name a bug-report ID this phone sent mean that report is fixed.
+        // Reads every release on the channel, after ANY outcome of the check (an update
+        // available, already up to date ...): the fix may be in a version already installed.
+        // A fix not installed yet stays marked "fixed in X" until it is.
+        matchBugReports(context, checker.lastReleaseNotes)
         if (result !is UpdateChecker.CheckResult.UpdateAvailable) return
         val info = result.info
-
-        // Release notes that name a bug-report ID this phone sent mean that report is fixed here.
-        // Scans every release newer than the installed one, not only the latest. The entry then
-        // stays (and the Updates card keeps saying "fixed in X") until that version is installed.
-        val fixed = BugReportRegistry(context).matchFixed(result.newerReleases)
-        if (fixed.isNotEmpty()) {
-            UpdateNotifications.postBugFixed(
-                context,
-                fixed.map { it.id },
-                fixed.mapNotNull { it.fixedIn }.firstOrNull() ?: info.versionName,
-            )
-        }
 
         prefs.pendingUpdateVersion = info.versionName
         prefs.pendingUpdateUrl = info.downloadUrl

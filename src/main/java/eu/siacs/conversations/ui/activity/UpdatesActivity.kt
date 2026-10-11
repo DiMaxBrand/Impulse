@@ -168,8 +168,23 @@ class UpdatesActivity : ActionBarActivity() {
         if (uiState.checkStatus == CheckStatus.CHECKING) return
         uiState = uiState.copy(checkStatus = CheckStatus.CHECKING)
         lifecycleScope.launch {
+            val checker = UpdateChecker(OkHttpClient())
             val result = withContext(Dispatchers.IO) {
-                UpdateChecker(OkHttpClient()).checkForUpdate(uiState.selectedChannel)
+                checker.checkForUpdate(uiState.selectedChannel).also {
+                    // Bug-report matching after ANY outcome, same as the automatic checks.
+                    eu.siacs.conversations.update.UpdateCheckHelper.matchBugReports(
+                        this@UpdatesActivity,
+                        checker.lastReleaseNotes,
+                    )
+                }
+            }
+            run {
+                val bugRegistry = eu.siacs.conversations.update.BugReportRegistry(this@UpdatesActivity)
+                uiState = uiState.copy(
+                    pendingBugReportIds = bugRegistry.waiting().map { it.id },
+                    fixedBugReports = bugRegistry.fixed().map { it.id to (it.fixedIn ?: "") },
+                    bugReportsStale = bugRegistry.hasStale(),
+                )
             }
             when (result) {
                 is UpdateChecker.CheckResult.UpToDate ->

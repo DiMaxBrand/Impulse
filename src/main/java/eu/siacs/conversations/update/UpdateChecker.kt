@@ -16,6 +16,16 @@ class UpdateChecker(private val client: OkHttpClient) {
         // ran; CheckFailed keeps "we don't know" distinct from "confirmed you're current."
         val releases = fetchReleases() ?: return CheckResult.CheckFailed
         val current = parseVersion(stripBuildMeta(BuildConfig.VERSION_NAME)) ?: return CheckResult.CheckFailed
+        // The notes of every release on this channel, whatever it compares to the installed
+        // version -- bug-report matching reads these after ANY outcome (an update available, up
+        // to date, ...). A report's fix can be named in a release the phone has already installed.
+        lastReleaseNotes = releases
+            .filter { releaseMatchesChannel(it.optString("tag_name"), channel) }
+            .mapNotNull { release ->
+                val tag = release.optString("tag_name")
+                if (parseVersion(tag) == null) return@mapNotNull null
+                NewerRelease(tag, release.optString("body"))
+            }
 
         val best = releases
             .filter { releaseMatchesChannel(it.optString("tag_name"), channel) }
@@ -58,8 +68,13 @@ class UpdateChecker(private val client: OkHttpClient) {
         }
     }
 
-    /** A release newer than the installed version, as far as bug-report matching needs it. */
+    /** A release's version and notes, as far as bug-report matching needs it. */
     data class NewerRelease(val versionName: String, val notes: String)
+
+    /** Notes of all channel releases seen by the most recent [checkForUpdate] call. */
+    @Volatile
+    var lastReleaseNotes: List<NewerRelease> = emptyList()
+        private set
 
     sealed class CheckResult {
         data class UpdateAvailable(

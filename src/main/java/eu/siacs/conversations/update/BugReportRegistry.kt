@@ -84,13 +84,21 @@ class BugReportRegistry(context: Context) {
             all.map { entry ->
                 if (entry.fixedIn != null) return@map entry
                 val release =
-                    oldestFirst.firstOrNull { it.notes.contains(entry.id, ignoreCase = true) }
+                    oldestFirst.firstOrNull { containsId(it.notes, entry.id) }
                         ?: return@map entry
                 entry.copy(fixedIn = release.versionName).also { newlyFixed += it }
             }
         if (newlyFixed.isNotEmpty()) write(updated)
         return newlyFixed
     }
+
+    // Exact text anywhere (inside a sentence, in brackets, bold ...), ignoring case, and
+    // tolerant of the "-" having been turned into a typographic dash or a non-breaking hyphen
+    // by an editor or a markdown renderer.
+    private fun containsId(notes: String, id: String): Boolean =
+        notes
+            .replace(Regex("[\\u2010-\\u2015\\u2212\\u00AD]"), "-")
+            .contains(id, ignoreCase = true)
 
     /** Forgets the reports whose fix is now installed (running version >= the fixing one). */
     @Synchronized

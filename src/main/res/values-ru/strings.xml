@@ -1572,4 +1572,5 @@
     <string name="help_report_no_account">Сначала добавьте учётную запись, чтобы отправить отчёт.</string>
     <string name="bug_fixed_title">Исправлено — обновитесь, чтобы получить</string>
     <string name="bug_fixed_text">Исправление есть в более новой версии. Оно установится ночью, или нажмите «Установить» в окне обновления.</string>
+    <string name="bug_fixed_installed_notification_text">%1$s исправлено в %2$s — эта версия у вас уже установлена.</string>
 </resources>

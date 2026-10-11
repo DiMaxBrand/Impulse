@@ -61,7 +61,12 @@ object UpdateNotifications {
 
     /** A report this phone sent is named in the notes of the release just found: tell the
      * reporter, with the same quiet channel as the other update notices. */
-    fun postBugFixed(context: Context, ids: List<String>, version: String) {
+    fun postBugFixed(
+        context: Context,
+        ids: List<String>,
+        version: String,
+        alreadyInstalled: Boolean = false,
+    ) {
         val manager = context.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
@@ -86,7 +91,8 @@ object UpdateNotifications {
                 .setContentTitle(context.getString(R.string.bug_fixed_notification_title))
                 .setContentText(
                     context.getString(
-                        R.string.bug_fixed_notification_text,
+                        if (alreadyInstalled) R.string.bug_fixed_installed_notification_text
+                        else R.string.bug_fixed_notification_text,
                         ids.joinToString(", "),
                         version,
                     )
