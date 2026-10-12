@@ -470,3 +470,17 @@ chat background (plain/tinted/photo + dimming); animation level
 (Full/Automatic/Reduced/Off — `EXPERIMENTAL_ANIMATIONS` flag removed, its effects
 are now part of Full). Not done / later: icon style (filled vs outlined), chat-list
 density, Google Sans Flex (see Typography section above).
+
+## Chat screen: still missing vs. the old XML fragment, and the attachment overhaul
+
+Built (beta.149): heart on the scroll button for new reactions; auto-resend interval
+in Settings → Connection; auto-resend now covers attachments and all encryption modes.
+
+Not yet in the Compose chat (old `ConversationFragment` had them):
+- [ ] Attach menu only has gallery / camera / file (+ voice via the mic). Missing: **record video**
+  (`ATTACHMENT_CHOICE_RECORD_VIDEO`) and **send location** (`ATTACHMENT_CHOICE_LOCATION`).
+- [ ] PGP send path (`onChooseEncryption` exists, PGP key prompts not checked).
+- [ ] Old menu items worth checking one by one: report-and-block, ongoing-call entry, invite.
+- [ ] **Attachment overhaul** (user asked to think about it, after beta.149): a Compose attach sheet
+  with all six choices as large tiles (container-transform from the paperclip), recent photos strip,
+  and the shared media picker from `allow-sending-videos`.
