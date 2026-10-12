@@ -669,7 +669,7 @@ internal fun CallDock(
 ) {
     val scope = rememberCoroutineScope()
     val switchNow by rememberUpdatedState(switchRequest)
-    val haptic = LocalHapticFeedback.current
+    val haptic = rememberAppHaptics()
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val activeNow by rememberUpdatedState(active)

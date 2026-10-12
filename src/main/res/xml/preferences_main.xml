@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <Preference
         android:icon="@drawable/ic_touch_app_24dp"
-        app:fragment="eu.siacs.conversations.ui.fragment.settings.InterfaceSettingsFragment"
+        android:key="appearance"
         app:summary="@string/pref_summary_appearance"
         app:title="@string/pref_title_interface" />
     <Preference

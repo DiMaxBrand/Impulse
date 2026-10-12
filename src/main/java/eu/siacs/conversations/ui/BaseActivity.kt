@@ -29,6 +29,7 @@ abstract class BaseActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         SettingsUtils.applyScreenshotSetting(this)
+        AppearanceState.refresh()
     }
 
     fun setDynamicColors(isDynamicColors: Boolean) {

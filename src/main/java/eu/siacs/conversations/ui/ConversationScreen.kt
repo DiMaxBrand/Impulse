@@ -569,7 +569,8 @@ private fun buildChatItems(
     while (i < messages.size) {
         val message = messages[i]
         val previous = messages.getOrNull(i - 1)
-        if (previous == null || !sameDay(previous.timeSent, message.timeSent)) {
+        if (AppearanceState.showDatePills &&
+            (previous == null || !sameDay(previous.timeSent, message.timeSent))) {
             chronological.add(ChatItem.DatePill(message.timeSent))
         }
         if (!pillInserted && message.getUuid() == newMessagesBoundaryUuid) {
@@ -718,6 +719,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             label = "pinned_overlay_scrim",
         )
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        ChatBackgroundLayer(Modifier.matchParentSize())
         Column(modifier = Modifier.fillMaxSize()) {
             // Someone who is not in the user's contacts has written: say so, and offer the two
             // sensible answers. (The old chat screen had a "received message from stranger" bar
@@ -1830,8 +1832,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // programmatic scroll has no fling of its own. Read (and reset) when the bottom is reached.
     val flingSpeed = remember { floatArrayOf(0f) }
     val experimentalAnimations =
-        remember { eu.siacs.conversations.utils.FeatureFlagPreferences(flagContext)
-            .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS) }
+        AppearanceState.fullEffects
     // Pull-up-at-the-bottom (the cookie): while the list is already at the bottom, a finger drag
     // that has nowhere left to scroll accumulates into rawPull instead of being wasted. A rubber-
     // band curve turns that into state.barPullPx (px, saturating), and letting go hands it to
@@ -2867,8 +2868,8 @@ private fun MessageRow(
     }
 
     // Expressive "pop": the newest message springs in.
-    val pop = remember(item.key) { Animatable(if (isNewest) 0.8f else 1f) }
-    if (isNewest) {
+    val pop = remember(item.key) { Animatable(if (isNewest && !AppearanceState.noMotion) 0.8f else 1f) }
+    if (isNewest && !AppearanceState.noMotion) {
         LaunchedEffect(item.key) {
             pop.animateTo(
                 1f,
@@ -4411,8 +4412,8 @@ private fun MessageContent(
             val scale = if (eu.siacs.conversations.utils.Emoticons.isEmoji(emojiText)) 3.0f else 2.0f
             Text(
                 text = emojiText,
-                fontSize = (16f * scale).sp,
-                lineHeight = (16f * scale * 1.2f).sp,
+                fontSize = (16f * scale * AppearanceState.textScale).sp,
+                lineHeight = (16f * scale * AppearanceState.textScale * 1.2f).sp,
             )
         }
         else -> {
@@ -6724,7 +6725,7 @@ private fun LinkifiedMessageText(
     androidx.compose.foundation.text.BasicText(
         text = annotated,
         style = androidx.compose.ui.text.TextStyle(
-            fontSize = 16.sp,
+            fontSize = (16f * AppearanceState.textScale).sp,
             color = contentColor,
         ),
         modifier = Modifier.pointerInput(onLongPress) {
@@ -6835,7 +6836,7 @@ private fun spannableToAnnotated(
                 is android.text.style.ForegroundColorSpan ->
                     addStyle(androidx.compose.ui.text.SpanStyle(color = androidx.compose.ui.graphics.Color(span.foregroundColor)), start, end)
                 is android.text.style.RelativeSizeSpan ->
-                    addStyle(androidx.compose.ui.text.SpanStyle(fontSize = (16f * span.sizeChange).sp), start, end)
+                    addStyle(androidx.compose.ui.text.SpanStyle(fontSize = (16f * AppearanceState.textScale * span.sizeChange).sp), start, end)
                 is android.text.style.URLSpan -> {
                     val url = span.url
                     val isXmpp = url.startsWith("xmpp:")
@@ -7067,8 +7068,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     // the shared rubber-band value (state.rubber) -- the message list does the real stretching,
     // see MessageList.
     val experimentalArch =
-        remember { eu.siacs.conversations.utils.FeatureFlagPreferences(context)
-            .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS) }
+        AppearanceState.fullEffects
     val archColor = MaterialTheme.colorScheme.surfaceContainer
     val archModifier =
         if (!experimentalArch) Modifier
@@ -7527,14 +7527,10 @@ private fun Modifier.drawBarArch(
     }
 }
 
-/** EXPERIMENTAL_ANIMATIONS, read once per composition site. */
+/** True at animation level Full (or Automatic on a capable device); see [AppearanceState]. */
 @Composable
 private fun rememberExperimentalAnimations(): Boolean {
-    val context = LocalContext.current
-    return remember {
-        eu.siacs.conversations.utils.FeatureFlagPreferences(context)
-            .isEnabled(eu.siacs.conversations.FeatureFlag.EXPERIMENTAL_ANIMATIONS)
-    }
+    return AppearanceState.fullEffects
 }
 
 /** Animates ANY change to this node's size -- a footer label appearing, a download placeholder

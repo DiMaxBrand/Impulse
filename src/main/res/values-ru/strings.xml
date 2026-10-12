@@ -1132,7 +1132,7 @@
     <string name="pref_category_receiving">Получение</string>
     <string name="pref_automatic_download">Автоматическое скачивание</string>
     <string name="appearance">Внешний вид</string>
-    <string name="pref_title_interface">Интерфейс</string>
+    <string name="pref_title_interface">Внешний вид</string>
     <string name="pref_light_dark_mode">Светлая/тёмная тема</string>
     <string name="pref_allow_screenshots_summary">Показывать содержимое экрана приложения в переключателе и разрешить делать снимки экрана</string>
     <string name="pref_category_e2ee">Сквозное шифрование</string>
@@ -1345,8 +1345,6 @@
     <string name="hide">Скрыть</string>
     <string name="pinned_message">Закреплённое сообщение</string>
     <string name="pinned_messages">Закреплённые сообщения</string>
-    <string name="feature_flag_experimental_animations_title">Экспериментальные анимации</string>
-    <string name="feature_flag_experimental_animations_description">Анимации, которые пока не предназначены для публичного релиза.</string>
     <string name="status_legend_title">Значки статуса</string>
     <string name="status_legend_section_all">Все сообщения</string>
     <string name="status_legend_section_files">Фото, видео и другие файлы</string>
@@ -1585,4 +1583,34 @@
     <string name="resent_card_title">Сообщение отправлено повторно</string>
     <string name="resent_card_text">Одно из ваших сообщений сначала не ушло, скорее всего из-за нестабильной связи. Оно было отправлено повторно автоматически и осталось там, где вы его написали, выше более новых сообщений.</string>
     <string name="resent_card_got_it">Понятно</string>
+    <!-- Appearance screen -->
+    <string name="appearance_screen_title">Внешний вид</string>
+    <string name="appearance_section_colors">Цвета</string>
+    <string name="appearance_section_chat">Чат</string>
+    <string name="appearance_section_motion">Движение и отклик</string>
+    <string name="appearance_accent">Акцентный цвет</string>
+    <string name="appearance_accent_summary">Используется, пока динамические цвета выключены</string>
+    <string name="appearance_text_size">Размер текста сообщений</string>
+    <string name="appearance_preview_incoming">Как вам такой размер?</string>
+    <string name="appearance_preview_outgoing">Мне нравится</string>
+    <string name="appearance_date_pills">Метки с датой</string>
+    <string name="appearance_date_pills_summary">Показывать день между сообщениями</string>
+    <string name="appearance_background">Фон чата</string>
+    <string name="appearance_background_plain">Обычный</string>
+    <string name="appearance_background_tonal">Тонированный</string>
+    <string name="appearance_background_image">Фото</string>
+    <string name="appearance_background_pick">Выбрать фото</string>
+    <string name="appearance_background_dim">Затемнение</string>
+    <string name="appearance_background_failed">Не удалось использовать это изображение</string>
+    <string name="appearance_animations">Анимации</string>
+    <string name="appearance_anim_full">Полные</string>
+    <string name="appearance_anim_full_desc">Всё движется, включая пружинящие эффекты</string>
+    <string name="appearance_anim_auto">Автоматически</string>
+    <string name="appearance_anim_auto_desc">Полные, если не включена экономия заряда и системные анимации не отключены</string>
+    <string name="appearance_anim_reduced">Сниженные</string>
+    <string name="appearance_anim_reduced_desc">Без пружинящих эффектов, только самое необходимое</string>
+    <string name="appearance_anim_off">Выключены</string>
+    <string name="appearance_anim_off_desc">Как можно меньше движения</string>
+    <string name="appearance_haptics">Тактильный отклик</string>
+    <string name="appearance_haptics_summary">Вибрация на ползунках и жестах</string>
 </resources>

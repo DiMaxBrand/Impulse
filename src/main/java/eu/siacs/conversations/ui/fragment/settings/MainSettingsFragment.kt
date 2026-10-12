@@ -19,6 +19,15 @@ class MainSettingsFragment : PreferenceFragmentCompat() {
                 "The preference resource file is missing some preferences"
             )
         }
+        findPreference<androidx.preference.Preference>("appearance")?.setOnPreferenceClickListener {
+            startActivity(
+                android.content.Intent(
+                    requireContext(),
+                    eu.siacs.conversations.ui.activity.AppearanceActivity::class.java,
+                )
+            )
+            true
+        }
         val appName = getString(R.string.app_name)
         about.setTitle(getString(R.string.title_activity_about_x, appName))
         about.setSummary(

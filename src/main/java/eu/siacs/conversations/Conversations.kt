@@ -39,6 +39,7 @@ class Conversations : Application() {
         EmojiInitializationService.execute(applicationContext)
         ExceptionHelper.init(applicationContext)
         SettingsUtils.applyThemeSettings(this)
+        eu.siacs.conversations.ui.AppearanceState.init(this)
         // Once per process start, before any UI (or the developer-options manual version
         // picker, which deliberately stages non-newer versions) can run — see
         // UpdatePreferences.clearIfNotNewerThan() for why this exists.

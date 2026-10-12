@@ -32,6 +32,13 @@ either way:
 
 Transition the app's font to **Google Sans Flex**.
 
+- [ ] **Link to the Appearance screen** — when the font lands, add it to the
+  Compose **Appearance** screen (`AppearanceScreen.kt`) as a "Font" choice
+  (Google Sans Flex / system default) next to the text-size slider, and make the
+  slider drive the variable font's size/width axes. It was deliberately left out
+  of the Appearance overhaul (beta.148) so that screen doesn't ship a half-done
+  font option; the font work above is the thing that unblocks it.
+
 - [ ] **Developer Options font demo** — same spirit as the shape catalog: a screen to preview Google Sans Flex, switch between it and other options live, with a few presets and something interactive to play with the variable-font axes.
 - [ ] **New Welcome Screen** — full Expressive rebuild using the new font, morphing shapes animating in the background.
 
@@ -451,3 +458,15 @@ unless the user has explicitly opted out via "remember my decision."
   row buttons in the end — superseded by the same
   `IconButtonDefaults.toggleableShapes()` simplification made to
   `QuickReactionPicker`, for the same consistency reason.
+
+## Appearance overhaul — built (beta.148)
+
+Replaced the legacy Interface preference screen with a Compose **Appearance**
+screen (`AppearanceActivity`/`AppearanceScreen.kt`, state in `AppearanceState.kt`).
+Done: dynamic colors default ON (one-time migration) and honoured by Compose;
+seed-based accent fallback (default green) shared by Compose and View screens;
+theme preview chips; message text size slider; date labels switch; haptics switch;
+chat background (plain/tinted/photo + dimming); animation level
+(Full/Automatic/Reduced/Off — `EXPERIMENTAL_ANIMATIONS` flag removed, its effects
+are now part of Full). Not done / later: icon style (filled vs outlined), chat-list
+density, Google Sans Flex (see Typography section above).

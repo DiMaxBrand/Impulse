@@ -1057,8 +1057,6 @@
     <string name="hide">Hide</string>
     <string name="pinned_message">Pinned message</string>
     <string name="pinned_messages">Pinned messages</string>
-    <string name="feature_flag_experimental_animations_title">Experimental animations</string>
-    <string name="feature_flag_experimental_animations_description">Animations that are not yet intended for a public release.</string>
     <string name="status_legend_title">Status indicators</string>
     <string name="status_legend_section_all">All messages</string>
     <string name="status_legend_section_files">Photos, videos, and other files</string>
@@ -1144,7 +1142,7 @@
     <string name="delete_and_close">Delete &amp; Archive chat</string>
     <string name="start_chat">Start chat</string>
     <string name="no_certificate_selected">No client certificate selected!</string>
-    <string name="pref_title_interface">Interface</string>
+    <string name="pref_title_interface">Appearance</string>
     <string name="pref_summary_appearance">Theme, Colors, Screenshots, Input</string>
     <string name="pref_title_security">Security</string>
     <string name="pref_summary_security">E2E Encryption, Blind Trust Before Verification, MITM Detection</string>
@@ -1521,4 +1519,34 @@
     <string name="resent_card_title">Message sent again</string>
     <string name="resent_card_text">One of your messages did not go through at first, probably because the connection was unstable. It was sent again automatically, and it stays where you wrote it, above newer messages.</string>
     <string name="resent_card_got_it">Got it</string>
+    <!-- Appearance screen -->
+    <string name="appearance_screen_title">Appearance</string>
+    <string name="appearance_section_colors">Colors</string>
+    <string name="appearance_section_chat">Chat</string>
+    <string name="appearance_section_motion">Motion and feedback</string>
+    <string name="appearance_accent">Accent color</string>
+    <string name="appearance_accent_summary">Used while dynamic colors are off</string>
+    <string name="appearance_text_size">Message text size</string>
+    <string name="appearance_preview_incoming">How does this size look?</string>
+    <string name="appearance_preview_outgoing">Looks good to me</string>
+    <string name="appearance_date_pills">Date labels</string>
+    <string name="appearance_date_pills_summary">Show the day between messages</string>
+    <string name="appearance_background">Chat background</string>
+    <string name="appearance_background_plain">Plain</string>
+    <string name="appearance_background_tonal">Tinted</string>
+    <string name="appearance_background_image">Photo</string>
+    <string name="appearance_background_pick">Choose photo</string>
+    <string name="appearance_background_dim">Dimming</string>
+    <string name="appearance_background_failed">Couldn\'t use this picture</string>
+    <string name="appearance_animations">Animations</string>
+    <string name="appearance_anim_full">Full</string>
+    <string name="appearance_anim_full_desc">Everything moves, including the springy extras</string>
+    <string name="appearance_anim_auto">Automatic</string>
+    <string name="appearance_anim_auto_desc">Full, unless battery saver is on or system animations are off</string>
+    <string name="appearance_anim_reduced">Reduced</string>
+    <string name="appearance_anim_reduced_desc">No springy extras, only the essential motion</string>
+    <string name="appearance_anim_off">Off</string>
+    <string name="appearance_anim_off_desc">As little motion as possible</string>
+    <string name="appearance_haptics">Haptic feedback</string>
+    <string name="appearance_haptics_summary">Vibration ticks on sliders and gestures</string>
 </resources>
