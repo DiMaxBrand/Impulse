@@ -155,6 +155,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -1235,6 +1236,7 @@ public class XmppConnectionService extends Service {
             mNotificationService.initializeChannels();
         }
         mChannelDiscoveryService.initializeMuclumbusService();
+        scheduleAutoResend();
         mForceDuringOnCreate.set(Compatibility.twentySix());
         toggleForegroundService();
         this.destroyed = false;
@@ -1437,6 +1439,7 @@ public class XmppConnectionService extends Service {
             // ignored
         }
         ProcessLifecycleOwner.get().getLifecycle().removeObserver(mProcessLifecycleObserver);
+        autoResendExecutor.shutdownNow();
         mAppExitAwayHandler.removeCallbacks(mAppExitAwayRunnable);
         mExtendedAwayHandler.removeCallbacks(mExtendedAwayRunnable);
         destroyed = false;
@@ -1959,6 +1962,103 @@ public class XmppConnectionService extends Service {
                 }
             }
             sendMessagePacket(account, packet);
+        }
+    }
+
+    // ---- Automatic resend of failed text messages -----------------------------------------------
+    // A message can sit in STATUS_SEND_FAILED while the connection itself is fine (a server
+    // hiccup, a stream drop that failed what was in flight). Every 5 minutes, for each account
+    // that is online, such messages are sent again by themselves -- keeping their original
+    // timestamp, so they stay in their place in the chat -- at most AUTO_RESEND_MAX_ATTEMPTS
+    // times each. Only plain, unencrypted text: attachments (a deliberate cancel must never be
+    // undone) and OMEMO (a trust problem a retry will not fix) are left to the user.
+    private static final long AUTO_RESEND_INTERVAL_MINUTES = 5;
+    private static final int AUTO_RESEND_MAX_ATTEMPTS = 6;
+    private static final long AUTO_RESEND_MAX_AGE_MS = TimeUnit.HOURS.toMillis(24);
+    private static final String[] AUTO_RESEND_PERMANENT_ERRORS = {
+        "forbidden",
+        "item-not-found",
+        "policy-violation",
+        "not-acceptable",
+        "not-authorized",
+        "bad-request",
+        "gone",
+        "remote-server-not-found",
+        "registration-required",
+        "subscription-required",
+    };
+    private final Map<String, Integer> autoResendAttempts = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService autoResendExecutor =
+            Executors.newSingleThreadScheduledExecutor();
+
+    private void scheduleAutoResend() {
+        autoResendExecutor.scheduleWithFixedDelay(
+                () -> {
+                    try {
+                        autoResendTick();
+                    } catch (final RuntimeException e) {
+                        Log.w(Config.LOGTAG, "automatic resend tick failed", e);
+                    }
+                },
+                AUTO_RESEND_INTERVAL_MINUTES,
+                AUTO_RESEND_INTERVAL_MINUTES,
+                TimeUnit.MINUTES);
+    }
+
+    private static boolean isTransientSendError(final String error) {
+        if (error == null || error.isBlank()) {
+            return true;
+        }
+        if (Message.ERROR_MESSAGE_CANCELLED.equals(error)) {
+            return false;
+        }
+        final String lower = error.toLowerCase(Locale.ROOT);
+        for (final String permanent : AUTO_RESEND_PERMANENT_ERRORS) {
+            if (lower.contains(permanent)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void autoResendTick() {
+        final long now = System.currentTimeMillis();
+        final List<Conversation> snapshot;
+        synchronized (this.conversations) {
+            snapshot = new ArrayList<>(this.conversations);
+        }
+        for (final Conversation conversation : snapshot) {
+            final Account account = conversation.getAccount();
+            if (account == null || account.getStatus() != Account.State.ONLINE) {
+                continue;
+            }
+            conversation.findFailedMessages(
+                    message -> {
+                        if (message.getType() != Message.TYPE_TEXT
+                                || message.getEncryption() != Message.ENCRYPTION_NONE
+                                || message.getStatus() != Message.STATUS_SEND_FAILED
+                                || !isTransientSendError(message.getErrorMessage())
+                                || now - message.getTimeSent() > AUTO_RESEND_MAX_AGE_MS) {
+                            return;
+                        }
+                        final String uuid = message.getUuid();
+                        final int attempts = autoResendAttempts.getOrDefault(uuid, 0);
+                        if (attempts >= AUTO_RESEND_MAX_ATTEMPTS) {
+                            return;
+                        }
+                        autoResendAttempts.put(uuid, attempts + 1);
+                        Log.d(
+                                Config.LOGTAG,
+                                account.getJid().asBareJid()
+                                        + ": automatically resending failed message (attempt "
+                                        + (attempts + 1)
+                                        + ")");
+                        message.autoResent = true;
+                        message.autoResentAcknowledged = false;
+                        // Same timestamp, same place in the chat: deliberately no setTime/sort().
+                        markMessage(message, Message.STATUS_WAITING);
+                        resendMessage(message, false);
+                    });
         }
     }
 

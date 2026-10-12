@@ -485,6 +485,16 @@ public class Message extends AbstractEntity
         this.fileParams = null;
     }
 
+    /**
+     * Set when the app re-sent this message by itself after it had failed (see
+     * XmppConnectionService.autoResendTick()). Memory only -- it exists to let the chat screen tell
+     * the user, once, that a message now sits at its original position above newer ones.
+     */
+    public volatile boolean autoResent = false;
+
+    /** The user has seen the "this was re-sent automatically" notice for this message. */
+    public volatile boolean autoResentAcknowledged = false;
+
     public String getErrorMessage() {
         return errorMessage;
     }

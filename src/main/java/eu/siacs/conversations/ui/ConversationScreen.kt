@@ -200,6 +200,8 @@ class ConversationScreenState {
 
     internal val pinnedMessages = mutableStateOf<List<Message>>(emptyList())
     internal val pinnedBannerVisible = mutableStateOf(false)
+    // The "a message was sent again automatically" card (expanded from the scroll button).
+    internal val resentCardVisible = mutableStateOf(false)
     internal val showPinnedMessagesOverlay = mutableStateOf(false)
     // Bumped (event counter) by MessageList when the list reaches the bottom after being scrolled
     // away; InputBar plays its springy arch on every change. Only ever written behind the
@@ -839,6 +841,53 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     resizeMode = androidx.compose.animation.SharedTransitionScope.ResizeMode.RemeasureToBounds,
                 ),
             )
+        }
+        // "A message was sent again automatically": expands out of the scroll button.
+        val resentVisible = state.resentCardVisible.value
+        val resentScrim by animateFloatAsState(
+            targetValue = if (resentVisible) 0.32f else 0f,
+            animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
+            label = "resent_scrim",
+        )
+        BackHandler(enabled = resentVisible) { state.resentCardVisible.value = false }
+        if (resentScrim > 0f) {
+            Box(
+                modifier = Modifier.fillMaxSize()
+                    .background(Color.Black.copy(alpha = resentScrim))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    ) { state.resentCardVisible.value = false },
+            )
+        }
+        AnimatedVisibility(
+            visible = resentVisible,
+            enter = EnterTransition.None,
+            exit = ExitTransition.None,
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                ResentMessageCard(
+                    onGotIt = {
+                        // Acknowledge, close, then take the user to the message and highlight it.
+                        val resent = state.messages.value.lastOrNull {
+                            it.autoResent && !it.autoResentAcknowledged
+                        }
+                        state.messages.value.forEach { if (it.autoResent) it.autoResentAcknowledged = true }
+                        state.resentCardVisible.value = false
+                        resent?.getUuid()?.let { state.requestScrollToUuid.value = it }
+                    },
+                    modifier = Modifier.sharedBounds(
+                        rememberSharedContentState("resent_card"),
+                        animatedVisibilityScope = this@AnimatedVisibility,
+                        enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                        boundsTransform = androidx.compose.animation.BoundsTransform { _, _ ->
+                            spring(stiffness = 380f, dampingRatio = 0.8f)
+                        },
+                        resizeMode = androidx.compose.animation.SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    ),
+                )
+            }
         }
         }
       }
@@ -1649,9 +1698,9 @@ private suspend fun <T> com.google.common.util.concurrent.ListenableFuture<T>.aw
         cont.invokeOnCancellation { this@awaitOrNull.cancel(false) }
     }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
-private fun MessageList(
+private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
@@ -2302,15 +2351,78 @@ private fun MessageList(
 
         val showScrollToBottom by
             remember { androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex > 2 } }
+        // A message of mine that failed and was sent again automatically keeps its original
+        // place in the chat -- above newer messages, easy to miss. While it is off screen the
+        // button turns into an "!" that explains it (and takes you there) instead of just
+        // scrolling down.
+        val resentUuid: String? =
+            remember(revision) {
+                state.messages.value
+                    .lastOrNull {
+                        it.autoResent &&
+                            !it.autoResentAcknowledged &&
+                            (it.status == Message.STATUS_SEND ||
+                                it.status == Message.STATUS_SEND_RECEIVED ||
+                                it.status == Message.STATUS_SEND_DISPLAYED)
+                    }
+                    ?.getUuid()
+            }
+        val resentOffScreen by
+            remember(resentUuid) {
+                androidx.compose.runtime.derivedStateOf {
+                    if (resentUuid == null) {
+                        false
+                    } else {
+                        val idx =
+                            items.indexOfFirst {
+                                when (it) {
+                                    is ChatItem.Msg -> it.message.getUuid() == resentUuid
+                                    is ChatItem.MediaGroup ->
+                                        it.messages.any { m -> m.getUuid() == resentUuid }
+                                    else -> false
+                                }
+                            }
+                        val visible =
+                            listState.layoutInfo.visibleItemsInfo.map {
+                                it.index - latestLeadingCount.value
+                            }
+                        idx >= 0 && (visible.isEmpty() || idx !in visible.min()..visible.max())
+                    }
+                }
+            }
+        val resentMode = resentUuid != null && resentOffScreen
         AnimatedVisibility(
-            visible = showScrollToBottom,
+            visible = (showScrollToBottom || resentMode) && !state.resentCardVisible.value,
             enter = scaleIn(),
             exit = scaleOut(),
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         ) {
-            Box {
+            Box(
+                modifier =
+                    if (resentMode) {
+                        // Source of the container transform into the explanation card.
+                        Modifier.sharedBounds(
+                            rememberSharedContentState("resent_card"),
+                            animatedVisibilityScope = this@AnimatedVisibility,
+                            enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                            exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                            boundsTransform = androidx.compose.animation.BoundsTransform { _, _ ->
+                                spring(stiffness = 380f, dampingRatio = 0.8f)
+                            },
+                            resizeMode =
+                                androidx.compose.animation.SharedTransitionScope.ResizeMode
+                                    .RemeasureToBounds,
+                        )
+                    } else {
+                        Modifier
+                    }
+            ) {
                 SmallFloatingActionButton(
                     onClick = {
+                        if (resentMode) {
+                            state.resentCardVisible.value = true
+                            return@SmallFloatingActionButton
+                        }
                         // Cleared so the fling detector doesn't also fire on arrival with a stale
                         // speed; the band is triggered explicitly once the scroll has landed.
                         flingSpeed[0] = 0f
@@ -2322,15 +2434,24 @@ private fun MessageList(
                             }
                         }
                     },
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    containerColor =
+                        if (resentMode) MaterialTheme.colorScheme.tertiaryContainer
+                        else MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_keyboard_double_arrow_down_24dp),
+                        painter =
+                            painterResource(
+                                if (resentMode) R.drawable.ic_error_24dp
+                                else R.drawable.ic_keyboard_double_arrow_down_24dp
+                            ),
                         contentDescription = null,
+                        tint =
+                            if (resentMode) MaterialTheme.colorScheme.onTertiaryContainer
+                            else androidx.compose.material3.LocalContentColor.current,
                     )
                 }
                 val unread = state.unreadCount.intValue
-                if (unread > 0) {
+                if (unread > 0 && !resentMode) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier =
@@ -2345,6 +2466,67 @@ private fun MessageList(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Explains why a message of the user's sits above newer ones: it failed to send at first and was
+ * sent again automatically, keeping its original place. Hero icon in a neutral (not error) tone,
+ * one highlighted "Got it" that closes the card and takes the user to that message.
+ */
+@Composable
+private fun ResentMessageCard(onGotIt: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 6.dp,
+        shadowElevation = 8.dp,
+        modifier = modifier.padding(horizontal = 24.dp).fillMaxWidth()
+            // Consume touches so tapping inside the card doesn't dismiss it.
+            .clickable(
+                indication = null,
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+            ) {},
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                modifier = Modifier.size(72.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_error_24dp),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.size(36.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.resent_card_title),
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.resent_card_text),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Spacer(Modifier.height(24.dp))
+            androidx.compose.material3.Button(
+                onClick = onGotIt,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Text(stringResource(R.string.resent_card_got_it))
             }
         }
     }

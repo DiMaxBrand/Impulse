@@ -1582,4 +1582,7 @@
     <string name="developer_options_rearm_call_reminder">Вернуть напоминание о разрешениях звонков</string>
     <string name="developer_options_rearm_call_reminder_summary">Включает его обратно и разрешает показать сразу же</string>
     <string name="developer_options_rearm_done">Готово</string>
+    <string name="resent_card_title">Сообщение отправлено повторно</string>
+    <string name="resent_card_text">Одно из ваших сообщений сначала не ушло, скорее всего из-за нестабильной связи. Оно было отправлено повторно автоматически и осталось там, где вы его написали, выше более новых сообщений.</string>
+    <string name="resent_card_got_it">Понятно</string>
 </resources>

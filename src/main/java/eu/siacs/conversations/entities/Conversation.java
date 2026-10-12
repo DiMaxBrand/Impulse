@@ -261,6 +261,20 @@ public class Conversation extends AbstractEntity
         }
     }
 
+    public void findFailedMessages(OnMessageFound onMessageFound) {
+        final ArrayList<Message> results = new ArrayList<>();
+        synchronized (this.messages) {
+            for (Message message : this.messages) {
+                if (message.getStatus() == Message.STATUS_SEND_FAILED) {
+                    results.add(message);
+                }
+            }
+        }
+        for (Message result : results) {
+            onMessageFound.onMessageFound(result);
+        }
+    }
+
     public void findUnreadMessagesAndCalls(OnMessageFound onMessageFound) {
         final ArrayList<Message> results = new ArrayList<>();
         synchronized (this.messages) {

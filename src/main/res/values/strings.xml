@@ -1518,4 +1518,7 @@
     <string name="developer_options_rearm_call_reminder">Re-arm the call permission reminder</string>
     <string name="developer_options_rearm_call_reminder_summary">Turns it back on and lets it appear again right away</string>
     <string name="developer_options_rearm_done">Done</string>
+    <string name="resent_card_title">Message sent again</string>
+    <string name="resent_card_text">One of your messages did not go through at first, probably because the connection was unstable. It was sent again automatically, and it stays where you wrote it, above newer messages.</string>
+    <string name="resent_card_got_it">Got it</string>
 </resources>
