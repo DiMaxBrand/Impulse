@@ -1349,6 +1349,8 @@ public class XmppConnectionService extends Service {
                     Log.d(Config.LOGTAG, "preference '" + key + "' has changed");
                     if (AppSettings.KEEP_FOREGROUND_SERVICE.equals(key)) {
                         toggleForegroundService();
+                    } else if (AppSettings.AUTO_RESEND_INTERVAL.equals(key)) {
+                        rescheduleAutoResend();
                     }
                 });
     }
@@ -1970,9 +1972,11 @@ public class XmppConnectionService extends Service {
     // hiccup, a stream drop that failed what was in flight). Every 5 minutes, for each account
     // that is online, such messages are sent again by themselves -- keeping their original
     // timestamp, so they stay in their place in the chat -- at most AUTO_RESEND_MAX_ATTEMPTS
-    // times each. Only plain, unencrypted text: attachments (a deliberate cancel must never be
-    // undone) and OMEMO (a trust problem a retry will not fix) are left to the user.
-    private static final long AUTO_RESEND_INTERVAL_MINUTES = 5;
+    // times each. Text, attachments (as long as the file is still there) and every encryption
+    // mode are retried; a deliberate cancel is never undone, and errors that a retry cannot fix
+    // (see AUTO_RESEND_PERMANENT_ERRORS) are left to the user. The interval is a setting
+    // (Settings > Connection), 0 = off.
+    private static final long AUTO_RESEND_FALLBACK_POLL_MINUTES = 5;
     private static final int AUTO_RESEND_MAX_ATTEMPTS = 6;
     private static final long AUTO_RESEND_MAX_AGE_MS = TimeUnit.HOURS.toMillis(24);
     private static final String[] AUTO_RESEND_PERMANENT_ERRORS = {
@@ -1991,18 +1995,48 @@ public class XmppConnectionService extends Service {
     private final ScheduledExecutorService autoResendExecutor =
             Executors.newSingleThreadScheduledExecutor();
 
+    private final AtomicInteger autoResendGeneration = new AtomicInteger();
+    private volatile java.util.concurrent.ScheduledFuture<?> autoResendFuture;
+
     private void scheduleAutoResend() {
-        autoResendExecutor.scheduleWithFixedDelay(
-                () -> {
-                    try {
-                        autoResendTick();
-                    } catch (final RuntimeException e) {
-                        Log.w(Config.LOGTAG, "automatic resend tick failed", e);
-                    }
-                },
-                AUTO_RESEND_INTERVAL_MINUTES,
-                AUTO_RESEND_INTERVAL_MINUTES,
-                TimeUnit.MINUTES);
+        scheduleAutoResend(autoResendGeneration.incrementAndGet());
+    }
+
+    /** Re-arms the loop when the interval setting changes (the old chain stops by itself). */
+    private void rescheduleAutoResend() {
+        final java.util.concurrent.ScheduledFuture<?> old = this.autoResendFuture;
+        if (old != null) {
+            old.cancel(false);
+        }
+        scheduleAutoResend();
+    }
+
+    private void scheduleAutoResend(final int generation) {
+        if (autoResendExecutor.isShutdown()) {
+            return;
+        }
+        final long minutes = new AppSettings(this).getAutoResendIntervalMinutes();
+        try {
+            this.autoResendFuture =
+                    autoResendExecutor.schedule(
+                            () -> {
+                                try {
+                                    if (minutes > 0 && generation == autoResendGeneration.get()) {
+                                        autoResendTick();
+                                    }
+                                } catch (final RuntimeException e) {
+                                    Log.w(Config.LOGTAG, "automatic resend tick failed", e);
+                                } finally {
+                                    if (generation == autoResendGeneration.get()) {
+                                        scheduleAutoResend(generation);
+                                    }
+                                }
+                            },
+                            minutes > 0 ? minutes : AUTO_RESEND_FALLBACK_POLL_MINUTES,
+                            TimeUnit.MINUTES);
+        } catch (final RejectedExecutionException e) {
+            Log.d(Config.LOGTAG, "automatic resend not rescheduled: executor is gone");
+        }
     }
 
     private static boolean isTransientSendError(final String error) {
@@ -2034,11 +2068,20 @@ public class XmppConnectionService extends Service {
             }
             conversation.findFailedMessages(
                     message -> {
-                        if (message.getType() != Message.TYPE_TEXT
-                                || message.getEncryption() != Message.ENCRYPTION_NONE
+                        final int type = message.getType();
+                        if ((type != Message.TYPE_TEXT
+                                        && type != Message.TYPE_IMAGE
+                                        && type != Message.TYPE_FILE
+                                        && type != Message.TYPE_PRIVATE
+                                        && type != Message.TYPE_PRIVATE_FILE)
                                 || message.getStatus() != Message.STATUS_SEND_FAILED
                                 || !isTransientSendError(message.getErrorMessage())
                                 || now - message.getTimeSent() > AUTO_RESEND_MAX_AGE_MS) {
+                            return;
+                        }
+                        // An attachment can only go again while the file is still on the phone.
+                        if (message.needsUploading()
+                                && !fileBackend.getFile(message, false).exists()) {
                             return;
                         }
                         final String uuid = message.getUuid();

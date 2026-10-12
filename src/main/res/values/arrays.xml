@@ -118,4 +118,18 @@
 		<item>JABBER_NETWORK</item>
 		<item>LOCAL_SERVER</item>
 	</string-array>
+    <string-array name="auto_resend_entries">
+        <item>@string/auto_resend_off</item>
+        <item>@string/auto_resend_1</item>
+        <item>@string/auto_resend_5</item>
+        <item>@string/auto_resend_15</item>
+        <item>@string/auto_resend_30</item>
+    </string-array>
+    <string-array name="auto_resend_values">
+        <item>0</item>
+        <item>1</item>
+        <item>5</item>
+        <item>15</item>
+        <item>30</item>
+    </string-array>
 </resources>

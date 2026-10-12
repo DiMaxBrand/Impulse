@@ -219,6 +219,13 @@ class ConversationScreenState {
     internal val barPullPx = androidx.compose.runtime.mutableFloatStateOf(0f)
     internal val barPullDragging = mutableStateOf(false)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
+    // Messages that got a reaction while off screen (uuid -> the new emoji). They turn the
+    // scroll button into a heart; tapping it walks to them one by one.
+    internal val pendingReactions = androidx.compose.runtime.mutableStateMapOf<String, Set<String>>()
+    // Set when the heart is tapped, promoted to [reactionBlink] once the scroll has landed.
+    internal var pendingBlink: Pair<String, Set<String>>? = null
+    // (message uuid, emoji) whose chips flash right now.
+    internal val reactionBlink = mutableStateOf<Pair<String, Set<String>>?>(null)
     internal val deleteTarget = mutableStateOf<Message?>(null)
     internal val moderateTarget = mutableStateOf<Message?>(null)
     // Both set by the Fragment after MediaSelectionActivity returns a result — Compose can't be
@@ -380,7 +387,15 @@ object ConversationScreenHelper {
         composeView.setViewCompositionStrategy(
             ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
         )
-        composeView.setContent { ImpulseExpressiveTheme { ConversationScreen(state, listener) } }
+        composeView.setContent {
+            ImpulseExpressiveTheme {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    LocalReactionBlink provides state.reactionBlink
+                ) {
+                    ConversationScreen(state, listener)
+                }
+            }
+        }
     }
 }
 
@@ -2214,6 +2229,15 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             if (idx >= 0) {
                 listState.animateScrollToItem(idx)
                 highlightKey = scrollToUuid
+                // Heart tap: the reaction itself flashes, a shorter beat than the bubble highlight.
+                state.pendingBlink?.takeIf { it.first == scrollToUuid }?.let {
+                    state.pendingBlink = null
+                    state.reactionBlink.value = it
+                    scope.launch {
+                        kotlinx.coroutines.delay(1100)
+                        if (state.reactionBlink.value == it) state.reactionBlink.value = null
+                    }
+                }
             }
             state.requestScrollToUuid.value = null
         }
@@ -2350,6 +2374,46 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             }
         }
 
+        // ── New reactions ──
+        // Remember which received reactions each message already had; a message that gains one
+        // later (not on first sight, so paging in old history does not count) is "pending".
+        val knownReactions = remember { HashMap<String, Set<String>>() }
+        fun itemIndexOf(uuid: String): Int =
+            items.indexOfFirst {
+                when (it) {
+                    is ChatItem.Msg -> it.message.getUuid() == uuid
+                    is ChatItem.MediaGroup -> it.messages.any { m -> m.getUuid() == uuid }
+                    else -> false
+                }
+            }
+        fun isOnScreen(uuid: String): Boolean {
+            val idx = itemIndexOf(uuid)
+            val visible = listState.layoutInfo.visibleItemsInfo.map { it.index - latestLeadingCount.value }
+            return idx >= 0 && visible.isNotEmpty() && idx in visible.min()..visible.max()
+        }
+        LaunchedEffect(revision) {
+            for (m in state.messages.value) {
+                val uuid = m.getUuid() ?: continue
+                val now =
+                    m.reactions.filter { it.received }
+                        .map { it.normalizedReaction() + "|" + (it.trueJid ?: it.from ?: it.occupantId) }
+                        .toSet()
+                val before = knownReactions.put(uuid, now)
+                if (before == null || before.containsAll(now)) continue
+                val fresh = (now - before).map { it.substringBefore('|') }.toSet()
+                // Already in view: nothing to point at.
+                if (isOnScreen(uuid)) continue
+                state.pendingReactions[uuid] = (state.pendingReactions[uuid] ?: emptySet()) + fresh
+            }
+        }
+        // Scrolling a pending message into view counts as seeing it.
+        LaunchedEffect(Unit) {
+            snapshotFlow { listState.layoutInfo.visibleItemsInfo.size to listState.firstVisibleItemIndex }
+                .collect {
+                    state.pendingReactions.keys.toList().forEach { if (isOnScreen(it)) state.pendingReactions.remove(it) }
+                }
+        }
+        val heartUuid: String? = state.pendingReactions.keys.firstOrNull()
         val showScrollToBottom by
             remember { androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex > 2 } }
         // A message of mine that failed and was sent again automatically keeps its original
@@ -2392,8 +2456,9 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 }
             }
         val resentMode = resentUuid != null && resentOffScreen
+        val heartMode = !resentMode && heartUuid != null
         AnimatedVisibility(
-            visible = (showScrollToBottom || resentMode) && !state.resentCardVisible.value,
+            visible = (showScrollToBottom || resentMode || heartMode) && !state.resentCardVisible.value,
             enter = scaleIn(),
             exit = scaleOut(),
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
@@ -2424,6 +2489,12 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                             state.resentCardVisible.value = true
                             return@SmallFloatingActionButton
                         }
+                        if (heartMode && heartUuid != null) {
+                            val emojis = state.pendingReactions.remove(heartUuid) ?: emptySet()
+                            state.pendingBlink = heartUuid to emojis
+                            state.requestScrollToUuid.value = heartUuid
+                            return@SmallFloatingActionButton
+                        }
                         // Cleared so the fling detector doesn't also fire on arrival with a stale
                         // speed; the band is triggered explicitly once the scroll has landed.
                         flingSpeed[0] = 0f
@@ -2437,21 +2508,26 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                     },
                     containerColor =
                         if (resentMode) MaterialTheme.colorScheme.tertiaryContainer
+                        else if (heartMode) MaterialTheme.colorScheme.primaryContainer
                         else MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
                     Icon(
                         painter =
                             painterResource(
                                 if (resentMode) R.drawable.ic_error_24dp
+                                else if (heartMode) R.drawable.ic_favorite_24dp
                                 else R.drawable.ic_keyboard_double_arrow_down_24dp
                             ),
                         contentDescription = null,
                         tint =
                             if (resentMode) MaterialTheme.colorScheme.onTertiaryContainer
+                            else if (heartMode) MaterialTheme.colorScheme.onPrimaryContainer
                             else androidx.compose.material3.LocalContentColor.current,
                     )
                 }
-                val unread = state.unreadCount.intValue
+                val badge = if (heartMode) state.pendingReactions.size.takeIf { it > 1 } ?: 0
+                            else state.unreadCount.intValue
+                val unread = badge
                 if (unread > 0 && !resentMode) {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -3751,6 +3827,9 @@ internal fun SelectionCheckCircle(selected: Boolean, modifier: Modifier = Modifi
     }
 }
 
+internal val LocalReactionBlink =
+    androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.State<Pair<String, Set<String>>?>?> { null }
+
 @Composable
 private fun ReactionChips(
     message: Message,
@@ -3773,6 +3852,20 @@ private fun ReactionChips(
             val emoji = entry.key
             val count = entry.value
             val isOurs = emoji in aggregated.ourReactions
+            // Quick flash (about a second) when the heart button pointed here.
+            val blinkState = LocalReactionBlink.current
+            val blink = blinkState?.value?.let { it.first == message.getUuid() && emoji in it.second } == true
+            val blinkAlpha = remember { androidx.compose.animation.core.Animatable(1f) }
+            androidx.compose.runtime.LaunchedEffect(blink) {
+                if (blink) {
+                    repeat(4) {
+                        blinkAlpha.animateTo(0.2f, tween(90))
+                        blinkAlpha.animateTo(1f, tween(90))
+                    }
+                } else {
+                    blinkAlpha.snapTo(1f)
+                }
+            }
             // key() gives each emoji its own composable identity, so a chip that's brand new
             // this recomposition mounts fresh. AnimatedVisibility only plays its enter
             // transition on an actual false→true edge — a MutableTransitionState created
@@ -3803,7 +3896,7 @@ private fun ReactionChips(
                             if (isOurs) MaterialTheme.colorScheme.tertiaryContainer
                             else MaterialTheme.colorScheme.secondaryContainer,
                         modifier =
-                            Modifier.combinedClickable(
+                            Modifier.graphicsLayer { alpha = blinkAlpha.value }.combinedClickable(
                                 onClick = {
                                     val next = aggregated.ourReactions.toMutableSet()
                                     if (isOurs) next.remove(emoji) else next.add(emoji)

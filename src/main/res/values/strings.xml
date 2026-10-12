@@ -1549,4 +1549,10 @@
     <string name="appearance_anim_off_desc">As little motion as possible</string>
     <string name="appearance_haptics">Haptic feedback</string>
     <string name="appearance_haptics_summary">Vibration ticks on sliders and gestures</string>
+    <string name="pref_auto_resend">Resend failed messages</string>
+    <string name="auto_resend_off">Off</string>
+    <string name="auto_resend_1">Every minute</string>
+    <string name="auto_resend_5">Every 5 minutes</string>
+    <string name="auto_resend_15">Every 15 minutes</string>
+    <string name="auto_resend_30">Every 30 minutes</string>
 </resources>

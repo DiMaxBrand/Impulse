@@ -50,6 +50,7 @@ public class AppSettings {
     public static final String THEME = "theme";
     public static final String DYNAMIC_COLORS = "dynamic_colors";
     public static final String ACCENT_SEED = "accent_seed";
+    public static final String AUTO_RESEND_INTERVAL = "auto_resend_interval";
     public static final int DEFAULT_ACCENT_SEED = 0xFF1B9E34;
     public static final String SHOW_DYNAMIC_TAGS = "show_dynamic_tags";
     public static final String OMEMO = "omemo";
@@ -303,6 +304,18 @@ public class AppSettings {
 
     public boolean isDynamicColorsDesired() {
         return getBooleanPreference(AppSettings.DYNAMIC_COLORS, R.bool.dynamic_colors);
+    }
+
+    /** Minutes between automatic resends of failed messages; 0 = off. */
+    public long getAutoResendIntervalMinutes() {
+        final String value =
+                PreferenceManager.getDefaultSharedPreferences(context)
+                        .getString(AUTO_RESEND_INTERVAL, "5");
+        try {
+            return Math.max(0, Long.parseLong(value));
+        } catch (final NumberFormatException e) {
+            return 5;
+        }
     }
 
     public int getAccentSeed() {

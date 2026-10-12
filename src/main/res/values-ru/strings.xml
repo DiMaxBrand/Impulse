@@ -1613,4 +1613,10 @@
     <string name="appearance_anim_off_desc">Как можно меньше движения</string>
     <string name="appearance_haptics">Тактильный отклик</string>
     <string name="appearance_haptics_summary">Вибрация на ползунках и жестах</string>
+    <string name="pref_auto_resend">Повторная отправка неудавшихся сообщений</string>
+    <string name="auto_resend_off">Выключена</string>
+    <string name="auto_resend_1">Каждую минуту</string>
+    <string name="auto_resend_5">Каждые 5 минут</string>
+    <string name="auto_resend_15">Каждые 15 минут</string>
+    <string name="auto_resend_30">Каждые 30 минут</string>
 </resources>

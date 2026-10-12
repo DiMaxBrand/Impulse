@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/pref_category_server_connection">
         <SwitchPreferenceCompat
@@ -14,6 +15,14 @@
             android:key="use_tor"
             android:summary="@string/pref_use_tor_summary"
             android:title="@string/pref_use_tor" />
+        <ListPreference
+            android:defaultValue="5"
+            android:entries="@array/auto_resend_entries"
+            android:entryValues="@array/auto_resend_values"
+            android:icon="@drawable/ic_send_time_extension_24dp"
+            android:key="auto_resend_interval"
+            android:title="@string/pref_auto_resend"
+            app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 
     <PreferenceCategory
