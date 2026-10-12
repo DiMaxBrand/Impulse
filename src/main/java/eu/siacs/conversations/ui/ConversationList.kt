@@ -346,7 +346,7 @@ private fun ConversationItem(
         Card(
             onClick = onClick,
             shape = shape,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             modifier = Modifier.fillMaxWidth().onSizeChanged { cardHeightPx = it.height },
         ) {

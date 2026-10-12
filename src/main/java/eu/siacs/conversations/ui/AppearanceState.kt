@@ -51,6 +51,9 @@ object AppearanceState {
     const val CHAT_BACKGROUND_DIM = "chat_background_dim"
     const val CHAT_BACKGROUND_IMAGE = "chat_background_image"
     const val ANIMATION_LEVEL = "animation_level"
+    const val ALIGN_START = "align_start"
+    const val AVATARS_11 = "show_avatars"
+    const val AVATARS_ACCOUNTS = "show_avatars_accounts"
 
     var textScale by mutableFloatStateOf(1f)
         private set
@@ -66,6 +69,15 @@ object AppearanceState {
     var backgroundImagePath by mutableStateOf<String?>(null)
         private set
     var animationLevel by mutableStateOf(AnimationLevel.FULL)
+        private set
+    /** "Align messages to the left": our own messages sit on the left like everyone's. */
+    var alignStart by mutableStateOf(false)
+        private set
+    /** Contact avatar next to incoming messages in one-to-one chats. */
+    var avatars11 by mutableStateOf(false)
+        private set
+    /** Our own avatar next to our messages. Off while [alignStart] is on. */
+    var accountAvatars by mutableStateOf(false)
         private set
 
     /** True when the rubber band / bubble size animations should run (level Full, or Automatic
@@ -111,6 +123,11 @@ object AppearanceState {
         backgroundImagePath = p.getString(CHAT_BACKGROUND_IMAGE, null)
         animationLevel = AnimationLevel.fromKey(p.getString(ANIMATION_LEVEL, null))
         val ctx = appContext
+        val res = ctx?.resources
+        alignStart = p.getBoolean(ALIGN_START, res?.getBoolean(eu.siacs.conversations.R.bool.align_start) ?: false)
+        avatars11 = p.getBoolean(AVATARS_11, res?.getBoolean(eu.siacs.conversations.R.bool.show_avatars) ?: false)
+        accountAvatars = p.getBoolean(AVATARS_ACCOUNTS,
+            res?.getBoolean(eu.siacs.conversations.R.bool.show_avatars_accounts) ?: false)
         val systemOff = ctx != null && Settings.Global.getFloat(
             ctx.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
         val saver = ctx != null &&

@@ -111,10 +111,10 @@ internal class AppearanceSettings(private val prefs: SharedPreferences, private 
     val animations = Str(AppearanceState.ANIMATION_LEVEL, "full")
     val haptics = Bool(AppearanceState.HAPTICS, true)
 
-    val colorfulBubbles = Bool("use_green_background", b(R.bool.use_green_background))
     val alignStart = Bool("align_start", b(R.bool.align_start))
     val avatars11 = Bool("show_avatars", b(R.bool.show_avatars))
     val avatarsAccounts = Bool("show_avatars_accounts", b(R.bool.show_avatars_accounts))
+    val avatarsAccountsBeforeAlign = Bool("show_avatars_accounts_before_align", b(R.bool.show_avatars_accounts))
 
     val dynamicTags = Bool("show_dynamic_tags", b(R.bool.show_dynamic_tags))
     val allowScreenshots = Bool("allow_screenshots", b(R.bool.allow_screenshots))
@@ -503,7 +503,8 @@ private fun AccentPickerContent(selected: Int, onPick: (Int) -> Unit) {
             ACCENT_PALETTE.forEach { color ->
                 val isSelected = color == selected
                 // Each swatch shows what the generated primary container/primary pair looks like.
-                val scheme = remember(color) { seedColorScheme(color, false) }
+                val swatchContext = LocalContext.current
+                val scheme = remember(color) { accentPreviewScheme(swatchContext, color, false) }
                 Box(
                     modifier = Modifier
                         .size(52.dp)
@@ -741,17 +742,21 @@ private fun BubblesPage(s: AppearanceSettings) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         SwitchRow(
-            GroupPosition.TOP, R.drawable.ic_colors_24dp,
-            stringResource(R.string.pref_use_colorful_bubbles),
-            stringResource(R.string.pref_use_colorful_bubbles_summary),
-            s.colorfulBubbles.value,
-        ) { s.colorfulBubbles.set(it) }
-        SwitchRow(
-            GroupPosition.BOTTOM, R.drawable.ic_format_align_left_24dp,
+            GroupPosition.SINGLE, R.drawable.ic_format_align_left_24dp,
             stringResource(R.string.pref_align_start),
             stringResource(R.string.pref_align_start_summary),
             s.alignStart.value,
-        ) { s.alignStart.set(it) }
+        ) { on ->
+            s.alignStart.set(on)
+            if (on) {
+                // Our own avatar has no place when everything is on one side: switch it off, but
+                // remember what it was so turning alignment off again brings it back.
+                s.avatarsAccountsBeforeAlign.set(s.avatarsAccounts.value)
+                s.avatarsAccounts.set(false)
+            } else {
+                s.avatarsAccounts.set(s.avatarsAccountsBeforeAlign.value)
+            }
+        }
         SectionTitle(stringResource(R.string.pref_category_avatars))
         SwitchRow(
             GroupPosition.TOP, R.drawable.ic_face_right_24dp,
@@ -763,7 +768,7 @@ private fun BubblesPage(s: AppearanceSettings) {
             GroupPosition.BOTTOM, R.drawable.ic_face_left_24dp,
             stringResource(R.string.pref_account_avatar),
             stringResource(R.string.pref_account_avatar_summary),
-            s.avatarsAccounts.value,
+            s.avatarsAccounts.value && !s.alignStart.value,
             enabled = !s.alignStart.value,
         ) { s.avatarsAccounts.set(it) }
     }

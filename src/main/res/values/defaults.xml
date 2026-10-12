@@ -18,7 +18,7 @@
     <string name="picture_compression">never</string>
     <bool name="use_green_background">true</bool>
     <bool name="large_font">false</bool>
-    <bool name="show_avatars">true</bool>
+    <bool name="show_avatars">false</bool>
     <string name="quick_action">RECORD_VOICE</string>
     <bool name="show_dynamic_tags">false</bool>
     <bool name="dynamic_colors">true</bool>

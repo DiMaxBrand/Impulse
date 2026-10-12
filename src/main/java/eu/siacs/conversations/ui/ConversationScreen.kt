@@ -2930,7 +2930,9 @@ private fun MessageRow(
     val message = item.message
     val outgoing = message.status != Message.STATUS_RECEIVED
     val isGroupChat = message.getConversation().getMode() == Conversational.MODE_MULTI
-    val showAvatarSlot = !outgoing && isGroupChat
+    val atEnd = outgoing && !AppearanceState.alignStart
+    val showAvatarSlot = !outgoing && (isGroupChat || AppearanceState.avatars11)
+    val showOwnAvatar = outgoing && AppearanceState.accountAvatars && !AppearanceState.alignStart
 
     // Consumed exactly once per fresh row instance -- a correction reassigns this very message's
     // own uuid (see Message.pendingMorphFromBody's own doc comment), so item.key already changed
@@ -2960,13 +2962,16 @@ private fun MessageRow(
 
     // Avatar for incoming group-chat messages: load once per sender group (last bubble).
     val context = LocalContext.current
-    val avatarBitmap = if (showAvatarSlot && item.lastOfGroup) {
+    val avatarBitmap = if ((showAvatarSlot || showOwnAvatar) && item.lastOfGroup) {
         val avatarState = remember(item.key) { mutableStateOf<ImageBitmap?>(null) }
         val avatarSizePx = with(LocalDensity.current) { 32.dp.toPx() }.toInt()
         LaunchedEffect(item.key) {
             val activity = context as? XmppActivity ?: return@LaunchedEffect
             val bm = withContext(Dispatchers.IO) {
-                try { activity.avatarService().get(message, avatarSizePx, false) }
+                try {
+                    if (outgoing) activity.avatarService().get(message.getConversation().getAccount(), avatarSizePx, false)
+                    else activity.avatarService().get(message, avatarSizePx, false)
+                }
                 catch (_: Exception) { null }
             }
             if (bm != null) avatarState.value = bm.asImageBitmap()
@@ -2988,7 +2993,7 @@ private fun MessageRow(
         visible = !isPendingRemoval,
         enter = androidx.compose.animation.EnterTransition.None,
         exit = androidx.compose.animation.slideOutHorizontally(
-            targetOffsetX = { fullWidth -> if (outgoing) fullWidth else -fullWidth },
+            targetOffsetX = { fullWidth -> if (atEnd) fullWidth else -fullWidth },
             animationSpec = androidx.compose.animation.core.spring(
                 dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
                 stiffness = androidx.compose.animation.core.Spring.StiffnessLow,
@@ -3056,8 +3061,8 @@ private fun MessageRow(
                 Modifier
                     .fillMaxWidth()
                     .padding(
-                        start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp else 12.dp - tailInset,
-                        end = if (outgoing) 12.dp - tailInset else 48.dp,
+                        start = if (atEnd) 48.dp else if (showAvatarSlot) 8.dp else 12.dp - tailInset,
+                        end = if (atEnd) (if (showOwnAvatar) 8.dp else 12.dp - tailInset) else 48.dp,
                         top = if (item.firstOfGroup) 6.dp else 1.dp,
                         bottom = 1.dp,
                     )
@@ -3066,11 +3071,11 @@ private fun MessageRow(
                         scaleY = pop.value
                         transformOrigin =
                             androidx.compose.ui.graphics.TransformOrigin(
-                                if (outgoing) 1f else 0f,
+                                if (atEnd) 1f else 0f,
                                 1f,
                             )
                     },
-            horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
+            horizontalArrangement = if (atEnd) Arrangement.End else Arrangement.Start,
         ) {
             AnimatedVisibility(
                 visible = selectionActive,
@@ -3101,6 +3106,7 @@ private fun MessageRow(
             MessageBubble(
                 item = item,
                 outgoing = outgoing,
+                alignEnd = atEnd,
                 highlighted = highlighted,
                 isBeingEdited = isBeingEdited,
                 morphFromBody = morphFromBody,
@@ -3110,10 +3116,24 @@ private fun MessageRow(
                 resolveReply = resolveReply,
                 onReplyCardClick = onReplyCardClick,
             )
+            if (showOwnAvatar) {
+                Spacer(Modifier.width(6.dp))
+                Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                    val own = avatarBitmap?.value
+                    if (own != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = own,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape),
+                        )
+                    }
+                }
+            }
         }
         ReactionChips(
             message = message,
             outgoing = outgoing,
+            alignEnd = atEnd,
             revision = revision,
             listener = listener,
             modifier = Modifier
@@ -3136,7 +3156,7 @@ private fun MessageRow(
                 // in it at all — the same geometric overlap looks emptier there because there's
                 // nothing to visually anchor it to.
                 .then(
-                    if (outgoing) {
+                    if (atEnd) {
                         Modifier.offset(y = (-8).dp)
                     } else {
                         Modifier.layout { measurable, constraints ->
@@ -3149,8 +3169,8 @@ private fun MessageRow(
                     }
                 )
                 .padding(
-                    start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 15.dp,
-                    end = if (outgoing) 10.dp else 48.dp,
+                    start = if (atEnd) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 15.dp,
+                    end = if (atEnd) (if (showOwnAvatar) 10.dp + 38.dp else 10.dp) else 48.dp,
                 ),
         )
     }
@@ -3245,15 +3265,20 @@ private fun MediaGroupRow(
     val first = messages.first()
     val outgoing = first.status != Message.STATUS_RECEIVED
     val isGroupChat = first.getConversation().getMode() == Conversational.MODE_MULTI
-    val showAvatarSlot = !outgoing && isGroupChat
+    val atEnd = outgoing && !AppearanceState.alignStart
+    val showAvatarSlot = !outgoing && (isGroupChat || AppearanceState.avatars11)
+    val showOwnAvatar = outgoing && AppearanceState.accountAvatars && !AppearanceState.alignStart
     val context = LocalContext.current
-    val avatarBitmap = if (showAvatarSlot && item.lastOfGroup) {
+    val avatarBitmap = if ((showAvatarSlot || showOwnAvatar) && item.lastOfGroup) {
         val avatarState = remember(item.key) { mutableStateOf<ImageBitmap?>(null) }
         val avatarSizePx = with(LocalDensity.current) { 32.dp.toPx() }.toInt()
         LaunchedEffect(item.key) {
             val activity = context as? XmppActivity ?: return@LaunchedEffect
             val bm = withContext(Dispatchers.IO) {
-                try { activity.avatarService().get(first, avatarSizePx, false) }
+                try {
+                    if (outgoing) activity.avatarService().get(first.getConversation().getAccount(), avatarSizePx, false)
+                    else activity.avatarService().get(first, avatarSizePx, false)
+                }
                 catch (_: Exception) { null }
             }
             if (bm != null) avatarState.value = bm.asImageBitmap()
@@ -3261,7 +3286,7 @@ private fun MediaGroupRow(
         avatarState
     } else null
     val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
-    val shape = rememberBubbleShape(item.firstOfGroup, item.lastOfGroup, outgoing)
+    val shape = rememberBubbleShape(item.firstOfGroup, item.lastOfGroup, atEnd)
 
     Box(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -3269,12 +3294,12 @@ private fun MediaGroupRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    start = if (outgoing) 48.dp else if (showAvatarSlot) 8.dp else 12.dp - tailInset,
-                    end = if (outgoing) 12.dp - tailInset else 48.dp,
+                    start = if (atEnd) 48.dp else if (showAvatarSlot) 8.dp else 12.dp - tailInset,
+                    end = if (atEnd) (if (showOwnAvatar) 8.dp else 12.dp - tailInset) else 48.dp,
                     top = if (item.firstOfGroup) 6.dp else 1.dp,
                     bottom = 1.dp,
                 ),
-            horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
+            horizontalArrangement = if (atEnd) Arrangement.End else Arrangement.Start,
         ) {
             AnimatedVisibility(
                 visible = selectionActive,
@@ -3310,7 +3335,7 @@ private fun MediaGroupRow(
                 Spacer(Modifier.width(6.dp))
             }
             val baseColor = if (outgoing) MaterialTheme.colorScheme.primaryContainer
-                             else MaterialTheme.colorScheme.surfaceContainerHigh
+                             else incomingBubbleColor()
             val containerColor by androidx.compose.animation.animateColorAsState(
                 targetValue = if (highlighted) MaterialTheme.colorScheme.tertiaryContainer else baseColor,
                 label = "mediaGroupHighlight",
@@ -3351,8 +3376,8 @@ private fun MediaGroupRow(
                     val tailPad = if (item.lastOfGroup) 4.dp + TAIL_WIDTH else 4.dp
                     Box(
                         modifier = Modifier.padding(
-                            start = if (item.lastOfGroup && !outgoing) tailPad else 4.dp,
-                            end = if (item.lastOfGroup && outgoing) tailPad else 4.dp,
+                            start = if (item.lastOfGroup && !atEnd) tailPad else 4.dp,
+                            end = if (item.lastOfGroup && atEnd) tailPad else 4.dp,
                             top = 4.dp,
                             bottom = 4.dp,
                         ),
@@ -3360,8 +3385,8 @@ private fun MediaGroupRow(
                         MediaGridContent(
                             messages = messages,
                             revision = revision,
-                            corners = remember(item.firstOfGroup, item.lastOfGroup, outgoing) {
-                                mediaGridCorners(item.firstOfGroup, item.lastOfGroup, outgoing)
+                            corners = remember(item.firstOfGroup, item.lastOfGroup, atEnd) {
+                                mediaGridCorners(item.firstOfGroup, item.lastOfGroup, atEnd)
                             },
                             selectionActive = selectionActive,
                             selectedUuids = selectedUuids,
@@ -3395,6 +3420,19 @@ private fun MediaGroupRow(
                             statusMessage = remember(revision) { groupStatusRepresentative(messages) },
                             groupSentCount = if (outgoing) sentCount to messages.size else null,
                             groupMessages = messages,
+                        )
+                    }
+                }
+            }
+            if (showOwnAvatar) {
+                Spacer(Modifier.width(6.dp))
+                Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                    val own = avatarBitmap?.value
+                    if (own != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = own,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape),
                         )
                     }
                 }
@@ -3834,6 +3872,7 @@ internal val LocalReactionBlink =
 private fun ReactionChips(
     message: Message,
     outgoing: Boolean,
+    alignEnd: Boolean = outgoing,
     revision: Int,
     listener: ConversationScreenListener,
     modifier: Modifier = Modifier,
@@ -3845,7 +3884,7 @@ private fun ReactionChips(
     if (aggregated.reactions.isEmpty()) return
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp, if (outgoing) Alignment.End else Alignment.Start),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, if (alignEnd) Alignment.End else Alignment.Start),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         aggregated.reactions.forEach { entry ->
@@ -3977,6 +4016,7 @@ private fun ReactionChips(
 private fun MessageBubble(
     item: ChatItem.Msg,
     outgoing: Boolean,
+    alignEnd: Boolean,
     highlighted: Boolean,
     isBeingEdited: Boolean,
     // Non-null exactly once, right after this message was just corrected -- see MessageRow's own
@@ -3994,7 +4034,7 @@ private fun MessageBubble(
         when {
             failed -> MaterialTheme.colorScheme.errorContainer
             outgoing -> MaterialTheme.colorScheme.primaryContainer
-            else -> MaterialTheme.colorScheme.surfaceContainerHigh
+            else -> incomingBubbleColor()
         }
     val containerColor by
         androidx.compose.animation.animateColorAsState(
@@ -4004,8 +4044,9 @@ private fun MessageBubble(
         )
     val contentColor =
         when {
+            highlighted -> MaterialTheme.colorScheme.onTertiaryContainer
             failed -> MaterialTheme.colorScheme.onErrorContainer
-            outgoing -> if (isSystemInDarkTheme()) Color.White else Color.Black
+            outgoing -> MaterialTheme.colorScheme.onPrimaryContainer
             else -> MaterialTheme.colorScheme.onSurface
         }
 
@@ -4068,7 +4109,7 @@ private fun MessageBubble(
                 rememberBubbleShape(
                     firstOfGroup = item.firstOfGroup,
                     lastOfGroup = item.lastOfGroup,
-                    outgoing = outgoing,
+                    outgoing = alignEnd,
                 ),
             color = containerColor,
             contentColor = contentColor,
@@ -4088,8 +4129,8 @@ private fun MessageBubble(
                             onLongClick = { onLongPress(message) },
                         )
                         .padding(
-                            start = if (hasTail && !outgoing) 12.dp + TAIL_WIDTH else 12.dp,
-                            end = if (hasTail && outgoing) 12.dp + TAIL_WIDTH else 12.dp,
+                            start = if (hasTail && !alignEnd) 12.dp + TAIL_WIDTH else 12.dp,
+                            end = if (hasTail && alignEnd) 12.dp + TAIL_WIDTH else 12.dp,
                             top = 8.dp,
                             bottom = 8.dp,
                         )

@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.DynamicColorsOptions
 import eu.siacs.conversations.AppSettings
+import eu.siacs.conversations.ui.tunedSeed
 
 object SettingsUtils {
     @JvmStatic
@@ -47,10 +48,13 @@ object SettingsUtils {
 
                 private fun apply(activity: Activity) {
                     val settings = AppSettings(activity)
+                    val dynamic = settings.isDynamicColorsDesired
+                    val custom = !dynamic && settings.accentSeed != AppSettings.DEFAULT_ACCENT_SEED
+                    // Default green without dynamic colours: leave the View theme's own palette alone.
+                    if (!dynamic && !custom) return
                     val builder = DynamicColorsOptions.Builder()
-                    if (!settings.isDynamicColorsDesired) {
-                        builder.setContentBasedSource(settings.accentSeed)
-                    }
+                    // The default green is the View theme's own palette: no overlay needed.
+                    if (custom) builder.setContentBasedSource(tunedSeed(settings.accentSeed))
                     DynamicColors.applyToActivityIfAvailable(activity, builder.build())
                 }
             }
