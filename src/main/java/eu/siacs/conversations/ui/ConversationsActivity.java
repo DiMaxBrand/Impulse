@@ -198,53 +198,16 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         return sound == null || sound.equals(android.net.Uri.EMPTY) || sound.toString().isEmpty();
     }
 
-    // A phone switched off a permission the call pop-up needs. Ask for just that one.
+    // A phone switched off a permission the call pop-up needs. The Compose dialog asks about
+    // exactly the missing one (see CallPermissionDialogFragment).
     private void showCallPermissionDialog() {
-        // Full-screen call alerts first: that is the one Android 14+ most often turns off on its
-        // own. "Display over other apps" is asked about only if that one is fine.
-        final boolean fullScreenMissing =
-                android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-                        && !androidx.core.app.NotificationManagerCompat.from(this)
-                                .canUseFullScreenIntent();
-        final Intent settingsIntent;
-        final int message;
-        if (fullScreenMissing) {
-            settingsIntent =
-                    new Intent(
-                            Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-                            Uri.parse("package:" + getPackageName()));
-            message = R.string.call_permission_dialog_full_screen;
-        } else if (!Settings.canDrawOverlays(this)) {
-            settingsIntent =
-                    new Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:" + getPackageName()));
-            message = R.string.call_permission_dialog_overlay;
-        } else {
+        if (getSupportFragmentManager().isStateSaved()
+                || getSupportFragmentManager().findFragmentByTag(CallPermissionDialogFragment.TAG)
+                        != null) {
             return;
         }
-        new MaterialAlertDialogBuilder(this)
-                .setIcon(R.drawable.ic_call_24dp)
-                .setTitle(R.string.call_permission_dialog_title)
-                .setMessage(message)
-                .setPositiveButton(
-                        R.string.call_permission_dialog_open,
-                        (dialog, which) -> {
-                            try {
-                                startActivity(settingsIntent);
-                            } catch (final RuntimeException e) {
-                                startActivity(new Intent(this, NotificationSetupActivity.class));
-                            }
-                        })
-                .setNegativeButton(R.string.call_permission_dialog_later, null)
-                .setNeutralButton(
-                        R.string.call_permission_dialog_never,
-                        (dialog, which) ->
-                                getPreferences()
-                                        .edit()
-                                        .putBoolean("call_permission_nag_disabled", true)
-                                        .apply())
-                .show();
+        new CallPermissionDialogFragment()
+                .show(getSupportFragmentManager(), CallPermissionDialogFragment.TAG);
     }
 
     private void scheduleNotificationSetupIfNeeded() {
@@ -257,7 +220,11 @@ public class ConversationsActivity extends QrCodeProcessingActivity
             // day -- and never again if the user chose "Don't remind me".
             final long dayMs = 24L * 60 * 60 * 1000;
             final long last = getPreferences().getLong("last_call_permission_nag", 0L);
-            if (!getPreferences().getBoolean("call_permission_nag_disabled", false)
+            // Settings -> Notifications has the switch; the old per-activity flag from the first
+            // version of the dialog is still honoured.
+            if (androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+                            .getBoolean(CallPermissionDialogFragment.PREF_REMINDER, true)
+                    && !getPreferences().getBoolean("call_permission_nag_disabled", false)
                     && CallPermissions.anyMissing(this)
                     && System.currentTimeMillis() - last > dayMs) {
                 getPreferences()

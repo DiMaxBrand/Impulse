@@ -71,6 +71,13 @@
         android:title="@string/pref_notifications_from_strangers" />
 
     <SwitchPreferenceCompat
+        android:defaultValue="true"
+        android:icon="@drawable/ic_call_24dp"
+        android:key="call_permission_reminder"
+        android:summary="@string/pref_call_permission_reminder_summary"
+        android:title="@string/pref_call_permission_reminder" />
+
+    <SwitchPreferenceCompat
         android:defaultValue="@bool/enable_foreground_service"
         android:icon="@drawable/ic_link_24dp"
         android:key="enable_foreground_service"

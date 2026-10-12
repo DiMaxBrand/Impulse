@@ -216,6 +216,30 @@ between this session and the other one by hand.
   don't speak, and stale/wrong translations are worse than a missing one.
   This applies to `strings.xml` as well as GitHub release notes.
 
+## UI: Compose first
+
+The app is being ported from the legacy View/XML code inherited from Conversations (by Daniel
+Gultsch) to **Jetpack Compose with Material 3 Expressive**. The standing rule:
+
+- **Every new screen, dialog, sheet and card is written in Compose.** No new XML layouts, no new
+  `MaterialAlertDialogBuilder`/`AlertDialog` (View) dialogs, no new `PreferenceFragment` screens,
+  and no new `ListView`/`RecyclerView` lists when it can be avoided. Host Compose from the Java
+  activities with a `ComposeView` or a `DialogFragment`/`BottomSheetDialogFragment` whose content
+  is Compose (see `UpdateSheetFragment`, `HelpSupportSheetFragment`).
+- **Touching an old screen? Prefer porting the part you touch** rather than adding more View code
+  next to it -- unless the port is risky (a View-only integration, a known library bug, or a
+  large untested surface). In that case say so and discuss before choosing View, don't just
+  fall back to it quietly.
+- Use the established Expressive pieces instead of re-inventing them: `ExpressiveGroupRow` /
+  `GroupPosition` for grouped list rows, `ImpulseExpressiveTheme`, the spring specs used elsewhere
+  (stiffness 380, damping 0.8 for container transforms), a **hero icon** at the top of dialogs and
+  cards, and a clearly highlighted primary action (filled button), a plain secondary one, and any
+  "don't ask again" style action present but visually quiet (a muted text button -- readable and
+  tappable, just not inviting).
+- **Pop-up cards and pickers use the shared-bounds container transform** (`SharedTransitionLayout`
+  + `sharedBounds`, scrim fading separately, row -> centred card), as the Updates screen's
+  channel picker and "wait between updates" picker do -- not a plain system dialog fade.
+
 ## Signing
 
 Signing credentials are in `signing.properties` (not committed). The build reads this file automatically — no manual keystore entry needed in Android Studio.

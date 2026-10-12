@@ -266,10 +266,15 @@ class HelpSupportSheetFragment : BottomSheetDialogFragment() {
     }
 
     private fun copyDeviceInfo() {
+        // If the silent-update test has been run, its report goes along: it is exactly what is
+        // needed to say why an update could not install by itself on this phone.
+        val silentReport =
+            eu.siacs.conversations.update.UpdatePreferences(requireContext()).lastInstallReport
         val info =
             "Impulse ${BuildConfig.VERSION_NAME}\n" +
                 "${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})\n" +
-                "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
+                "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})" +
+                (silentReport?.let { "\n\nLast silent-update test:\n$it" } ?: "")
         val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("Impulse", info))
         Toast.makeText(requireContext(), R.string.help_copy_done, Toast.LENGTH_SHORT).show()

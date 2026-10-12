@@ -149,6 +149,16 @@ class UpdatePreferences(context: Context) {
         get() = prefs.getString(KEY_READY_NOTIFIED, null)
         set(value) = prefs.edit { putString(KEY_READY_NOTIFIED, value) }
 
+    /** When the open-the-app update check last ran, for [UpdateCheckHelper]'s rate limit. */
+    var lastLaunchCheckAt: Long
+        get() = prefs.getLong(KEY_LAST_LAUNCH_CHECK, 0L)
+        set(value) = prefs.edit { putLong(KEY_LAST_LAUNCH_CHECK, value) }
+
+    /** Last "Test silent update" report text, kept so "Copy info for support" can include it. */
+    var lastInstallReport: String?
+        get() = prefs.getString(KEY_LAST_INSTALL_REPORT, null)
+        set(value) = prefs.edit { putString(KEY_LAST_INSTALL_REPORT, value) }
+
     /** Whether the nightly background update may install by itself (on by default). */
     var nightlyInstall: Boolean
         get() = prefs.getBoolean(KEY_NIGHTLY_INSTALL, true)
@@ -245,6 +255,8 @@ class UpdatePreferences(context: Context) {
         private const val KEY_NIGHTLY_INSTALL = "nightly_install"
         private const val KEY_SHEET_SEEN_VERSION = "sheet_seen_version"
         private const val KEY_SILENT_BROKEN = "silent_install_broken"
+        private const val KEY_LAST_LAUNCH_CHECK = "last_launch_check_at"
+        private const val KEY_LAST_INSTALL_REPORT = "last_install_report"
         private const val KEY_READY_NOTIFIED = "ready_notified_version"
     }
 }

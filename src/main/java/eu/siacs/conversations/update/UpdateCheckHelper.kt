@@ -11,6 +11,8 @@ import okhttp3.OkHttpClient
 
 object UpdateCheckHelper {
 
+    private const val LAUNCH_CHECK_MIN_INTERVAL_MS = 5 * 60 * 1000L
+
     /** Runs an extra check on app launch, but only for beta/alpha — those channels move fast
      * enough that waiting for the next scheduled UpdateCheckWorker run (once daily, 10:00
      * local) could mean a stale wait if the device wasn't in use at that time. Stable/RC users
@@ -28,6 +30,14 @@ object UpdateCheckHelper {
         val prefs = UpdatePreferences(activity.applicationContext)
         val channel = prefs.selectedChannel
         if (channel != UpdateChannel.BETA && channel != UpdateChannel.ALPHA) return
+        // At most one launch check per five minutes: onResume fires on every return to the main
+        // screen, and GitHub allows about 60 unauthenticated requests an hour per network address
+        // (shared by everyone on the same Wi-Fi). A refused request would show up as a failed
+        // check and make an update or a bug fix notice late. The manual "Check now" and the
+        // nightly run are not affected.
+        val now = System.currentTimeMillis()
+        if (now - prefs.lastLaunchCheckAt < LAUNCH_CHECK_MIN_INTERVAL_MS) return
+        prefs.lastLaunchCheckAt = now
         activity.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 performCheck(activity.applicationContext)

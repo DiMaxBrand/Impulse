@@ -1573,4 +1573,13 @@
     <string name="bug_fixed_title">Исправлено — обновитесь, чтобы получить</string>
     <string name="bug_fixed_text">Исправление есть в более новой версии. Оно установится ночью, или нажмите «Установить» в окне обновления.</string>
     <string name="bug_fixed_installed_notification_text">%1$s исправлено в %2$s — эта версия у вас уже установлена.</string>
+    <string name="pref_call_permission_reminder">Напоминание о разрешениях звонков</string>
+    <string name="pref_call_permission_reminder_summary">Раз в сутки предлагать включить разрешение для звонков, если телефон его отключил.</string>
+    <string name="developer_options_rearm_battery">Снова спросить про оптимизацию батареи</string>
+    <string name="developer_options_rearm_battery_summary">Покажет окно про батарею на главном экране, если оптимизация всё ещё включена</string>
+    <string name="developer_options_rearm_first_update">Сбросить флаг «первое обновление»</string>
+    <string name="developer_options_rearm_first_update_summary">Следующая установка снова считается первой</string>
+    <string name="developer_options_rearm_call_reminder">Вернуть напоминание о разрешениях звонков</string>
+    <string name="developer_options_rearm_call_reminder_summary">Включает его обратно и разрешает показать сразу же</string>
+    <string name="developer_options_rearm_done">Готово</string>
 </resources>

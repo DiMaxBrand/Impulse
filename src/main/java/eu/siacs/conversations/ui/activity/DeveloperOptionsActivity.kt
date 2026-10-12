@@ -189,6 +189,9 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                     InstallStatusBus.last.collect { result ->
                                         if (result != null) {
                                             silentTestResult = describeInstallResult(result)
+                                            // Kept for "Copy info for support" in the Help sheet.
+                                            UpdatePreferences(this@DeveloperOptionsActivity)
+                                                .lastInstallReport = installDiagnostics(result)
                                             silentTestRunning = false
                                         }
                                     }
@@ -250,6 +253,95 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                             ) {
                                                 Text(stringResource(android.R.string.copy))
                                             }
+                                        },
+                                    )
+                                }
+
+                                Spacer(Modifier.height(6.dp))
+
+                                // One-shot prompts normally only come back after wiping app data;
+                                // these re-arm them for testing.
+                                ExpressiveGroupRow(GroupPosition.TOP) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_rearm_battery))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_rearm_battery_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            // The key the main screen uses (per-activity prefs, per device).
+                                            val device = android.provider.Settings.Secure.getString(
+                                                contentResolver,
+                                                android.provider.Settings.Secure.ANDROID_ID,
+                                            )
+                                            getSharedPreferences(
+                                                "eu.siacs.conversations.ui.ConversationsActivity",
+                                                MODE_PRIVATE,
+                                            ).edit()
+                                                .putBoolean("show_battery_optimization" + (device ?: ""), true)
+                                                .apply()
+                                            Toast.makeText(
+                                                this@DeveloperOptionsActivity,
+                                                R.string.developer_options_rearm_done,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                        },
+                                    )
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                ExpressiveGroupRow(GroupPosition.MIDDLE) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_rearm_first_update))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_rearm_first_update_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            UpdatePreferences(this@DeveloperOptionsActivity)
+                                                .hasInstalledUpdate = false
+                                            Toast.makeText(
+                                                this@DeveloperOptionsActivity,
+                                                R.string.developer_options_rearm_done,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                        },
+                                    )
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                ExpressiveGroupRow(GroupPosition.BOTTOM) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_rearm_call_reminder))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_rearm_call_reminder_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            androidx.preference.PreferenceManager
+                                                .getDefaultSharedPreferences(this@DeveloperOptionsActivity)
+                                                .edit()
+                                                .putBoolean(
+                                                    eu.siacs.conversations.ui.CallPermissionDialogFragment.PREF_REMINDER,
+                                                    true,
+                                                )
+                                                .apply()
+                                            getSharedPreferences(
+                                                "eu.siacs.conversations.ui.ConversationsActivity",
+                                                MODE_PRIVATE,
+                                            ).edit()
+                                                .remove("last_call_permission_nag")
+                                                .remove("call_permission_nag_disabled")
+                                                .apply()
+                                            Toast.makeText(
+                                                this@DeveloperOptionsActivity,
+                                                R.string.developer_options_rearm_done,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                         },
                                     )
                                 }

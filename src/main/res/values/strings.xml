@@ -1509,4 +1509,13 @@
     <string name="bug_fixed_title">Fixed — update to get it</string>
     <string name="bug_fixed_text">The fix is in a newer version. It installs overnight, or tap Install in the update sheet.</string>
     <string name="bug_fixed_installed_notification_text">%1$s was fixed in %2$s, which you already have.</string>
+    <string name="pref_call_permission_reminder">Call permission reminder</string>
+    <string name="pref_call_permission_reminder_summary">Once a day, ask to turn a call permission back on if your phone switched it off.</string>
+    <string name="developer_options_rearm_battery">Re-arm battery optimisation prompt</string>
+    <string name="developer_options_rearm_battery_summary">Shows the battery dialog again on the main screen if optimisation is still on</string>
+    <string name="developer_options_rearm_first_update">Reset the "first update" flag</string>
+    <string name="developer_options_rearm_first_update_summary">Treats the next install as the first one again</string>
+    <string name="developer_options_rearm_call_reminder">Re-arm the call permission reminder</string>
+    <string name="developer_options_rearm_call_reminder_summary">Turns it back on and lets it appear again right away</string>
+    <string name="developer_options_rearm_done">Done</string>
 </resources>
