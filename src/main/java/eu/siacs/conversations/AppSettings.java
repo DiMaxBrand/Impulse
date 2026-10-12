@@ -49,6 +49,8 @@ public class AppSettings {
     public static final String ENTITY_TIME = "entity_time";
     public static final String THEME = "theme";
     public static final String DYNAMIC_COLORS = "dynamic_colors";
+    public static final String ACCENT_SEED = "accent_seed";
+    public static final int DEFAULT_ACCENT_SEED = 0xFF1B9E34;
     public static final String SHOW_DYNAMIC_TAGS = "show_dynamic_tags";
     public static final String OMEMO = "omemo";
     public static final String ALLOW_SCREENSHOTS = "allow_screenshots";
@@ -303,6 +305,11 @@ public class AppSettings {
         return getBooleanPreference(AppSettings.DYNAMIC_COLORS, R.bool.dynamic_colors);
     }
 
+    public int getAccentSeed() {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getInt(ACCENT_SEED, DEFAULT_ACCENT_SEED);
+    }
+
     public int getDesiredNightMode() {
         final var theme = getStringPreference(THEME, R.string.theme);
         return getDesiredNightMode(theme);
@@ -509,6 +516,13 @@ public class AppSettings {
                     .putBoolean(DND_SYNC_SYSTEM, true)
                     .putBoolean(DND_INCLUDE_SILENT_MODES, true)
                     .putInt("pref_migration_version", 1)
+                    .apply();
+        }
+        if (!prefs.getBoolean("dynamic_colors_default_migrated_v1", false)) {
+            // Dynamic colours are now on by default for everybody, including existing installs.
+            prefs.edit()
+                    .putBoolean(DYNAMIC_COLORS, true)
+                    .putBoolean("dynamic_colors_default_migrated_v1", true)
                     .apply();
         }
         if (!prefs.getBoolean("pref_migrated_use_shared_storage", false)) {

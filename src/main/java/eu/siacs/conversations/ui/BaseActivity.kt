@@ -8,6 +8,7 @@ import eu.siacs.conversations.ui.util.SettingsUtils
 
 abstract class BaseActivity : AppCompatActivity() {
     private var isDynamicColors: Boolean? = null
+    private var accentSeed: Int? = null
 
     override fun onStart() {
         super.onStart()
@@ -18,6 +19,11 @@ abstract class BaseActivity : AppCompatActivity() {
         }
         val isDynamicColors = appSettings.isDynamicColorsDesired
         setDynamicColors(isDynamicColors)
+        // A new accent seed only matters while dynamic colours are off.
+        val seed = if (isDynamicColors) 0 else appSettings.accentSeed
+        val previous = accentSeed
+        accentSeed = seed
+        if (previous != null && previous != seed) recreate()
     }
 
     override fun onResume() {
