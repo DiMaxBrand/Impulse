@@ -90,7 +90,12 @@ fun ConversationsSearchHost(
     content: @Composable () -> Unit,
 ) {
     val textFieldState = rememberTextFieldState()
-    val searchBarState = rememberContainedSearchBarState()
+    // The app's usual spatial spring (stiffness 380, damping 0.8): the bar grows from where it
+    // sits to the full screen with a small overshoot instead of a plain tween.
+    val searchBarState = rememberContainedSearchBarState(
+        animationSpecForExpand = androidx.compose.animation.core.spring(stiffness = 380f, dampingRatio = 0.8f),
+        animationSpecForCollapse = androidx.compose.animation.core.spring(stiffness = 380f, dampingRatio = 0.9f),
+    )
     val scope = rememberCoroutineScope()
     val scrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior()
     val appBarColors = SearchBarDefaults.appBarWithSearchColors(
@@ -167,7 +172,8 @@ fun ConversationsSearchHost(
             state = searchBarState,
             inputField = inputField,
             colors = SearchBarDefaults.containedColors(state = searchBarState),
-            windowInsets = { WindowInsets(0) },
+            // Default insets: the expanded bar fills the screen but its field stays below the
+            // status bar (the collapsed bar is already placed below it).
         ) {
             val query = textFieldState.text.toString().trim()
             val suggestions = remember(query, host.menuRevision.intValue) {
