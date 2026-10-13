@@ -17,7 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.material3.AppBarWithSearch
+import androidx.compose.material3.TopSearchBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -129,10 +129,16 @@ fun ConversationsSearchHost(
                 }
             },
             trailingIcon = {
-                if (searchBarState.currentValue == SearchBarValue.Expanded &&
-                    textFieldState.text.isNotEmpty()) {
-                    IconButton(onClick = { textFieldState.clearText() }) {
-                        Icon(painterResource(R.drawable.ic_close_24dp), contentDescription = null)
+                if (searchBarState.currentValue == SearchBarValue.Expanded) {
+                    if (textFieldState.text.isNotEmpty()) {
+                        IconButton(onClick = { textFieldState.clearText() }) {
+                            Icon(painterResource(R.drawable.ic_close_24dp), contentDescription = null)
+                        }
+                    }
+                } else {
+                    // QR menu and your avatar live inside the bar, at its end.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SearchBarMenus(host, actions)
                     }
                 }
             },
@@ -142,13 +148,13 @@ fun ConversationsSearchHost(
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
-                AppBarWithSearch(
+                // Full-width bar; the icons sit inside it (see the input field's trailing slot).
+                TopSearchBar(
                     state = searchBarState,
                     inputField = inputField,
-                    scrollBehavior = scrollBehavior,
-                    colors = appBarColors,
+                    colors = appBarColors.searchBarColors,
                     windowInsets = WindowInsets(0),
-                    actions = { SearchBarMenus(host, actions) },
+                    scrollBehavior = scrollBehavior,
                 )
             },
             contentWindowInsets = WindowInsets(0),
