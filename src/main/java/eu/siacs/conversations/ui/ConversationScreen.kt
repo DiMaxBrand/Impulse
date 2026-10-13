@@ -404,14 +404,9 @@ object ConversationScreenHelper {
 internal fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val isDark = isSystemInDarkTheme()
-    val isSamsung = remember { Build.MANUFACTURER.equals("samsung", ignoreCase = true) }
-    val rawColorScheme = dynamicOrStaticColorScheme(context, isDark)
-    // Samsung One UI 8.5 generates a much darker tone for surfaceContainerHigh than the M3
-    // spec expects (~tone 70 vs. the standard ~92), making incoming chat bubbles appear as a
-    // dark gray in light mode. Remap to the lighter surfaceContainerLow tier on Samsung.
-    val colorScheme = if (isSamsung && !isDark) {
-        rawColorScheme.copy(surfaceContainerHigh = rawColorScheme.surfaceContainerLow)
-    } else rawColorScheme
+    // Samsung's darker surfaceContainerHigh is corrected in one shared place, see
+    // withSamsungSurfaceFix(): the chat list's own theme needs the very same fix (search bar).
+    val colorScheme = dynamicOrStaticColorScheme(context, isDark).withSamsungSurfaceFix(isDark)
     // Material3 has no built-in "success" role. We pick a green seed and harmonize its hue
     // toward the dynamic primary (same algorithm M3 itself uses), so it still feels designed
     // together with the wallpaper-derived palette instead of clashing as a flat, static green.

@@ -14,6 +14,18 @@ import com.google.android.material.color.utilities.MaterialDynamicColors
 import com.google.android.material.color.utilities.SchemeContent
 import eu.siacs.conversations.AppSettings
 
+/**
+ * Samsung One UI 8.5 generates a much darker tone for surfaceContainerHigh than the M3 spec
+ * expects (~tone 70 vs. the standard ~92). In light mode that made incoming chat bubbles a dark
+ * grey, and later the same happened to the chat list's search bar, which uses the same role.
+ * Remap it to the lighter surfaceContainerLow tier on Samsung. Every Compose theme that draws
+ * surfaceContainerHigh must go through this.
+ */
+fun ColorScheme.withSamsungSurfaceFix(isDark: Boolean): ColorScheme =
+    if (Build.MANUFACTURER.equals("samsung", ignoreCase = true) && !isDark) {
+        copy(surfaceContainerHigh = surfaceContainerLow)
+    } else this
+
 private var cachedKey: Triple<Boolean, Boolean, Int>? = null
 private var cachedScheme: ColorScheme? = null
 

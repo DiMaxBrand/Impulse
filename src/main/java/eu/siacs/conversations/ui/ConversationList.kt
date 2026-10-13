@@ -204,7 +204,10 @@ object ConversationListHelper {
 @Composable
 private fun ImpulseTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val colorScheme = dynamicOrStaticColorScheme(context, isSystemInDarkTheme())
+    val isDark = isSystemInDarkTheme()
+    // Same Samsung fix as the chat screen: without it the search bar (surfaceContainerHigh)
+    // came out as a dark grey slab on Samsung phones.
+    val colorScheme = dynamicOrStaticColorScheme(context, isDark).withSamsungSurfaceFix(isDark)
     MaterialTheme(colorScheme = colorScheme, content = content)
 }
 
