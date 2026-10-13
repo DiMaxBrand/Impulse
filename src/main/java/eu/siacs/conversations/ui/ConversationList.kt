@@ -165,6 +165,8 @@ object ConversationListHelper {
         state: ConversationListState,
         onConversationClick: ConversationClickListener,
         fab: ExtendedFloatingActionButton,
+        searchHost: SearchHostState,
+        searchActions: SearchHostActions,
         onDownloadComplete: () -> Unit = {},
     ) {
         composeView.setViewCompositionStrategy(
@@ -172,17 +174,22 @@ object ConversationListHelper {
         )
         composeView.setContent {
             ImpulseTheme {
+                LaunchedEffect(searchHost.expanded) {
+                    if (searchHost.expanded) fab.hide() else fab.show()
+                }
                 Box(modifier = Modifier.fillMaxSize()) {
-                    Column {
-                        ConnectingStrip(isConnecting = state.isConnecting.value)
-                        ConversationList(
-                            conversations = state.list,
-                            revision = state.revision.intValue,
-                            onConversationClick = { onConversationClick.onClick(it) },
-                            onFirstVisibleIndexChanged = { index ->
-                                composeView.post { if (index > 0) fab.shrink() else fab.extend() }
-                            },
-                        )
+                    ConversationsSearchHost(host = searchHost, actions = searchActions) {
+                        Column {
+                            ConnectingStrip(isConnecting = state.isConnecting.value)
+                            ConversationList(
+                                conversations = state.list,
+                                revision = state.revision.intValue,
+                                onConversationClick = { onConversationClick.onClick(it) },
+                                onFirstVisibleIndexChanged = { index ->
+                                    composeView.post { if (index > 0) fab.shrink() else fab.extend() }
+                                },
+                            )
+                        }
                     }
                     DownloadProgressBar(
                         onComplete = onDownloadComplete,
@@ -249,7 +256,7 @@ fun ConversationList(
     }
 }
 
-private fun conversationItemShape(index: Int, total: Int): RoundedCornerShape {
+internal fun conversationItemShape(index: Int, total: Int): RoundedCornerShape {
     val large = 16.dp
     val small = 5.dp
     return when {

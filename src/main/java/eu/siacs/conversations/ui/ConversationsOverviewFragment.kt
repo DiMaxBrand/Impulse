@@ -77,79 +77,44 @@ class ConversationsOverviewFragment : XmppFragment() {
     private val conversations: MutableList<Conversation> = mutableListOf()
     private var binding: FragmentConversationsOverviewBinding? = null
     private lateinit var composeState: ConversationListState
-    private var searchSuggestionAdapter: SearchSuggestionAdapter? = null
 
-    private val globalMenuProvider = object : MenuProvider {
-        override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-            menuInflater.inflate(R.menu.fragment_global, menu)
-            AccountUtils.showHideMenuItems(menu)
-        }
+    private val searchHost = SearchHostState()
 
-        override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-            return when (menuItem.itemId) {
-                R.id.action_help_support -> {
-                    HelpSupportSheetFragment().show(parentFragmentManager, HelpSupportSheetFragment.TAG)
-                    true
-                }
-                R.id.action_settings -> {
-                    startActivity(Intent(requireContext(), SettingsActivity::class.java))
-                    true
-                }
-                R.id.action_accounts -> {
+    private val searchActions by lazy {
+        SearchHostActions(
+            suggest = ::suggestionsFor,
+            onSearchMessages = ::startSearch,
+            onSuggestion = ::executeSuggestion,
+            onScanQr = { (requireActivity() as? QrCodeScanningActivity)?.requestQrCodeScan() },
+            onShowQr = {
+                AccountPickerDialog.Enabled(requireXmppActivity())
+                    .pick { requireXmppActivity().showQrCode(it) }
+            },
+            onEasyInvite = ::selectAccountToStartEasyInvite,
+            onPrivacy = ::openPrivacyPolicy,
+            onManageAccount = {
+                if (AccountUtils.MANAGE_ACCOUNT_ACTIVITY != null) {
                     AccountUtils.launchManageAccounts(requireXmppActivity())
-                    true
-                }
-                R.id.action_account -> {
+                } else {
                     AccountUtils.launchManageAccount(requireXmppActivity())
-                    true
                 }
-                else -> false
-            }
-        }
+            },
+            onHelp = {
+                HelpSupportSheetFragment().show(parentFragmentManager, HelpSupportSheetFragment.TAG)
+            },
+            onSettings = { startActivity(Intent(requireContext(), SettingsActivity::class.java)) },
+        )
     }
 
-    private val menuProvider = object : MenuProvider {
-        override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-            menuInflater.inflate(R.menu.fragment_conversations_overview, menu)
-            menu.findItem(R.id.action_privacy_policy).isVisible =
-                BuildConfig.PRIVACY_POLICY != null && AbstractQuickConversationsService.isPlayStoreFlavor()
-            menu.findItem(R.id.action_qr_codes).isVisible = true
-            menu.findItem(R.id.action_scan_qr_code).isVisible =
-                requireXmppActivity().isCameraFeatureAvailable()
-            menu.findItem(R.id.action_show_qr_code).isVisible =
-                AccountPickerDialog.Enabled(requireXmppActivity()).hasAnyAccounts()
-            menu.findItem(R.id.action_easy_invite).isVisible =
-                AccountPickerDialog.EasyInvite(requireXmppActivity()).hasAnyAccounts()
-        }
-
-        override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-            return when (menuItem.itemId) {
-                R.id.action_easy_invite -> {
-                    selectAccountToStartEasyInvite()
-                    true
-                }
-                R.id.action_show_qr_code -> {
-                    AccountPickerDialog.Enabled(requireXmppActivity())
-                        .pick { requireXmppActivity().showQrCode(it) }
-                    true
-                }
-                R.id.action_scan_qr_code -> {
-                    (requireActivity() as? QrCodeScanningActivity)?.requestQrCodeScan()
-                    true
-                }
-                R.id.action_privacy_policy -> {
-                    openPrivacyPolicy()
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
-    private val searchViewOnBackPressedCallback = object : OnBackPressedCallback(false) {
-        override fun handleOnBackPressed() {
-            binding?.searchView?.hide()
-        }
+    private fun updateSearchMenu() {
+        val activity = activity as? XmppActivity ?: return
+        searchHost.showScanQr = activity.isCameraFeatureAvailable()
+        searchHost.showShowQr = AccountPickerDialog.Enabled(activity).hasAnyAccounts()
+        searchHost.showEasyInvite = AccountPickerDialog.EasyInvite(activity).hasAnyAccounts()
+        searchHost.showPrivacy =
+            BuildConfig.PRIVACY_POLICY != null && AbstractQuickConversationsService.isPlayStoreFlavor()
+        searchHost.manageAccountsPlural = AccountUtils.MANAGE_ACCOUNT_ACTIVITY != null
+        searchHost.menuRevision.intValue++
     }
 
     private fun openPrivacyPolicy() {
@@ -167,7 +132,6 @@ class ConversationsOverviewFragment : XmppFragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         binding = null
-        searchSuggestionAdapter = null
     }
 
     override fun onPause() {
@@ -176,7 +140,6 @@ class ConversationsOverviewFragment : XmppFragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requireActivity().onBackPressedDispatcher.addCallback(this, searchViewOnBackPressedCallback)
     }
 
     override fun onCreateView(
@@ -187,20 +150,6 @@ class ConversationsOverviewFragment : XmppFragment() {
         binding = DataBindingUtil.inflate(inflater, R.layout.fragment_conversations_overview, container, false)
         val binding = binding!!
 
-        binding.searchBar.addMenuProvider(menuProvider, viewLifecycleOwner, Lifecycle.State.RESUMED)
-        binding.searchBar.addMenuProvider(globalMenuProvider, viewLifecycleOwner, Lifecycle.State.RESUMED)
-
-        binding.searchView.editText.setOnEditorActionListener { v, _, _ ->
-            startSearch(CharSequences.nullToEmpty(v.text))
-            binding.searchView.hide()
-            true
-        }
-        binding.searchView.editText.addTextChangedListener(TextChangeListener(::submitSearchSuggestion))
-        binding.searchView.addTransitionListener { _, _, newState ->
-            val isShowing = newState == SearchView.TransitionState.SHOWING ||
-                newState == SearchView.TransitionState.SHOWN
-            searchViewOnBackPressedCallback.isEnabled = isShowing
-        }
         binding.fab.setOnClickListener { activity?.let { StartConversationActivity.launch(it) } }
 
         composeState = ConversationListState()
@@ -212,12 +161,10 @@ class ConversationsOverviewFragment : XmppFragment() {
                     ?: Log.w(TAG, "Activity does not implement OnConversationSelected")
             },
             binding.fab,
+            searchHost,
+            searchActions,
             onDownloadComplete = { (activity as? ConversationsActivity)?.openUpdateSheet() },
         )
-
-        searchSuggestionAdapter = SearchSuggestionAdapter()
-        binding.searchSuggestionList.adapter = searchSuggestionAdapter
-        searchSuggestionAdapter!!.setOnSearchSuggestionClicked(::executeSuggestion)
 
         return binding.root
     }
@@ -228,13 +175,10 @@ class ConversationsOverviewFragment : XmppFragment() {
         startActivity(intent)
     }
 
-    private fun submitSearchSuggestion(raw: String) {
+    private fun suggestionsFor(raw: String): List<SearchSuggestion> {
         val search = raw.trim()
-        if (search.isEmpty()) {
-            searchSuggestionAdapter?.submitList(emptyList())
-            return
-        }
-        val suggestions = buildList<SearchSuggestion> {
+        if (search.isEmpty()) return emptyList()
+        return buildList {
             add(SearchSuggestion.Text(search))
             if (Patterns.URI_GENERIC.matcher(search).matches()) {
                 val xmppUri = MiniUri.getXmppUriOrNull(search)
@@ -251,17 +195,14 @@ class ConversationsOverviewFragment : XmppFragment() {
                 }
             }
         }
-        searchSuggestionAdapter?.submitList(suggestions)
     }
 
     private fun executeSuggestion(suggestion: SearchSuggestion) {
         when (suggestion) {
             is SearchSuggestion.Text -> {
-                hideSearchView()
                 startSearch(suggestion.text())
             }
             is SearchSuggestion.Uri -> {
-                hideSearchView()
                 XmppUriLauncher(requireContext(), true).launch(suggestion.uri())
             }
             is SearchSuggestion.Bookmark -> {
@@ -270,7 +211,6 @@ class ConversationsOverviewFragment : XmppFragment() {
                 val bookmark = account.xmppConnection
                     .getManager(BookmarkManager::class.java)
                     .getBookmark(suggestion.address()) ?: return
-                hideSearchView()
                 requireXmppActivity().openConversationsForBookmark(bookmark)
             }
             is SearchSuggestion.Contact -> {
@@ -281,18 +221,8 @@ class ConversationsOverviewFragment : XmppFragment() {
                     .getContact(suggestion.address())
                 val conversation = requireXmppActivity().xmppConnectionService
                     .findOrCreateConversation(contact.getAccount(), contact.getAddress(), false, true)
-                hideSearchView()
                 requireXmppActivity().switchToConversation(conversation)
             }
-        }
-    }
-
-    private fun hideSearchView() {
-        val searchView = binding?.searchView ?: return
-        searchView.hide()
-        if (!ConversationsActivity.isTabletView(requireActivity())) {
-            searchView.setVisible(false)
-            searchView.clearFocus()
         }
     }
 
@@ -318,7 +248,7 @@ class ConversationsOverviewFragment : XmppFragment() {
             Log.d(Config.LOGTAG, "ConversationsOverviewFragment.refresh() skipped because view binding or compose state was null")
             return
         }
-        binding.searchBar.invalidateMenu()
+        updateSearchMenu()
         val service = requireXmppActivity().xmppConnectionService
         service.populateWithOrderedConversations(conversations)
         composeState.isConnecting.value = service.accounts.any { it.status == Account.State.CONNECTING }

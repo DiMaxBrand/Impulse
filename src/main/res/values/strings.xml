@@ -1555,4 +1555,7 @@
     <string name="auto_resend_5">Every 5 minutes</string>
     <string name="auto_resend_15">Every 15 minutes</string>
     <string name="auto_resend_30">Every 30 minutes</string>
+    <string name="search_hint">Search</string>
+    <string name="search_messages_for_x">Search messages for \"%s\"</string>
+    <string name="search_type_hint">Type a name or address, or search through your messages</string>
 </resources>

@@ -1619,4 +1619,7 @@
     <string name="auto_resend_5">Каждые 5 минут</string>
     <string name="auto_resend_15">Каждые 15 минут</string>
     <string name="auto_resend_30">Каждые 30 минут</string>
+    <string name="search_hint">Поиск</string>
+    <string name="search_messages_for_x">Искать в сообщениях: \"%s\"</string>
+    <string name="search_type_hint">Введите имя или адрес, либо ищите по сообщениям</string>
 </resources>
