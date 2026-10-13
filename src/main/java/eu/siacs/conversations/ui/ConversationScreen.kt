@@ -2790,7 +2790,7 @@ private val TAIL_HEIGHT: Dp = 14.dp
  * on that side to keep bubble bodies aligned within the group.
  */
 @Composable
-private fun rememberBubbleShape(
+internal fun rememberBubbleShape(
     firstOfGroup: Boolean,
     lastOfGroup: Boolean,
     outgoing: Boolean,
@@ -6842,19 +6842,23 @@ private fun MorphingMessageText(
 }
 
 @Composable
-private fun LinkifiedMessageText(
+internal fun LinkifiedMessageText(
     message: Message,
     revision: Int,
     contentColor: androidx.compose.ui.graphics.Color,
     onLongPress: () -> Unit,
+    // Words to mark as search hits (message search results); null in a normal chat.
+    highlightTerms: List<String>? = null,
 ) {
+    val hitBg = MaterialTheme.colorScheme.primaryFixedDim
+    val hitFg = MaterialTheme.colorScheme.onPrimaryFixed
     val linkColor = MaterialTheme.colorScheme.primary
     val xmppBg = MaterialTheme.colorScheme.tertiaryContainer
     val xmppFg = MaterialTheme.colorScheme.onTertiaryContainer
     val context = LocalContext.current
     val msgKey = message.getUuid() ?: System.identityHashCode(message)
-    val annotated = remember(msgKey, revision, contentColor.value, linkColor.value, xmppBg.value, xmppFg.value) {
-        buildAnnotatedBody(context, message, contentColor, linkColor, xmppBg, xmppFg)
+    val annotated = remember(msgKey, revision, contentColor.value, linkColor.value, xmppBg.value, xmppFg.value, highlightTerms) {
+        buildAnnotatedBody(context, message, contentColor, linkColor, xmppBg, xmppFg, highlightTerms, hitBg, hitFg)
     }
     androidx.compose.foundation.text.BasicText(
         text = annotated,
@@ -6875,6 +6879,9 @@ private fun buildAnnotatedBody(
     linkColor: androidx.compose.ui.graphics.Color,
     xmppBg: androidx.compose.ui.graphics.Color,
     xmppFg: androidx.compose.ui.graphics.Color,
+    highlightTerms: List<String>? = null,
+    hitBg: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
+    hitFg: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
 ): androidx.compose.ui.text.AnnotatedString {
     val rawBody = message.body?.trim() ?: ""
     return try {
@@ -6925,6 +6932,20 @@ private fun buildAnnotatedBody(
         }
         eu.siacs.conversations.utils.StylingHelper.format(body, contentColor.toArgb())
         de.gultsch.common.Linkify.addLinks(body)
+        if (!highlightTerms.isNullOrEmpty() && hitBg != androidx.compose.ui.graphics.Color.Unspecified) {
+            val text = body.toString()
+            for (needle in eu.siacs.conversations.utils.StylingHelper.filterHighlightedWords(highlightTerms)) {
+                var start = text.indexOf(needle, 0, ignoreCase = true)
+                while (start != -1) {
+                    val end = start + needle.length
+                    body.setSpan(android.text.style.BackgroundColorSpan(hitBg.toArgb()), start, end,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    body.setSpan(android.text.style.ForegroundColorSpan(hitFg.toArgb()), start, end,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    start = text.indexOf(needle, end, ignoreCase = true)
+                }
+            }
+        }
         spannableToAnnotated(body, linkColor, xmppBg, xmppFg, context)
     } catch (_: Exception) {
         androidx.compose.ui.text.AnnotatedString(rawBody)
@@ -6969,6 +6990,8 @@ private fun spannableToAnnotated(
                     )
                 is android.text.style.ForegroundColorSpan ->
                     addStyle(androidx.compose.ui.text.SpanStyle(color = androidx.compose.ui.graphics.Color(span.foregroundColor)), start, end)
+                is android.text.style.BackgroundColorSpan ->
+                    addStyle(androidx.compose.ui.text.SpanStyle(background = androidx.compose.ui.graphics.Color(span.backgroundColor)), start, end)
                 is android.text.style.RelativeSizeSpan ->
                     addStyle(androidx.compose.ui.text.SpanStyle(fontSize = (16f * AppearanceState.textScale * span.sizeChange).sp), start, end)
                 is android.text.style.URLSpan -> {

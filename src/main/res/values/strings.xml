@@ -1558,4 +1558,8 @@
     <string name="search_hint">Search</string>
     <string name="search_messages_for_x">Search messages for \"%s\"</string>
     <string name="search_type_hint">Type a name or address, or search through your messages</string>
+    <string name="search_scope_all">All chats</string>
+    <string name="search_scope_title">Search in</string>
+    <string name="search_no_results">Nothing found</string>
+    <string name="search_start_hint">Type to search through messages</string>
 </resources>

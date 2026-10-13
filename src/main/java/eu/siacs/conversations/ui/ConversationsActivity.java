@@ -98,6 +98,11 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     // the given message (same mechanism a tapped reply card uses), with no download side effect.
     // Set by NotificationService when a notification represents a single specific message.
     public static final String EXTRA_MESSAGE_UUID = "eu.siacs.conversations.message_uuid";
+    // Sent time of the message named by EXTRA_MESSAGE_UUID / EXTRA_REPLY_TO_UUID, so the chat can
+    // load the right stretch of history when that message is older than what is in memory.
+    public static final String EXTRA_MESSAGE_TIME = "eu.siacs.conversations.message_time";
+    // Open the chat with a reply to this message already started.
+    public static final String EXTRA_REPLY_TO_UUID = "eu.siacs.conversations.reply_to_uuid";
     public static final String EXTRA_AS_QUOTE = "eu.siacs.conversations.as_quote";
     public static final String EXTRA_NICK = "nick";
     public static final String EXTRA_IS_PRIVATE_MESSAGE = "pm";

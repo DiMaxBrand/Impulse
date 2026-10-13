@@ -647,6 +647,23 @@ public abstract class XmppActivity extends ActionBarActivity {
         switchToConversation(conversation, null);
     }
 
+    /** Opens the chat scrolled to (and highlighting) [message], or starting a reply to it. */
+    public void switchToConversationAtMessage(
+            final Conversation conversation, final Message message, final boolean reply) {
+        final Intent intent = new Intent(this, ConversationsActivity.class);
+        intent.setAction(ConversationsActivity.ACTION_VIEW_CONVERSATION);
+        intent.putExtra(ConversationsActivity.EXTRA_CONVERSATION, conversation.getUuid());
+        intent.putExtra(
+                reply
+                        ? ConversationsActivity.EXTRA_REPLY_TO_UUID
+                        : ConversationsActivity.EXTRA_MESSAGE_UUID,
+                message.getUuid());
+        intent.putExtra(ConversationsActivity.EXTRA_MESSAGE_TIME, message.getTimeSent());
+        intent.setFlags(intent.getFlags() | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(intent);
+        finish();
+    }
+
     public void switchToConversationAndQuote(Conversation conversation, String text) {
         switchToConversation(conversation, text, true, null, false, false);
     }

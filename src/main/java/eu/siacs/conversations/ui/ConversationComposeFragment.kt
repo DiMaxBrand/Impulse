@@ -422,8 +422,20 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         // card already triggers, including its "message not in the currently loaded window yet"
         // fallback, rather than just opening the conversation at its default (bottom) position.
         val messageUuid = extras.getString(ConversationsActivity.EXTRA_MESSAGE_UUID)
+        val messageTime = extras.getLong(ConversationsActivity.EXTRA_MESSAGE_TIME, 0L)
         if (!messageUuid.isNullOrEmpty()) {
-            conversation.findMessageWithUuid(messageUuid)?.let(::onScrollToMessage)
+            if (messageTime > 0) {
+                // From message search: the message may be far back in history.
+                refreshMessages()
+                scrollToMessage(messageUuid, messageTime, replyToIt = false)
+            } else {
+                conversation.findMessageWithUuid(messageUuid)?.let(::onScrollToMessage)
+            }
+        }
+        val replyUuid = extras.getString(ConversationsActivity.EXTRA_REPLY_TO_UUID)
+        if (!replyUuid.isNullOrEmpty() && messageTime > 0) {
+            refreshMessages()
+            scrollToMessage(replyUuid, messageTime, replyToIt = true)
         }
         refreshMessages()
     }
@@ -1591,23 +1603,41 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onScrollToMessage(message: Message) {
-        val uuid = message.getUuid()
+        val uuid = message.getUuid() ?: return
+        scrollToMessage(uuid, message.timeSent, replyToIt = false)
+    }
+
+    /**
+     * Brings the message into the loaded window (reading older history from the database when it
+     * is not there yet) and either scrolls to it with the usual highlight, or starts a reply to it.
+     */
+    private fun scrollToMessage(uuid: String, timeSent: Long, replyToIt: Boolean) {
+        val arrive = {
+            if (replyToIt) {
+                state.messages.value.firstOrNull { it.getUuid() == uuid }?.let {
+                    state.correcting.value = null
+                    state.replyingTo.value = it
+                }
+            } else {
+                state.requestScrollToUuid.value = uuid
+            }
+        }
         if (state.messages.value.none { it.getUuid() == uuid }) {
             val service = getXmppConnectionService() ?: return
             val c = conversation ?: return
             lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 // Load a batch ending just after this message so it's included in the window.
-                val batch = service.databaseBackend.getMessages(c, 50, message.timeSent + 1)
+                val batch = service.databaseBackend.getMessages(c, 50, timeSent + 1)
                 val existingUuids = state.messages.value.mapTo(HashSet()) { it.getUuid() }
                 val fresh = batch.filter { it.getUuid() !in existingUuids }
                 if (fresh.isNotEmpty()) c.addAll(0, fresh)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     refreshMessages()
-                    state.requestScrollToUuid.value = uuid
+                    arrive()
                 }
             }
         } else {
-            state.requestScrollToUuid.value = uuid
+            arrive()
         }
     }
 

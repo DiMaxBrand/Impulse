@@ -1622,4 +1622,8 @@
     <string name="search_hint">Поиск</string>
     <string name="search_messages_for_x">Искать в сообщениях: \"%s\"</string>
     <string name="search_type_hint">Введите имя или адрес, либо ищите по сообщениям</string>
+    <string name="search_scope_all">Все чаты</string>
+    <string name="search_scope_title">Где искать</string>
+    <string name="search_no_results">Ничего не найдено</string>
+    <string name="search_start_hint">Введите запрос для поиска по сообщениям</string>
 </resources>
