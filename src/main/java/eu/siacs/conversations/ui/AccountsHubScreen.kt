@@ -279,7 +279,9 @@ private fun AccountCard(
     val isError = remember(revision) { account.getStatus().isError() }
     Surface(
         shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        // One tonal step lighter than before (Low, not High); the rows on top of it are one step
+        // lighter too (surfaceContainer, not Highest), so they stay darker than their card.
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth().animateContentSize(spring(stiffness = 380f, dampingRatio = 0.8f)),
     ) {
         Column {
@@ -381,7 +383,7 @@ private fun AccountDetails(
                 headlineContent = { Text(stringResource(R.string.server_info_show_more)) },
                 trailingContent = { Switch(checked = serverInfoOn, onCheckedChange = onServerInfoChange) },
                 modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable { onServerInfoChange(!serverInfoOn) },
-                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             )
             AnimatedVisibility(visible = serverInfoOn) {
                 ServerInfoBlock(account, revision, actions)
@@ -396,7 +398,7 @@ private fun DetailRow(label: String, value: String, muted: Boolean, onEdit: (() 
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .then(if (onEdit != null) Modifier.clickable(onClick = onEdit) else Modifier)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -426,7 +428,7 @@ private fun ServerInfoBlock(account: Account, revision: Int, actions: AccountsHu
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -480,7 +482,9 @@ private fun SettingsCard(entries: List<SettingsEntry>) {
     val arrow by animateFloatAsState(if (expanded) 180f else 0f, spring(stiffness = 380f, dampingRatio = 0.8f), label = "arrow")
     Surface(
         shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        // One tonal step lighter than before (Low, not High); the rows on top of it are one step
+        // lighter too (surfaceContainer, not Highest), so they stay darker than their card.
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth().animateContentSize(spring(stiffness = 380f, dampingRatio = 0.8f)),
     ) {
         Column {
@@ -513,7 +517,7 @@ private fun SettingsCard(entries: List<SettingsEntry>) {
                             modifier = Modifier
                                 .clip(RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom))
                                 .combinedClickable(onClick = e.onClick, onLongClick = e.onLongClick),
-                            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+                            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                         )
                     }
                 }
