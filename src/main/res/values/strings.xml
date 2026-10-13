@@ -1255,7 +1255,7 @@
     <string name="qr_code_contains_link_text">This QR code points to a website. Please verify the address below before opening it in your browser:</string>
     <string name="open_browser">Open Browser</string>
     <string name="muc_user_ban_explainer">This user will no longer be able to see new messages or participate in the conversation.</string>
-    <string name="publish_qr_code">Publish QR code</string>
+    <string name="publish_qr_code">Share QR code</string>
     <string name="give_membership">Give membership</string>
     <string name="remove_membership">Remove membership</string>
     <string name="make_admin">Make admin</string>
@@ -1562,4 +1562,17 @@
     <string name="search_scope_title">Search in</string>
     <string name="search_no_results">Nothing found</string>
     <string name="search_start_hint">Type to search through messages</string>
+    <string name="hub_title">Accounts</string>
+    <string name="hub_settings_section">Settings</string>
+    <string name="hub_status_message">Status message</string>
+    <string name="hub_choose_account">Choose an account</string>
+    <string name="hub_choose_account_hint">Which account should this apply to?</string>
+    <string name="hub_device_keys">Device keys and trust</string>
+    <string name="hub_no_accounts">No accounts yet</string>
+    <string name="hub_no_status">No status message</string>
+    <string name="hub_share">Share</string>
+    <string name="hub_expand">Show details</string>
+    <string name="hub_collapse">Hide details</string>
+    <string name="hub_unverified_device">Not verified</string>
+    <string name="hub_verified_device">Verified</string>
 </resources>

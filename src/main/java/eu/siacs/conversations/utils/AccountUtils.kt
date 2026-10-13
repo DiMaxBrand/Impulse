@@ -97,17 +97,13 @@ object AccountUtils {
 
     @JvmStatic
     fun launchManageAccounts(activity: Activity) {
-        if (MANAGE_ACCOUNT_ACTIVITY != null) {
-            activity.startActivity(Intent(activity, MANAGE_ACCOUNT_ACTIVITY))
-        } else {
-            Toast.makeText(activity, R.string.feature_not_implemented, Toast.LENGTH_SHORT).show()
-        }
+        // One home for accounts and settings (replaces the old list + details screens).
+        activity.startActivity(Intent(activity, eu.siacs.conversations.ui.AccountsHubActivity::class.java))
     }
 
     @JvmStatic
     fun launchManageAccount(xmppActivity: XmppActivity) {
-        val account = getFirst(xmppActivity.xmppConnectionService)
-        xmppActivity.switchToAccount(account)
+        launchManageAccounts(xmppActivity)
     }
 
     private fun getManageAccountActivityClass(): Class<*>? {

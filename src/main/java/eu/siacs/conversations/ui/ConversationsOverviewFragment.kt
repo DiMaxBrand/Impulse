@@ -42,6 +42,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.annotation.NonNull
 import androidx.core.view.MenuProvider
 import androidx.databinding.DataBindingUtil
@@ -91,30 +96,32 @@ class ConversationsOverviewFragment : XmppFragment() {
                     .pick { requireXmppActivity().showQrCode(it) }
             },
             onEasyInvite = ::selectAccountToStartEasyInvite,
-            onPrivacy = ::openPrivacyPolicy,
-            onManageAccount = {
-                if (AccountUtils.MANAGE_ACCOUNT_ACTIVITY != null) {
-                    AccountUtils.launchManageAccounts(requireXmppActivity())
-                } else {
-                    AccountUtils.launchManageAccount(requireXmppActivity())
-                }
-            },
-            onHelp = {
-                HelpSupportSheetFragment().show(parentFragmentManager, HelpSupportSheetFragment.TAG)
-            },
-            onSettings = { startActivity(Intent(requireContext(), SettingsActivity::class.java)) },
+            onManageAccount = { AccountUtils.launchManageAccounts(requireXmppActivity()) },
         )
     }
+
+    private var avatarLoading = false
 
     private fun updateSearchMenu() {
         val activity = activity as? XmppActivity ?: return
         searchHost.showScanQr = activity.isCameraFeatureAvailable()
         searchHost.showShowQr = AccountPickerDialog.Enabled(activity).hasAnyAccounts()
         searchHost.showEasyInvite = AccountPickerDialog.EasyInvite(activity).hasAnyAccounts()
-        searchHost.showPrivacy =
-            BuildConfig.PRIVACY_POLICY != null && AbstractQuickConversationsService.isPlayStoreFlavor()
-        searchHost.manageAccountsPlural = AccountUtils.MANAGE_ACCOUNT_ACTIVITY != null
         searchHost.menuRevision.intValue++
+        // The first enabled account's picture sits at the end of the bar.
+        val service = activity.xmppConnectionService
+        val account = service?.accounts?.firstOrNull { it.isEnabled } ?: service?.accounts?.firstOrNull()
+        if (account != null && !avatarLoading) {
+            avatarLoading = true
+            val px = (64 * resources.displayMetrics.density).toInt()
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                val bitmap = try { activity.avatarService().get(account, px, false) } catch (_: Exception) { null }
+                withContext(Dispatchers.Main) {
+                    searchHost.avatar = bitmap?.asImageBitmap()
+                    avatarLoading = false
+                }
+            }
+        }
     }
 
     private fun openPrivacyPolicy() {

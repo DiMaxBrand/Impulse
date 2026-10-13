@@ -1272,7 +1272,7 @@
     <string name="server_info_stanzas_rx_tx_push">Секции (↓/↑/push)</string>
     <string name="server_info_stanzas_rx_tx">Секции (↓/↑)</string>
     <string name="share_invitation">Отправить приглашение</string>
-    <string name="publish_qr_code">Опубликовать QR-код</string>
+    <string name="publish_qr_code">Поделиться QR-кодом</string>
     <string name="give_membership">Предоставить членство</string>
     <string name="remove_membership">Отменить членство</string>
     <string name="make_admin">Назначить администратором</string>
@@ -1626,4 +1626,17 @@
     <string name="search_scope_title">Где искать</string>
     <string name="search_no_results">Ничего не найдено</string>
     <string name="search_start_hint">Введите запрос для поиска по сообщениям</string>
+    <string name="hub_title">Аккаунты</string>
+    <string name="hub_settings_section">Настройки</string>
+    <string name="hub_status_message">Статусное сообщение</string>
+    <string name="hub_choose_account">Выберите аккаунт</string>
+    <string name="hub_choose_account_hint">К какому аккаунту это относится?</string>
+    <string name="hub_device_keys">Ключи устройств и доверие</string>
+    <string name="hub_no_accounts">Аккаунтов пока нет</string>
+    <string name="hub_no_status">Статусного сообщения нет</string>
+    <string name="hub_share">Поделиться</string>
+    <string name="hub_expand">Показать подробности</string>
+    <string name="hub_collapse">Скрыть подробности</string>
+    <string name="hub_unverified_device">Не подтверждено</string>
+    <string name="hub_verified_device">Подтверждено</string>
 </resources>

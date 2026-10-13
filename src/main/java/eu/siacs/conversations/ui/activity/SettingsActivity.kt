@@ -16,6 +16,11 @@ import java.util.Collections
 
 class SettingsActivity : XmppActivity() {
 
+    companion object {
+        /** Class name of the settings page to show instead of the main list. */
+        const val EXTRA_FRAGMENT = "eu.siacs.conversations.settings_fragment"
+    }
+
     override fun refreshUiReal() {}
 
     override fun onBackendConnected() {
@@ -36,7 +41,13 @@ class SettingsActivity : XmppActivity() {
         val intent = getIntent()
         val categories = if (intent == null) Collections.emptySet<String>() else intent.categories
         val preferenceFragment: PreferenceFragmentCompat
-        if (ImmutableSet.of(Notification.INTENT_CATEGORY_NOTIFICATION_PREFERENCES) == categories) {
+        val requestedFragment = intent?.getStringExtra(EXTRA_FRAGMENT)
+        if (requestedFragment != null) {
+            // Opened straight onto one settings page (from the Accounts & settings screen).
+            preferenceFragment =
+                supportFragmentManager.fragmentFactory.instantiate(classLoader, requestedFragment)
+                    as PreferenceFragmentCompat
+        } else if (ImmutableSet.of(Notification.INTENT_CATEGORY_NOTIFICATION_PREFERENCES) == categories) {
             preferenceFragment = NotificationsSettingsFragment()
         } else {
             preferenceFragment = MainSettingsFragment()

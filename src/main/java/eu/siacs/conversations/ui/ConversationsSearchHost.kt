@@ -44,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,9 +60,8 @@ class SearchHostState {
     var showScanQr by mutableStateOf(false)
     var showShowQr by mutableStateOf(false)
     var showEasyInvite by mutableStateOf(false)
-    var showPrivacy by mutableStateOf(false)
-    /** True: the single "Manage accounts" entry, false: "Manage account". */
-    var manageAccountsPlural by mutableStateOf(false)
+    /** The account avatar shown at the end of the bar (null: a generic person icon). */
+    var avatar by mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
     /** True while the search is open; the chat list hides its floating button then. */
     var expanded by mutableStateOf(false)
 }
@@ -72,10 +73,7 @@ class SearchHostActions(
     val onScanQr: () -> Unit,
     val onShowQr: () -> Unit,
     val onEasyInvite: () -> Unit,
-    val onPrivacy: () -> Unit,
     val onManageAccount: () -> Unit,
-    val onHelp: () -> Unit,
-    val onSettings: () -> Unit,
 )
 
 /**
@@ -185,7 +183,6 @@ fun ConversationsSearchHost(
 private fun SearchBarMenus(host: SearchHostState, actions: SearchHostActions) {
     host.menuRevision.intValue // re-read when the fragment refreshes
     var qrOpen by remember { mutableStateOf(false) }
-    var moreOpen by remember { mutableStateOf(false) }
     val anyQr = host.showScanQr || host.showShowQr || host.showEasyInvite
     if (anyQr) {
         Box {
@@ -193,42 +190,34 @@ private fun SearchBarMenus(host: SearchHostState, actions: SearchHostActions) {
                 Icon(painterResource(R.drawable.ic_qr_code_scanner_24dp),
                     contentDescription = stringResource(R.string.qr_code_actions))
             }
-            DropdownMenu(expanded = qrOpen, onDismissRequest = { qrOpen = false }) {
-                if (host.showScanQr) DropdownMenuItem(
-                    text = { Text(stringResource(R.string.scan_qr_code)) },
-                    leadingIcon = { Icon(painterResource(R.drawable.ic_qr_code_scanner_24dp), null) },
-                    onClick = { qrOpen = false; actions.onScanQr() })
-                if (host.showShowQr) DropdownMenuItem(
-                    text = { Text(stringResource(R.string.show_qr_code)) },
-                    leadingIcon = { Icon(painterResource(R.drawable.ic_qr_code_24dp), null) },
-                    onClick = { qrOpen = false; actions.onShowQr() })
-                if (host.showEasyInvite) DropdownMenuItem(
-                    text = { Text(stringResource(R.string.server_invite)) },
-                    leadingIcon = { Icon(painterResource(R.drawable.ic_join_24dp), null) },
-                    onClick = { qrOpen = false; actions.onEasyInvite() })
+            ExpressiveDropdownMenu(expanded = qrOpen, onDismissRequest = { qrOpen = false }) {
+                if (host.showScanQr) ExpressiveMenuItem(R.drawable.ic_qr_code_scanner_24dp,
+                    stringResource(R.string.scan_qr_code)) { qrOpen = false; actions.onScanQr() }
+                if (host.showShowQr) ExpressiveMenuItem(R.drawable.ic_qr_code_24dp,
+                    stringResource(R.string.show_qr_code)) { qrOpen = false; actions.onShowQr() }
+                if (host.showEasyInvite) ExpressiveMenuItem(R.drawable.ic_join_24dp,
+                    stringResource(R.string.server_invite)) { qrOpen = false; actions.onEasyInvite() }
             }
         }
     }
-    Box {
-        IconButton(onClick = { moreOpen = true }) {
-            Icon(painterResource(R.drawable.ic_more_vert_24dp), contentDescription = null)
-        }
-        DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
-            DropdownMenuItem(
-                text = {
-                    Text(stringResource(
-                        if (host.manageAccountsPlural) R.string.action_accounts else R.string.action_account))
-                },
-                onClick = { moreOpen = false; actions.onManageAccount() })
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.help_and_support)) },
-                onClick = { moreOpen = false; actions.onHelp() })
-            if (host.showPrivacy) DropdownMenuItem(
-                text = { Text(stringResource(R.string.privacy_policy)) },
-                onClick = { moreOpen = false; actions.onPrivacy() })
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_settings)) },
-                onClick = { moreOpen = false; actions.onSettings() })
+    // Your avatar, like in Google's own apps: opens Accounts & settings.
+    val avatar = host.avatar
+    IconButton(onClick = actions.onManageAccount) {
+        Box(
+            modifier = Modifier.size(32.dp).clip(CircleShape)
+                .background(MaterialTheme.colorScheme.tertiaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (avatar != null) {
+                androidx.compose.foundation.Image(
+                    bitmap = avatar, contentDescription = stringResource(R.string.hub_title),
+                    modifier = Modifier.fillMaxSize())
+            } else {
+                Icon(painterResource(R.drawable.ic_person_24dp),
+                    contentDescription = stringResource(R.string.hub_title),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.size(20.dp))
+            }
         }
     }
 }
