@@ -1562,7 +1562,7 @@
     <string name="search_scope_title">Search in</string>
     <string name="search_no_results">Nothing found</string>
     <string name="search_start_hint">Type to search through messages</string>
-    <string name="hub_title">Accounts</string>
+    <string name="hub_title">Settings</string>
     <string name="hub_settings_section">Settings</string>
     <string name="hub_status_message">Status message</string>
     <string name="hub_choose_account">Choose an account</string>

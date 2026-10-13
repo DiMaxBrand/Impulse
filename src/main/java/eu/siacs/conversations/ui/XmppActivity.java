@@ -558,8 +558,7 @@ public abstract class XmppActivity extends ActionBarActivity {
         switch (item.getItemId()) {
             case R.id.action_settings:
                 startActivity(
-                        new Intent(
-                                this, eu.siacs.conversations.ui.activity.SettingsActivity.class));
+                        new Intent(this, eu.siacs.conversations.ui.AccountsHubActivity.class));
                 break;
             case R.id.action_accounts:
                 AccountUtils.launchManageAccounts(this);

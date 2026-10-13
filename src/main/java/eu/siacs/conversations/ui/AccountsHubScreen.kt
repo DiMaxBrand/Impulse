@@ -11,6 +11,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,7 +67,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** A row in the Settings section. */
-class SettingsEntry(val icon: Int, val title: String, val summary: String?, val onClick: () -> Unit)
+class SettingsEntry(
+    val icon: Int,
+    val title: String,
+    val summary: String?,
+    val onClick: () -> Unit,
+) {
+    /** Optional hidden action on long-press. */
+    var onLongClick: (() -> Unit)? = null
+}
 
 /** What the three-dot menu can do to one account. */
 enum class AccountAction(val icon: Int, val label: Int) {
@@ -503,7 +512,7 @@ private fun SettingsCard(entries: List<SettingsEntry>) {
                             supportingContent = e.summary?.let { { Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis) } },
                             modifier = Modifier
                                 .clip(RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom))
-                                .clickable(onClick = e.onClick),
+                                .combinedClickable(onClick = e.onClick, onLongClick = e.onLongClick),
                             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
                         )
                     }

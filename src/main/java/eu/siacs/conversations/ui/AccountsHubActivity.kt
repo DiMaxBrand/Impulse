@@ -351,6 +351,12 @@ class AccountsHubActivity : XmppActivity(), OnAccountUpdate {
             add(SettingsEntry(R.drawable.ic_info_outline_24dp,
                 getString(R.string.title_activity_about_x, getString(R.string.app_name)), null) {
                 startActivity(Intent(this@AccountsHubActivity, AboutActivity::class.java))
+            }.also {
+                // Hidden, as before: long-press "About" for the developer options.
+                it.onLongClick = {
+                    startActivity(Intent(this@AccountsHubActivity,
+                        eu.siacs.conversations.ui.activity.DeveloperOptionsActivity::class.java))
+                }
             })
         }
     }

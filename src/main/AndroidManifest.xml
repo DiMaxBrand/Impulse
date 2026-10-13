@@ -401,10 +401,10 @@
             android:label="@string/trust_omemo_fingerprints" />
         <activity
             android:name=".ui.activity.AppearanceActivity"
-            android:parentActivityName=".ui.activity.SettingsActivity" />
+            android:parentActivityName=".ui.AccountsHubActivity" />
         <activity
             android:name=".ui.activity.UpdatesActivity"
-            android:parentActivityName=".ui.activity.SettingsActivity" />
+            android:parentActivityName=".ui.AccountsHubActivity" />
         <activity
             android:name=".ui.activity.DeveloperOptionsActivity"
             android:parentActivityName=".ui.AboutActivity" />
@@ -419,10 +419,10 @@
             android:parentActivityName=".ui.activity.DeveloperOptionsActivity" />
         <activity
             android:name=".ui.AboutActivity"
-            android:parentActivityName=".ui.activity.SettingsActivity">
+            android:parentActivityName=".ui.AccountsHubActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="eu.siacs.conversations.ui.activity.SettingsActivity" />
+                android:value="eu.siacs.conversations.ui.AccountsHubActivity" />
         </activity>
         <activity
             android:name="com.canhub.cropper.CropImageActivity"

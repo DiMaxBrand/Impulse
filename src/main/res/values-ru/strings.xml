@@ -1626,7 +1626,7 @@
     <string name="search_scope_title">Где искать</string>
     <string name="search_no_results">Ничего не найдено</string>
     <string name="search_start_hint">Введите запрос для поиска по сообщениям</string>
-    <string name="hub_title">Аккаунты</string>
+    <string name="hub_title">Настройки</string>
     <string name="hub_settings_section">Настройки</string>
     <string name="hub_status_message">Статусное сообщение</string>
     <string name="hub_choose_account">Выберите аккаунт</string>
