@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Reminder for Claude (asked on 2026-10-13)
+
+- [ ] On 2026-10-14, at the user's first message of the day, remind him — before anything else — that he wanted to add something to Impulse for his granny's birthday. He has not said what it is yet: ask him. Delete this item once it is done.
+
 ## Branding
 
 - [ ] README rebrand — remove upstream store links, update issue tracker URL, add roadmap section.
