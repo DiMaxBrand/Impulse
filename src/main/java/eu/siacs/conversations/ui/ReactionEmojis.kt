@@ -36,6 +36,11 @@ fun isHeartFamily(emoji: String): Boolean = emoji in HEART_VARIANTS
 
 fun isThumbsUpFamily(emoji: String): Boolean = stripSkinTone(emoji) == THUMBS_UP_DEFAULT
 
+/** The handshake in any skin tone. Two people sending it is "we agree": the chip gets its own
+ * bigger look and a short swing (see ReactionChips). */
+fun isHandshakeFamily(emoji: String): Boolean =
+    stripSkinTone(emoji).removeSuffix("️") == "🤝"
+
 /** The full variant family for any emoji -- membership-based (checks what family [emoji] itself
  * belongs to, not whether it equals some hardcoded "default"), so this keeps working correctly
  * no matter which member of the family is currently selected. That distinction is exactly the bug

@@ -3906,6 +3906,34 @@ private fun ReactionChips(
             // already-false-then-pushed-to-true gives it that edge on first composition;
             // `visible = true` alone never transitions, so nothing would have visibly played.
             key(emoji) {
+                // Handshake from two people = agreement: bigger emoji and pill, plus one short
+                // swing (about 0.4 s) when it BECOMES agreed while on screen. A chip that is
+                // already agreed when it first appears is just drawn big, without the swing.
+                val agreed = isHandshakeFamily(emoji) && count >= 2
+                val growth by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (agreed) 1f else 0f,
+                    animationSpec = spring(dampingRatio = 0.55f, stiffness = 380f),
+                    label = "agreedGrowth",
+                )
+                val swing = remember { androidx.compose.animation.core.Animatable(0f) }
+                val pop = remember { androidx.compose.animation.core.Animatable(1f) }
+                var wasAgreed by remember { mutableStateOf(agreed) }
+                androidx.compose.runtime.LaunchedEffect(agreed) {
+                    if (agreed && !wasAgreed && !AppearanceState.noMotion) {
+                        kotlinx.coroutines.coroutineScope {
+                            launch {
+                                pop.animateTo(1.3f, tween(110))
+                                pop.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 500f))
+                            }
+                            launch {
+                                for (angle in listOf(-18f, 14f, -9f, 4f, 0f)) {
+                                    swing.animateTo(angle, tween(80))
+                                }
+                            }
+                        }
+                    }
+                    wasAgreed = agreed
+                }
                 val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
                 AnimatedVisibility(
                     visibleState = visibleState,
@@ -3941,16 +3969,29 @@ private fun ReactionChips(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(
+                                horizontal = (6 + 5 * growth).dp,
+                                vertical = (2 + 3 * growth).dp,
+                            ),
                         ) {
-                            Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = emoji,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontSize = (14 + 12 * growth).sp,
+                                modifier = Modifier.graphicsLayer {
+                                    rotationZ = swing.value
+                                    scaleX = pop.value
+                                    scaleY = pop.value
+                                },
+                            )
                             // Two nested transitions, not one: an outer AnimatedVisibility for
                             // the number showing up at all (count crossing 1→2, previously just
                             // popped in unanimated since AnimatedContent has nothing to
                             // transition FROM on the frame it first mounts), and an inner
                             // AnimatedContent for the digit changing once it's already visible.
                             AnimatedVisibility(
-                                visible = count > 1,
+                                // Two people agreeing is shown by the look, not by a "2".
+                                visible = count > 1 && !(agreed && count == 2),
                                 enter = scaleIn(
                                     initialScale = 0f,
                                     animationSpec = spring(
