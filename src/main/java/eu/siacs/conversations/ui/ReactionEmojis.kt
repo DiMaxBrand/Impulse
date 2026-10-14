@@ -38,8 +38,14 @@ fun isThumbsUpFamily(emoji: String): Boolean = stripSkinTone(emoji) == THUMBS_UP
 
 /** The handshake in any skin tone. Two people sending it is "we agree": the chip gets its own
  * bigger look and a short swing (see ReactionChips). */
-fun isHandshakeFamily(emoji: String): Boolean =
-    stripSkinTone(emoji).removeSuffix("️") == "🤝"
+fun isHandshakeFamily(emoji: String): Boolean {
+    // Skin tone and variation selectors can sit anywhere in the sequence (the stored reaction is
+    // normalized, so a selector may follow the tone): drop them all before comparing. Also the
+    // two-tone form, a right hand and a left hand joined by a zero-width joiner.
+    var plain = emoji.replace("️", "")
+    for (tone in SKIN_TONE_MODIFIERS) plain = plain.replace(tone, "")
+    return plain == "🤝" || plain == "🫱‍🫲"
+}
 
 /** The full variant family for any emoji -- membership-based (checks what family [emoji] itself
  * belongs to, not whether it equals some hardcoded "default"), so this keeps working correctly

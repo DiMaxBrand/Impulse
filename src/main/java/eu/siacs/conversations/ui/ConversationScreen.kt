@@ -4168,7 +4168,10 @@ private fun MessageBubble(
                             start = if (hasTail && !alignEnd) 12.dp + TAIL_WIDTH else 12.dp,
                             end = if (hasTail && alignEnd) 12.dp + TAIL_WIDTH else 12.dp,
                             top = 8.dp,
-                            bottom = 8.dp,
+                            // Reaction chips are drawn over the bubble's lower edge; this extra room
+                            // keeps them off the time/status line (the chip may cover bubble, never
+                            // content).
+                            bottom = if (message.reactions.isNotEmpty()) 20.dp else 8.dp,
                         )
             ) {
                 val repliedToId = message.getRepliedTo()
