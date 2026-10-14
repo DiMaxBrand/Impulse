@@ -95,6 +95,7 @@ enum class AccountAction(val icon: Int, val label: Int) {
 sealed interface HubDialog {
     class EditName(val account: Account) : HubDialog
     class EditStatus(val account: Account) : HubDialog
+    class EditBirthday(val account: Account) : HubDialog
     class ChooseAccount(val action: AccountAction) : HubDialog
     class Mam(val account: Account, val current: Int) : HubDialog
 }
@@ -106,6 +107,8 @@ class AccountsHubActions(
     val onAvatar: (Account) -> Unit,
     val onEditName: (Account) -> Unit,
     val onEditStatus: (Account) -> Unit,
+    val onEditBirthday: (Account) -> Unit,
+    val birthdayOf: (Account) -> eu.siacs.conversations.utils.BirthdayDate?,
     val onShowQr: (Account) -> Unit,
     val onDeviceKeys: (Account) -> Unit,
     val availableActions: () -> List<AccountAction>,
@@ -372,6 +375,13 @@ private fun AccountDetails(
                 value = if (status.isNullOrBlank()) stringResource(R.string.hub_no_status) else status,
                 muted = status.isNullOrBlank(),
                 onEdit = { actions.onEditStatus(account) },
+            )
+            val birthday = remember(revision) { actions.birthdayOf(account) }
+            DetailRow(
+                label = stringResource(R.string.birthday_label),
+                value = birthday?.describe(context) ?: stringResource(R.string.birthday_not_set),
+                muted = birthday == null,
+                onEdit = { actions.onEditBirthday(account) },
             )
             DetailRow(
                 label = stringResource(R.string.server_info_session_established),

@@ -147,6 +147,15 @@
                                 android:text="@string/receive_presence_updates" />
 
                             <TextView
+                                android:id="@+id/details_birthday"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8sp"
+                                android:textAppearance="?textAppearanceBodyMedium"
+                                android:visibility="gone"
+                                tools:text="Birthday: 15 October 1950 (74 years old)" />
+
+                            <TextView
                                 android:id="@+id/details_gender"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"

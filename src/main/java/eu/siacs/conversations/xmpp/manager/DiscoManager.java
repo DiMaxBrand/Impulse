@@ -67,6 +67,7 @@ public class DiscoManager extends AbstractManager {
                     Namespace.DISCO_INFO,
                     notify(Namespace.AVATAR_METADATA),
                     notify(Namespace.NICK),
+                    notify(Namespace.BIRTHDAY),
                     Namespace.PING,
                     Namespace.VERSION,
                     Namespace.CHAT_STATES,

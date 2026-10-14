@@ -180,6 +180,8 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         scheduleNotificationSetupIfNeeded();
         // One-off birthday greeting: October 15 for one account, or when the feature flag is on.
         BirthdayCelebration.maybeShow(this);
+        // Once after the update that brought contact birthdays: "you can now set yours".
+        BirthdayPromptDialogFragment.maybeShow(this);
         showDialogsIfMainIsOverview();
     }
 

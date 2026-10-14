@@ -28,6 +28,7 @@ import eu.siacs.conversations.xmpp.manager.MessageDisplayedSynchronizationManage
 import eu.siacs.conversations.xmpp.manager.ModerationManager
 import eu.siacs.conversations.xmpp.manager.MultiUserChatManager
 import eu.siacs.conversations.xmpp.manager.NativeBookmarkManager
+import eu.siacs.conversations.xmpp.manager.BirthdayManager
 import eu.siacs.conversations.xmpp.manager.NickManager
 import eu.siacs.conversations.xmpp.manager.OfflineMessagesManager
 import eu.siacs.conversations.xmpp.manager.PepManager
@@ -57,6 +58,7 @@ object Managers {
             .put(AxolotlManager::class.java, AxolotlManager(context, connection))
             .put(BlockingManager::class.java, BlockingManager(context, connection))
             .put(BookmarkManager::class.java, BookmarkManager(context, connection))
+            .put(BirthdayManager::class.java, BirthdayManager(context, connection))
             .put(CarbonsManager::class.java, CarbonsManager(context, connection))
             .put(ChatStateManager::class.java, ChatStateManager(context, connection))
             .put(ClientStateIndicationManager::class.java, ClientStateIndicationManager(context, connection))

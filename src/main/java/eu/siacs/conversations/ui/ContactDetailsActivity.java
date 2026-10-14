@@ -504,6 +504,7 @@ public class ContactDetailsActivity extends OmemoActivity
         binding.detailsAccount.setOnClickListener(this::onDetailsAccountClicked);
         binding.detailsAccount.setText(getString(R.string.using_account, account));
         updateGenderRow(contact);
+        updateBirthdayRow(contact);
         AvatarWorkerTask.loadAvatar(contact, binding.detailsAvatar, R.dimen.publish_avatar_size);
         binding.detailsAvatar.setOnClickListener(this::onAvatarClicked);
         if (QuickConversationsService.isContactListIntegration(this)) {
@@ -602,6 +603,27 @@ public class ContactDetailsActivity extends OmemoActivity
         } else {
             this.binding.tags.setVisibility(View.GONE);
         }
+    }
+
+    /** The birthday this contact shared with us (only people on our roster can read it). */
+    private void updateBirthdayRow(final Contact contact) {
+        final String accountUuid = contact.getAccount().getUuid();
+        final var birthday =
+                accountUuid == null
+                        ? null
+                        : new eu.siacs.conversations.utils.BirthdayStore(this)
+                                .get(accountUuid, contact.getAddress().asBareJid().toString());
+        if (birthday == null) {
+            binding.detailsBirthday.setVisibility(View.GONE);
+            return;
+        }
+        final var today = java.time.LocalDate.now();
+        final String text =
+                getString(
+                        R.string.birthday_contact_row,
+                        BirthdayUiKt.describe(birthday, this, today));
+        binding.detailsBirthday.setText(birthday.isOn(today) ? "🎂 " + text : text);
+        binding.detailsBirthday.setVisibility(View.VISIBLE);
     }
 
     private void updateGenderRow(final Contact contact) {

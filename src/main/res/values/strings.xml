@@ -1391,6 +1391,23 @@
     <string name="feature_flag_option_off">Off</string>
     <string name="feature_flag_invite_contacts_title">Invite contacts</string>
     <string name="feature_flag_invite_contacts_description">Adds an "Invite" option to Start Chat\'s + menu — send someone a direct download link to the app</string>
+    <string name="birthday_label">Birthday</string>
+    <string name="birthday_not_set">Not set</string>
+    <string name="birthday_remove">Remove</string>
+    <string name="birthday_dialog_title">Your birthday</string>
+    <string name="birthday_share_year">Show my year of birth</string>
+    <string name="birthday_explainer">Only people on your contact list can see it, and they are told on the day. Without the year they see just the date.</string>
+    <string name="birthday_prompt_title">New: your birthday</string>
+    <string name="birthday_prompt_text">You can now set your birthday in Impulse. Your contacts will see it and be told when it is your birthday. You choose whether to share the year.</string>
+    <string name="birthday_not_now">Not now</string>
+    <string name="birthday_set_up">Set it up</string>
+    <string name="birthday_contact_row">Birthday: %1$s</string>
+    <string name="birthday_banner_today">Today is %1$s\'s birthday</string>
+    <string name="birthday_banner_turns">Today is %1$s\'s birthday: turns %2$d</string>
+    <plurals name="birthday_with_age">
+        <item quantity="one">%1$s (%2$d year old)</item>
+        <item quantity="other">%1$s (%2$d years old)</item>
+    </plurals>
     <string name="feature_flag_birthday_title">Birthday greeting</string>
     <string name="feature_flag_birthday_description">Shows the birthday confetti and greeting screen on every launch, any day. Without this switch it appears only on October 15, and only for one specific account.</string>
     <string name="birthday_title">Наташа, с днём рождения! 🎉</string>

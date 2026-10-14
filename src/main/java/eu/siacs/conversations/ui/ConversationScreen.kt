@@ -770,6 +770,46 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     }
                 }
             }
+            // The person you are writing to has their birthday today (they chose to share it with
+            // their contacts, see BirthdayManager).
+            val birthdayContext = LocalContext.current
+            val birthdayToday = remember(conversation, state.revision.intValue) {
+                if (conversation == null ||
+                    conversation.getMode() != eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {
+                    null
+                } else {
+                    try {
+                        val accountUuid = conversation.getAccount().getUuid()
+                        if (accountUuid == null) null
+                        else eu.siacs.conversations.utils.BirthdayStore(birthdayContext)
+                            .get(accountUuid, conversation.getAddress().asBareJid().toString())
+                            ?.takeIf { it.isOn(java.time.LocalDate.now()) }
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            }
+            AnimatedVisibility(visible = birthdayToday != null) {
+                val age = birthdayToday?.ageOn(java.time.LocalDate.now())
+                val name = conversation?.getName()?.toString() ?: ""
+                androidx.compose.material3.Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("🎂", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = if (age != null) stringResource(R.string.birthday_banner_turns, name, age)
+                            else stringResource(R.string.birthday_banner_today, name),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+            }
             // Hidden (not just covered) while the card is expanded -- it's the container-
             // transform's actual source, matching UpdatesScreen's channel row/picker pattern.
             AnimatedVisibility(

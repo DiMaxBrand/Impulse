@@ -1463,6 +1463,25 @@
     <string name="feature_flag_option_off">Выкл.</string>
     <string name="feature_flag_invite_contacts_title">Приглашение контактов</string>
     <string name="feature_flag_invite_contacts_description">Добавляет пункт «Пригласить» в меню + на экране «Начать чат» — отправьте другу прямую ссылку для скачивания приложения</string>
+    <string name="birthday_label">День рождения</string>
+    <string name="birthday_not_set">Не указан</string>
+    <string name="birthday_remove">Удалить</string>
+    <string name="birthday_dialog_title">Ваш день рождения</string>
+    <string name="birthday_share_year">Показывать год рождения</string>
+    <string name="birthday_explainer">Его видят только люди из вашего списка контактов, и в этот день им придёт напоминание. Без года они увидят только дату.</string>
+    <string name="birthday_prompt_title">Новое: ваш день рождения</string>
+    <string name="birthday_prompt_text">Теперь в Импульсе можно указать день рождения. Ваши контакты увидят его и узнают, когда он наступит. Год рождения можно не показывать.</string>
+    <string name="birthday_not_now">Не сейчас</string>
+    <string name="birthday_set_up">Указать</string>
+    <string name="birthday_contact_row">День рождения: %1$s</string>
+    <string name="birthday_banner_today">Сегодня день рождения: %1$s</string>
+    <string name="birthday_banner_turns">Сегодня день рождения: %1$s, исполняется %2$d</string>
+    <plurals name="birthday_with_age">
+        <item quantity="one">%1$s (%2$d год)</item>
+        <item quantity="few">%1$s (%2$d года)</item>
+        <item quantity="many">%1$s (%2$d лет)</item>
+        <item quantity="other">%1$s (%2$d года)</item>
+    </plurals>
     <string name="feature_flag_birthday_title">Поздравление с днём рождения</string>
     <string name="feature_flag_birthday_description">Показывает конфетти и поздравление при каждом запуске, в любой день. Без этого переключателя оно появляется только 15 октября и только для одного конкретного аккаунта.</string>
     <string name="birthday_title">Наташа, с днём рождения! 🎉</string>

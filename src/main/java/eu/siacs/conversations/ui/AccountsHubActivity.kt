@@ -26,6 +26,8 @@ import eu.siacs.conversations.services.BarcodeProvider
 import eu.siacs.conversations.services.XmppConnectionService.OnAccountUpdate
 import eu.siacs.conversations.ui.activity.SettingsActivity
 import eu.siacs.conversations.ui.activity.UpdatesActivity
+import eu.siacs.conversations.utils.BirthdayStore
+import eu.siacs.conversations.xmpp.manager.BirthdayManager
 import eu.siacs.conversations.xmpp.manager.BlockingManager
 import eu.siacs.conversations.xmpp.manager.EasyOnboardingManager
 import eu.siacs.conversations.xmpp.manager.MessageArchiveManager
@@ -66,7 +68,14 @@ class AccountsHubActivity : XmppActivity(), OnAccountUpdate {
         revision.intValue++
     }
 
-    override fun onBackendConnected() = refreshUiReal()
+    override fun onBackendConnected() {
+        refreshUiReal()
+        // "Set it up" from the one-time birthday prompt lands straight on the picker.
+        if (intent?.getBooleanExtra(EXTRA_OPEN_BIRTHDAY, false) == true) {
+            intent.removeExtra(EXTRA_OPEN_BIRTHDAY)
+            accounts.firstOrNull { it.isOnlineAndConnected() }?.let { dialog = HubDialog.EditBirthday(it) }
+        }
+    }
 
     // ─── Account actions ────────────────────────────────────────────────────
 
@@ -221,6 +230,12 @@ class AccountsHubActivity : XmppActivity(), OnAccountUpdate {
             },
             onEditName = { dialog = HubDialog.EditName(it) },
             onEditStatus = { dialog = HubDialog.EditStatus(it) },
+            onEditBirthday = { dialog = HubDialog.EditBirthday(it) },
+            birthdayOf = { account ->
+                account.getUuid()?.let {
+                    BirthdayStore(this).get(it, account.getJid().asBareJid().toString())
+                }
+            },
             onShowQr = { showQrCode(it) },
             onDeviceKeys = { switchToAccount(it) },
             availableActions = { AccountAction.entries.filter { a -> applicable(a).isNotEmpty() } },
@@ -276,6 +291,17 @@ class AccountsHubActivity : XmppActivity(), OnAccountUpdate {
                 onConfirm = { value ->
                     xmppConnectionService.changeStatus(
                         d.account, PresenceTemplate(d.account.getPresenceStatus(), value), null)
+                    dialog = null
+                    refreshUiReal()
+                },
+                onDismiss = { dialog = null },
+            )
+            is HubDialog.EditBirthday -> BirthdayEditDialog(
+                current = d.account.getUuid()?.let {
+                    BirthdayStore(this).get(it, d.account.getJid().asBareJid().toString())
+                },
+                onConfirm = { birthday ->
+                    d.account.getXmppConnection().getManager(BirthdayManager::class.java).publish(birthday)
                     dialog = null
                     refreshUiReal()
                 },
@@ -361,7 +387,8 @@ class AccountsHubActivity : XmppActivity(), OnAccountUpdate {
         }
     }
 
-    private companion object {
-        const val REQUEST_IMPORT_BACKUP = 0x63fb
+    companion object {
+        private const val REQUEST_IMPORT_BACKUP = 0x63fb
+        const val EXTRA_OPEN_BIRTHDAY = "eu.siacs.conversations.open_birthday"
     }
 }

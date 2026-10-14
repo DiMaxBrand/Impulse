@@ -64,6 +64,7 @@ object Namespace {
     const val PUB_SUB_OWNER = "$PUB_SUB#owner"
     const val PUB_SUB_PERSISTENT_ITEMS = "$PUB_SUB#persistent-items"
     const val NICK = "http://jabber.org/protocol/nick"
+    const val BIRTHDAY = "urn:xmpp:impulse:birthday:0"
     const val FLEXIBLE_OFFLINE_MESSAGE_RETRIEVAL = "http://jabber.org/protocol/offline"
     const val BIND = "urn:ietf:params:xml:ns:xmpp-bind"
     const val BIND2 = "urn:xmpp:bind:0"

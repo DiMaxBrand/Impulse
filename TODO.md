@@ -1,20 +1,20 @@
 # Impulse — To-Do
 
-## Contact birthdays — next feature, not started
+## Contact birthdays — built (beta.161, branch unified-compose-search)
 
-Let people set a birthday that their contacts see and get notified about.
+Let people set a birthday that their contacts see.
 
-- **Where it lives (no server configuration needed)**: publish it over PEP, the personal
-  eventing every Prosody has on by default (`mod_pep`). Standard route: XEP-0292 vCard4 node
-  (`urn:xmpp:vcard4`, field `BDAY`; vCard4 allows a date without a year, `--1015`). Set the node's
-  access model to `presence` so only people on the roster (who see our presence) can read it; that
-  is enforced by the server, not only by the client. A custom node would work the same way but
-  other clients would not understand it, so prefer vCard4.
-- **UI**: one-time "New" dialog after the update: "You can now set your birthday in Impulse" with
-  "Set it up" and "Not now", explaining that contacts will see it and be told on the day. The year
-  is optional (date only by default, a toggle adds the year).
-- **Notifications**: tell the user on a contact's birthday (and show it in the contact details).
-- Read side needs a PEP subscription to the node (+notify in caps) and caching per contact.
+- **Where it lives (no server configuration needed)**: published over PEP (`BirthdayManager`),
+  node `urn:xmpp:impulse:birthday:0`, text `1950-10-15` or `--10-15` without a year, access model
+  `presence` so only people on the roster can read it (enforced by the server). A node of our own
+  rather than XEP-0292 vCard4: vCard4 is one item per person, so publishing only a birthday would
+  overwrite whatever other clients keep there. The node is advertised with +notify, the server
+  pushes the last value on login; `BirthdayStore` caches it per account and contact.
+- **Done**: Birthday row (with date picker and a "show my year" switch) in the Settings screen's
+  account card; one-time "New: your birthday" dialog; birthday (and age, when the year is shared)
+  in contact details; banner at the top of a one-to-one chat on the day.
+- **Not done**: a notification on the day (needs a daily check and a notification channel), a
+  birthdays list, showing it in group chat member lists.
 
 ## Branding
 
