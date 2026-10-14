@@ -80,7 +80,9 @@ import kotlin.random.Random
 object BirthdayCelebration {
 
     /** Bare addresses (lower case) that get the greeting on the day. */
-    private val ADDRESSES = setOf("natasha@onchat.ru")
+    // The server is on-chat.ru (with a hyphen); the dictated "onchat.ru" spelling is kept too in
+    // case the account really lives there.
+    private val ADDRESSES = setOf("natasha@on-chat.ru", "natasha@onchat.ru")
 
     private var shownThisLaunch = false
 
