@@ -172,7 +172,6 @@ private fun BirthdayScreen(personal: Boolean, name: String?, onDone: () -> Unit)
         stringResource(R.string.birthday_title) to MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
         stringResource(R.string.birthday_line_1) to MaterialTheme.typography.titleMedium,
         stringResource(R.string.birthday_line_2) to MaterialTheme.typography.titleMedium,
-        stringResource(R.string.birthday_line_3) to MaterialTheme.typography.titleMedium,
         stringResource(R.string.birthday_signature) to MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
     ) else listOf(
         (if (name != null) stringResource(R.string.birthday_generic_title_named, name)

@@ -1492,9 +1492,8 @@
     <string name="feature_flag_birthday_title">Поздравление с днём рождения</string>
     <string name="feature_flag_birthday_description">Показывает конфетти и поздравление при каждом запуске, в любой день. Без этого переключателя оно появляется только 15 октября и только для одного конкретного аккаунта.</string>
     <string name="birthday_title">Наташа, с днём рождения! 🎉</string>
-    <string name="birthday_line_1">Желаю тебе здоровья, тепла и чтобы рядом всегда были те, кого ты любишь.</string>
-    <string name="birthday_line_2">И чтобы все самые свежие обновления приходили сами, без всяких настроек и танцев с бубном ;)</string>
-    <string name="birthday_line_3">А если Импульс снова о чём-то попросит, просто нажми «Разрешить». Это он от большой любви.</string>
+    <string name="birthday_line_1">Желаю тебе счастья, здоровья, достатка, добра и успехов во всём.</string>
+    <string name="birthday_line_2">И чтобы Импульс сам обновлялся :)</string>
     <string name="birthday_signature">С любовью, Дима ❤</string>
     <string name="birthday_thanks">Спасибо!</string>
     <string name="feature_flag_emergency_mode_title">Аварийный режим</string>
