@@ -1463,6 +1463,14 @@
     <string name="feature_flag_option_off">Выкл.</string>
     <string name="feature_flag_invite_contacts_title">Приглашение контактов</string>
     <string name="feature_flag_invite_contacts_description">Добавляет пункт «Пригласить» в меню + на экране «Начать чат» — отправьте другу прямую ссылку для скачивания приложения</string>
+    <string name="feature_flag_birthday_title">Поздравление с днём рождения</string>
+    <string name="feature_flag_birthday_description">Показывает конфетти и поздравление при каждом запуске, в любой день. Без этого переключателя оно появляется только 15 октября и только для одного конкретного аккаунта.</string>
+    <string name="birthday_title">Наташа, с днём рождения! 🎉</string>
+    <string name="birthday_line_1">Желаю тебе здоровья, тепла и чтобы рядом всегда были те, кого ты любишь.</string>
+    <string name="birthday_line_2">И чтобы все самые свежие обновления приходили сами, без всяких настроек и танцев с бубном ;)</string>
+    <string name="birthday_line_3">А если Импульс снова о чём-то попросит, просто нажми «Разрешить». Это он от большой любви.</string>
+    <string name="birthday_signature">С любовью, Дима ❤</string>
+    <string name="birthday_thanks">Спасибо!</string>
     <string name="feature_flag_emergency_mode_title">Аварийный режим</string>
     <string name="feature_flag_emergency_mode_description">При плохом соединении (сервер не найден / тайм-аут соединения) автоматически прекращает загрузку новых аватаров и медиафайлов — текстовые сообщения продолжают работать</string>
     <string name="invite_title">Пригласить</string>

@@ -178,6 +178,8 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         // Notification setup screen is not tied to any specific fragment — launch it regardless
         // of whether we're on the conversation list or inside a chat.
         scheduleNotificationSetupIfNeeded();
+        // One-off birthday greeting: October 15 for one account, or when the feature flag is on.
+        BirthdayCelebration.maybeShow(this);
         showDialogsIfMainIsOverview();
     }
 

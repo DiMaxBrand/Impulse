@@ -44,4 +44,15 @@ enum class FeatureFlag(
         descriptionRes = R.string.feature_flag_emergency_mode_description,
         defaultValue = false,
     ),
+
+    /** The one-off birthday greeting (confetti, then a Russian message). Default off: without an
+     * override it appears only on October 15 and only for the one account named in
+     * [eu.siacs.conversations.ui.BirthdayCelebration]. Switched on by hand it shows on every launch,
+     * any day, for anyone -- for trying it out. */
+    BIRTHDAY_CELEBRATION(
+        key = "birthday_celebration",
+        titleRes = R.string.feature_flag_birthday_title,
+        descriptionRes = R.string.feature_flag_birthday_description,
+        defaultValue = false,
+    ),
 }
