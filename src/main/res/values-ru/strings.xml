@@ -1471,6 +1471,7 @@
     <string name="birthday_generic_signature">С теплом, Импульс ❤</string>
     <string name="birthday_generic_close">Закрыть</string>    <string name="birthday_day">День</string>
     <string name="birthday_month">Месяц</string>
+    <string name="birthday_year">Год</string>
     <string name="birthday_label">День рождения</string>
     <string name="birthday_not_set">Не указан</string>
     <string name="birthday_remove">Удалить</string>

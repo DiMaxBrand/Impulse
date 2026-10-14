@@ -1399,6 +1399,7 @@
     <string name="birthday_generic_signature">With warm regards, Impulse ❤</string>
     <string name="birthday_generic_close">Close</string>    <string name="birthday_day">Day</string>
     <string name="birthday_month">Month</string>
+    <string name="birthday_year">Year</string>
     <string name="birthday_label">Birthday</string>
     <string name="birthday_not_set">Not set</string>
     <string name="birthday_remove">Remove</string>
