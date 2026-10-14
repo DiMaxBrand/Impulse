@@ -182,8 +182,8 @@ private fun BirthdayScreen(personal: Boolean, name: String?, onDone: () -> Unit)
         stringResource(R.string.birthday_generic_line_3) to MaterialTheme.typography.titleMedium,
         stringResource(R.string.birthday_generic_signature) to MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
     )
-    // Natasha's screen says thanks; the standard one just says what the button does.
-    val thanks = stringResource(if (personal) R.string.birthday_thanks else R.string.birthday_generic_close)
+    // Both screens just say what the button does. The personal one is Russian only, by design.
+    val thanks = stringResource(if (personal) R.string.birthday_close else R.string.birthday_generic_close)
     val hint = if (personal) null else stringResource(R.string.birthday_generic_hint)
     val wordMs = 120
     val startMs = 1100

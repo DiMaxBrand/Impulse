@@ -1496,7 +1496,7 @@
     <string name="birthday_line_1">Желаю тебе счастья, здоровья, достатка, добра и успехов во всём.</string>
     <string name="birthday_line_2">И чтобы Импульс сам обновлялся :)</string>
     <string name="birthday_signature">С любовью, Дима ❤</string>
-    <string name="birthday_thanks">Спасибо!</string>
+    <string name="birthday_close">Закрыть</string>
     <string name="feature_flag_emergency_mode_title">Аварийный режим</string>
     <string name="feature_flag_emergency_mode_description">При плохом соединении (сервер не найден / тайм-аут соединения) автоматически прекращает загрузку новых аватаров и медиафайлов — текстовые сообщения продолжают работать</string>
     <string name="invite_title">Пригласить</string>
