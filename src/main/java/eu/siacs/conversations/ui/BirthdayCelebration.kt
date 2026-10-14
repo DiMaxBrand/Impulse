@@ -75,7 +75,7 @@ import kotlin.random.Random
  * A one-off birthday greeting: confetti bursts out and, while it flies, a new screen fades in and
  * a short Russian message appears word by word. It shows on October 15 for the one account listed
  * in [ADDRESSES]; the [FeatureFlag.BIRTHDAY_CELEBRATION] flag shows it on every launch, any day,
- * for anyone (for trying it out). Once per app launch.
+ * for anyone (for trying it out). Once each time the app is opened.
  */
 object BirthdayCelebration {
 
@@ -84,18 +84,21 @@ object BirthdayCelebration {
     // case the account really lives there.
     private val ADDRESSES = setOf("natasha@on-chat.ru", "natasha@onchat.ru")
 
-    private var shownThisLaunch = false
+    // Once per opening of the app, not once per process: the service keeps the process alive after
+    // the user leaves, so a process-wide flag meant "never again until the phone restarts the app".
+    // A fresh activity instance is a fresh opening.
+    private var lastActivity: java.lang.ref.WeakReference<XmppActivity>? = null
 
     @JvmStatic
     fun maybeShow(activity: XmppActivity) {
-        if (shownThisLaunch) return
+        if (lastActivity?.get() === activity) return
         val service = activity.xmppConnectionService ?: return
         val flagOn = FeatureFlagPreferences(activity).isEnabled(FeatureFlag.BIRTHDAY_CELEBRATION)
         val today = LocalDate.now()
         val isTheDay = today.month == Month.OCTOBER && today.dayOfMonth == 15
         val isHer = service.accounts.any { it.getJid().asBareJid().toString().lowercase() in ADDRESSES }
         if (!flagOn && !(isTheDay && isHer)) return
-        shownThisLaunch = true
+        lastActivity = java.lang.ref.WeakReference(activity)
         // Let the chat list appear first, then the confetti goes off over it.
         activity.window.decorView.postDelayed({
             if (activity.isFinishing || activity.isDestroyed) return@postDelayed
