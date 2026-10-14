@@ -1397,7 +1397,8 @@
     <string name="birthday_generic_line_2">We wish you good health, joy and lovely moments with the people you care about, and good news in every message.</string>
     <string name="birthday_generic_line_3">May the year ahead bring you plenty of happiness. Thank you for being with us.</string>
     <string name="birthday_generic_signature">With warm regards, Impulse ❤</string>
-    <string name="birthday_generic_thanks">Thank you!</string>
+    <string name="birthday_generic_close">Close</string>
+    <string name="birthday_generic_hint">If today is not your birthday, you can change the date: tap your avatar in the top right corner, then the pencil next to your date of birth.</string>
     <string name="birthday_label">Birthday</string>
     <string name="birthday_not_set">Not set</string>
     <string name="birthday_remove">Remove</string>

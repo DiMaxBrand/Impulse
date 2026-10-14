@@ -182,7 +182,9 @@ private fun BirthdayScreen(personal: Boolean, name: String?, onDone: () -> Unit)
         stringResource(R.string.birthday_generic_line_3) to MaterialTheme.typography.titleMedium,
         stringResource(R.string.birthday_generic_signature) to MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
     )
-    val thanks = stringResource(if (personal) R.string.birthday_thanks else R.string.birthday_generic_thanks)
+    // Natasha's screen says thanks; the standard one just says what the button does.
+    val thanks = stringResource(if (personal) R.string.birthday_thanks else R.string.birthday_generic_close)
+    val hint = if (personal) null else stringResource(R.string.birthday_generic_hint)
     val wordMs = 120
     val startMs = 1100
     val totalWords = lines.sumOf { it.first.split(' ').size }
@@ -224,6 +226,18 @@ private fun BirthdayScreen(personal: Boolean, name: String?, onDone: () -> Unit)
             Spacer(Modifier.height(18.dp))
             AnimatedVisibility(visible = showButton, enter = fadeIn() + scaleIn(spring(stiffness = 380f, dampingRatio = 0.7f))) {
                 Button(onClick = onDone) { Text(thanks) }
+            }
+            if (hint != null) {
+                // Under the button, quiet: for someone who got this on the wrong day.
+                AnimatedVisibility(visible = showButton, enter = fadeIn()) {
+                    Text(
+                        text = hint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 20.dp),
+                    )
+                }
             }
         }
         ConfettiLayer(Modifier.fillMaxSize())

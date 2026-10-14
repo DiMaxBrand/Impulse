@@ -1469,7 +1469,8 @@
     <string name="birthday_generic_line_2">Желаем крепкого здоровья, радости и тёплых встреч с теми, кто Вам дорог, а в каждом сообщении — только добрых вестей.</string>
     <string name="birthday_generic_line_3">Пусть наступающий год принесёт Вам много хорошего. Спасибо, что Вы с нами.</string>
     <string name="birthday_generic_signature">С теплом, Импульс ❤</string>
-    <string name="birthday_generic_thanks">Спасибо!</string>
+    <string name="birthday_generic_close">Закрыть</string>
+    <string name="birthday_generic_hint">Если сегодня не Ваш день рождения, измените дату: нажмите на свой аватар в правом верхнем углу, а затем на карандаш рядом с датой рождения.</string>
     <string name="birthday_label">День рождения</string>
     <string name="birthday_not_set">Не указан</string>
     <string name="birthday_remove">Удалить</string>
