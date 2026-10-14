@@ -107,6 +107,7 @@ class ConversationsOverviewFragment : XmppFragment() {
         searchHost.showScanQr = activity.isCameraFeatureAvailable()
         searchHost.showShowQr = AccountPickerDialog.Enabled(activity).hasAnyAccounts()
         searchHost.showEasyInvite = AccountPickerDialog.EasyInvite(activity).hasAnyAccounts()
+        searchHost.celebrating = BirthdayCelebration.current(activity) != null
         searchHost.menuRevision.intValue++
         // The first enabled account's picture sits at the end of the bar.
         val service = activity.xmppConnectionService

@@ -90,31 +90,39 @@ object BirthdayCelebration {
     // A fresh activity instance is a fresh opening.
     private var lastActivity: java.lang.ref.WeakReference<XmppActivity>? = null
 
+    /** [personal]: the Russian greeting; otherwise the standard text, with [name] if known. */
+    class Celebration(val personal: Boolean, val name: String?)
+
+    /**
+     * Is somebody celebrating right now on this phone? The personal greeting (Natasha, or the
+     * feature flag for trying it out) wins; otherwise anyone whose own birthday is today (the
+     * one they set in Settings) gets the same screen with a standard, politely warm text in the
+     * phone's language. Also drives the morphing avatar in the search bar.
+     */
     @JvmStatic
-    fun maybeShow(activity: XmppActivity) {
-        if (lastActivity?.get() === activity) return
-        val service = activity.xmppConnectionService ?: return
+    fun current(activity: XmppActivity): Celebration? {
+        val service = activity.xmppConnectionService ?: return null
         val flagOn = FeatureFlagPreferences(activity).isEnabled(FeatureFlag.BIRTHDAY_CELEBRATION)
         val today = LocalDate.now()
         val isTheDay = today.month == Month.OCTOBER && today.dayOfMonth == 15
         val isHer = service.accounts.any { it.getJid().asBareJid().toString().lowercase() in ADDRESSES }
-        // The personal greeting (Natasha, or the feature flag for trying it out) wins; otherwise
-        // anyone whose own birthday is today gets the same screen with a standard, politely warm
-        // text in the phone's language.
-        val personal = flagOn || (isTheDay && isHer)
-        var name: String? = null
-        if (!personal) {
-            val store = BirthdayStore(activity)
-            val celebrating = service.accounts.firstOrNull { account ->
-                val uuid = account.getUuid() ?: return@firstOrNull false
-                store.get(uuid, account.getJid().asBareJid().toString())?.isOn(today) == true
-            } ?: return
-            name = celebrating.getDisplayName()?.takeIf { it.isNotBlank() }
-        }
+        if (flagOn || (isTheDay && isHer)) return Celebration(personal = true, name = null)
+        val store = BirthdayStore(activity)
+        val celebrating = service.accounts.firstOrNull { account ->
+            val uuid = account.getUuid() ?: return@firstOrNull false
+            store.get(uuid, account.getJid().asBareJid().toString())?.isOn(today) == true
+        } ?: return null
+        return Celebration(personal = false, name = celebrating.getDisplayName()?.takeIf { it.isNotBlank() })
+    }
+
+    @JvmStatic
+    fun maybeShow(activity: XmppActivity) {
+        if (lastActivity?.get() === activity) return
+        val celebration = current(activity) ?: return
         lastActivity = java.lang.ref.WeakReference(activity)
         val arguments = Bundle().apply {
-            putBoolean(BirthdayDialogFragment.ARG_PERSONAL, personal)
-            putString(BirthdayDialogFragment.ARG_NAME, name)
+            putBoolean(BirthdayDialogFragment.ARG_PERSONAL, celebration.personal)
+            putString(BirthdayDialogFragment.ARG_NAME, celebration.name)
         }
         // Let the chat list appear first, then the confetti goes off over it.
         activity.window.decorView.postDelayed({
@@ -184,7 +192,6 @@ private fun BirthdayScreen(personal: Boolean, name: String?, onDone: () -> Unit)
     )
     // Both screens just say what the button does. The personal one is Russian only, by design.
     val thanks = stringResource(if (personal) R.string.birthday_close else R.string.birthday_generic_close)
-    val hint = if (personal) null else stringResource(R.string.birthday_generic_hint)
     val wordMs = 120
     val startMs = 1100
     val totalWords = lines.sumOf { it.first.split(' ').size }
@@ -226,18 +233,6 @@ private fun BirthdayScreen(personal: Boolean, name: String?, onDone: () -> Unit)
             Spacer(Modifier.height(18.dp))
             AnimatedVisibility(visible = showButton, enter = fadeIn() + scaleIn(spring(stiffness = 380f, dampingRatio = 0.7f))) {
                 Button(onClick = onDone) { Text(thanks) }
-            }
-            if (hint != null) {
-                // Under the button, quiet: for someone who got this on the wrong day.
-                AnimatedVisibility(visible = showButton, enter = fadeIn()) {
-                    Text(
-                        text = hint,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 20.dp),
-                    )
-                }
             }
         }
         ConfettiLayer(Modifier.fillMaxSize())

@@ -65,63 +65,6 @@ fun BirthdayDate.describe(context: Context, today: LocalDate = LocalDate.now()):
     else context.resources.getQuantityString(R.plurals.birthday_with_age, age, format(), age)
 }
 
-/** Pick your own birthday: a date, and a switch for whether the year is shared. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun BirthdayEditDialog(
-    current: BirthdayDate?,
-    onConfirm: (BirthdayDate?) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val thisYear = LocalDate.now().year
-    val initial = current ?: BirthdayDate(LocalDate.now().monthValue, LocalDate.now().dayOfMonth, null)
-    val initialDate = LocalDate.of(initial.year ?: 2000, initial.month, initial.day)
-    val pickerState = rememberDatePickerState(
-        initialSelectedDateMillis = initialDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
-        yearRange = 1900..thisYear,
-    )
-    var shareYear by remember { mutableStateOf(current?.year != null) }
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            Button(onClick = {
-                val picked = pickerState.selectedDateMillis?.let {
-                    Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()
-                }
-                onConfirm(picked?.let { BirthdayDate(it.monthValue, it.dayOfMonth, if (shareYear) it.year else null) })
-            }) { Text(stringResource(R.string.confirm)) }
-        },
-        dismissButton = {
-            Row {
-                if (current != null) {
-                    TextButton(onClick = { onConfirm(null) }) { Text(stringResource(R.string.birthday_remove)) }
-                }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-            }
-        },
-    ) {
-        Column {
-            DatePicker(state = pickerState, title = {
-                Text(stringResource(R.string.birthday_dialog_title),
-                    modifier = Modifier.padding(start = 24.dp, top = 16.dp), style = MaterialTheme.typography.titleMedium)
-            })
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.birthday_share_year), Modifier.weight(1f))
-                Switch(checked = shareYear, onCheckedChange = { shareYear = it })
-            }
-            Text(
-                stringResource(R.string.birthday_explainer),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
-            )
-        }
-    }
-}
-
 /**
  * Shown once after the update that brought birthdays: "New: you can set your birthday". "Set it
  * up" opens the Settings screen straight on the birthday picker; either button ends it for good.

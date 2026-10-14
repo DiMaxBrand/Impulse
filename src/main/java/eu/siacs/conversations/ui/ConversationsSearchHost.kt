@@ -60,6 +60,8 @@ class SearchHostState {
     var showScanQr by mutableStateOf(false)
     var showShowQr by mutableStateOf(false)
     var showEasyInvite by mutableStateOf(false)
+    /** Somebody's birthday is today: the avatar morphs and turns (see [BirthdayAvatar]). */
+    var celebrating by mutableStateOf(false)
     /** The account avatar shown at the end of the bar (null: a generic person icon). */
     var avatar by mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
     /** True while the search is open; the chat list hides its floating button then. */
@@ -215,6 +217,15 @@ private fun SearchBarMenus(host: SearchHostState, actions: SearchHostActions) {
     // Your avatar, like in Google's own apps: opens Accounts & settings.
     val avatar = host.avatar
     IconButton(onClick = actions.onManageAccount) {
+        if (host.celebrating) {
+            // Birthday: the outline morphs and turns, a bit larger than the plain circle.
+            BirthdayAvatar(
+                avatar = avatar,
+                fallback = MaterialTheme.colorScheme.tertiaryContainer,
+                modifier = Modifier.size(44.dp),
+            )
+            return@IconButton
+        }
         Box(
             modifier = Modifier.size(32.dp).clip(CircleShape)
                 .background(MaterialTheme.colorScheme.tertiaryContainer),
