@@ -63,6 +63,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentActivity
 import eu.siacs.conversations.FeatureFlag
 import eu.siacs.conversations.R
+import eu.siacs.conversations.utils.BirthdayStore
 import eu.siacs.conversations.utils.FeatureFlagPreferences
 import java.time.LocalDate
 import java.time.Month
@@ -97,14 +98,31 @@ object BirthdayCelebration {
         val today = LocalDate.now()
         val isTheDay = today.month == Month.OCTOBER && today.dayOfMonth == 15
         val isHer = service.accounts.any { it.getJid().asBareJid().toString().lowercase() in ADDRESSES }
-        if (!flagOn && !(isTheDay && isHer)) return
+        // The personal greeting (Natasha, or the feature flag for trying it out) wins; otherwise
+        // anyone whose own birthday is today gets the same screen with a standard, politely warm
+        // text in the phone's language.
+        val personal = flagOn || (isTheDay && isHer)
+        var name: String? = null
+        if (!personal) {
+            val store = BirthdayStore(activity)
+            val celebrating = service.accounts.firstOrNull { account ->
+                val uuid = account.getUuid() ?: return@firstOrNull false
+                store.get(uuid, account.getJid().asBareJid().toString())?.isOn(today) == true
+            } ?: return
+            name = celebrating.getDisplayName()?.takeIf { it.isNotBlank() }
+        }
         lastActivity = java.lang.ref.WeakReference(activity)
+        val arguments = Bundle().apply {
+            putBoolean(BirthdayDialogFragment.ARG_PERSONAL, personal)
+            putString(BirthdayDialogFragment.ARG_NAME, name)
+        }
         // Let the chat list appear first, then the confetti goes off over it.
         activity.window.decorView.postDelayed({
             if (activity.isFinishing || activity.isDestroyed) return@postDelayed
             val manager = activity.supportFragmentManager
             if (manager.isStateSaved || manager.findFragmentByTag(BirthdayDialogFragment.TAG) != null) return@postDelayed
-            BirthdayDialogFragment().show(manager, BirthdayDialogFragment.TAG)
+            BirthdayDialogFragment().apply { this.arguments = arguments }
+                .show(manager, BirthdayDialogFragment.TAG)
         }, 1200)
     }
 }
@@ -127,26 +145,45 @@ class BirthdayDialogFragment : DialogFragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent { ImpulseExpressiveTheme { BirthdayScreen(onDone = { dismissAllowingStateLoss() }) } }
+            val personal = arguments?.getBoolean(ARG_PERSONAL, true) ?: true
+            val name = arguments?.getString(ARG_NAME)
+            setContent {
+                ImpulseExpressiveTheme {
+                    BirthdayScreen(personal = personal, name = name, onDone = { dismissAllowingStateLoss() })
+                }
+            }
         }
 
     companion object {
         const val TAG = "BirthdayDialog"
+        const val ARG_PERSONAL = "personal"
+        const val ARG_NAME = "name"
     }
 }
 
 @Composable
-private fun BirthdayScreen(onDone: () -> Unit) {
+private fun BirthdayScreen(personal: Boolean, name: String?, onDone: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var started by remember { mutableStateOf(false) }
     var showButton by remember { mutableStateOf(false) }
-    val lines = listOf(
+    // The personal text is Russian only, by design; everyone else gets the standard one in the
+    // phone's language.
+    val lines = if (personal) listOf(
         stringResource(R.string.birthday_title) to MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
         stringResource(R.string.birthday_line_1) to MaterialTheme.typography.titleMedium,
         stringResource(R.string.birthday_line_2) to MaterialTheme.typography.titleMedium,
         stringResource(R.string.birthday_line_3) to MaterialTheme.typography.titleMedium,
         stringResource(R.string.birthday_signature) to MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
+    ) else listOf(
+        (if (name != null) stringResource(R.string.birthday_generic_title_named, name)
+        else stringResource(R.string.birthday_generic_title)) to
+            MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+        stringResource(R.string.birthday_generic_line_1) to MaterialTheme.typography.titleMedium,
+        stringResource(R.string.birthday_generic_line_2) to MaterialTheme.typography.titleMedium,
+        stringResource(R.string.birthday_generic_line_3) to MaterialTheme.typography.titleMedium,
+        stringResource(R.string.birthday_generic_signature) to MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
     )
+    val thanks = stringResource(if (personal) R.string.birthday_thanks else R.string.birthday_generic_thanks)
     val wordMs = 120
     val startMs = 1100
     val totalWords = lines.sumOf { it.first.split(' ').size }
@@ -187,7 +224,7 @@ private fun BirthdayScreen(onDone: () -> Unit) {
             }
             Spacer(Modifier.height(18.dp))
             AnimatedVisibility(visible = showButton, enter = fadeIn() + scaleIn(spring(stiffness = 380f, dampingRatio = 0.7f))) {
-                Button(onClick = onDone) { Text(stringResource(R.string.birthday_thanks)) }
+                Button(onClick = onDone) { Text(thanks) }
             }
         }
         ConfettiLayer(Modifier.fillMaxSize())

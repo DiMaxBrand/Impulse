@@ -128,46 +128,71 @@ internal fun BirthdayEditDialog(
  */
 class BirthdayPromptDialogFragment : DialogFragment() {
 
+    override fun onCreateDialog(savedInstanceState: Bundle?): android.app.Dialog {
+        val dialog = super.onCreateDialog(savedInstanceState)
+        // Only the card drawn below shows, not the platform dialog's own frame.
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        return dialog
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Full screen width (the default dialog width is much narrower than this card needs).
+        dialog?.window?.setLayout(
+            android.view.WindowManager.LayoutParams.MATCH_PARENT,
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+        )
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 ImpulseExpressiveTheme {
-                    Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+                    // Wide and tall: the window is stretched to the screen width in onStart, the
+                    // card has generous padding, and the two buttons sit one under the other at full
+                    // width (side by side they did not fit), as large pills.
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                         Surface(
-                            shape = RoundedCornerShape(28.dp),
+                            shape = RoundedCornerShape(44.dp),
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             tonalElevation = 6.dp,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(
+                                Modifier.padding(horizontal = 28.dp, vertical = 36.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
                                 Surface(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.primaryContainer,
-                                    modifier = Modifier.size(72.dp),
-                                ) { Box(contentAlignment = Alignment.Center) { Text("🎂", fontSize = 36.sp) } }
-                                Spacer(Modifier.height(16.dp))
+                                    modifier = Modifier.size(104.dp),
+                                ) { Box(contentAlignment = Alignment.Center) { Text("🎂", fontSize = 52.sp) } }
+                                Spacer(Modifier.height(24.dp))
                                 Text(
                                     stringResource(R.string.birthday_prompt_title),
-                                    style = MaterialTheme.typography.headlineSmall,
+                                    style = MaterialTheme.typography.headlineMedium,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(Modifier.height(8.dp))
+                                Spacer(Modifier.height(12.dp))
                                 Text(
                                     stringResource(R.string.birthday_prompt_text),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyLarge,
                                     textAlign = TextAlign.Center,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Spacer(Modifier.height(24.dp))
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                                    TextButton(onClick = { finish(open = false) }) {
-                                        Text(stringResource(R.string.birthday_not_now))
-                                    }
-                                    Button(onClick = { finish(open = true) }) {
-                                        Text(stringResource(R.string.birthday_set_up))
-                                    }
-                                }
+                                Spacer(Modifier.height(32.dp))
+                                Button(
+                                    onClick = { finish(open = true) },
+                                    shape = CircleShape,
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                ) { Text(stringResource(R.string.birthday_set_up), style = MaterialTheme.typography.titleMedium) }
+                                Spacer(Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = { finish(open = false) },
+                                    shape = CircleShape,
+                                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                                ) { Text(stringResource(R.string.birthday_not_now), style = MaterialTheme.typography.titleMedium) }
                             }
                         }
                     }

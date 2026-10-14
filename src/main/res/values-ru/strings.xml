@@ -1463,6 +1463,13 @@
     <string name="feature_flag_option_off">Выкл.</string>
     <string name="feature_flag_invite_contacts_title">Приглашение контактов</string>
     <string name="feature_flag_invite_contacts_description">Добавляет пункт «Пригласить» в меню + на экране «Начать чат» — отправьте другу прямую ссылку для скачивания приложения</string>
+    <string name="birthday_generic_title_named">С днём рождения, %1$s! 🎉</string>
+    <string name="birthday_generic_title">С днём рождения! 🎉</string>
+    <string name="birthday_generic_line_1">Сердечно поздравляем Вас с этим особенным днём от всей души Импульса.</string>
+    <string name="birthday_generic_line_2">Желаем крепкого здоровья, радости и тёплых встреч с теми, кто Вам дорог, а в каждом сообщении — только добрых вестей.</string>
+    <string name="birthday_generic_line_3">Пусть наступающий год принесёт Вам много хорошего. Спасибо, что Вы с нами.</string>
+    <string name="birthday_generic_signature">С теплом, Импульс ❤</string>
+    <string name="birthday_generic_thanks">Спасибо!</string>
     <string name="birthday_label">День рождения</string>
     <string name="birthday_not_set">Не указан</string>
     <string name="birthday_remove">Удалить</string>
