@@ -48,18 +48,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import eu.siacs.conversations.R
 import eu.siacs.conversations.ui.ActionBarActivity
 import eu.siacs.conversations.ui.ImpulseExpressiveTheme
 import eu.siacs.conversations.ui.LiquidGlass
+import eu.siacs.conversations.ui.glass.GlassStack
 import eu.siacs.conversations.ui.glass.LiquidBottomTab
 import eu.siacs.conversations.ui.glass.LiquidBottomTabs
 import eu.siacs.conversations.ui.glass.LiquidGlassButton
 import eu.siacs.conversations.ui.glass.LiquidSlider
 import eu.siacs.conversations.ui.glass.LiquidToggle
+import eu.siacs.conversations.ui.glass.rememberGlassStack
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -97,6 +98,9 @@ class LiquidGlassPlaygroundActivity : ActionBarActivity() {
 private fun Playground(onBack: () -> Unit) {
     // Everything behind the glass is recorded here; the glass is drawn on top and shows it.
     val backdrop = rememberLayerBackdrop()
+    // The buttons and the lens look through the page and through each other: drag one over
+    // another and the upper one bends the lower one.
+    val glass = rememberGlassStack(backdrop)
     var taps by remember { mutableIntStateOf(0) }
     var toggled by remember { mutableStateOf(true) }
     var slider by remember { mutableFloatStateOf(0.4f) }
@@ -114,14 +118,14 @@ private fun Playground(onBack: () -> Unit) {
             ) {
                 LiquidGlassButton(
                     onClick = onBack,
-                    backdrop = backdrop,
+                    glass = glass,
                     modifier = Modifier.size(52.dp),
                 ) {
                     Icon(painterResource(R.drawable.ic_arrow_back_24dp), contentDescription = null)
                 }
                 LiquidGlassButton(
                     onClick = { taps++ },
-                    backdrop = backdrop,
+                    glass = glass,
                     modifier = Modifier.weight(1f).height(52.dp),
                 ) {
                     Text(
@@ -152,7 +156,7 @@ private fun Playground(onBack: () -> Unit) {
                 )) {
                     LiquidGlassButton(
                         onClick = { taps++ },
-                        backdrop = backdrop,
+                        glass = glass,
                         modifier = Modifier.size(60.dp),
                     ) {
                         Icon(painterResource(icon), contentDescription = null)
@@ -197,7 +201,7 @@ private fun Playground(onBack: () -> Unit) {
             }
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                DraggableLens(backdrop)
+                DraggableLens(glass)
             }
 
             val tabs = listOf(
@@ -275,12 +279,12 @@ private fun PlaygroundPage() {
 
 /** A big glass circle that follows the finger around the page. */
 @Composable
-private fun DraggableLens(backdrop: Backdrop) {
+private fun DraggableLens(glass: GlassStack) {
     val density = LocalDensity.current
     var offset by remember { mutableStateOf(with(density) { Offset(110.dp.toPx(), 40.dp.toPx()) }) }
     LiquidGlassButton(
         onClick = {},
-        backdrop = backdrop,
+        glass = glass,
         shape = CircleShape,
         modifier = Modifier
             .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }

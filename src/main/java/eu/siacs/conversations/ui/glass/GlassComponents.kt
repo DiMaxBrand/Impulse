@@ -115,28 +115,34 @@ object LiquidGlassDefaults {
 @Composable
 fun LiquidGlassButton(
     onClick: () -> Unit,
-    backdrop: Backdrop,
+    glass: GlassStack,
     modifier: Modifier = Modifier,
     shape: CornerBasedShape = CircleShape,
     isInteractive: Boolean = true,
     tint: Color = Color.Unspecified,
-    surfaceColor: Color = LiquidGlassDefaults.surfaceColor(),
-    chromaticAberration: Boolean = true,
+    // Unspecified: the style's own surface colour (the theme's surface at the style's opacity).
+    surfaceColor: Color = Color.Unspecified,
+    style: LiquidGlassStyle = LiquidGlassStyle.Button,
     interactiveHighlight: InteractiveHighlight = rememberInteractiveHighlight(),
     // Applied after the button's own press/drag transform: lets whatever holds the button push or
     // squeeze it (the message field pressing on the send button).
     extraLayerBlock: (GraphicsLayerScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    // This button's place in the stack: it records itself for the glass above it, and looks
+    // through the screen and the glass below it.
+    val slot = glass.rememberSlot()
+    val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
     Box(
         modifier = modifier
+            .layerBackdrop(slot.record)
             .drawBackdrop(
-                backdrop = backdrop,
+                backdrop = slot.backdrop,
                 shape = { shape },
                 effects = {
-                    vibrancy()
-                    blur(2f.dp.toPx())
-                    glassLens(12f.dp.toPx(), 24f.dp.toPx(), chromaticAberration)
+                    if (style.vibrancy) vibrancy()
+                    blur(style.blur.toPx())
+                    glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
                 },
                 layerBlock = if (isInteractive || extraLayerBlock != null) {
                     {
@@ -151,8 +157,8 @@ fun LiquidGlassButton(
                         drawRect(tint, blendMode = BlendMode.Hue)
                         drawRect(tint.copy(alpha = 0.75f))
                     }
-                    if (surfaceColor.isSpecified) {
-                        drawRect(surfaceColor)
+                    if (body.isSpecified) {
+                        drawRect(body)
                     }
                 },
             )
@@ -211,26 +217,32 @@ private fun GraphicsLayerScope.buttonLayer(interactiveHighlight: InteractiveHigh
  */
 @Composable
 fun LiquidGlassPanel(
-    backdrop: Backdrop,
+    glass: GlassStack,
     modifier: Modifier = Modifier,
     shape: CornerBasedShape = RoundedCornerShape(24.dp),
-    surfaceColor: Color = LiquidGlassDefaults.surfaceColor(),
+    // Unspecified: the style's own surface colour.
+    surfaceColor: Color = Color.Unspecified,
+    style: LiquidGlassStyle = LiquidGlassStyle.Panel,
     contentAlignment: Alignment = Alignment.TopStart,
     layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val slot = glass.rememberSlot()
+    val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
     Box(
-        modifier = modifier.drawBackdrop(
-            backdrop = backdrop,
-            shape = { shape },
-            effects = {
-                vibrancy()
-                blur(4f.dp.toPx())
-                glassLens(12f.dp.toPx(), 24f.dp.toPx())
-            },
-            layerBlock = layerBlock,
-            onDrawSurface = { if (surfaceColor.isSpecified) drawRect(surfaceColor) },
-        ),
+        modifier = modifier
+            .layerBackdrop(slot.record)
+            .drawBackdrop(
+                backdrop = slot.backdrop,
+                shape = { shape },
+                effects = {
+                    if (style.vibrancy) vibrancy()
+                    blur(style.blur.toPx())
+                    glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
+                },
+                layerBlock = layerBlock,
+                onDrawSurface = { if (body.isSpecified) drawRect(body) },
+            ),
         contentAlignment = contentAlignment,
         content = content,
     )

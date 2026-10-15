@@ -28,7 +28,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
@@ -54,7 +53,7 @@ fun LiquidTopBar(
     conversation: Conversation?,
     revision: Int,
     listener: ConversationScreenListener,
-    backdrop: Backdrop,
+    backdrop: GlassStack,
     menu: LiquidMenuState,
     selectedCount: Int,
     copyEnabled: Boolean,
@@ -76,7 +75,7 @@ fun LiquidTopBar(
         // Back, or close while messages are selected.
         LiquidGlassButton(
             onClick = if (inSelection) onExitSelection else listener::onBackPressed,
-            backdrop = backdrop,
+            glass = backdrop,
             modifier = Modifier.size(BubbleSize),
         ) {
             Crossfade(targetState = inSelection, animationSpec = tween(160), label = "topBarBack") { selecting ->
@@ -90,7 +89,7 @@ fun LiquidTopBar(
 
         if (inSelection) {
             LiquidGlassPanel(
-                backdrop = backdrop,
+                glass = backdrop,
                 shape = CircleShape,
                 contentAlignment = Alignment.CenterStart,
                 modifier = Modifier.weight(1f).height(BubbleSize),
@@ -113,7 +112,7 @@ fun LiquidTopBar(
             // The contact: picture, name, and the line under it.
             LiquidGlassButton(
                 onClick = listener::onOpenDetails,
-                backdrop = backdrop,
+                glass = backdrop,
                 modifier = Modifier.weight(1f).height(PillHeight),
             ) {
                 Row(
@@ -164,7 +163,7 @@ fun LiquidTopBar(
             // The three dots: where the menu grows out of (see LiquidChatMenuOverlay).
             LiquidGlassButton(
                 onClick = { menu.open = true },
-                backdrop = backdrop,
+                glass = backdrop,
                 modifier = Modifier.size(BubbleSize)
                     .liquidMenuAnchor(menu)
                     .graphicsLayer { alpha = menu.anchorAlpha },
@@ -180,8 +179,8 @@ fun LiquidTopBar(
 }
 
 @Composable
-private fun ActionBubble(backdrop: Backdrop, iconRes: Int, description: String, onClick: () -> Unit) {
-    LiquidGlassButton(onClick = onClick, backdrop = backdrop, modifier = Modifier.size(BubbleSize)) {
+private fun ActionBubble(backdrop: GlassStack, iconRes: Int, description: String, onClick: () -> Unit) {
+    LiquidGlassButton(onClick = onClick, glass = backdrop, modifier = Modifier.size(BubbleSize)) {
         Icon(
             painter = painterResource(iconRes),
             contentDescription = description,
@@ -197,7 +196,7 @@ private fun ActionBubble(backdrop: Backdrop, iconRes: Int, description: String, 
 @Composable
 fun LiquidChatMenuOverlay(
     menu: LiquidMenuState,
-    backdrop: Backdrop,
+    backdrop: GlassStack,
     conversation: Conversation?,
     revision: Int,
     listener: ConversationScreenListener,

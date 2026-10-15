@@ -28,8 +28,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
 import eu.siacs.conversations.R
+import eu.siacs.conversations.ui.glass.GlassStack
 import eu.siacs.conversations.ui.glass.LiquidGlassButton
 import eu.siacs.conversations.ui.glass.LiquidMenuState
 import eu.siacs.conversations.ui.glass.liquidMenuAnchor
@@ -46,7 +46,7 @@ val LiquidTopRowHeight = 68.dp
  */
 @Composable
 fun LiquidTopRow(
-    backdrop: Backdrop,
+    glass: GlassStack,
     host: SearchHostState,
     actions: SearchHostActions,
     onSearch: () -> Unit,
@@ -67,7 +67,7 @@ fun LiquidTopRow(
         // place (growing out of exactly these bounds), so the pill itself gives way at once.
         LiquidGlassButton(
             onClick = onSearch,
-            backdrop = backdrop,
+            glass = glass,
             modifier = Modifier.weight(1f).height(52.dp)
                 .onGloballyPositioned { onSearchBounds(it.boundsInWindow()) }
                 .graphicsLayer { alpha = 1f - (searchProgress() * 8f).coerceIn(0f, 1f) },
@@ -97,7 +97,7 @@ fun LiquidTopRow(
         if (anyQr) {
             LiquidGlassButton(
                 onClick = { qrMenu.open = true },
-                backdrop = backdrop,
+                glass = glass,
                 modifier = Modifier.size(52.dp)
                     .liquidMenuAnchor(qrMenu)
                     .graphicsLayer { alpha = qrMenu.anchorAlpha * (1f - searchProgress()) },
@@ -112,7 +112,7 @@ fun LiquidTopRow(
 
         LiquidGlassButton(
             onClick = actions.onManageAccount,
-            backdrop = backdrop,
+            glass = glass,
             modifier = Modifier.size(52.dp).graphicsLayer { alpha = 1f - searchProgress() },
         ) {
             // Smaller than the bubble: the glass rim around the picture stays visible.

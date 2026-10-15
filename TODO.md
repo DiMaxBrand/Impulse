@@ -25,10 +25,20 @@
   (`ui/glass/LiquidTopBar.kt`: back, contact pill, call, video, three dots that grow into the menu;
   birthday card as tinted glass; the Material top bar's data logic moved into shared helpers
   `rememberChatHeaderState` / `chatSubtitle` / `rememberChatMenuFlags` that both bars call).
-- **Still open for the glass chat**: the top bar sits in a column above the list (so only the chat
-  background shows through it; messages do not scroll under it yet); the stranger and pinned-message
-  banners are still Material; selection-mode copy is a plain bubble; the in-app update sheet,
-  dialogs and bottom sheets have no glass version.
+- **beta.177 (core)**: `GlassStack` (`ui/glass/GlassStack.kt`): every glass piece of a screen takes a
+  slot in composition (= draw) order, records its finished look including its icon (`layerBackdrop`)
+  and looks through the screen plus the slots below it, so a piece dragged over another bends it
+  (double refraction; the library's own demo app lacks this). `LiquidGlassStyle` (blur, surface
+  opacity, lens, chromatic aberration, vibrancy) per piece, with presets Button / Panel / Menu / Sheet.
+  The chat's glass bars now float over the messages (the list fills the area and runs under them)
+  instead of standing in a column above it, which drew the list over a dragged bubble. Perf: the
+  search host read the animation value in its body and rebuilt the whole chat list every frame, now
+  derived; menus keep constant effect settings; the full-screen search drops blur and lens past 0.8.
+- **Still open for the glass chat**: the stranger and pinned-message banners are still Material;
+  selection-mode copy is a plain bubble; the in-app update sheet, dialogs and bottom sheets have no
+  glass version. Media: the video play button (thumbnail and viewer), the viewer's glass top bar and
+  the chat-bar-to-viewer-bar transition (back and name stay, avatar slides out, call/video become
+  share/download, same three dots with another menu, no default activity slide).
 - **Known bug to chase**: with the beta.171 glass bar, a line wrap in the field pushed the bar below
   the keyboard until the keyboard was reopened. Not understood. beta.174 rebuilt the bar without the
   suspects (the clipping `Surface`, a `graphicsLayer` scale on the EditText, `animateContentSize`);

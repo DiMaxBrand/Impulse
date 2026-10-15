@@ -118,6 +118,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -149,6 +150,7 @@ import eu.siacs.conversations.ui.glass.LiquidChatMenuOverlay
 import eu.siacs.conversations.ui.glass.LiquidGlassPanel
 import eu.siacs.conversations.ui.glass.LiquidInputBar
 import eu.siacs.conversations.ui.glass.LiquidTopBar
+import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -696,6 +698,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val backgroundBackdrop = rememberLayerBackdrop()
     val listBackdrop = rememberLayerBackdrop()
     val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
+    // The glass pieces of the chat look through the background, the messages and each other.
+    val glassStack = rememberGlassStack(glassBackdrop)
     val topMenu = rememberLiquidMenuState()
 
     // What the top bar's selection actions do; both top bars use these.
@@ -755,27 +759,15 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             label = "pinned_overlay_scrim",
         )
         var glassBarHeightPx by remember { mutableIntStateOf(0) }
+        var glassTopHeightPx by remember { mutableIntStateOf(0) }
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
         ChatBackgroundLayer(
             Modifier.matchParentSize()
                 .then(if (glass) Modifier.layerBackdrop(backgroundBackdrop) else Modifier),
         )
-        Column(modifier = Modifier.fillMaxSize()) {
-            if (glass) {
-                LiquidTopBar(
-                    conversation = conversation,
-                    revision = state.revision.intValue,
-                    listener = listener,
-                    backdrop = backgroundBackdrop,
-                    menu = topMenu,
-                    selectedCount = selectedUuids.size,
-                    copyEnabled = selectionCopyEnabled,
-                    onExitSelection = { selectedUuids.clear() },
-                    onForwardSelected = forwardSelected,
-                    onCopySelected = copySelected,
-                    onDeleteSelected = deleteSelected,
-                )
-            }
+        // The banners above the messages are the same in both layouts; only how everything is
+        // arranged differs (below). A ColumnScope lambda, so they animate as column children.
+        val banners: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = {
             // Someone who is not in the user's contacts has written: say so, and offer the two
             // sensible answers. (The old chat screen had a "received message from stranger" bar
             // with Block; this one showed nothing, so a stranger looked like any contact.)
@@ -854,7 +846,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 if (glass) {
                     // The same card colour, but as a tint on glass instead of an opaque slab.
                     LiquidGlassPanel(
-                        backdrop = backgroundBackdrop,
+                        glass = glassStack,
                         surfaceColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.42f),
                         contentAlignment = Alignment.CenterStart,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
@@ -896,43 +888,77 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     ),
                 )
             }
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                MessageList(
-                    state = state,
-                    listener = listener,
-                    onLongPress = {
-                        menuTarget = it
-                        menuTargetGroup = null
-                        menuTargetIsOverflowCell = false
-                    },
-                    onLongPressGroupCell = { tapped, messages, isOverflowCell ->
-                        menuTarget = tapped
-                        menuTargetGroup = messages
-                        menuTargetIsOverflowCell = isOverflowCell
-                    },
-                    onOpenSelector = { messages -> listener.onOpenMediaSelector(messages, false) },
-                    selectedUuids = selectedUuids,
-                    onToggleSelected = { uuid ->
-                        if (!selectedUuids.remove(uuid)) selectedUuids.add(uuid)
-                    },
-                    modifier = Modifier.fillMaxSize()
-                        .then(if (glass) Modifier.layerBackdrop(listBackdrop) else Modifier),
-                    bottomInset = if (glass) with(LocalDensity.current) { glassBarHeightPx.toDp() } else 0.dp,
-                )
-                if (glass) {
-                    LiquidInputBar(
-                        state = state,
-                        listener = listener,
-                        backdrop = glassBackdrop,
-                        onBarHeight = { glassBarHeightPx = it },
-                    )
-                }
-            }
-            if (!glass) InputBar(state = state, listener = listener)
+        }
+        // The message list, the same in both layouts: it is told how much room to leave at the top and
+        // the bottom (nothing in the Material layout, where the bars sit above and below it, and the
+        // height of the glass bars in the glass one, where it runs under them).
+        val messageList: @Composable (Modifier, Dp, Dp) -> Unit = { listModifier, topInset, bottomInset ->
+            MessageList(
+                state = state,
+                listener = listener,
+                onLongPress = {
+                    menuTarget = it
+                    menuTargetGroup = null
+                    menuTargetIsOverflowCell = false
+                },
+                onLongPressGroupCell = { tapped, messages, isOverflowCell ->
+                    menuTarget = tapped
+                    menuTargetGroup = messages
+                    menuTargetIsOverflowCell = isOverflowCell
+                },
+                onOpenSelector = { messages -> listener.onOpenMediaSelector(messages, false) },
+                selectedUuids = selectedUuids,
+                onToggleSelected = { uuid ->
+                    if (!selectedUuids.remove(uuid)) selectedUuids.add(uuid)
+                },
+                modifier = listModifier,
+                bottomInset = bottomInset,
+                topInset = topInset,
+            )
         }
         if (glass) {
+            // Liquid glass: the messages fill the whole area and run under the glass bars, which
+            // float above them (drawn after the list, so a bubble dragged downward stays on top of
+            // the messages instead of being cut off by a bar it stands on). Each bar is only its
+            // bubbles: no bar-shaped surface behind them.
+            val density = LocalDensity.current
+            messageList(
+                Modifier.fillMaxSize().layerBackdrop(listBackdrop),
+                with(density) { glassTopHeightPx.toDp() },
+                with(density) { glassBarHeightPx.toDp() },
+            )
+            Column(Modifier.align(Alignment.TopCenter).onSizeChanged { glassTopHeightPx = it.height }) {
+                LiquidTopBar(
+                    conversation = conversation,
+                    revision = state.revision.intValue,
+                    listener = listener,
+                    backdrop = glassStack,
+                    menu = topMenu,
+                    selectedCount = selectedUuids.size,
+                    copyEnabled = selectionCopyEnabled,
+                    onExitSelection = { selectedUuids.clear() },
+                    onForwardSelected = forwardSelected,
+                    onCopySelected = copySelected,
+                    onDeleteSelected = deleteSelected,
+                )
+                banners()
+            }
+            LiquidInputBar(
+                state = state,
+                listener = listener,
+                backdrop = glassStack,
+                onBarHeight = { glassBarHeightPx = it },
+            )
             // The three dots grow into this menu; drawn over the whole screen area.
-            LiquidChatMenuOverlay(topMenu, glassBackdrop, conversation, state.revision.intValue, listener)
+            LiquidChatMenuOverlay(topMenu, glassStack, conversation, state.revision.intValue, listener)
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                banners()
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    messageList(Modifier.fillMaxSize(), 0.dp, 0.dp)
+                }
+                InputBar(state = state, listener = listener)
+            }
         }
         if (scrimAlpha > 0f) {
             Box(

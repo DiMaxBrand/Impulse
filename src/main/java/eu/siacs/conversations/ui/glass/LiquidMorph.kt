@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,7 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
-import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.vibrancy
@@ -67,11 +68,17 @@ import kotlin.math.roundToInt
 
 /**
  * One glass container whose size and place are interpolated by [progress] (0 = at [from], 1 =
- * [target]). Both rectangles are in the overlay's own coordinates. The container's corners, blur and
- * body colour change with the progress too: at rest it is a clear, lensing bubble; fully open, a
- * calmer, more opaque panel (so text over a busy list stays readable). [content] gets the container's
- * animated size and is clipped to it; wrap it in `requiredWidth`/`requiredSize` to keep its layout
- * at the final size while the container is still growing.
+ * [target]). Both rectangles are in the overlay's own coordinates. The corners and the body colour
+ * change with the progress: the surface opacity runs from [surfaceAlphaFrom] (a clear bubble) to the
+ * [style]'s own (a calmer, more opaque panel, so text over a busy list stays readable). The blur and
+ * the lens are the style's, kept the same for the whole motion so the effect is not rebuilt every
+ * frame. [content] gets the container's animated size and is clipped to it; wrap it in
+ * `requiredWidth`/`requiredSize` to keep its layout at the final size while the container is still
+ * growing.
+ *
+ * [glassUntil]: a container that ends up covering the screen drops the blur and the lens once its
+ * progress passes this, when it is nearly opaque anyway: blurring and bending a whole screen every
+ * frame is what made the search stutter. Menus never do (the default is never).
  *
  * [target] is told the overlay's size and can ask for the height content wants at a width.
  */
@@ -80,58 +87,63 @@ fun LiquidMorphContainer(
     progress: () -> Float,
     from: () -> Rect,
     target: (overlay: IntSize, heightForWidth: (Int) -> Int) -> Rect,
-    backdrop: Backdrop,
+    glass: GlassStack,
     modifier: Modifier = Modifier,
+    style: LiquidGlassStyle = LiquidGlassStyle.Menu,
     cornerFrom: Dp = 26.dp,
     cornerTo: Dp = 28.dp,
-    surfaceAlphaTo: Float = 0.9f,
-    blurTo: Dp = 20.dp,
+    surfaceAlphaFrom: Float = 0.28f,
+    glassUntil: Float = Float.POSITIVE_INFINITY,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
     val surface = MaterialTheme.colorScheme.surface
+    val slot = glass.rememberSlot()
     Layout(
         content = {
             Box(
-                Modifier.drawBackdrop(
-                    backdrop = backdrop,
-                    shape = {
-                        val p = progress().coerceIn(0f, 1f)
-                        RoundedCornerShape(
-                            with(density) { lerp(cornerFrom.toPx(), cornerTo.toPx(), p) }
-                        )
-                    },
-                    effects = {
-                        val p = progress().coerceIn(0f, 1f)
-                        vibrancy()
-                        blur(lerp(2f.dp.toPx(), blurTo.toPx(), p))
-                        glassLens(
-                            12f.dp.toPx() * (1f - p),
-                            24f.dp.toPx() * (1f - p),
-                            chromaticAberration = true,
-                        )
-                    },
-                    onDrawSurface = {
-                        val p = progress().coerceIn(0f, 1f)
-                        drawRect(surface.copy(alpha = lerp(0.28f, surfaceAlphaTo, p)))
-                    },
-                ),
+                Modifier
+                    .layerBackdrop(slot.record)
+                    .drawBackdrop(
+                        backdrop = slot.backdrop,
+                        shape = {
+                            val p = progress().coerceIn(0f, 1f)
+                            RoundedCornerShape(
+                                with(density) { lerp(cornerFrom.toPx(), cornerTo.toPx(), p) }
+                            )
+                        },
+                        effects = {
+                            if (progress() <= glassUntil) {
+                                if (style.vibrancy) vibrancy()
+                                blur(style.blur.toPx())
+                                glassLens(
+                                    style.lensHeight.toPx(),
+                                    style.lensAmount.toPx(),
+                                    style.chromaticAberration,
+                                )
+                            }
+                        },
+                        onDrawSurface = {
+                            val p = progress().coerceIn(0f, 1f)
+                            drawRect(surface.copy(alpha = lerp(surfaceAlphaFrom, style.surfaceAlpha, p)))
+                        },
+                    ),
                 contentAlignment = Alignment.TopStart,
                 content = content,
             )
         },
         modifier = modifier.fillMaxSize(),
     ) { measurables, constraints ->
-        val glass = measurables.first()
+        val glassBox = measurables.first()
         val overlay = IntSize(constraints.maxWidth, constraints.maxHeight)
         val p = progress() // may overshoot 1: that is the liquid part
         val a = from()
-        val b = target(overlay) { width -> glass.maxIntrinsicHeight(width) }
+        val b = target(overlay) { width -> glassBox.maxIntrinsicHeight(width) }
         val w = lerp(a.width, b.width, p).roundToInt().coerceAtLeast(1)
         val h = lerp(a.height, b.height, p).roundToInt().coerceAtLeast(1)
         val x = lerp(a.left, b.left, p).roundToInt()
         val y = lerp(a.top, b.top, p).roundToInt()
-        val placeable = glass.measure(Constraints.fixed(w, h))
+        val placeable = glassBox.measure(Constraints.fixed(w, h))
         layout(overlay.width, overlay.height) { placeable.place(x, y) }
     }
 }
@@ -159,15 +171,18 @@ fun Modifier.liquidMenuAnchor(state: LiquidMenuState): Modifier =
 
 /**
  * The menu itself, to be placed once at the root of the screen (after everything it should cover,
- * inside the box whose [backdrop] holds the screen's content). The bubble of the anchor button
+ * inside the box whose [glass] stack holds the screen's content). The bubble of the anchor button
  * grows into a [menuWidth]-wide panel whose right edge lines up with the button's; [content] (the
  * items) fades in once the panel is mostly open. A tap anywhere else, or back, closes it.
  */
 @Composable
 fun LiquidMenuOverlay(
     state: LiquidMenuState,
-    backdrop: Backdrop,
+    glass: GlassStack,
     modifier: Modifier = Modifier,
+    // The menu look: blurrier and more opaque than a button, so what is behind it shows less
+    // clearly, but still bending the light (and any glass below it).
+    style: LiquidGlassStyle = LiquidGlassStyle.Menu,
     menuWidth: Dp = 236.dp,
     // Which edge of the button the panel lines up with, and which way it grows: a button at the
     // end of a bar at the top opens down and to the left; one at the start of a bar at the bottom
@@ -180,7 +195,9 @@ fun LiquidMenuOverlay(
         state.progress.animateTo(if (state.open) 1f else 0f, spring(dampingRatio = 0.78f, stiffness = 380f))
     }
     BackHandler(enabled = state.open) { state.open = false }
-    if (!state.open && state.progress.value <= 0.001f) return
+    // Derived, so the menu's items are not rebuilt on every frame of the opening animation.
+    val visible by remember { derivedStateOf { state.open || state.progress.value > 0.001f } }
+    if (!visible) return
 
     val density = LocalDensity.current
     var origin by remember { mutableStateOf(Offset.Zero) }
@@ -210,7 +227,8 @@ fun LiquidMenuOverlay(
                 )
                 Rect(left, top, left + width, top + height)
             },
-            backdrop = backdrop,
+            glass = glass,
+            style = style,
         ) {
             Column(
                 Modifier

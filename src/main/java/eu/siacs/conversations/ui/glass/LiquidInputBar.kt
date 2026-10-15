@@ -55,7 +55,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
-import com.kyant.backdrop.Backdrop
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.ui.AttachmentPreviewStrip
@@ -92,7 +91,7 @@ private val TimerWidth = 112.dp
 fun LiquidInputBar(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
-    backdrop: Backdrop,
+    backdrop: GlassStack,
     onBarHeight: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -148,9 +147,9 @@ fun LiquidInputBar(
 }
 
 @Composable
-private fun ReadOnlyBubble(backdrop: Backdrop) {
+private fun ReadOnlyBubble(backdrop: GlassStack) {
     LiquidGlassPanel(
-        backdrop = backdrop,
+        glass = backdrop,
         shape = CircleShape,
         contentAlignment = Alignment.Center,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
@@ -180,7 +179,7 @@ private fun ReadOnlyBubble(backdrop: Backdrop) {
 private fun BarPanels(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
-    backdrop: Backdrop,
+    backdrop: GlassStack,
     conversation: eu.siacs.conversations.entities.Conversation?,
 ) {
     val revision = state.revision.intValue
@@ -189,7 +188,7 @@ private fun BarPanels(
     }
     if (state.replyingTo.value != null || state.correcting.value != null || privateTarget) {
         LiquidGlassPanel(
-            backdrop = backdrop,
+            glass = backdrop,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
         ) {
             ComposerBanner(state, listener)
@@ -197,7 +196,7 @@ private fun BarPanels(
     }
     if (state.attachments.isNotEmpty()) {
         LiquidGlassPanel(
-            backdrop = backdrop,
+            glass = backdrop,
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
         ) {
@@ -210,7 +209,7 @@ private fun BarPanels(
 private fun ComposerRow(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
-    backdrop: Backdrop,
+    backdrop: GlassStack,
     attachMenu: LiquidMenuState,
     conversation: eu.siacs.conversations.entities.Conversation?,
 ) {
@@ -306,7 +305,7 @@ private fun ComposerRow(
 /** The paperclip, which turns into the discard button while a voice message is recorded. */
 @Composable
 private fun AttachOrDiscardBubble(
-    backdrop: Backdrop,
+    backdrop: GlassStack,
     attachMenu: LiquidMenuState,
     rec: Animatable<Float, AnimationVector1D>,
     onClick: () -> Unit,
@@ -315,7 +314,7 @@ private fun AttachOrDiscardBubble(
     val normal = LiquidGlassDefaults.surfaceColor()
     LiquidGlassButton(
         onClick = onClick,
-        backdrop = backdrop,
+        glass = backdrop,
         modifier = Modifier.size(BubbleSize)
             .liquidMenuAnchor(attachMenu)
             .graphicsLayer { alpha = attachMenu.anchorAlpha },
@@ -353,7 +352,7 @@ private fun AttachOrDiscardBubble(
 private fun RowScope.FieldBubble(
     state: ConversationScreenState,
     listener: ConversationScreenListener,
-    backdrop: Backdrop,
+    backdrop: GlassStack,
     text: String,
     hintText: String,
     typingEnabled: Boolean,
@@ -378,7 +377,7 @@ private fun RowScope.FieldBubble(
         val timerWidthPx = with(density) { TimerWidth.toPx() }
 
         LiquidGlassPanel(
-            backdrop = backdrop,
+            glass = backdrop,
             modifier = Modifier.layout { measurable, constraints ->
                 val full = constraints.maxWidth
                 val w = lerp(full.toFloat(), min(timerWidthPx, full.toFloat()), rec.value).roundToInt()
@@ -460,7 +459,7 @@ private fun TimerContent(recording: RecordingUiState.Active?, rec: Animatable<Fl
 /** Pause / resume. It has no room while typing and grows out of the send bubble's side when recording starts. */
 @Composable
 private fun PauseBubble(
-    backdrop: Backdrop,
+    backdrop: GlassStack,
     rec: Animatable<Float, AnimationVector1D>,
     paused: Boolean,
     onClick: () -> Unit,
@@ -482,7 +481,7 @@ private fun PauseBubble(
                 scaleY = s
             },
     ) {
-        LiquidGlassButton(onClick = onClick, backdrop = backdrop, modifier = Modifier.size(BubbleSize)) {
+        LiquidGlassButton(onClick = onClick, glass = backdrop, modifier = Modifier.size(BubbleSize)) {
             Icon(
                 painter = painterResource(if (paused) R.drawable.ic_play_arrow_24dp else R.drawable.ic_pause_24dp),
                 contentDescription = null,
@@ -499,7 +498,7 @@ private fun PauseBubble(
  */
 @Composable
 private fun SendBubble(
-    backdrop: Backdrop,
+    backdrop: GlassStack,
     iconRes: Int,
     isSend: Boolean,
     enabled: Boolean,
@@ -514,7 +513,7 @@ private fun SendBubble(
     )
     LiquidGlassButton(
         onClick = { if (enabled) onClick() },
-        backdrop = backdrop,
+        glass = backdrop,
         modifier = Modifier.size(BubbleSize).graphicsLayer { alpha = if (enabled) 1f else 0.5f },
         surfaceColor = lerpColor(
             LiquidGlassDefaults.surfaceColor(),

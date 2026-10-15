@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,9 +54,11 @@ import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import eu.siacs.conversations.R
+import eu.siacs.conversations.ui.glass.LiquidGlassStyle
 import eu.siacs.conversations.ui.glass.LiquidMenuItem
 import eu.siacs.conversations.ui.glass.LiquidMenuOverlay
 import eu.siacs.conversations.ui.glass.LiquidMorphContainer
+import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import kotlinx.coroutines.delay
 
@@ -76,6 +79,8 @@ fun LiquidConversationsSearchHost(
 ) {
     val textFieldState = rememberTextFieldState()
     val backdrop = rememberLayerBackdrop()
+    // The glass pieces of this screen look through the list and through each other.
+    val glass = rememberGlassStack(backdrop)
     val qrMenu = rememberLiquidMenuState()
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -121,7 +126,7 @@ fun LiquidConversationsSearchHost(
         Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) { content() }
 
         LiquidTopRow(
-            backdrop = backdrop,
+            glass = glass,
             host = host,
             actions = actions,
             onSearch = { searchOpen = true },
@@ -131,7 +136,11 @@ fun LiquidConversationsSearchHost(
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
-        if (searchOpen || searchProgress.value > 0.001f) {
+        // Derived, so this only changes when the container appears or is gone. Reading the animated
+        // value directly here would rebuild this whole function, the chat list inside it included,
+        // on every frame of the animation: that was most of the stutter when opening the search.
+        val showSearch by remember { derivedStateOf { searchOpen || searchProgress.value > 0.001f } }
+        if (showSearch) {
             LiquidMorphContainer(
                 progress = { searchProgress.value },
                 from = { pillBounds.translate(-origin) },
@@ -140,9 +149,12 @@ fun LiquidConversationsSearchHost(
                     val a = pillBounds.translate(-origin)
                     Rect(0f, a.top, overlay.width.toFloat(), overlay.height.toFloat())
                 },
-                backdrop = backdrop,
+                glass = glass,
+                // Nearly solid when open, and the blur and the lens stop once it is: bending the
+                // whole screen on every frame was what made opening the search stutter.
+                style = LiquidGlassStyle.Sheet,
                 cornerTo = 0.dp,
-                surfaceAlphaTo = 0.96f,
+                glassUntil = 0.8f,
             ) {
                 val focusRequester = remember { FocusRequester() }
                 LaunchedEffect(searchOpen) {
@@ -199,7 +211,7 @@ fun LiquidConversationsSearchHost(
             }
         }
 
-        LiquidMenuOverlay(qrMenu, backdrop) {
+        LiquidMenuOverlay(qrMenu, glass) {
             if (host.showScanQr) LiquidMenuItem(
                 R.drawable.ic_qr_code_scanner_24dp, stringResource(R.string.scan_qr_code),
             ) { qrMenu.open = false; actions.onScanQr() }
