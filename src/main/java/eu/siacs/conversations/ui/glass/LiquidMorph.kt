@@ -2,7 +2,12 @@ package eu.siacs.conversations.ui.glass
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -242,11 +247,30 @@ fun LiquidMenuOverlay(
     }
 }
 
-/** A row of a glass menu: an icon and a label. */
+/**
+ * A row of a glass menu: an icon and a label. Pressed, it gets a flat rounded highlight inside the
+ * panel, not the circular ripple (the old, shadowy way a button lights up): inset from the panel's
+ * edges, soft corners, one flat colour with no gradient, a little faint.
+ */
 @Composable
 fun LiquidMenuItem(iconRes: Int, label: String, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val press by animateFloatAsState(
+        targetValue = if (pressed) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 900f),
+        label = "menuItemPress",
+    )
+    val highlight = MaterialTheme.colorScheme.onSurface
     Row(
-        Modifier.fillMaxWidth().height(52.dp).clickable(onClick = onClick).padding(horizontal = 20.dp),
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .drawBehind { drawRect(highlight.copy(alpha = 0.12f * press)) }
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .height(52.dp)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(

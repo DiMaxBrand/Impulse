@@ -224,28 +224,44 @@ fun LiquidGlassPanel(
     surfaceColor: Color = Color.Unspecified,
     style: LiquidGlassStyle = LiquidGlassStyle.Panel,
     contentAlignment: Alignment = Alignment.TopStart,
+    // The panel has a size of its own (a fixed or animated one) and [content] may be bigger than it
+    // for a moment, e.g. text that is taller than the field is yet: it is then clipped to the panel
+    // instead of defining the panel's size.
+    clipContent: Boolean = false,
+    // Stretches the GLASS only: what is inside keeps its shape, so a bulging field does not squash
+    // its own letters.
     layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val slot = glass.rememberSlot()
     val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
+    // Two layers, not one: the glass (which [layerBlock] deforms) and the content on top of it
+    // (which nothing deforms). The recording for the glass above covers both.
     Box(
-        modifier = modifier
-            .layerBackdrop(slot.record)
-            .drawBackdrop(
-                backdrop = slot.backdrop,
-                shape = { shape },
-                effects = {
-                    if (style.vibrancy) vibrancy()
-                    blur(style.blur.toPx())
-                    glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
-                },
-                layerBlock = layerBlock,
-                onDrawSurface = { if (body.isSpecified) drawRect(body) },
-            ),
+        modifier = modifier.layerBackdrop(slot.record),
         contentAlignment = contentAlignment,
-        content = content,
-    )
+    ) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .drawBackdrop(
+                    backdrop = slot.backdrop,
+                    shape = { shape },
+                    effects = {
+                        if (style.vibrancy) vibrancy()
+                        blur(style.blur.toPx())
+                        glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
+                    },
+                    layerBlock = layerBlock,
+                    onDrawSurface = { if (body.isSpecified) drawRect(body) },
+                ),
+        )
+        if (clipContent) {
+            Box(Modifier.matchParentSize().clip(shape), contentAlignment = contentAlignment) { content() }
+        } else {
+            Box(Modifier.clip(shape), contentAlignment = contentAlignment, content = content)
+        }
+    }
 }
 
 /** The demo's `LiquidToggle`: a glass thumb on a coloured track that swells into a lens when held. */

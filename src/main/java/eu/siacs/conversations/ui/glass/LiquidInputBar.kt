@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -385,19 +386,25 @@ private fun RowScope.FieldBubble(
                 val placeable = measurable.measure(Constraints.fixed(w, h))
                 layout(constraints.maxWidth, h) { placeable.place(0, 0) }
             },
+            clipContent = true,
+            // Only the glass reaches toward the send bubble (wider by up to 10dp, pinned on the
+            // left); the letters are not touched, they do not stretch with it.
             layerBlock = {
-                // Reaching toward the send bubble: wider by up to 10dp, pinned on the left.
                 val grow = push() * 10.dp.toPx()
                 scaleX = 1f + grow / size.width.coerceAtLeast(1f)
                 transformOrigin = TransformOrigin(0f, 0.5f)
             },
         ) {
             // The text input is laid out at the full width the whole time, so nothing in it
-            // reflows while the piece narrows to the timer.
+            // reflows while the piece narrows to the timer, and at its own full height: measured
+            // inside the container's current (fixed) height it could never be taller than the
+            // container, so the container never learned it needed to grow, and the text scrolled
+            // instead of the field expanding.
             Box(
                 Modifier
                     .wrapContentWidth(Alignment.Start, unbounded = true)
                     .width(fullWidth)
+                    .wrapContentHeight(Alignment.Top, unbounded = true)
                     .graphicsLayer { alpha = 1f - rec.value }
                     .onSizeChanged { naturalHeightPx = it.height },
             ) {
