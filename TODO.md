@@ -34,11 +34,20 @@
   instead of standing in a column above it, which drew the list over a dragged bubble. Perf: the
   search host read the animation value in its body and rebuilt the whole chat list every frame, now
   derived; menus keep constant effect settings; the full-screen search drops blur and lens past 0.8.
+- **beta.178 (media)**: glass play button on a video thumbnail in the chat (a plain panel over the
+  picture, so a tap still opens the viewer) and in the viewer (a real button over the pager, not
+  inside it: the pager is what the glass looks through, a piece inside it would look at itself).
+  The viewer's glass top bar (`ui/glass/LiquidViewerTopBar.kt`) starts out looking like the chat's
+  and turns into the viewer's: back and name stay, the picture slides out of the pill, call and video
+  turn into share and download, the three dots stay with the viewer's own menu, the line under the
+  name goes from status to date. The two screens are two activities, so this is an imitation: the
+  viewer fades in over the chat instead of the default slide (`res/anim/glass_*`), and the bar is
+  drawn identically at the same place. Only when the viewer was opened from the chat
+  (`fromChat`) with the flag on.
 - **Still open for the glass chat**: the stranger and pinned-message banners are still Material;
   selection-mode copy is a plain bubble; the in-app update sheet, dialogs and bottom sheets have no
-  glass version. Media: the video play button (thumbnail and viewer), the viewer's glass top bar and
-  the chat-bar-to-viewer-bar transition (back and name stay, avatar slides out, call/video become
-  share/download, same three dots with another menu, no default activity slide).
+  glass version; the viewer's filmstrip and the save card are still Material. Making the viewer a
+  layer inside the chat (one activity) would make the bar truly shared, but is a big change.
 - **Known bug to chase**: with the beta.171 glass bar, a line wrap in the field pushed the bar below
   the keyboard until the keyboard was reopened. Not understood. beta.174 rebuilt the bar without the
   suspects (the clipping `Surface`, a `graphicsLayer` scale on the EditText, `animateContentSize`);

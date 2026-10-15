@@ -148,6 +148,7 @@ import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import eu.siacs.conversations.ui.glass.LiquidChatMenuOverlay
 import eu.siacs.conversations.ui.glass.LiquidGlassPanel
+import eu.siacs.conversations.ui.glass.LiquidGlassStyle
 import eu.siacs.conversations.ui.glass.LiquidInputBar
 import eu.siacs.conversations.ui.glass.LiquidTopBar
 import eu.siacs.conversations.ui.glass.rememberGlassStack
@@ -5174,6 +5175,13 @@ private fun MediaThumbnailBubble(
         }
     }
 
+    // Liquid glass experiment: the play affordance of a video is a glass circle that bends the
+    // thumbnail under it. Only the picture is recorded as what it looks through (the button is
+    // beside the picture, not inside it, so it never looks at itself).
+    val glassPlay = isVideo && rememberLiquidGlassEnabled()
+    val thumbBackdrop = if (glassPlay) rememberLayerBackdrop() else null
+    val thumbStack = thumbBackdrop?.let { rememberGlassStack(it) }
+
     Box(
         modifier = Modifier
             .widthIn(max = 280.dp)
@@ -5224,7 +5232,8 @@ private fun MediaThumbnailBubble(
                 bitmap = cachedBitmap,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
+                    .then(if (thumbBackdrop != null) Modifier.layerBackdrop(thumbBackdrop) else Modifier),
             )
         } else {
             Box(
@@ -5276,19 +5285,39 @@ private fun MediaThumbnailBubble(
                 ),
             exit = fadeOut(tween(120)),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.45f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_play_arrow_24dp),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp),
-                )
+            if (thumbStack != null) {
+                // Not a button of its own: a tap on it is a tap on the thumbnail (it opens the
+                // viewer), so it is a plain glass panel.
+                LiquidGlassPanel(
+                    glass = thumbStack,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    surfaceColor = Color.White.copy(alpha = 0.14f),
+                    style = LiquidGlassStyle.Button,
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(56.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_play_arrow_24dp),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.45f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_play_arrow_24dp),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
             }
         }
     }

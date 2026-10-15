@@ -90,6 +90,15 @@ import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.entities.Transferable
 import eu.siacs.conversations.services.XmppConnectionService
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.scaleIn
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import eu.siacs.conversations.ui.glass.LiquidGlassButton
+import eu.siacs.conversations.ui.glass.LiquidViewerMenuOverlay
+import eu.siacs.conversations.ui.glass.LiquidViewerTopBar
+import eu.siacs.conversations.ui.glass.rememberGlassStack
+import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import eu.siacs.conversations.ui.util.ShareUtil
 import eu.siacs.conversations.ui.util.ViewUtil
 import kotlinx.coroutines.Dispatchers
@@ -112,18 +121,31 @@ class MediaViewerActivity : XmppActivity() {
         private const val EXTRA_MESSAGE_UUID = "message_uuid"
         private const val EXTRA_BATCH_UUIDS = "batch_uuids"
         const val EXTRA_RESULT_SHOW_UUID = "show_in_chat_uuid"
+        // Opened from the chat itself (not from, say, a search result): with the liquid glass
+        // experiment the chat's top bar then carries over into the viewer's, see LiquidViewerTopBar.
+        private const val EXTRA_FROM_CHAT = "from_chat"
 
         @JvmStatic
         @JvmOverloads
-        fun launch(context: Context, message: Message, batchUuids: List<String> = emptyList()): Intent {
+        fun launch(
+            context: Context,
+            message: Message,
+            batchUuids: List<String> = emptyList(),
+            fromChat: Boolean = false,
+        ): Intent {
             val conversation = message.conversation as? Conversation
             return Intent(context, MediaViewerActivity::class.java).apply {
                 putExtra(EXTRA_CONVERSATION, conversation?.getUuid())
                 putExtra(EXTRA_MESSAGE_UUID, message.getUuid())
                 putStringArrayListExtra(EXTRA_BATCH_UUIDS, ArrayList(batchUuids))
+                putExtra(EXTRA_FROM_CHAT, fromChat)
             }
         }
     }
+
+    // True when the glass viewer carries the chat's top bar over: then the default slide between the
+    // two screens is replaced by a plain fade, so the bar that is in both stays where it is.
+    private var glassCarryOver = false
 
     private val conversationState = mutableStateOf<Conversation?>(null)
     private val startMessageState = mutableStateOf<Message?>(null)
@@ -139,6 +161,21 @@ class MediaViewerActivity : XmppActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         batchUuids = intent.getStringArrayListExtra(EXTRA_BATCH_UUIDS)?.toSet() ?: emptySet()
+        glassCarryOver = intent.getBooleanExtra(EXTRA_FROM_CHAT, false) &&
+            LiquidGlass.supported &&
+            eu.siacs.conversations.utils.FeatureFlagPreferences(this)
+                .isEnabled(eu.siacs.conversations.FeatureFlag.LIQUID_GLASS)
+        if (glassCarryOver) {
+            // Not the default slide: the chat stays where it is and the viewer fades in over it
+            // (and out again on the way back), so the top bar, which is in both, does not move.
+            if (android.os.Build.VERSION.SDK_INT >= 34) {
+                overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, R.anim.glass_viewer_enter, R.anim.glass_hold)
+                overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.glass_hold, R.anim.glass_viewer_exit)
+            } else {
+                @Suppress("DEPRECATION")
+                overridePendingTransition(R.anim.glass_viewer_enter, R.anim.glass_hold)
+            }
+        }
         setContent {
             ImpulseExpressiveTheme {
                 val conversation = conversationState.value
@@ -150,6 +187,7 @@ class MediaViewerActivity : XmppActivity() {
                         startMessage = start,
                         revision = revisionState.intValue,
                         batchUuids = batchUuids,
+                        carryOver = glassCarryOver,
                         onClose = { finish() },
                         onShare = { message -> ShareUtil.share(this@MediaViewerActivity, message) },
                         onSave = { message -> saveToDevice(message) },
@@ -173,6 +211,15 @@ class MediaViewerActivity : XmppActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun finish() {
+        super.finish()
+        // Before Android 14 the closing transition cannot be declared up front.
+        if (glassCarryOver && android.os.Build.VERSION.SDK_INT < 34) {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.glass_hold, R.anim.glass_viewer_exit)
         }
     }
 
@@ -361,6 +408,9 @@ private fun MediaViewerScreen(
     startMessage: Message,
     revision: Int,
     batchUuids: Set<String>,
+    // The liquid glass viewer was opened from the chat's glass top bar: its own top bar starts out
+    // looking like that one and turns into the viewer's (see LiquidViewerTopBar).
+    carryOver: Boolean,
     onClose: () -> Unit,
     onShare: (Message) -> Unit,
     onSave: (Message) -> Unit,
@@ -376,6 +426,22 @@ private fun MediaViewerScreen(
     var loadingOlder by remember { mutableStateOf(false) }
     var loadingNewer by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    // Liquid glass experiment (flag): glass top bar, menu and play button over the photo. With the
+    // flag off none of this is used and the viewer is as it was.
+    val glass = rememberLiquidGlassEnabled()
+    val viewerBackdrop = rememberLayerBackdrop()
+    val glassStack = rememberGlassStack(viewerBackdrop)
+    val topMenu = rememberLiquidMenuState()
+    // 0: the top bar still looks like the chat's; 1: it is the viewer's. Starts done unless the
+    // viewer came from the chat's glass bar.
+    val barEnter = remember { Animatable(if (glass && carryOver) 0f else 1f) }
+    LaunchedEffect(Unit) {
+        if (barEnter.value < 1f) {
+            delay(90) // let the fade-in finish before the bar starts to change
+            barEnter.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = 380f))
+        }
+    }
 
     LaunchedEffect(startMessage.getUuid()) {
         val older = withContext(Dispatchers.IO) {
@@ -526,13 +592,22 @@ private fun MediaViewerScreen(
 
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+        // The photo is what the glass looks through (recorded as the stack's screen), so the pager
+        // alone; nothing glass is inside it.
+        HorizontalPager(
+            state = pagerState,
+            // The black behind the photo is part of what the glass looks through too.
+            modifier = Modifier.fillMaxSize()
+                .then(if (glass) Modifier.layerBackdrop(viewerBackdrop).background(Color.Black) else Modifier),
+        ) { page ->
             MediaViewerPage(
                 service = service,
                 message = items[page],
                 revision = revision,
                 onOpenExternally = onOpenExternally,
                 onTap = { chromeVisible = !chromeVisible },
+                // The glass viewer draws its own (glass) play button over the pager, below.
+                showPlayButton = !glass,
             )
         }
         androidx.compose.animation.AnimatedVisibility(
@@ -541,7 +616,42 @@ private fun MediaViewerScreen(
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopStart),
         ) {
-            MediaViewerTopBar(
+            if (glass) {
+                LiquidViewerTopBar(
+                    conversation = conversation,
+                    revision = revision,
+                    dateText = rememberViewerDateText(currentMessage),
+                    glass = glassStack,
+                    menu = topMenu,
+                    enter = { barEnter.value },
+                    onBack = onClose,
+                    onShare = { onShare(currentMessage) },
+                    downloadBubble = { icon ->
+                        // Its own AnimatedVisibility, as the Material bar's save button has:
+                        // the real scope to hand to sharedBounds, the source half of the
+                        // transform into the save card.
+                        AnimatedVisibility(
+                            visible = !saveCardExpanded,
+                            enter = EnterTransition.None,
+                            exit = ExitTransition.None,
+                        ) {
+                            LiquidGlassButton(
+                                onClick = { saveCardExpanded = true },
+                                glass = glassStack,
+                                modifier = Modifier.size(48.dp).sharedBounds(
+                                    rememberSharedContentState("save_card"),
+                                    animatedVisibilityScope = this@AnimatedVisibility,
+                                    enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                    exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                    boundsTransform = saveBoundsTransform,
+                                    resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                                ),
+                                content = icon,
+                            )
+                        }
+                    },
+                )
+            } else MediaViewerTopBar(
                 message = currentMessage,
                 conversation = conversation,
                 onBack = onClose,
@@ -572,6 +682,48 @@ private fun MediaViewerScreen(
                         )
                     }
                 },
+            )
+        }
+        if (glass) {
+            // The glass play button for a video, over the photo (not inside the pager, which is
+            // what the glass looks through). Hidden while the pages are being swiped.
+            val videoNow = currentMessage.mimeType?.startsWith("video/") == true
+            val uploadingNow = currentMessage.transferable?.getStatus() == Transferable.STATUS_UPLOADING
+            androidx.compose.animation.AnimatedVisibility(
+                visible = videoNow && !uploadingNow && !pagerState.isScrollInProgress,
+                enter = fadeIn() + scaleIn(initialScale = 0.5f, animationSpec = spring(dampingRatio = 0.5f, stiffness = 380f)),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.Center),
+            ) {
+                LiquidGlassButton(
+                    onClick = {
+                        // Starts the view-status timer (duration + 5s) right before handing
+                        // off -- see ViewStatusManager.onVideoPlayTapped's own doc for why
+                        // this tap is the only real signal available for video.
+                        ViewStatusManager.onVideoPlayTapped(service, currentMessage)
+                        onOpenExternally(currentMessage)
+                    },
+                    glass = glassStack,
+                    surfaceColor = Color.White.copy(alpha = 0.14f),
+                    modifier = Modifier.size(78.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_play_arrow_24dp),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(38.dp),
+                    )
+                }
+            }
+            LiquidViewerMenuOverlay(
+                menu = topMenu,
+                glass = glassStack,
+                deleteLabel = stringResource(
+                    if (mediaKindOf(currentMessage) == MediaKind.IMAGE) R.string.delete_images
+                    else R.string.delete_files
+                ),
+                onShowInChat = { onShowInChat(currentMessage) },
+                onDelete = { deleteTarget = currentMessage },
             )
         }
         androidx.compose.animation.AnimatedVisibility(
@@ -710,6 +862,20 @@ private enum class MediaKind { IMAGE, FILE }
 private fun mediaKindOf(message: Message): MediaKind =
     if (message.mimeType?.startsWith("video/") == true) MediaKind.FILE else MediaKind.IMAGE
 
+/** When the photo was sent, for the line under the name in the top bar (both versions of it). */
+@Composable
+private fun rememberViewerDateText(message: Message): String {
+    val context = LocalContext.current
+    // Same "Today / Yesterday / weekday-if-within-7-days / full date" convention as the chat's
+    // own date pills — a bare weekday name (e.g. "Sunday") is only unambiguous for a recent
+    // message; anything older needs the actual date, which formatDatePill already handles.
+    val day = formatDatePill(context, message.timeSent)
+    val time = remember(message.getUuid()) {
+        android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(message.timeSent))
+    }
+    return "$day · $time"
+}
+
 @Composable
 private fun MediaViewerTopBar(
     message: Message,
@@ -723,15 +889,7 @@ private fun MediaViewerTopBar(
     onShowInChat: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val context = LocalContext.current
-    // Same "Today / Yesterday / weekday-if-within-7-days / full date" convention as the chat's
-    // own date pills — a bare weekday name (e.g. "Sunday") is only unambiguous for a recent
-    // message; anything older needs the actual date, which formatDatePill already handles.
-    val day = formatDatePill(context, message.timeSent)
-    val time = remember(message.getUuid()) {
-        android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(message.timeSent))
-    }
-    val dateText = "$day · $time"
+    val dateText = rememberViewerDateText(message)
     var menuExpanded by remember { mutableStateOf(false) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -821,6 +979,7 @@ private fun MediaViewerPage(
     revision: Int,
     onOpenExternally: (Message) -> Unit,
     onTap: () -> Unit,
+    showPlayButton: Boolean = true,
 ) {
     val uuid = message.getUuid()
     val isVideo = message.mimeType?.startsWith("video/") == true
@@ -860,7 +1019,7 @@ private fun MediaViewerPage(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize().zoomable(zoomableState, onClick = { onTap() }),
             )
-            if (isVideo && !uploading) {
+            if (isVideo && !uploading && showPlayButton) {
                 // Inline playback isn't built for the full-screen viewer yet — tapping the play
                 // affordance falls back to the same external handoff other file types still use.
                 Box(

@@ -1038,7 +1038,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             isMediaCell(message) -> {
                 val file = service.fileBackend.getFile(message)
                 if (file.exists()) {
-                    mediaViewerLauncher.launch(MediaViewerActivity.launch(requireContext(), message))
+                    mediaViewerLauncher.launch(MediaViewerActivity.launch(requireContext(), message, fromChat = true))
                 }
                 // else: download is in progress or pending — the bubble UI handles it
             }
@@ -1058,7 +1058,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val file = service.fileBackend.getFile(tapped)
         if (!file.exists()) return // download in progress/pending — the bubble UI handles it
         val batchUuids = messages.mapNotNull { it.getUuid() }
-        mediaViewerLauncher.launch(MediaViewerActivity.launch(requireContext(), tapped, batchUuids))
+        mediaViewerLauncher.launch(MediaViewerActivity.launch(requireContext(), tapped, batchUuids, fromChat = true))
     }
 
     override fun onDownloadMessage(message: Message) {
