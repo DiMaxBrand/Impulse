@@ -17,13 +17,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import eu.siacs.conversations.R
 import eu.siacs.conversations.ui.glass.LiquidGlassButton
+import eu.siacs.conversations.ui.glass.LiquidMenuState
+import eu.siacs.conversations.ui.glass.liquidMenuAnchor
 
 /** Height of [LiquidTopRow] including its padding: the list leaves this much room above its first row. */
 val LiquidTopRowHeight = 68.dp
@@ -48,6 +50,9 @@ fun LiquidTopRow(
     host: SearchHostState,
     actions: SearchHostActions,
     onSearch: () -> Unit,
+    qrMenu: LiquidMenuState,
+    searchProgress: () -> Float,
+    onSearchBounds: (Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     host.menuRevision.intValue // re-read when the fragment refreshes the menu state
@@ -58,10 +63,14 @@ fun LiquidTopRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // While the search is opening, the glass container drawn by the host takes the pill's
+        // place (growing out of exactly these bounds), so the pill itself gives way at once.
         LiquidGlassButton(
             onClick = onSearch,
             backdrop = backdrop,
-            modifier = Modifier.weight(1f).height(52.dp),
+            modifier = Modifier.weight(1f).height(52.dp)
+                .onGloballyPositioned { onSearchBounds(it.boundsInWindow()) }
+                .graphicsLayer { alpha = 1f - (searchProgress() * 8f).coerceIn(0f, 1f) },
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
@@ -83,38 +92,28 @@ fun LiquidTopRow(
             }
         }
 
+        // The QR bubble grows into its menu (drawn by the host, see LiquidMenuOverlay): this
+        // button is only where it starts, and fades while the menu is its own bubble.
         if (anyQr) {
-            var qrOpen by remember { mutableStateOf(false) }
-            Box {
-                LiquidGlassButton(
-                    onClick = { qrOpen = true },
-                    backdrop = backdrop,
-                    modifier = Modifier.size(52.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_qr_code_scanner_24dp),
-                        contentDescription = stringResource(R.string.qr_code_actions),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                ExpressiveDropdownMenu(expanded = qrOpen, onDismissRequest = { qrOpen = false }) {
-                    if (host.showScanQr) ExpressiveMenuItem(
-                        R.drawable.ic_qr_code_scanner_24dp, stringResource(R.string.scan_qr_code),
-                    ) { qrOpen = false; actions.onScanQr() }
-                    if (host.showShowQr) ExpressiveMenuItem(
-                        R.drawable.ic_qr_code_24dp, stringResource(R.string.show_qr_code),
-                    ) { qrOpen = false; actions.onShowQr() }
-                    if (host.showEasyInvite) ExpressiveMenuItem(
-                        R.drawable.ic_join_24dp, stringResource(R.string.server_invite),
-                    ) { qrOpen = false; actions.onEasyInvite() }
-                }
+            LiquidGlassButton(
+                onClick = { qrMenu.open = true },
+                backdrop = backdrop,
+                modifier = Modifier.size(52.dp)
+                    .liquidMenuAnchor(qrMenu)
+                    .graphicsLayer { alpha = qrMenu.anchorAlpha * (1f - searchProgress()) },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_qr_code_scanner_24dp),
+                    contentDescription = stringResource(R.string.qr_code_actions),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
 
         LiquidGlassButton(
             onClick = actions.onManageAccount,
             backdrop = backdrop,
-            modifier = Modifier.size(52.dp),
+            modifier = Modifier.size(52.dp).graphicsLayer { alpha = 1f - searchProgress() },
         ) {
             // Smaller than the bubble: the glass rim around the picture stays visible.
             val avatar = host.avatar
