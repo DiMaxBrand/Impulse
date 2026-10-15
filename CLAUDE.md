@@ -18,6 +18,20 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 - Bump `baseVersionCode` by at least 1 for every release, more for significant jumps.
 - **When to bump**: after completing a meaningful chapter of work (feature, set of fixes), before the user triggers a GitHub release. Analyze commits since the last tag — new user-facing features → MINOR, fixes/polish → PATCH, breaking changes → MAJOR. Do this proactively; don't wait to be asked.
 - **Beta versioning**: while in beta (`-beta.N`), increment only the beta number (`beta.4` → `beta.5`). Do NOT jump the MINOR or PATCH component during beta — that only happens on final release.
+- **Long, iterative work: ship it in parts, don't hold it for the end.** When a task is big enough to
+  take around 20 minutes or more (several screens, a feature built piece by piece), and the first
+  piece is a complete part that deserves a beta of its own, finish that piece, bump, push and trigger
+  the release right away, then carry on with the next one. The user tests part one while part two is
+  being written, instead of waiting for everything, and a GitHub release itself takes a good while
+  too (the whole thing is easily 27 minutes or more from start to a downloadable build).
+  A piece is ready to ship on its own only when it is **self-contained**: it compiles, it needs
+  nothing from the unfinished parts to work, it cannot break the app on a phone (a half-wired screen,
+  a missing string, a dead button and a changed shared component are not self-contained), and with a
+  feature flag off, or for people not using the new thing, nothing changes. If a piece does not meet
+  that bar, keep going and ship it together with the part it depends on; do not ship a half-working
+  build just to have shipped. Every part still follows the release rules below (real title, honest
+  notes, flagged work named but not oversold). Say in the reply which parts shipped when, so the
+  user knows which build to test.
 
 ### Release notes (GitHub Release title/description)
 
