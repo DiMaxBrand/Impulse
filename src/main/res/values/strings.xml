@@ -1412,6 +1412,7 @@
     <string name="birthday_set_up">Set it up</string>
     <string name="birthday_contact_row">Birthday: %1$s</string>
     <string name="birthday_banner_today">Today is %1$s\'s birthday</string>
+    <string name="birthday_celebrating_status">Celebrating birthday</string>
     <string name="birthday_banner_turns">Today is %1$s\'s birthday: turns %2$d</string>
     <plurals name="birthday_with_age">
         <item quantity="one">%1$s (%2$d year old)</item>

@@ -2,8 +2,11 @@ package eu.siacs.conversations.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,15 +51,20 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -82,6 +91,7 @@ import eu.siacs.conversations.entities.Message
 import eu.siacs.conversations.ui.adapter.MediaAdapter
 import eu.siacs.conversations.ui.adapter.MessageAdapter
 import eu.siacs.conversations.ui.util.Attachment
+import eu.siacs.conversations.utils.BirthdayStore
 import eu.siacs.conversations.utils.IrregularUnicodeDetector
 import eu.siacs.conversations.utils.UIHelper
 import eu.siacs.conversations.xmpp.Jid
@@ -89,8 +99,18 @@ import eu.siacs.conversations.xmpp.manager.ChatStateManager
 import eu.siacs.conversations.xmpp.manager.JingleManager
 import im.conversations.android.xmpp.model.stanza.Presence
 import im.conversations.android.xmpp.model.state.Composing
+import java.time.Duration
+import java.time.LocalDate
+import java.time.LocalDateTime
+import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+
+/** How long one turn of the gradient (in the dot, the label and the row) takes. */
+private const val BIRTHDAY_GRADIENT_MS = 6000
+/** How long the heart takes to turn once while it is somebody's birthday. */
+private const val HEART_TURN_MS = 5000
 
 /** Observable list of conversations that Compose tracks for recomposition. */
 class ConversationListState {
@@ -242,21 +262,70 @@ fun ConversationList(
         onFirstVisibleIndexChanged(listState.firstVisibleItemIndex)
     }
 
+    val context = LocalContext.current
+    // Only changes at the next midnight, so the birthday rows start and stop on time even if the
+    // list is left open all night.
+    var today by remember { mutableStateOf(LocalDate.now()) }
+    LaunchedEffect(today) {
+        val nextMidnight = LocalDate.now().plusDays(1).atStartOfDay()
+        delay(Duration.between(LocalDateTime.now(), nextMidnight).toMillis() + 500)
+        today = LocalDate.now()
+    }
+    // Somebody's birthday goes above everything, pinned chats included, and keeps its usual order
+    // among the other birthdays. The rest keep their order.
+    val (celebrating, others) = remember(conversations, revision, today) {
+        val store = BirthdayStore(context)
+        conversations.partition { birthdayToday(store, it, today) }
+    }
+    val ordered = celebrating + others
+
     LazyColumn(state = listState, modifier = modifier) {
         itemsIndexed(
-            conversations,
+            ordered,
             key = { _, c -> c.getUuid() ?: c.hashCode().toString() },
         ) { index, conversation ->
-            val shape = conversationItemShape(index, conversations.size)
+            val shape = conversationItemShape(index, ordered.size)
             ConversationItem(
                 conversation = conversation,
                 revision = revision,
                 onClick = { onConversationClick(conversation) },
                 shape = shape,
+                isBirthday = index < celebrating.size,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }
     }
+}
+
+/** A one-to-one chat whose contact has a birthday on [today], as far as the phone knows it. */
+private fun birthdayToday(store: BirthdayStore, conversation: Conversation, today: LocalDate): Boolean {
+    if (conversation.getMode() != Conversational.MODE_SINGLE) return false
+    return try {
+        val accountUuid = conversation.getAccount().getUuid() ?: return false
+        store.get(accountUuid, conversation.getAddress().asBareJid().toString())?.isOn(today) == true
+    } catch (_: Exception) {
+        false
+    }
+}
+
+/**
+ * Drives the birthday gradient: a value from 0 to 1 that restarts every [BIRTHDAY_GRADIENT_MS].
+ * Only runs while [enabled], so ordinary rows do not animate at all.
+ */
+@Composable
+private fun rememberBirthdayPhase(enabled: Boolean): Animatable<Float, AnimationVector1D> {
+    val phase = remember { Animatable(0f) }
+    LaunchedEffect(enabled) {
+        if (!enabled) {
+            phase.snapTo(0f)
+            return@LaunchedEffect
+        }
+        while (true) {
+            phase.animateTo(1f, tween(durationMillis = BIRTHDAY_GRADIENT_MS, easing = LinearEasing))
+            phase.snapTo(0f)
+        }
+    }
+    return phase
 }
 
 internal fun conversationItemShape(index: Int, total: Int): RoundedCornerShape {
@@ -298,9 +367,19 @@ private fun ConversationItem(
     revision: Int,
     onClick: () -> Unit,
     shape: RoundedCornerShape,
+    isBirthday: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    // The gradient runs on birthday rows only; everything else stays exactly as it was.
+    val birthdayPhase = rememberBirthdayPhase(isBirthday)
+    val birthdayColors = listOf(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.tertiary,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.primary,
+    )
+    val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
     val message = conversation.latestMessage
     val status = message.status
     val unreadCount = conversation.unreadCount()
@@ -356,9 +435,28 @@ private fun ConversationItem(
         Card(
             onClick = onClick,
             shape = shape,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            // A birthday row paints its own background (the gradient below), so the card's
+            // solid colour is dropped for it.
+            colors = CardDefaults.cardColors(
+                containerColor = if (isBirthday) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            modifier = Modifier.fillMaxWidth().onSizeChanged { cardHeightPx = it.height },
+            modifier = Modifier.fillMaxWidth().onSizeChanged { cardHeightPx = it.height }.then(
+                if (isBirthday) Modifier.clip(shape).drawBehind {
+                    drawRect(surfaceContainer)
+                    // The same colours, faint, sliding across the row.
+                    val span = size.width
+                    val shift = birthdayPhase.value * span
+                    drawRect(
+                        Brush.linearGradient(
+                            colors = birthdayColors.map { it.copy(alpha = 0.22f) },
+                            start = Offset(-shift, 0f),
+                            end = Offset(span - shift, 0f),
+                            tileMode = TileMode.Repeated,
+                        ),
+                    )
+                } else Modifier
+            ),
         ) {
             Row(
                 modifier = Modifier.padding(
@@ -388,7 +486,9 @@ private fun ConversationItem(
                         isTyping -> stringResource(R.string.typing_indicator)
                         else -> presenceStringRes(availability, isFeminine)?.let { "● ${stringResource(it)}" }
                     }
-                    if (presenceText != null) {
+                    if (isBirthday) {
+                        BirthdayStatusLabel(birthdayPhase, Modifier.padding(end = 6.dp))
+                    } else if (presenceText != null) {
                         Text(
                             text = presenceText,
                             style = MaterialTheme.typography.labelSmall,
@@ -533,6 +633,7 @@ private fun ConversationItem(
             availability = availability,
             hasOngoingCall = ongoingCall.isPresent,
             isTyping = isTyping,
+            isBirthday = isBirthday,
             cardHeightPx = cardHeightPx,
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -547,6 +648,7 @@ private fun ConversationAvatar(
     availability: Presence.Availability?,
     hasOngoingCall: Boolean,
     isTyping: Boolean,
+    isBirthday: Boolean,
     cardHeightPx: Int,
     modifier: Modifier = Modifier,
 ) {
@@ -641,8 +743,23 @@ private fun ConversationAvatar(
         }
     }
 
-    val targetShape = remember(isGroup, availability, hasOngoingCall, isTyping) {
-        presenceShape(isGroup, availability, hasOngoingCall, isTyping)
+    // On somebody's birthday the outline is a heart for the whole day; otherwise the usual shape.
+    val heart = remember { MATERIAL_SHAPE_CATALOG.first { it.first == "Heart" }.second }
+    val targetShape = remember(isGroup, availability, hasOngoingCall, isTyping, isBirthday) {
+        if (isBirthday) heart else presenceShape(isGroup, availability, hasOngoingCall, isTyping)
+    }
+    // Turns the heart while it is the birthday. When the day ends it finishes the turn in progress,
+    // stands upright again, and the outline morphs back to the usual shape (the morph above).
+    val spin = remember { Animatable(0f) }
+    LaunchedEffect(isBirthday) {
+        if (isBirthday) {
+            while (true) {
+                spin.animateTo(spin.value + 360f, tween(durationMillis = HEART_TURN_MS, easing = LinearEasing))
+            }
+        } else if (spin.value != 0f) {
+            spin.animateTo(ceil(spin.value / 360f) * 360f, tween(durationMillis = 900))
+            spin.snapTo(0f)
+        }
     }
     val morphProgress = remember { Animatable(1f) }
     val fromShape = remember { mutableStateOf(targetShape) }
@@ -692,6 +809,8 @@ private fun ConversationAvatar(
         reusedMatrix.reset()
         reusedMatrix.postScale(size.width, size.width)
         reusedMatrix.postTranslate(0f, headOverflowPx)
+        // Only the outline turns; the photo inside it stays upright.
+        reusedMatrix.postRotate(spin.value, size.width / 2f, headOverflowPx + size.width / 2f)
         morph.toPath(progress, reusedPath)
         reusedPath.asAndroidPath().transform(reusedMatrix)
 
@@ -746,6 +865,43 @@ private fun ConversationAvatar(
                 drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
             }
         }
+    }
+}
+
+/**
+ * "Celebrating birthday" in the status place: a dot that turns through the theme colours, and a
+ * label whose gradient slides along the letters. Both follow the same [phase] as the row.
+ */
+@Composable
+private fun BirthdayStatusLabel(phase: Animatable<Float, AnimationVector1D>, modifier: Modifier = Modifier) {
+    val colors = listOf(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.tertiary,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.primary,
+    )
+    // One repeat of the colours spans this many pixels; a full cycle moves exactly one repeat.
+    val span = with(LocalDensity.current) { 160.dp.toPx() }
+    val shift = phase.value * span
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(7.dp).drawBehind {
+                rotate(phase.value * 360f) { drawCircle(Brush.sweepGradient(colors)) }
+            },
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = stringResource(R.string.birthday_celebrating_status),
+            style = MaterialTheme.typography.labelSmall.copy(
+                brush = Brush.linearGradient(
+                    colors = colors,
+                    start = Offset(-shift, 0f),
+                    end = Offset(span - shift, 0f),
+                    tileMode = TileMode.Repeated,
+                ),
+            ),
+            maxLines = 1,
+        )
     }
 }
 
