@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -195,7 +197,8 @@ fun LiquidMenuOverlay(
             from = { state.anchor.translate(-origin) },
             target = { overlay, heightForWidth ->
                 val width = min(with(density) { menuWidth.roundToPx() }, overlay.width - 2 * margin)
-                val height = heightForWidth(width)
+                // A long menu stops at the screen edge and scrolls (see the column below).
+                val height = min(heightForWidth(width), overlay.height - 2 * margin)
                 val a = state.anchor.translate(-origin)
                 // Lined up with the button's edge, grown the way [opensUp] says, kept on screen.
                 val wanted = if (alignEnd) a.right - width else a.left
@@ -212,6 +215,7 @@ fun LiquidMenuOverlay(
             Column(
                 Modifier
                     .requiredWidth(menuWidth)
+                    .verticalScroll(rememberScrollState())
                     .padding(vertical = 8.dp)
                     .graphicsLayer { alpha = ((state.progress.value - 0.35f) / 0.65f).coerceIn(0f, 1f) },
                 content = content,

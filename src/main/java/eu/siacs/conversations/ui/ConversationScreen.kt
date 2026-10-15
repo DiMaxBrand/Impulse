@@ -145,7 +145,11 @@ import androidx.compose.ui.unit.Dp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import eu.siacs.conversations.ui.glass.LiquidChatMenuOverlay
+import eu.siacs.conversations.ui.glass.LiquidGlassPanel
 import eu.siacs.conversations.ui.glass.LiquidInputBar
+import eu.siacs.conversations.ui.glass.LiquidTopBar
+import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.siacs.conversations.AppSettings
@@ -683,36 +687,54 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // conversation — same "back backs out of the mode before backing out of the screen" pattern
     // as e.g. exiting search.
     BackHandler(enabled = selectedUuids.isNotEmpty()) { selectedUuids.clear() }
+
+    // Liquid glass experiment (feature flag): the chat has a separate glass top bar
+    // (LiquidTopBar) and message bar (LiquidInputBar) instead of the Material ones. The chat
+    // background and the list are each recorded as a backdrop for the glass to show through.
+    // With the flag off none of this is used and the layout is exactly the Material one.
+    val glass = rememberLiquidGlassEnabled()
+    val backgroundBackdrop = rememberLayerBackdrop()
+    val listBackdrop = rememberLayerBackdrop()
+    val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
+    val topMenu = rememberLiquidMenuState()
+
+    // What the top bar's selection actions do; both top bars use these.
+    val selectionCopyEnabled = state.messages.value.any {
+        it.getUuid() in selectedUuids && !it.isFileOrImage && !it.body.isNullOrBlank()
+    }
+    val forwardSelected: () -> Unit = {
+        val selected = state.messages.value.filter { it.getUuid() in selectedUuids }
+        selectedUuids.clear()
+        if (selected.isNotEmpty()) listener.onForwardSelectedMessages(selected)
+    }
+    val copySelected: () -> Unit = {
+        val selected = state.messages.value.filter { it.getUuid() in selectedUuids }
+        selectedUuids.clear()
+        if (selected.isNotEmpty()) listener.onCopySelectedMessages(selected)
+    }
+    // Same DeleteGroupSheet a grid-tile's whole-batch delete uses -- Everyone/Myself/
+    // Moderate, gated per-message by isRetractable()/isModeratable() same as there.
+    // A mixed selection (some retractable, some not) only lights up "myself", exactly
+    // like an ineligible grid tile already does.
+    val deleteSelected: () -> Unit = {
+        state.deleteGroupTarget.value =
+            state.messages.value.filter { it.getUuid() in selectedUuids }
+    }
     Scaffold(
         topBar = {
-            ConversationTopBar(
-                conversation = conversation,
-                revision = state.revision.intValue,
-                listener = listener,
-                selectedCount = selectedUuids.size,
-                copyEnabled = state.messages.value.any {
-                    it.getUuid() in selectedUuids && !it.isFileOrImage && !it.body.isNullOrBlank()
-                },
-                onExitSelection = { selectedUuids.clear() },
-                onForwardSelected = {
-                    val selected = state.messages.value.filter { it.getUuid() in selectedUuids }
-                    selectedUuids.clear()
-                    if (selected.isNotEmpty()) listener.onForwardSelectedMessages(selected)
-                },
-                onCopySelected = {
-                    val selected = state.messages.value.filter { it.getUuid() in selectedUuids }
-                    selectedUuids.clear()
-                    if (selected.isNotEmpty()) listener.onCopySelectedMessages(selected)
-                },
-                // Same DeleteGroupSheet a grid-tile's whole-batch delete uses -- Everyone/Myself/
-                // Moderate, gated per-message by isRetractable()/isModeratable() same as there.
-                // A mixed selection (some retractable, some not) only lights up "myself", exactly
-                // like an ineligible grid tile already does.
-                onDeleteSelected = {
-                    state.deleteGroupTarget.value =
-                        state.messages.value.filter { it.getUuid() in selectedUuids }
-                },
-            )
+            if (!glass) {
+                ConversationTopBar(
+                    conversation = conversation,
+                    revision = state.revision.intValue,
+                    listener = listener,
+                    selectedCount = selectedUuids.size,
+                    copyEnabled = selectionCopyEnabled,
+                    onExitSelection = { selectedUuids.clear() },
+                    onForwardSelected = forwardSelected,
+                    onCopySelected = copySelected,
+                    onDeleteSelected = deleteSelected,
+                )
+            }
         },
         containerColor = MaterialTheme.colorScheme.surface,
         // The activity is not edge-to-edge: the system already insets the window for status/nav
@@ -732,14 +754,6 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
             label = "pinned_overlay_scrim",
         )
-        // Liquid glass experiment (feature flag): the message bar is a separate glass version
-        // (LiquidInputBar) floating over the bottom of the list, so the chat background and the
-        // list are each recorded as a backdrop for it to show through itself. With the flag off
-        // none of this is used and the layout is exactly the Material one.
-        val glass = rememberLiquidGlassEnabled()
-        val backgroundBackdrop = rememberLayerBackdrop()
-        val listBackdrop = rememberLayerBackdrop()
-        val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
         var glassBarHeightPx by remember { mutableIntStateOf(0) }
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
         ChatBackgroundLayer(
@@ -747,6 +761,21 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 .then(if (glass) Modifier.layerBackdrop(backgroundBackdrop) else Modifier),
         )
         Column(modifier = Modifier.fillMaxSize()) {
+            if (glass) {
+                LiquidTopBar(
+                    conversation = conversation,
+                    revision = state.revision.intValue,
+                    listener = listener,
+                    backdrop = backgroundBackdrop,
+                    menu = topMenu,
+                    selectedCount = selectedUuids.size,
+                    copyEnabled = selectionCopyEnabled,
+                    onExitSelection = { selectedUuids.clear() },
+                    onForwardSelected = forwardSelected,
+                    onCopySelected = copySelected,
+                    onDeleteSelected = deleteSelected,
+                )
+            }
             // Someone who is not in the user's contacts has written: say so, and offer the two
             // sensible answers. (The old chat screen had a "received message from stranger" bar
             // with Block; this one showed nothing, so a stranger looked like any contact.)
@@ -808,10 +837,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             AnimatedVisibility(visible = birthdayToday != null) {
                 val age = birthdayToday?.ageOn(java.time.LocalDate.now())
                 val name = conversation?.getName()?.toString() ?: ""
-                androidx.compose.material3.Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                ) {
+                val birthdayRow: @Composable () -> Unit = {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -824,6 +850,25 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
+                }
+                if (glass) {
+                    // The same card colour, but as a tint on glass instead of an opaque slab.
+                    LiquidGlassPanel(
+                        backdrop = backgroundBackdrop,
+                        surfaceColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.42f),
+                        contentAlignment = Alignment.CenterStart,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
+                    ) {
+                        androidx.compose.runtime.CompositionLocalProvider(
+                            androidx.compose.material3.LocalContentColor provides
+                                MaterialTheme.colorScheme.onSurface,
+                        ) { birthdayRow() }
+                    }
+                } else {
+                    androidx.compose.material3.Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    ) { birthdayRow() }
                 }
             }
             // Hidden (not just covered) while the card is expanded -- it's the container-
@@ -884,6 +929,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 }
             }
             if (!glass) InputBar(state = state, listener = listener)
+        }
+        if (glass) {
+            // The three dots grow into this menu; drawn over the whole screen area.
+            LiquidChatMenuOverlay(topMenu, glassBackdrop, conversation, state.revision.intValue, listener)
         }
         if (scrimAlpha > 0f) {
             Box(
@@ -1327,96 +1376,15 @@ private fun ConversationTopBar(
     onDeleteSelected: () -> Unit,
 ) {
     val context = LocalContext.current
-    val isSingle = conversation?.getMode() == Conversational.MODE_SINGLE
-
-    val availability: Presence.Availability? =
-        remember(conversation, revision) {
-            if (conversation != null && isSingle) {
-                try {
-                    conversation.getContact().shownStatus
-                } catch (_: Exception) {
-                    null
-                }
-            } else null
-        }
-    // "Away"/"Extended away" are gendered past-tense verbs in Russian ("Отошёл"/"Отошла") —
-    // resolve the same way the chat list does (ConversationList.kt) so this bar agrees too.
-    val isFeminine: Boolean =
-        remember(conversation, revision) {
-            if (conversation != null && isSingle) {
-                try {
-                    UIHelper.resolveGender(context, conversation.getContact()) ==
-                        eu.siacs.conversations.utils.NameGenderGuesser.Gender.FEMININE
-                } catch (_: Exception) {
-                    false
-                }
-            } else false
-        }
-    // Same "am I mid-call with this specific contact" check the chat list uses for the
-    // soft-burst avatar shape (ConversationList.kt) — last-seen has no place in the subtitle
-    // while a call is actually happening.
-    val hasOngoingCall: Boolean =
-        remember(conversation, revision) {
-            if (conversation != null && isSingle) {
-                try {
-                    conversation.getAccount()
-                        .xmppConnection
-                        .getManager(JingleManager::class.java)
-                        .getOngoingRtpConnection(conversation.getContact())
-                        .isPresent
-                } catch (_: Exception) {
-                    false
-                }
-            } else false
-        }
-    // Same reciprocity rule as the legacy screen (ConversationFragment.mShowLastUserInteraction):
-    // showing someone else's last-seen time is gated on whether you broadcast your own — if you
-    // don't share yours, the app doesn't show others' to you either.
-    val lastUserInteraction: im.conversations.android.xmpp.model.idle.LastUserInteraction? =
-        remember(conversation, revision, hasOngoingCall) {
-            if (conversation != null &&
-                isSingle &&
-                !hasOngoingCall &&
-                AppSettings(context).isBroadcastLastActivity
-            ) {
-                try {
-                    conversation.getContact().lastUserInteraction
-                } catch (_: Exception) {
-                    null
-                }
-            } else null
-        }
-    val isTyping: Boolean =
-        remember(conversation, revision) {
-            if (conversation != null && isSingle) {
-                try {
-                    val s =
-                        conversation.getAccount()
-                            .xmppConnection
-                            ?.getManager(ChatStateManager::class.java)
-                            ?.getIncoming(conversation.getAddress())
-                    s == Composing::class.java
-                } catch (_: Exception) {
-                    false
-                }
-            } else false
-        }
-
-    val avatarState = remember(conversation?.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
-    val avatarSizePx = with(LocalDensity.current) { 40.dp.toPx() }.toInt()
-    LaunchedEffect(conversation, revision) {
-        val activity = context as? XmppActivity ?: return@LaunchedEffect
-        val c = conversation ?: return@LaunchedEffect
-        val bm =
-            withContext(Dispatchers.IO) {
-                try {
-                    activity.avatarService().get(c, avatarSizePx, false)
-                } catch (_: Exception) {
-                    null
-                }
-            }
-        if (bm != null) avatarState.value = bm.asImageBitmap()
-    }
+    // What the bar shows about the contact (presence, typing, last seen, picture) is worked out by
+    // the shared helper below, which the liquid glass top bar uses too.
+    val header = rememberChatHeaderState(conversation, revision)
+    val isSingle = header.isSingle
+    val availability = header.availability
+    val isFeminine = header.isFeminine
+    val lastUserInteraction = header.lastUserInteraction
+    val isTyping = header.isTyping
+    val avatarState = header.avatar
 
     var menuOpen by remember { mutableStateOf(false) }
 
@@ -1491,58 +1459,7 @@ private fun ConversationTopBar(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    // Only the Idle variant carries genuine "last seen at time X" data — Online
-                    // just means "no XEP-0319 Idle element on this presence".
-                    val idleInteraction =
-                        lastUserInteraction
-                            as? im.conversations.android.xmpp.model.idle.LastUserInteraction.Idle
-                    // For Away/Extended away specifically, the label is redundant once we have a
-                    // real timing to show instead — "last seen just now" already says he just
-                    // went away, so showing "Away · last seen just now" is noise. Fall back to
-                    // the plain label only when no timing is available (broadcast disabled on
-                    // either side). Other statuses (Online, DND) always keep their label — the
-                    // timing is supplementary there, not a replacement.
-                    val statusLabel: String? =
-                        when {
-                            isTyping -> stringResource(R.string.typing_indicator)
-                            availability == Presence.Availability.CHAT ||
-                                availability == Presence.Availability.ONLINE ->
-                                stringResource(R.string.presence_online)
-                            availability == Presence.Availability.AWAY ->
-                                if (idleInteraction != null) null
-                                else stringResource(
-                                    if (isFeminine) R.string.presence_away_feminine
-                                    else R.string.presence_away
-                                )
-                            availability == Presence.Availability.XA ->
-                                if (idleInteraction != null) null
-                                else stringResource(
-                                    if (isFeminine) R.string.presence_xa_feminine
-                                    else R.string.presence_xa
-                                )
-                            availability == Presence.Availability.DND ->
-                                stringResource(R.string.presence_dnd)
-                            else -> null
-                        }
-                    val lastSeenText: String? =
-                        if (!isTyping &&
-                            availability != Presence.Availability.CHAT &&
-                            availability != Presence.Availability.ONLINE &&
-                            idleInteraction != null
-                        ) {
-                            UIHelper.lastUserInteraction(
-                                context,
-                                idleInteraction,
-                                conversation?.let { runCatching { it.getContact() }.getOrNull() },
-                            )
-                        } else null
-                    val subtitle: String? =
-                        when {
-                            statusLabel != null && lastSeenText != null ->
-                                "$statusLabel · $lastSeenText"
-                            statusLabel != null -> statusLabel
-                            else -> lastSeenText
-                        }
+                    val subtitle: String? = chatSubtitle(conversation, header)
                     if (subtitle != null) {
                         Text(
                             text = subtitle,
@@ -1609,59 +1526,14 @@ private fun ConversationTopBar(
                     )
                 }
             }
-            // Menu visibility state, refreshed with every conversation update.
-            val isMuted =
-                remember(conversation, revision) {
-                    try {
-                        conversation?.isMuted ?: false
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-            val isPinned =
-                remember(conversation, revision) {
-                    conversation?.getBooleanAttribute(
-                        Conversation.ATTRIBUTE_PINNED_ON_TOP,
-                        false,
-                    ) ?: false
-                }
-            val isBlocked =
-                remember(conversation, revision) {
-                    try {
-                        conversation?.isBlocked() ?: false
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-            val canInvite =
-                remember(conversation, revision) {
-                    try {
-                        if (conversation == null) false
-                        else if (isSingle)
-                            !conversation
-                                .getAccount()
-                                .xmppConnection
-                                .getManager(
-                                    eu.siacs.conversations.xmpp.manager.MultiUserChatManager::class
-                                        .java
-                                )
-                                .services
-                                .isEmpty()
-                        else conversation.mucOptions.canInvite()
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-            val showEncryption =
-                remember(conversation, revision) {
-                    try {
-                        conversation != null &&
-                            !eu.siacs.conversations.crypto.OmemoSetting.isAlways() &&
-                            (isSingle || conversation.mucOptions.participating())
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
+            // Menu visibility state, refreshed with every conversation update (shared with the
+            // liquid glass top bar's menu).
+            val menuFlags = rememberChatMenuFlags(conversation, revision, isSingle)
+            val isMuted = menuFlags.isMuted
+            val isPinned = menuFlags.isPinned
+            val isBlocked = menuFlags.isBlocked
+            val canInvite = menuFlags.canInvite
+            val showEncryption = menuFlags.showEncryption
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
                     painter = painterResource(R.drawable.ic_more_horiz_24dp),
@@ -1753,6 +1625,244 @@ private fun ConversationTopBar(
         // TopAppBar adds it again by default — zero it out to prevent the double-height gap.
         windowInsets = androidx.compose.foundation.layout.WindowInsets(0),
     )
+}
+
+/**
+ * What the chat's top bar shows about the contact: presence, whether they are typing, last seen,
+ * and their picture. Worked out in [rememberChatHeaderState] for both the Material top bar and the
+ * liquid glass one.
+ */
+internal class ChatHeaderState(
+    val isSingle: Boolean,
+    val availability: Presence.Availability?,
+    val isFeminine: Boolean,
+    val lastUserInteraction: im.conversations.android.xmpp.model.idle.LastUserInteraction?,
+    val isTyping: Boolean,
+    val avatar: androidx.compose.runtime.MutableState<ImageBitmap?>,
+)
+
+@Composable
+internal fun rememberChatHeaderState(conversation: Conversation?, revision: Int): ChatHeaderState {
+    val context = LocalContext.current
+    val isSingle = conversation?.getMode() == Conversational.MODE_SINGLE
+
+    val availability: Presence.Availability? =
+        remember(conversation, revision) {
+            if (conversation != null && isSingle) {
+                try {
+                    conversation.getContact().shownStatus
+                } catch (_: Exception) {
+                    null
+                }
+            } else null
+        }
+    // "Away"/"Extended away" are gendered past-tense verbs in Russian ("Отошёл"/"Отошла") —
+    // resolve the same way the chat list does (ConversationList.kt) so this bar agrees too.
+    val isFeminine: Boolean =
+        remember(conversation, revision) {
+            if (conversation != null && isSingle) {
+                try {
+                    UIHelper.resolveGender(context, conversation.getContact()) ==
+                        eu.siacs.conversations.utils.NameGenderGuesser.Gender.FEMININE
+                } catch (_: Exception) {
+                    false
+                }
+            } else false
+        }
+    // Same "am I mid-call with this specific contact" check the chat list uses for the
+    // soft-burst avatar shape (ConversationList.kt) — last-seen has no place in the subtitle
+    // while a call is actually happening.
+    val hasOngoingCall: Boolean =
+        remember(conversation, revision) {
+            if (conversation != null && isSingle) {
+                try {
+                    conversation.getAccount()
+                        .xmppConnection
+                        .getManager(JingleManager::class.java)
+                        .getOngoingRtpConnection(conversation.getContact())
+                        .isPresent
+                } catch (_: Exception) {
+                    false
+                }
+            } else false
+        }
+    // Same reciprocity rule as the legacy screen (ConversationFragment.mShowLastUserInteraction):
+    // showing someone else's last-seen time is gated on whether you broadcast your own — if you
+    // don't share yours, the app doesn't show others' to you either.
+    val lastUserInteraction: im.conversations.android.xmpp.model.idle.LastUserInteraction? =
+        remember(conversation, revision, hasOngoingCall) {
+            if (conversation != null &&
+                isSingle &&
+                !hasOngoingCall &&
+                AppSettings(context).isBroadcastLastActivity
+            ) {
+                try {
+                    conversation.getContact().lastUserInteraction
+                } catch (_: Exception) {
+                    null
+                }
+            } else null
+        }
+    val isTyping: Boolean =
+        remember(conversation, revision) {
+            if (conversation != null && isSingle) {
+                try {
+                    val s =
+                        conversation.getAccount()
+                            .xmppConnection
+                            ?.getManager(ChatStateManager::class.java)
+                            ?.getIncoming(conversation.getAddress())
+                    s == Composing::class.java
+                } catch (_: Exception) {
+                    false
+                }
+            } else false
+        }
+
+    val avatarState = remember(conversation?.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
+    val avatarSizePx = with(LocalDensity.current) { 40.dp.toPx() }.toInt()
+    LaunchedEffect(conversation, revision) {
+        val activity = context as? XmppActivity ?: return@LaunchedEffect
+        val c = conversation ?: return@LaunchedEffect
+        val bm =
+            withContext(Dispatchers.IO) {
+                try {
+                    activity.avatarService().get(c, avatarSizePx, false)
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        if (bm != null) avatarState.value = bm.asImageBitmap()
+    }
+    return ChatHeaderState(isSingle, availability, isFeminine, lastUserInteraction, isTyping, avatarState)
+}
+
+/** The line under the contact's name: "typing…", their status, "last seen …", or null. */
+@Composable
+internal fun chatSubtitle(conversation: Conversation?, header: ChatHeaderState): String? {
+    val context = LocalContext.current
+    val availability = header.availability
+    val isTyping = header.isTyping
+    // Only the Idle variant carries genuine "last seen at time X" data — Online
+    // just means "no XEP-0319 Idle element on this presence".
+    val idleInteraction =
+        header.lastUserInteraction
+            as? im.conversations.android.xmpp.model.idle.LastUserInteraction.Idle
+    // For Away/Extended away specifically, the label is redundant once we have a
+    // real timing to show instead — "last seen just now" already says he just
+    // went away, so showing "Away · last seen just now" is noise. Fall back to
+    // the plain label only when no timing is available (broadcast disabled on
+    // either side). Other statuses (Online, DND) always keep their label — the
+    // timing is supplementary there, not a replacement.
+    val statusLabel: String? =
+        when {
+            isTyping -> stringResource(R.string.typing_indicator)
+            availability == Presence.Availability.CHAT ||
+                availability == Presence.Availability.ONLINE ->
+                stringResource(R.string.presence_online)
+            availability == Presence.Availability.AWAY ->
+                if (idleInteraction != null) null
+                else stringResource(
+                    if (header.isFeminine) R.string.presence_away_feminine
+                    else R.string.presence_away
+                )
+            availability == Presence.Availability.XA ->
+                if (idleInteraction != null) null
+                else stringResource(
+                    if (header.isFeminine) R.string.presence_xa_feminine
+                    else R.string.presence_xa
+                )
+            availability == Presence.Availability.DND ->
+                stringResource(R.string.presence_dnd)
+            else -> null
+        }
+    val lastSeenText: String? =
+        if (!isTyping &&
+            availability != Presence.Availability.CHAT &&
+            availability != Presence.Availability.ONLINE &&
+            idleInteraction != null
+        ) {
+            UIHelper.lastUserInteraction(
+                context,
+                idleInteraction,
+                conversation?.let { runCatching { it.getContact() }.getOrNull() },
+            )
+        } else null
+    return when {
+        statusLabel != null && lastSeenText != null -> "$statusLabel · $lastSeenText"
+        statusLabel != null -> statusLabel
+        else -> lastSeenText
+    }
+}
+
+/** Which of the chat's overflow-menu entries apply right now. */
+internal class ChatMenuFlags(
+    val isMuted: Boolean,
+    val isPinned: Boolean,
+    val isBlocked: Boolean,
+    val canInvite: Boolean,
+    val showEncryption: Boolean,
+)
+
+@Composable
+internal fun rememberChatMenuFlags(
+    conversation: Conversation?,
+    revision: Int,
+    isSingle: Boolean,
+): ChatMenuFlags {
+    val isMuted =
+        remember(conversation, revision) {
+            try {
+                conversation?.isMuted ?: false
+            } catch (_: Exception) {
+                false
+            }
+        }
+    val isPinned =
+        remember(conversation, revision) {
+            conversation?.getBooleanAttribute(
+                Conversation.ATTRIBUTE_PINNED_ON_TOP,
+                false,
+            ) ?: false
+        }
+    val isBlocked =
+        remember(conversation, revision) {
+            try {
+                conversation?.isBlocked() ?: false
+            } catch (_: Exception) {
+                false
+            }
+        }
+    val canInvite =
+        remember(conversation, revision) {
+            try {
+                if (conversation == null) false
+                else if (isSingle)
+                    !conversation
+                        .getAccount()
+                        .xmppConnection
+                        .getManager(
+                            eu.siacs.conversations.xmpp.manager.MultiUserChatManager::class
+                                .java
+                        )
+                        .services
+                        .isEmpty()
+                else conversation.mucOptions.canInvite()
+            } catch (_: Exception) {
+                false
+            }
+        }
+    val showEncryption =
+        remember(conversation, revision) {
+            try {
+                conversation != null &&
+                    !eu.siacs.conversations.crypto.OmemoSetting.isAlways() &&
+                    (isSingle || conversation.mucOptions.participating())
+            } catch (_: Exception) {
+                false
+            }
+        }
+    return ChatMenuFlags(isMuted, isPinned, isBlocked, canInvite, showEncryption)
 }
 
 // Bridges a Guava ListenableFuture (used throughout the XMPP manager layer, incl.

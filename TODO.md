@@ -21,7 +21,14 @@
   bubble instead of the text stretching); (4) chat top bar as separate bubbles (back, name pill, call,
   video, three-dots menu) and the birthday card with a glass tint.
 - **Status**: (1) shipped beta.172, (2) beta.173, (3) beta.174 (`ui/glass/LiquidInputBar.kt`; the
-  Material bar is the original code again and shares only `ComposerTextField` with it). (4) next.
+  Material bar is the original code again and shares only `ComposerTextField` with it), (4) beta.175
+  (`ui/glass/LiquidTopBar.kt`: back, contact pill, call, video, three dots that grow into the menu;
+  birthday card as tinted glass; the Material top bar's data logic moved into shared helpers
+  `rememberChatHeaderState` / `chatSubtitle` / `rememberChatMenuFlags` that both bars call).
+- **Still open for the glass chat**: the top bar sits in a column above the list (so only the chat
+  background shows through it; messages do not scroll under it yet); the stranger and pinned-message
+  banners are still Material; selection-mode copy is a plain bubble; the in-app update sheet,
+  dialogs and bottom sheets have no glass version.
 - **Known bug to chase**: with the beta.171 glass bar, a line wrap in the field pushed the bar below
   the keyboard until the keyboard was reopened. Not understood. beta.174 rebuilt the bar without the
   suspects (the clipping `Surface`, a `graphicsLayer` scale on the EditText, `animateContentSize`);
