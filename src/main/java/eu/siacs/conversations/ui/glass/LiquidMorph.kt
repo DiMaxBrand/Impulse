@@ -242,12 +242,12 @@ class LiquidMenuState {
         progressY.snapTo(y)
     }
 
-    /** How far [offset] goes in the direction the menu opens (negative: the other way). */
-    internal fun pullAlong(offset: Offset): Float {
-        val dirX = if (alignEnd) -1f else 1f
-        val dirY = if (opensUp) -1f else 1f
-        return offset.y * dirY * 0.85f + offset.x * dirX * 0.5f
-    }
+    /** How far [offset] goes horizontally in the direction the menu grows (negative: the other way). */
+    internal fun pullAlongX(offset: Offset): Float = offset.x * (if (alignEnd) -1f else 1f)
+
+    /** The same, vertically. The two axes are separate: a sideways pull stretches the width, a
+     * downward pull the height, a diagonal one both. */
+    internal fun pullAlongY(offset: Offset): Float = offset.y * (if (opensUp) -1f else 1f)
 }
 
 @Composable
@@ -274,9 +274,13 @@ fun Modifier.liquidMenuPull(state: LiquidMenuState): Modifier {
             onDrag = { change, drag ->
                 change.consume()
                 total += drag
-                val p = 0.8f * tanh(max(state.pullAlong(total), 0f) / reach)
-                // The height follows the finger, the width a little less.
-                scope.launch { state.drag(0.7f * p, p) }
+                // Each axis follows its own part of the finger's movement, with a lot of resistance.
+                val py = 0.8f * tanh(max(state.pullAlongY(total), 0f) / reach)
+                val px0 = 0.8f * tanh(max(state.pullAlongX(total), 0f) / (reach * 0.8f))
+                // A pull along one axis still widens the other a little, or it would only be a sliver.
+                val px = max(px0, 0.3f * py)
+                val pyy = max(py, 0.3f * px0)
+                scope.launch { state.drag(px, pyy) }
             },
             onDragEnd = { state.releaseTo(state.progress > 0.22f) },
             onDragCancel = { state.releaseTo(false) },
@@ -356,6 +360,7 @@ fun LiquidMenuOverlay(
             style = style,
         ) {
             val reach = with(density) { 120.dp.toPx() }
+            val menuWidthPx = with(density) { menuWidth.toPx() }
             var total = Offset.Zero
             Column(
                 Modifier
@@ -367,17 +372,12 @@ fun LiquidMenuOverlay(
                             onDrag = { change, drag ->
                                 change.consume()
                                 total += drag
-                                // Positive: toward the button.
-                                val toward = -state.pullAlong(total)
-                                val p =
-                                    if (toward > 0f) {
-                                        // Squeezed back into the button, linearly: it can all the way.
-                                        (1f - toward / (state.panelHeightPx * 0.9f)).coerceAtLeast(0f)
-                                    } else {
-                                        // Pulled away: stretches, up to ~16% past the open size, hard to pull.
-                                        1f + 0.16f * tanh(-toward / reach)
-                                    }
-                                scope.launch { state.drag(lerp(1f, p, 0.6f), p) }
+                                // Each axis on its own: toward the button squeezes it that way (all the
+                                // way if need be), away stretches it up to ~16% past the open size, hard
+                                // to pull. A diagonal drag does both at once.
+                                val px = axisProgress(state.pullAlongX(total), -1f, menuWidthPx, reach)
+                                val py = axisProgress(state.pullAlongY(total), -1f, state.panelHeightPx, reach)
+                                scope.launch { state.drag(px, py) }
                             },
                             onDragEnd = { state.releaseTo(state.progress > 0.55f) },
                             onDragCancel = { state.releaseTo(true) },
@@ -390,6 +390,14 @@ fun LiquidMenuOverlay(
             )
         }
     }
+}
+
+/** One axis of the open panel while it is dragged: [along] is the drag toward (negative: away from)
+ * the button; [extent] the panel's size on that axis. */
+private fun axisProgress(along: Float, @Suppress("UNUSED_PARAMETER") sign: Float, extent: Float, reach: Float): Float {
+    val toward = -along
+    return if (toward > 0f) (1f - toward / (extent * 0.9f)).coerceAtLeast(0f)
+    else 1f + 0.16f * tanh(-toward / reach)
 }
 
 /**

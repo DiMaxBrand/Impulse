@@ -140,9 +140,12 @@ fun LiquidGlassButton(
                 backdrop = slot.backdrop,
                 shape = { shape },
                 effects = {
-                    if (style.vibrancy) vibrancy()
-                    blur(style.blur.toPx())
-                    glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
+                    // Too fast to see the glass anyway while the list flies past: skip the effects.
+                    if (!GlassPerformance.lite) {
+                        if (style.vibrancy) vibrancy()
+                        blur(style.blur.toPx())
+                        glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
+                    }
                 },
                 layerBlock = if (isInteractive || extraLayerBlock != null) {
                     {
@@ -248,9 +251,11 @@ fun LiquidGlassPanel(
                     backdrop = slot.backdrop,
                     shape = { shape },
                     effects = {
-                        if (style.vibrancy) vibrancy()
-                        blur(style.blur.toPx())
-                        glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
+                        if (!GlassPerformance.lite) {
+                            if (style.vibrancy) vibrancy()
+                            blur(style.blur.toPx())
+                            glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
+                        }
                     },
                     layerBlock = layerBlock,
                     onDrawSurface = { if (body.isSpecified) drawRect(body) },

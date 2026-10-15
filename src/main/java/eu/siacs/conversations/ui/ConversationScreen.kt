@@ -151,6 +151,7 @@ import eu.siacs.conversations.ui.glass.LiquidGlassPanel
 import eu.siacs.conversations.ui.glass.LiquidGlassStyle
 import eu.siacs.conversations.ui.glass.LiquidInputBar
 import eu.siacs.conversations.ui.glass.LiquidTopBar
+import eu.siacs.conversations.ui.glass.rememberGlassScrollMeter
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import androidx.compose.ui.unit.dp
@@ -924,7 +925,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             // bubbles: no bar-shaped surface behind them.
             val density = LocalDensity.current
             messageList(
-                Modifier.fillMaxSize().layerBackdrop(listBackdrop),
+                // The meter flips the glass to its cheap look while the list flies past.
+                Modifier.fillMaxSize().layerBackdrop(listBackdrop).then(rememberGlassScrollMeter()),
                 with(density) { glassTopHeightPx.toDp() },
                 with(density) { glassBarHeightPx.toDp() },
             )
