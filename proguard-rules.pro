@@ -28,6 +28,10 @@
 -dontwarn org.bouncycastle.cert.dane.**
 -dontwarn rocks.xmpp.addr.**
 -dontwarn com.google.firebase.analytics.connector.AnalyticsConnector
+# Kyant0 backdrop (the liquid glass experiment) marks its shader source strings with JetBrains'
+# @Language("AGSL") annotation. It is only a hint for editors and is not on our classpath, so R8
+# reported it as a missing class and failed the release build. Nothing needs it at runtime.
+-dontwarn org.intellij.lang.annotations.**
 -dontwarn java.lang.**
 -dontwarn com.google.auto.service.AutoService
 -dontwarn javax.lang.**
