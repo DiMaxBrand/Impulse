@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42633
-val appVersion = "1.15.0-beta.170+2.20.0"
+val baseVersionCode = 42634
+val appVersion = "1.15.0-beta.171+2.20.0"
 
 @Suppress("DEPRECATION")
 android {
@@ -191,6 +191,11 @@ dependencies {
     // Pinch-zoom + pan for the full-screen media viewer. Plain "zoomable" artifact (not
     // "zoomable-image-coil") since this app decodes bitmaps itself and has no image loader.
     implementation("me.saket.telephoto:zoomable:1.0.0-alpha02")
+    // "Liquid glass" experiment (feature flag, see ui/LiquidGlass.kt): blurring, refracting backdrop
+    // effects for Compose. The 1.0.x line is the Android-only Compose build; 2.x is Compose
+    // Multiplatform and pulls in the JetBrains Compose runtime. Its minSdk is 21; the effects need
+    // Android 12 (blur) / 13 (refraction), which the code checks at runtime.
+    implementation("io.github.kyant0:backdrop:1.0.6")
 
     annotationProcessor("org.immutables:value:2.12.1")
     implementation("org.immutables:value-annotations:2.12.1")

@@ -45,14 +45,15 @@ enum class FeatureFlag(
         defaultValue = false,
     ),
 
-    /** The one-off birthday greeting (confetti, then a Russian message). Default off: without an
-     * override it appears only on October 15 and only for the one account named in
-     * [eu.siacs.conversations.ui.BirthdayCelebration]. Switched on by hand it shows on every launch,
-     * any day, for anyone -- for trying it out. */
-    BIRTHDAY_CELEBRATION(
-        key = "birthday_celebration",
-        titleRes = R.string.feature_flag_birthday_title,
-        descriptionRes = R.string.feature_flag_birthday_description,
+    /** Experiment: swaps some Material 3 Expressive pieces for "liquid glass" ones drawn with the
+     * Kyant0 backdrop library -- the chat list's top row (search, QR and your picture as separate
+     * stretchy bubbles) and the chat's message bar. Needs Android 13 or newer (the refraction is
+     * a runtime shader); below that the flag has no effect. Off by default, early, may look rough.
+     * See [eu.siacs.conversations.ui.LiquidGlass]. */
+    LIQUID_GLASS(
+        key = "liquid_glass",
+        titleRes = R.string.feature_flag_liquid_glass_title,
+        descriptionRes = R.string.feature_flag_liquid_glass_description,
         defaultValue = false,
     ),
 }

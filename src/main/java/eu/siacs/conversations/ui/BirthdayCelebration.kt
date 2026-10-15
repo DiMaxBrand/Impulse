@@ -61,10 +61,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentActivity
-import eu.siacs.conversations.FeatureFlag
 import eu.siacs.conversations.R
 import eu.siacs.conversations.utils.BirthdayStore
-import eu.siacs.conversations.utils.FeatureFlagPreferences
 import java.time.LocalDate
 import java.time.Month
 import kotlin.math.abs
@@ -75,8 +73,8 @@ import kotlin.random.Random
 /**
  * A one-off birthday greeting: confetti bursts out and, while it flies, a new screen fades in and
  * a short Russian message appears word by word. It shows on October 15 for the one account listed
- * in [ADDRESSES]; the [FeatureFlag.BIRTHDAY_CELEBRATION] flag shows it on every launch, any day,
- * for anyone (for trying it out). Once each time the app is opened.
+ * in [ADDRESSES]. (There used to be a feature flag that forced it on any day, for trying it out;
+ * it is gone, the greeting itself stays.) Once each time the app is opened.
  */
 object BirthdayCelebration {
 
@@ -94,19 +92,18 @@ object BirthdayCelebration {
     class Celebration(val personal: Boolean, val name: String?)
 
     /**
-     * Is somebody celebrating right now on this phone? The personal greeting (Natasha, or the
-     * feature flag for trying it out) wins; otherwise anyone whose own birthday is today (the
-     * one they set in Settings) gets the same screen with a standard, politely warm text in the
+     * Is somebody celebrating right now on this phone? The personal greeting (October 15, for
+     * the account in [ADDRESSES]) wins; otherwise anyone whose own birthday is today (the one
+     * they set in Settings) gets the same screen with a standard, politely warm text in the
      * phone's language. Also drives the morphing avatar in the search bar.
      */
     @JvmStatic
     fun current(activity: XmppActivity): Celebration? {
         val service = activity.xmppConnectionService ?: return null
-        val flagOn = FeatureFlagPreferences(activity).isEnabled(FeatureFlag.BIRTHDAY_CELEBRATION)
         val today = LocalDate.now()
         val isTheDay = today.month == Month.OCTOBER && today.dayOfMonth == 15
         val isHer = service.accounts.any { it.getJid().asBareJid().toString().lowercase() in ADDRESSES }
-        if (flagOn || (isTheDay && isHer)) return Celebration(personal = true, name = null)
+        if (isTheDay && isHer) return Celebration(personal = true, name = null)
         val store = BirthdayStore(activity)
         val celebrating = service.accounts.firstOrNull { account ->
             val uuid = account.getUuid() ?: return@firstOrNull false

@@ -1492,8 +1492,19 @@
         <item quantity="many">%1$s (%2$d лет)</item>
         <item quantity="other">%1$s (%2$d года)</item>
     </plurals>
-    <string name="feature_flag_birthday_title">Поздравление с днём рождения</string>
-    <string name="feature_flag_birthday_description">Показывает конфетти и поздравление при каждом запуске, в любой день. Без этого переключателя оно появляется только 15 октября и только для одного конкретного аккаунта.</string>
+    <string name="developer_options_liquid_glass_playground">Площадка жидкого стекла</string>
+    <string name="developer_options_liquid_glass_playground_summary">Попробовать тянущиеся стеклянные элементы, в том числе нижнюю панель вкладок</string>
+    <string name="liquid_playground_title">Жидкое стекло</string>
+    <string name="liquid_playground_hint">Нажимайте, тяните и отпускайте: всё растягивается и пружинит обратно.</string>
+    <string name="liquid_playground_taps">Нажатий: %1$d</string>
+    <string name="liquid_playground_drag_me">Потяни меня</string>
+    <string name="liquid_playground_unsupported">Для жидкого стекла нужен Android 13 или новее.</string>
+    <string name="liquid_tab_chats">Чаты</string>
+    <string name="liquid_tab_calls">Звонки</string>
+    <string name="liquid_tab_contacts">Контакты</string>
+    <string name="liquid_tab_settings">Настройки</string>
+    <string name="feature_flag_liquid_glass_title">Жидкое стекло</string>
+    <string name="feature_flag_liquid_glass_description">Ранний эксперимент: верхняя строка списка чатов и панель сообщения в чате рисуются как тянущиеся стеклянные пузыри. Нужен Android 13 или новее, внешний вид может быть сырым.</string>
     <string name="birthday_title">Наташа, с днём рождения! 🎉</string>
     <string name="birthday_line_1">Желаю тебе счастья, здоровья, достатка, добра и успехов во всём.</string>
     <string name="birthday_line_2">И чтобы Импульс сам обновлялся :)</string>

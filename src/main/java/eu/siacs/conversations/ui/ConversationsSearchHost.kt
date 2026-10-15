@@ -50,6 +50,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import eu.siacs.conversations.R
 import im.conversations.android.model.SearchSuggestion
 import kotlinx.coroutines.launch
@@ -152,23 +154,44 @@ fun ConversationsSearchHost(
         )
     }
 
+    // The liquid glass experiment (feature flag): search, QR and your picture become separate glass
+    // bubbles floating over the list instead of the contained search bar.
+    val glass = rememberLiquidGlassEnabled()
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
-                // Full-width bar; the icons sit inside it (see the input field's trailing slot).
-                TopSearchBar(
-                    state = searchBarState,
-                    inputField = inputField,
-                    colors = appBarColors.searchBarColors,
-                    windowInsets = WindowInsets(0),
-                    scrollBehavior = scrollBehavior,
-                )
+                if (!glass) {
+                    // Full-width bar; the icons sit inside it (see the input field's trailing slot).
+                    TopSearchBar(
+                        state = searchBarState,
+                        inputField = inputField,
+                        colors = appBarColors.searchBarColors,
+                        windowInsets = WindowInsets(0),
+                        scrollBehavior = scrollBehavior,
+                    )
+                }
             },
             contentWindowInsets = WindowInsets(0),
             containerColor = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            modifier = if (glass) Modifier else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         ) { padding ->
-            Box(Modifier.padding(padding)) { content() }
+            if (glass) {
+                // The list is what shows through the glass, so it is recorded as the backdrop and
+                // the bubbles are drawn on top of it (the list leaves room for them, see setup()).
+                val backdrop = rememberLayerBackdrop()
+                Box(Modifier.padding(padding).fillMaxSize()) {
+                    Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) { content() }
+                    LiquidTopRow(
+                        backdrop = backdrop,
+                        host = host,
+                        actions = actions,
+                        onSearch = { scope.launch { searchBarState.animateToExpanded() } },
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
+                }
+            } else {
+                Box(Modifier.padding(padding)) { content() }
+            }
         }
         ExpandedFullScreenContainedSearchBar(
             state = searchBarState,

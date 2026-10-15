@@ -17,6 +17,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -199,6 +200,9 @@ object ConversationListHelper {
                 LaunchedEffect(searchHost.expanded) {
                     if (searchHost.expanded) fab.hide() else fab.show()
                 }
+                // Liquid glass experiment: the search row floats over the list, so the list starts
+                // below it instead of the (then absent) search bar pushing it down.
+                val glass = rememberLiquidGlassEnabled()
                 Box(modifier = Modifier.fillMaxSize()) {
                     ConversationsSearchHost(host = searchHost, actions = searchActions) {
                         Column {
@@ -208,6 +212,7 @@ object ConversationListHelper {
                                 revision = state.revision.intValue,
                                 onConversationClick = { onConversationClick.onClick(it) },
                                 actions = listActions,
+                                contentPadding = if (glass) PaddingValues(top = LiquidTopRowHeight) else PaddingValues(0.dp),
                                 onFirstVisibleIndexChanged = { index ->
                                     composeView.post { if (index > 0) fab.shrink() else fab.extend() }
                                 },
@@ -254,6 +259,7 @@ fun ConversationList(
     onFirstVisibleIndexChanged: (Int) -> Unit,
     actions: ConversationListActions,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     if (conversations.isEmpty()) {
         LaunchedEffect(Unit) { onFirstVisibleIndexChanged(0) }
@@ -285,7 +291,7 @@ fun ConversationList(
     // The chat a long-press opened the sheet for; null when no sheet is up.
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
 
-    LazyColumn(state = listState, modifier = modifier) {
+    LazyColumn(state = listState, modifier = modifier, contentPadding = contentPadding) {
         itemsIndexed(
             ordered,
             key = { _, c -> c.getUuid() ?: c.hashCode().toString() },

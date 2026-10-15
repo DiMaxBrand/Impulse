@@ -118,6 +118,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -142,6 +143,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.siacs.conversations.AppSettings
@@ -728,8 +733,19 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
             label = "pinned_overlay_scrim",
         )
+        // Liquid glass experiment (feature flag): the message bar floats over the bottom of the
+        // list as glass, so the chat background and the list are each recorded as a backdrop and
+        // the bar shows both through itself.
+        val glass = rememberLiquidGlassEnabled()
+        val backgroundBackdrop = rememberLayerBackdrop()
+        val listBackdrop = rememberLayerBackdrop()
+        val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
+        var glassBarHeightPx by remember { mutableIntStateOf(0) }
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-        ChatBackgroundLayer(Modifier.matchParentSize())
+        ChatBackgroundLayer(
+            Modifier.matchParentSize()
+                .then(if (glass) Modifier.layerBackdrop(backgroundBackdrop) else Modifier),
+        )
         Column(modifier = Modifier.fillMaxSize()) {
             // Someone who is not in the user's contacts has written: say so, and offer the two
             // sensible answers. (The old chat screen had a "received message from stranger" bar
@@ -854,10 +870,21 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     onToggleSelected = { uuid ->
                         if (!selectedUuids.remove(uuid)) selectedUuids.add(uuid)
                     },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
+                        .then(if (glass) Modifier.layerBackdrop(listBackdrop) else Modifier),
+                    bottomInset = if (glass) with(LocalDensity.current) { glassBarHeightPx.toDp() } else 0.dp,
                 )
+                if (glass) {
+                    InputBar(
+                        state = state,
+                        listener = listener,
+                        glass = glassBackdrop,
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                            .onSizeChanged { glassBarHeightPx = it.height },
+                    )
+                }
             }
-            InputBar(state = state, listener = listener)
+            if (!glass) InputBar(state = state, listener = listener)
         }
         if (scrimAlpha > 0f) {
             Box(
@@ -1766,6 +1793,9 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     selectedUuids: List<String>,
     onToggleSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
+    // Room left at the bottom for the floating glass message bar (liquid glass experiment); zero
+    // in the ordinary layout, where the bar sits below the list instead of over it.
+    bottomInset: Dp = 0.dp,
 ) {
     val revision = state.revision.intValue
     // Compute items in composable scope, not in derivedStateOf. derivedStateOf suppresses
@@ -2307,7 +2337,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 if (experimentalAnimations) null
                 else androidx.compose.foundation.rememberOverscrollEffect(),
             contentPadding =
-                androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+                androidx.compose.foundation.layout.PaddingValues(top = 8.dp, bottom = 8.dp + bottomInset),
         ) {
             // EXPERIMENTAL_ANIMATIONS: every row lifts by the shared rubber band, scaled by how far
             // it sits from the bottom (rubberOffsetFactor), so neighbours separate like a stretched
@@ -2496,7 +2526,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             visible = (showScrollToBottom || resentMode || heartMode) && !state.resentCardVisible.value,
             enter = scaleIn(),
             exit = scaleOut(),
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = bottomInset),
         ) {
             Box(
                 modifier =
@@ -7229,8 +7259,45 @@ private fun RecordingBar(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
-private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
+private fun InputBar(
+    state: ConversationScreenState,
+    listener: ConversationScreenListener,
+    // Liquid glass experiment: when given, the pieces of the bar (attach, field, send/mic, the
+    // recording bar) are drawn as separate glass bubbles over this backdrop instead of one flat
+    // bar. Everything else about the bar -- text input, attach menu, mic morph -- is shared.
+    glass: Backdrop? = null,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
+    // One physics state per bubble; they only do anything when [glass] is set.
+    val attachLiquid = rememberLiquidState()
+    val fieldLiquid = rememberLiquidState()
+    val sendLiquid = rememberLiquidState()
+    val recordingLiquid = rememberLiquidState()
+    val glassTint = glassTint()
+    // How many lines the field shows, and how full its last line is: the field bounces when a line
+    // is added or removed, the text stretches as it nears the edge, the send button shrinks as the
+    // field grows. (Written from the EditText below.)
+    val lineCount = remember { androidx.compose.runtime.mutableIntStateOf(1) }
+    val lineFill = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    // The text starts to swell once the last line is four fifths full (up to 5%), on a bouncy spring.
+    val textStretch by animateFloatAsState(
+        targetValue = 1f + 0.05f * ((lineFill.floatValue - 0.8f) / 0.2f).coerceIn(0f, 1f),
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f),
+        label = "textStretch",
+    )
+    var previousLines by remember { androidx.compose.runtime.mutableIntStateOf(1) }
+    LaunchedEffect(lineCount.intValue, glass != null) {
+        val lines = lineCount.intValue
+        if (glass != null) {
+            // A line added: the field jiggles like a drop that just grew; a line gone: it settles.
+            if (lines > previousLines) fieldLiquid.pulse(x = -0.012f, y = 0.035f)
+            else if (lines < previousLines) fieldLiquid.pulse(y = -0.03f)
+            // The send button gives way as the field takes more room.
+            sendLiquid.scaleTo(1f - 0.14f * ((lines - 1) / 5f).coerceIn(0f, 1f))
+        }
+        previousLines = lines
+    }
     val conversation = state.conversation.value
     val revision = state.revision.intValue
 
@@ -7253,7 +7320,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     }
 
     if (isReadOnlyChannel) {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -7310,8 +7377,12 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         if (!experimentalArch) Modifier
         else Modifier.drawBarArch(state.rubber, archColor)
 
-    SharedTransitionLayout {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = archModifier) {
+    SharedTransitionLayout(modifier = modifier) {
+    // In glass mode the bar has no body of its own: each bubble below is its own piece of glass.
+    Surface(
+        color = if (glass != null) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+        modifier = if (glass != null) Modifier else archModifier,
+    ) {
         Column {
         ComposerBanner(state, listener)
         if (hasAttachments) {
@@ -7340,7 +7411,14 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     transitionSpec = { spring(stiffness = 380f, dampingRatio = 0.8f) },
                 ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
             lastActiveRecording?.let {
-                Box(modifier = Modifier.graphicsLayer { alpha = barAlpha }) {
+                Box(
+                    modifier = Modifier.graphicsLayer { alpha = barAlpha }
+                        .then(
+                            if (glass != null)
+                                Modifier.padding(8.dp).liquidGlass(glass, RoundedCornerShape(28.dp), recordingLiquid, glassTint)
+                            else Modifier
+                        ),
+                ) {
                     RecordingBar(it, listener)
                 }
             }
@@ -7411,8 +7489,9 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 if (isOpen) {
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.height(48.dp),
+                        color = if (glass != null) Color.Transparent else MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.height(48.dp)
+                            .liquidGlass(glass, RoundedCornerShape(50), attachLiquid, glassTint),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -7468,7 +7547,13 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                         }
                     }
                 } else {
-                    IconButton(onClick = { attachMenuOpen = true }) {
+                    IconButton(
+                        onClick = { attachMenuOpen = true },
+                        modifier = if (glass != null)
+                            Modifier.liquidFeel(attachLiquid)
+                                .liquidGlass(glass, CircleShape, attachLiquid, glassTint)
+                        else Modifier,
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_attach_file_24dp),
                             contentDescription = stringResource(R.string.attach_file),
@@ -7484,8 +7569,16 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
 
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                color = if (glass != null) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                    .then(
+                        if (glass != null)
+                            // Grows like a drop: the height follows the lines on a spring, and the
+                            // bounce on every added line is [fieldLiquid.pulse], see below.
+                            Modifier.animateContentSize(spring(dampingRatio = 0.6f, stiffness = 380f))
+                                .liquidGlass(glass, RoundedCornerShape(24.dp), fieldLiquid, glassTint)
+                        else Modifier
+                    ),
             ) {
               Box {
                 // Native EditText instead of BasicTextField: autocorrect-revert on some IMEs
@@ -7527,6 +7620,14 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                                 InputType.TYPE_TEXT_FLAG_MULTI_LINE or
                                 InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
                             textSize = 16f
+                            // Tells the glass bar how many lines are showing (it bounces when one
+                            // is added, and shrinks the send button as the field grows).
+                            if (glass != null) {
+                                addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+                                    val lines = (v as EditText).lineCount.coerceAtLeast(1)
+                                    if (lines != lineCount.intValue) lineCount.intValue = lines
+                                }
+                            }
                             var lastText = ""
                             var programmatic = false
                             // Index of the space we auto-inserted after a period, if the very
@@ -7587,6 +7688,21 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     },
                     update = { editText ->
                         editText.setTextColor(onSurfaceColor)
+                        // How full the last line is, for the glass bar's "about to wrap" stretch.
+                        // (The layout is the one from just before this edit; for a soft visual
+                        // effect one keystroke of lag does not matter.)
+                        val textLayout = editText.layout
+                        if (glass != null && textLayout != null && textLayout.lineCount > 0) {
+                            val available =
+                                (editText.width - editText.paddingLeft - editText.paddingRight)
+                                    .coerceAtLeast(1)
+                            val fill =
+                                (textLayout.getLineWidth(textLayout.lineCount - 1) / available)
+                                    .coerceIn(0f, 1f)
+                            if (kotlin.math.abs(fill - lineFill.floatValue) > 0.01f) {
+                                lineFill.floatValue = fill
+                            }
+                        }
                         if (editText.text?.toString() != text) {
                             editText.setText(text)
                             editText.setSelection((editText.text?.length ?: 0))
@@ -7602,7 +7718,17 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+                        .then(
+                            if (glass != null)
+                                // The text swells a little as a line fills up, then relaxes on
+                                // the spring when it wraps.
+                                Modifier.graphicsLayer {
+                                    scaleX = textStretch
+                                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+                                }
+                            else Modifier
+                        ),
                 )
               }
             }
@@ -7633,13 +7759,27 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 colors =
                     IconButtonDefaults.filledIconButtonColors(
                         containerColor =
-                            if (showMic) MaterialTheme.colorScheme.secondaryContainer
+                            if (glass != null) Color.Transparent
+                            else if (showMic) MaterialTheme.colorScheme.secondaryContainer
                             else MaterialTheme.colorScheme.primary,
                         contentColor =
-                            if (showMic) MaterialTheme.colorScheme.onSecondaryContainer
+                            if (showMic && glass != null) MaterialTheme.colorScheme.onSurface
+                            else if (showMic) MaterialTheme.colorScheme.onSecondaryContainer
                             else MaterialTheme.colorScheme.onPrimary,
                     ),
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(48.dp).then(
+                    if (glass != null)
+                        // Glass over the list; the send state is tinted with the accent so it
+                        // still reads as the primary action.
+                        Modifier.liquidFeel(sendLiquid).liquidGlass(
+                            glass,
+                            RoundedCornerShape(corner),
+                            sendLiquid,
+                            if (showMic) glassTint
+                            else MaterialTheme.colorScheme.primary.copy(alpha = 0.62f),
+                        )
+                    else Modifier
+                ),
             ) {
                 // Always the plain round send icon, even when the conversation is encrypted —
                 // OMEMO still applies to the message, only the icon no longer changes for it.

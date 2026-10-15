@@ -1,5 +1,26 @@
 # Impulse — To-Do
 
+## Liquid glass — experiment behind a flag (beta.171, branch unified-compose-search)
+
+`FeatureFlag.LIQUID_GLASS`, default off, Android 13+ only (the refraction is an AGSL shader; below
+that the flag does nothing). Uses the Kyant0 backdrop library (`io.github.kyant0:backdrop:1.0.6`, the
+Android-only Compose build; 2.x is Compose Multiplatform and pulls in the JetBrains runtime).
+
+- **Built**: `ui/LiquidGlass.kt` (glass modifier, `LiquidState` stretch/spring physics, `liquidTouch` /
+  `liquidFeel`); chat list top row (`LiquidTopRow.kt`: search pill, QR bubble, avatar bubble inside its
+  own glass rim, all stretchable, list scrolls under them); chat message bar (`InputBar(glass = ...)` in
+  `ConversationScreen.kt`: attach / field / send are separate glass bubbles over the list; the field
+  grows on a spring and jiggles per added line, the text swells as a line fills up, the send button
+  shrinks as the field grows); Developer options > Liquid glass playground (bottom tab bar with a
+  springy, draggable glass indicator, draggable lens, buttons).
+- **Not tried on a device** when it shipped. Known rough edges to check: the expanded search animation
+  has no collapsed bar to grow from; glass over very plain backgrounds is faint in light theme; the
+  chat list FAB is still the XML one (not glass); recording bar is only wrapped in a glass pill.
+- **Not done**: bottom tabs on a real screen (playground only), glass chat top bar, glass FAB, glass
+  dialogs/sheets. Revisit the Compose Multiplatform 2.x line only if 1.0.x is dropped.
+- **Sandbox note**: Maven Central rate-limits this sandbox's IP; resolve the dependency through
+  Google's mirror with a local `~/.gradle/init.d` script (not committed). CI is unaffected.
+
 ## Contact birthdays — built (beta.161, branch unified-compose-search)
 
 Let people set a birthday that their contacts see.
