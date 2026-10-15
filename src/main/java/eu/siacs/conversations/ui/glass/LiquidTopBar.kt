@@ -166,6 +166,7 @@ fun LiquidTopBar(
                 glass = backdrop,
                 modifier = Modifier.size(BubbleSize)
                     .liquidMenuAnchor(menu)
+                    .liquidMenuPull(menu)
                     .graphicsLayer { alpha = menu.anchorAlpha },
             ) {
                 Icon(

@@ -5,6 +5,12 @@
 - **Graduation**: later the `LIQUID_GLASS` flag becomes an option on the Appearance screen, "enable
   liquid glass". It is *not* a rendering-engine switch (Material vs glass): it turns glass on for
   the parts that have a glass version, and the rest of the app stays Material.
+- **Jelly menus (beta.180)**: the menu morph has separate width/height progress (width springs first,
+  height lags and overshoots, volume-trading squash), the open panel can be dragged (toward its button
+  squeezes it back and closes on release; away stretches it and springs back), and pulling a closed
+  button down starts revealing the menu and opens it on release. Next: a real metaball/SDF
+  smooth-union AGSL glass (rounded-rect `smin`, refraction from the SDF gradient) with a try/catch
+  fallback to the plain container; no off-the-shelf Compose library exists for it.
 - **Two branches, not a layer on top**: with the option off, screens render exactly as before; with it
   on, the glass version is its own from-scratch composable (no Material surface under it). beta.171
   put glass on top of the Material bar and it showed: a clipped rectangular shadow (the Material

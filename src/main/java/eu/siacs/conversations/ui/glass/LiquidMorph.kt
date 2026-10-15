@@ -4,12 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -31,21 +30,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -58,28 +62,43 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.vibrancy
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.tanh
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /*
  * "A button turns into a menu" (and "a search field turns into the whole search"), the way the glass
  * of iOS does it: not a popup appearing next to the button, but the button's own bubble growing and
  * moving into the new shape while its contents change. One glass container is drawn at a size and
- * place interpolated between where the button is and where the panel ends up; a spring drives the
- * interpolation, so it overshoots and settles like liquid. It is drawn in the same window as the rest
- * of the screen (a Popup would be a second window and could not show the screen behind it through
- * the glass), as an overlay at the root of the screen.
+ * place interpolated between where the button is and where the panel ends up. It is drawn in the
+ * same window as the rest of the screen (a Popup would be a second window and could not show the
+ * screen behind it through the glass), as an overlay at the root of the screen.
+ *
+ * It is meant to feel like jelly, not like a box on a spring: the width and the height have springs of
+ * their own (the width is quick, the height follows a beat later and swings further), and when one
+ * overshoots the other gives a little, so the volume seems to stay the same. And it can be handled:
+ * pull the button toward where the menu will open and the menu starts to show, with a good deal of
+ * resistance; let go and it either opens fully or goes back. Pull the open menu away and it stretches
+ * and springs back; push it back toward its button and it squeezes into it and closes.
  */
 
 /**
- * One glass container whose size and place are interpolated by [progress] (0 = at [from], 1 =
- * [target]). Both rectangles are in the overlay's own coordinates. The corners and the body colour
- * change with the progress: the surface opacity runs from [surfaceAlphaFrom] (a clear bubble) to the
- * [style]'s own (a calmer, more opaque panel, so text over a busy list stays readable). The blur and
- * the lens are the style's, kept the same for the whole motion so the effect is not rebuilt every
- * frame. [content] gets the container's animated size and is clipped to it; wrap it in
- * `requiredWidth`/`requiredSize` to keep its layout at the final size while the container is still
- * growing.
+ * One glass container whose size and place are interpolated between [from] (progress 0) and
+ * [target] (progress 1), the width and the left edge by [progressX], the height and the top edge by
+ * [progressY] (the same value by default). Both rectangles are in the overlay's own coordinates. Past
+ * 1 it goes further than the target, below 0 it shrinks below the start: that is the jelly. When one
+ * of the two is over 1, the other dimension is trimmed a little, so the volume stays about the same.
+ *
+ * The corners and the body colour follow the average progress: the surface opacity runs from
+ * [surfaceAlphaFrom] (a clear bubble) to the [style]'s own (a calmer, more opaque panel, so text over
+ * a busy list stays readable). The blur and the lens are the style's, kept the same for the whole
+ * motion so the effect is not rebuilt every frame. [content] gets the container's animated size and
+ * is clipped to it; wrap it in `requiredWidth`/`requiredSize` to keep its layout at the final size
+ * while the container is still growing.
  *
  * [glassUntil]: a container that ends up covering the screen drops the blur and the lens once its
  * progress passes this, when it is nearly opaque anyway: blurring and bending a whole screen every
@@ -89,11 +108,12 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun LiquidMorphContainer(
-    progress: () -> Float,
+    progressX: () -> Float,
     from: () -> Rect,
     target: (overlay: IntSize, heightForWidth: (Int) -> Int) -> Rect,
     glass: GlassStack,
     modifier: Modifier = Modifier,
+    progressY: () -> Float = progressX,
     style: LiquidGlassStyle = LiquidGlassStyle.Menu,
     cornerFrom: Dp = 26.dp,
     cornerTo: Dp = 28.dp,
@@ -112,13 +132,13 @@ fun LiquidMorphContainer(
                     .drawBackdrop(
                         backdrop = slot.backdrop,
                         shape = {
-                            val p = progress().coerceIn(0f, 1f)
+                            val p = ((progressX() + progressY()) / 2f).coerceIn(0f, 1f)
                             RoundedCornerShape(
                                 with(density) { lerp(cornerFrom.toPx(), cornerTo.toPx(), p) }
                             )
                         },
                         effects = {
-                            if (progress() <= glassUntil) {
+                            if ((progressX() + progressY()) / 2f <= glassUntil) {
                                 if (style.vibrancy) vibrancy()
                                 blur(style.blur.toPx())
                                 glassLens(
@@ -129,7 +149,7 @@ fun LiquidMorphContainer(
                             }
                         },
                         onDrawSurface = {
-                            val p = progress().coerceIn(0f, 1f)
+                            val p = ((progressX() + progressY()) / 2f).coerceIn(0f, 1f)
                             drawRect(surface.copy(alpha = lerp(surfaceAlphaFrom, style.surfaceAlpha, p)))
                         },
                     ),
@@ -141,13 +161,17 @@ fun LiquidMorphContainer(
     ) { measurables, constraints ->
         val glassBox = measurables.first()
         val overlay = IntSize(constraints.maxWidth, constraints.maxHeight)
-        val p = progress() // may overshoot 1: that is the liquid part
+        val px = progressX() // either may overshoot 1: that is the jelly
+        val py = progressY()
         val a = from()
         val b = target(overlay) { width -> glassBox.maxIntrinsicHeight(width) }
-        val w = lerp(a.width, b.width, p).roundToInt().coerceAtLeast(1)
-        val h = lerp(a.height, b.height, p).roundToInt().coerceAtLeast(1)
-        val x = lerp(a.left, b.left, p).roundToInt()
-        val y = lerp(a.top, b.top, p).roundToInt()
+        // When one dimension swings past its target, the other gives a little: same volume.
+        val squashW = if (py > 1f) 1f - 0.35f * (py - 1f) else 1f
+        val squashH = if (px > 1f) 1f - 0.35f * (px - 1f) else 1f
+        val w = (lerp(a.width, b.width, px) * squashW).roundToInt().coerceAtLeast(1)
+        val h = (lerp(a.height, b.height, py) * squashH).roundToInt().coerceAtLeast(1)
+        val x = lerp(a.left, b.left, px).roundToInt()
+        val y = lerp(a.top, b.top, py).roundToInt()
         val placeable = glassBox.measure(Constraints.fixed(w, h))
         layout(overlay.width, overlay.height) { placeable.place(x, y) }
     }
@@ -155,16 +179,75 @@ fun LiquidMorphContainer(
 
 /**
  * State of one glass menu: whether it is open, where the button that opens it is (in window
- * coordinates, set by [liquidMenuAnchor]) and the spring-driven [progress] of the morph.
+ * coordinates, set by [liquidMenuAnchor]) and how far the morph has got, separately for width
+ * ([progressX]) and height ([progressY]). They are driven by springs when the menu opens or closes
+ * and by a finger when it is pulled.
  */
 @Stable
 class LiquidMenuState {
     var open by mutableStateOf(false)
     var anchor by mutableStateOf(Rect.Zero)
-    val progress = Animatable(0f, 0.001f)
+
+    val progressX = Animatable(0f, 0.001f)
+    val progressY = Animatable(0f, 0.001f)
+
+    /** The two together: for the things that follow the morph as a whole (fades, corners). */
+    val progress: Float get() = (progressX.value + progressY.value) / 2f
 
     /** For the button itself: it fades away as its bubble becomes the menu, and back when it closes. */
-    val anchorAlpha: Float get() = 1f - (progress.value * 4f).coerceIn(0f, 1f)
+    val anchorAlpha: Float get() = 1f - (progress * 4f).coerceIn(0f, 1f)
+
+    // Set by the overlay: which way the panel opens, so a pull on the button (or on the panel) knows
+    // which direction counts, and how big the open panel is.
+    internal var alignEnd = true
+    internal var opensUp = false
+    internal var panelHeightPx = 1f
+
+    /** True when the menu is longer than the screen and has to scroll (otherwise it must not, or the
+     * scroll would swallow the vertical drag that stretches and squeezes it). */
+    internal var panelTall by mutableStateOf(false)
+
+    var settleRequests by mutableIntStateOf(0)
+        private set
+
+    /** Open or close, and animate there even if that is the state it already claims to be in (after a
+     * pull that was let go of, the progress is somewhere in between). */
+    fun releaseTo(value: Boolean) {
+        open = value
+        settleRequests++
+    }
+
+    /** Springs to the open or closed state from wherever the progress is. */
+    internal suspend fun settle() = coroutineScope {
+        if (open) {
+            // Opening: the width goes first and fast; the height follows a beat later, slower, and
+            // swings further. The two never arrive together.
+            launch { progressX.animateTo(1f, spring(dampingRatio = 0.62f, stiffness = 520f)) }
+            launch {
+                delay(40)
+                progressY.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 280f))
+            }
+        } else {
+            // Closing: the height comes back first, the width a beat after.
+            launch { progressY.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = 450f)) }
+            launch {
+                delay(50)
+                progressX.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = 380f))
+            }
+        }
+    }
+
+    internal suspend fun drag(x: Float, y: Float) {
+        progressX.snapTo(x)
+        progressY.snapTo(y)
+    }
+
+    /** How far [offset] goes in the direction the menu opens (negative: the other way). */
+    internal fun pullAlong(offset: Offset): Float {
+        val dirX = if (alignEnd) -1f else 1f
+        val dirY = if (opensUp) -1f else 1f
+        return offset.y * dirY * 0.85f + offset.x * dirX * 0.5f
+    }
 }
 
 @Composable
@@ -175,10 +258,39 @@ fun Modifier.liquidMenuAnchor(state: LiquidMenuState): Modifier =
     onGloballyPositioned { state.anchor = it.boundsInWindow() }
 
 /**
+ * Pulling the (closed) button the way the menu opens: the menu starts to show, growing with the
+ * finger with a lot of resistance (the further it is pulled the less it follows). Let go after a
+ * decent pull and it opens fully; after a small one it springs back into the button. A plain tap is
+ * not a pull and still opens it as usual.
+ */
+@Composable
+fun Modifier.liquidMenuPull(state: LiquidMenuState): Modifier {
+    val scope = rememberCoroutineScope()
+    return pointerInput(state) {
+        val reach = 150.dp.toPx()
+        var total = Offset.Zero
+        detectDragGestures(
+            onDragStart = { total = Offset.Zero },
+            onDrag = { change, drag ->
+                change.consume()
+                total += drag
+                val p = 0.8f * tanh(max(state.pullAlong(total), 0f) / reach)
+                // The height follows the finger, the width a little less.
+                scope.launch { state.drag(0.7f * p, p) }
+            },
+            onDragEnd = { state.releaseTo(state.progress > 0.22f) },
+            onDragCancel = { state.releaseTo(false) },
+        )
+    }
+}
+
+/**
  * The menu itself, to be placed once at the root of the screen (after everything it should cover,
  * inside the box whose [glass] stack holds the screen's content). The bubble of the anchor button
- * grows into a [menuWidth]-wide panel whose right edge lines up with the button's; [content] (the
- * items) fades in once the panel is mostly open. A tap anywhere else, or back, closes it.
+ * grows into a [menuWidth]-wide panel whose edge lines up with the button's; [content] (the items)
+ * fades in once the panel is mostly open. A tap anywhere else, or back, closes it. The open panel
+ * can be pulled: away from the button it stretches and springs back, toward it it squeezes into the
+ * button and, let go of past the half, closes.
  */
 @Composable
 fun LiquidMenuOverlay(
@@ -196,15 +308,18 @@ fun LiquidMenuOverlay(
     opensUp: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    LaunchedEffect(state.open) {
-        state.progress.animateTo(if (state.open) 1f else 0f, spring(dampingRatio = 0.78f, stiffness = 380f))
+    SideEffect {
+        state.alignEnd = alignEnd
+        state.opensUp = opensUp
     }
+    LaunchedEffect(state.open, state.settleRequests) { state.settle() }
     BackHandler(enabled = state.open) { state.open = false }
     // Derived, so the menu's items are not rebuilt on every frame of the opening animation.
-    val visible by remember { derivedStateOf { state.open || state.progress.value > 0.001f } }
+    val visible by remember { derivedStateOf { state.open || state.progress > 0.001f } }
     if (!visible) return
 
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
     var origin by remember { mutableStateOf(Offset.Zero) }
     Box(
         modifier
@@ -215,12 +330,17 @@ fun LiquidMenuOverlay(
     ) {
         val margin = with(density) { 8.dp.roundToPx() }
         LiquidMorphContainer(
-            progress = { state.progress.value },
+            progressX = { state.progressX.value },
+            progressY = { state.progressY.value },
             from = { state.anchor.translate(-origin) },
             target = { overlay, heightForWidth ->
                 val width = min(with(density) { menuWidth.roundToPx() }, overlay.width - 2 * margin)
+                val natural = heightForWidth(width)
                 // A long menu stops at the screen edge and scrolls (see the column below).
-                val height = min(heightForWidth(width), overlay.height - 2 * margin)
+                val height = min(natural, overlay.height - 2 * margin)
+                val tall = natural > overlay.height - 2 * margin
+                if (state.panelTall != tall) state.panelTall = tall
+                state.panelHeightPx = height.toFloat()
                 val a = state.anchor.translate(-origin)
                 // Lined up with the button's edge, grown the way [opensUp] says, kept on screen.
                 val wanted = if (alignEnd) a.right - width else a.left
@@ -235,12 +355,37 @@ fun LiquidMenuOverlay(
             glass = glass,
             style = style,
         ) {
+            val reach = with(density) { 120.dp.toPx() }
+            var total = Offset.Zero
             Column(
                 Modifier
                     .requiredWidth(menuWidth)
-                    .verticalScroll(rememberScrollState())
+                    // Pulling the open panel. (Not when it scrolls: then the scroll has the drag.)
+                    .pointerInput(state) {
+                        detectDragGestures(
+                            onDragStart = { total = Offset.Zero },
+                            onDrag = { change, drag ->
+                                change.consume()
+                                total += drag
+                                // Positive: toward the button.
+                                val toward = -state.pullAlong(total)
+                                val p =
+                                    if (toward > 0f) {
+                                        // Squeezed back into the button, linearly: it can all the way.
+                                        (1f - toward / (state.panelHeightPx * 0.9f)).coerceAtLeast(0f)
+                                    } else {
+                                        // Pulled away: stretches, up to ~16% past the open size, hard to pull.
+                                        1f + 0.16f * tanh(-toward / reach)
+                                    }
+                                scope.launch { state.drag(lerp(1f, p, 0.6f), p) }
+                            },
+                            onDragEnd = { state.releaseTo(state.progress > 0.55f) },
+                            onDragCancel = { state.releaseTo(true) },
+                        )
+                    }
+                    .then(if (state.panelTall) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                     .padding(vertical = 8.dp)
-                    .graphicsLayer { alpha = ((state.progress.value - 0.35f) / 0.65f).coerceIn(0f, 1f) },
+                    .graphicsLayer { alpha = ((state.progress - 0.35f) / 0.65f).coerceIn(0f, 1f) },
                 content = content,
             )
         }

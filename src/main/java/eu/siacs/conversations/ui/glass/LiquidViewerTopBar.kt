@@ -172,6 +172,7 @@ fun LiquidViewerTopBar(
             glass = glass,
             modifier = Modifier.size(BubbleSize)
                 .liquidMenuAnchor(menu)
+                .liquidMenuPull(menu)
                 .graphicsLayer { alpha = menu.anchorAlpha },
         ) {
             Icon(

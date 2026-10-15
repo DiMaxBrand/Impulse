@@ -142,7 +142,7 @@ fun LiquidConversationsSearchHost(
         val showSearch by remember { derivedStateOf { searchOpen || searchProgress.value > 0.001f } }
         if (showSearch) {
             LiquidMorphContainer(
-                progress = { searchProgress.value },
+                progressX = { searchProgress.value },
                 from = { pillBounds.translate(-origin) },
                 // The pill grows down and out to fill the screen from where it is.
                 target = { overlay, _ ->

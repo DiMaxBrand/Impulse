@@ -318,6 +318,8 @@ private fun AttachOrDiscardBubble(
         glass = backdrop,
         modifier = Modifier.size(BubbleSize)
             .liquidMenuAnchor(attachMenu)
+            // Pulling the paperclip is for the menu only; while recording it is the discard button.
+            .then(if (rec.value < 0.01f) Modifier.liquidMenuPull(attachMenu) else Modifier)
             .graphicsLayer { alpha = attachMenu.anchorAlpha },
         // The body goes red as it becomes the discard button.
         surfaceColor = lerpColor(normal, colors.error.copy(alpha = 0.5f), rec.value),

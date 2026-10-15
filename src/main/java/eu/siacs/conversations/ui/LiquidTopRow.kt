@@ -33,6 +33,7 @@ import eu.siacs.conversations.ui.glass.GlassStack
 import eu.siacs.conversations.ui.glass.LiquidGlassButton
 import eu.siacs.conversations.ui.glass.LiquidMenuState
 import eu.siacs.conversations.ui.glass.liquidMenuAnchor
+import eu.siacs.conversations.ui.glass.liquidMenuPull
 
 /** Height of [LiquidTopRow] including its padding: the list leaves this much room above its first row. */
 val LiquidTopRowHeight = 68.dp
@@ -100,6 +101,7 @@ fun LiquidTopRow(
                 glass = glass,
                 modifier = Modifier.size(52.dp)
                     .liquidMenuAnchor(qrMenu)
+                    .liquidMenuPull(qrMenu)
                     .graphicsLayer { alpha = qrMenu.anchorAlpha * (1f - searchProgress()) },
             ) {
                 Icon(
