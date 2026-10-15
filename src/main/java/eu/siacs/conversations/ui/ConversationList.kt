@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -187,6 +188,7 @@ object ConversationListHelper {
         fab: ExtendedFloatingActionButton,
         searchHost: SearchHostState,
         searchActions: SearchHostActions,
+        listActions: ConversationListActions,
         onDownloadComplete: () -> Unit = {},
     ) {
         composeView.setViewCompositionStrategy(
@@ -205,6 +207,7 @@ object ConversationListHelper {
                                 conversations = state.list,
                                 revision = state.revision.intValue,
                                 onConversationClick = { onConversationClick.onClick(it) },
+                                actions = listActions,
                                 onFirstVisibleIndexChanged = { index ->
                                     composeView.post { if (index > 0) fab.shrink() else fab.extend() }
                                 },
@@ -249,6 +252,7 @@ fun ConversationList(
     revision: Int,
     onConversationClick: (Conversation) -> Unit,
     onFirstVisibleIndexChanged: (Int) -> Unit,
+    actions: ConversationListActions,
     modifier: Modifier = Modifier,
 ) {
     if (conversations.isEmpty()) {
@@ -278,6 +282,8 @@ fun ConversationList(
         conversations.partition { birthdayToday(store, it, today) }
     }
     val ordered = celebrating + others
+    // The chat a long-press opened the sheet for; null when no sheet is up.
+    var sheetFor by remember { mutableStateOf<Conversation?>(null) }
 
     LazyColumn(state = listState, modifier = modifier) {
         itemsIndexed(
@@ -289,11 +295,20 @@ fun ConversationList(
                 conversation = conversation,
                 revision = revision,
                 onClick = { onConversationClick(conversation) },
+                onLongClick = { sheetFor = conversation },
                 shape = shape,
                 isBirthday = index < celebrating.size,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }
+    }
+
+    sheetFor?.let { conversation ->
+        ConversationActionSheet(
+            conversation = conversation,
+            actions = actions,
+            onDismiss = { sheetFor = null },
+        )
     }
 }
 
@@ -366,6 +381,7 @@ private fun ConversationItem(
     conversation: Conversation,
     revision: Int,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     shape: RoundedCornerShape,
     isBirthday: Boolean,
     modifier: Modifier = Modifier,
@@ -432,8 +448,9 @@ private fun ConversationItem(
     // Avatar is outside the Card so it can draw above the card's top edge without being
     // clipped by Material3's Surface, which always clips children to the card shape.
     Box(modifier = modifier.fillMaxWidth()) {
+        // Not Card(onClick): a plain card has no long-press, so the click and the long-press go on
+        // the modifier, clipped to the same shape the card is drawn with.
         Card(
-            onClick = onClick,
             shape = shape,
             // A birthday row paints its own background (the gradient below), so the card's
             // solid colour is dropped for it.
@@ -441,7 +458,10 @@ private fun ConversationItem(
                 containerColor = if (isBirthday) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            modifier = Modifier.fillMaxWidth().onSizeChanged { cardHeightPx = it.height }.then(
+            modifier = Modifier.fillMaxWidth()
+                .clip(shape)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .onSizeChanged { cardHeightPx = it.height }.then(
                 if (isBirthday) Modifier.clip(shape).drawBehind {
                     drawRect(surfaceContainer)
                     // The same colours, faint, sliding across the row.
@@ -933,6 +953,7 @@ private fun ConversationListEmptyPreview() {
             revision = 0,
             onConversationClick = {},
             onFirstVisibleIndexChanged = {},
+            actions = NoConversationListActions,
             modifier = Modifier.fillMaxSize(),
         )
     }

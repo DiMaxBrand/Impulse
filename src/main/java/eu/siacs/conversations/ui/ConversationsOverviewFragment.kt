@@ -100,6 +100,41 @@ class ConversationsOverviewFragment : XmppFragment() {
         )
     }
 
+    /** What the long-press sheet in the chat list does; each action saves, then refreshes the list. */
+    private val listActions = object : ConversationListActions {
+        override fun togglePinned(conversation: Conversation) {
+            val service = requireXmppActivity().xmppConnectionService ?: return
+            val pinned = conversation.getBooleanAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, false)
+            conversation.setAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, !pinned)
+            service.updateConversation(conversation)
+            refresh()
+        }
+
+        override fun setMutedTill(conversation: Conversation, till: Long) {
+            val service = requireXmppActivity().xmppConnectionService ?: return
+            conversation.setMutedTill(till)
+            service.updateConversation(conversation)
+            (activity as? ConversationsActivity)?.onConversationsListItemUpdated()
+            refresh()
+        }
+
+        override fun markRead(conversation: Conversation) {
+            val service = requireXmppActivity().xmppConnectionService ?: return
+            service.markRead(conversation)
+            refresh()
+        }
+
+        override fun archive(conversation: Conversation) {
+            val service = requireXmppActivity().xmppConnectionService ?: return
+            service.archiveConversation(conversation)
+            refresh()
+        }
+
+        override fun openContact(conversation: Conversation) {
+            requireXmppActivity().switchToContactDetails(conversation.getContact())
+        }
+    }
+
     private var avatarLoading = false
 
     private fun updateSearchMenu() {
@@ -171,6 +206,7 @@ class ConversationsOverviewFragment : XmppFragment() {
             binding.fab,
             searchHost,
             searchActions,
+            listActions,
             onDownloadComplete = { (activity as? ConversationsActivity)?.openUpdateSheet() },
         )
 
