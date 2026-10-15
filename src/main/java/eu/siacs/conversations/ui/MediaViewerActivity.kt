@@ -54,6 +54,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -181,12 +182,13 @@ class MediaViewerActivity : XmppActivity() {
                 val conversation = conversationState.value
                 val start = startMessageState.value
                 if (conversation != null && start != null) {
-                    // The viewer is always black behind its chrome, so the glass chrome uses the dark
-                    // colours (light icons/text, dark glass body) whatever the app theme is: with a
-                    // light theme the dark-on-black text was invisible. A dark glass body also keeps
-                    // the white text readable over bright photos.
+                    // Adaptive glass chrome: MediaViewerScreen measures how bright the photo is behind
+                    // the top bar and flips this. Dark underneath -> light text on dark-tinted glass;
+                    // bright underneath -> dark text on light-tinted ("illuminated") glass. This has
+                    // nothing to do with the app theme: a night photo is dark in a light theme too.
+                    val onDark = remember { mutableStateOf(true) }
                     val viewerColors = if (rememberLiquidGlassEnabled()) {
-                        dynamicOrStaticColorScheme(this@MediaViewerActivity, true)
+                        dynamicOrStaticColorScheme(this@MediaViewerActivity, onDark.value)
                     } else MaterialTheme.colorScheme
                     MaterialTheme(colorScheme = viewerColors, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
                     MediaViewerScreen(
@@ -196,6 +198,7 @@ class MediaViewerActivity : XmppActivity() {
                         revision = revisionState.intValue,
                         batchUuids = batchUuids,
                         carryOver = glassCarryOver,
+                        chromeOnDark = onDark,
                         onClose = { finish() },
                         onShare = { message -> ShareUtil.share(this@MediaViewerActivity, message) },
                         onSave = { message -> saveToDevice(message) },
@@ -420,6 +423,8 @@ private fun MediaViewerScreen(
     // The liquid glass viewer was opened from the chat's glass top bar: its own top bar starts out
     // looking like that one and turns into the viewer's (see LiquidViewerTopBar).
     carryOver: Boolean,
+    // Written by the brightness sampler below; read by the activity to pick the chrome's colours.
+    chromeOnDark: androidx.compose.runtime.MutableState<Boolean>,
     onClose: () -> Unit,
     onShare: (Message) -> Unit,
     onSave: (Message) -> Unit,
@@ -441,6 +446,41 @@ private fun MediaViewerScreen(
     val glass = rememberLiquidGlassEnabled()
     val viewerBackdrop = rememberLayerBackdrop()
     val glassStack = rememberGlassStack(viewerBackdrop)
+    // Brightness of what is under the top bar, sampled from the recorded viewer layer (photo, black
+    // bars around it, zoom and all): on a change of page and then every so often. Hysteresis keeps
+    // the colours from flickering around the middle.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    LaunchedEffect(glass) {
+        if (!glass) return@LaunchedEffect
+        val cropPx = with(density) { 150.dp.roundToPx() }
+        while (true) {
+            kotlinx.coroutines.delay(500)
+            val luma = try {
+                val img = viewerBackdrop.graphicsLayer.toImageBitmap()
+                val src = img.asAndroidBitmap().let {
+                    if (it.config == android.graphics.Bitmap.Config.HARDWARE) it.copy(android.graphics.Bitmap.Config.ARGB_8888, false) else it
+                }
+                val strip = android.graphics.Bitmap.createBitmap(src, 0, 0, src.width, minOf(cropPx, src.height).coerceAtLeast(1))
+                val small = android.graphics.Bitmap.createScaledBitmap(strip, 16, 4, true)
+                val px = IntArray(64)
+                small.getPixels(px, 0, 16, 0, 0, 16, 4)
+                var sum = 0f
+                for (c in px) {
+                    val r = ((c shr 16) and 0xFF) / 255f
+                    val g = ((c shr 8) and 0xFF) / 255f
+                    val b = (c and 0xFF) / 255f
+                    sum += 0.2126f * r + 0.7152f * g + 0.0722f * b
+                }
+                sum / px.size
+            } catch (e: Exception) {
+                null
+            }
+            if (luma != null) {
+                if (chromeOnDark.value && luma > 0.58f) chromeOnDark.value = false
+                else if (!chromeOnDark.value && luma < 0.42f) chromeOnDark.value = true
+            }
+        }
+    }
     val topMenu = rememberLiquidMenuState()
     // 0: the top bar still looks like the chat's; 1: it is the viewer's. Starts done unless the
     // viewer came from the chat's glass bar.
