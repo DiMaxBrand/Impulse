@@ -181,6 +181,14 @@ class MediaViewerActivity : XmppActivity() {
                 val conversation = conversationState.value
                 val start = startMessageState.value
                 if (conversation != null && start != null) {
+                    // The viewer is always black behind its chrome, so the glass chrome uses the dark
+                    // colours (light icons/text, dark glass body) whatever the app theme is: with a
+                    // light theme the dark-on-black text was invisible. A dark glass body also keeps
+                    // the white text readable over bright photos.
+                    val viewerColors = if (rememberLiquidGlassEnabled()) {
+                        dynamicOrStaticColorScheme(this@MediaViewerActivity, true)
+                    } else MaterialTheme.colorScheme
+                    MaterialTheme(colorScheme = viewerColors, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
                     MediaViewerScreen(
                         service = xmppConnectionService,
                         conversation = conversation,
@@ -203,6 +211,7 @@ class MediaViewerActivity : XmppActivity() {
                         onDeleteForMyself = { message -> deleteMessageLocally(message) },
                         onModerate = { message -> moderateMessage(message) },
                     )
+                    }
                 } else {
                     Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
                         if (!failed) {
