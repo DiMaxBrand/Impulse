@@ -20,9 +20,13 @@
   voice-recording mode with discard / timer / pause / send, the field stretches and pushes the send
   bubble instead of the text stretching); (4) chat top bar as separate bubbles (back, name pill, call,
   video, three-dots menu) and the birthday card with a glass tint.
-- **Known bug to chase in (3)**: with the glass bar, a line wrap in the field pushed the bar below the
-  keyboard until the keyboard was reopened. Not understood yet; rebuilding the bar without the
-  clipping `Surface`, the layer on the EditText and `animateContentSize` is the first thing to try.
+- **Status**: (1) shipped beta.172, (2) beta.173, (3) beta.174 (`ui/glass/LiquidInputBar.kt`; the
+  Material bar is the original code again and shares only `ComposerTextField` with it). (4) next.
+- **Known bug to chase**: with the beta.171 glass bar, a line wrap in the field pushed the bar below
+  the keyboard until the keyboard was reopened. Not understood. beta.174 rebuilt the bar without the
+  suspects (the clipping `Surface`, a `graphicsLayer` scale on the EditText, `animateContentSize`);
+  if it still happens, look at how the EditText's rectangle-on-screen request reaches the
+  Compose root, and try `imePadding()`.
 
 ## Liquid glass — experiment behind a flag (beta.171, branch unified-compose-search)
 

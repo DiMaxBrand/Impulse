@@ -118,7 +118,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -143,10 +142,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import eu.siacs.conversations.ui.glass.LiquidInputBar
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.siacs.conversations.AppSettings
@@ -733,9 +732,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
             label = "pinned_overlay_scrim",
         )
-        // Liquid glass experiment (feature flag): the message bar floats over the bottom of the
-        // list as glass, so the chat background and the list are each recorded as a backdrop and
-        // the bar shows both through itself.
+        // Liquid glass experiment (feature flag): the message bar is a separate glass version
+        // (LiquidInputBar) floating over the bottom of the list, so the chat background and the
+        // list are each recorded as a backdrop for it to show through itself. With the flag off
+        // none of this is used and the layout is exactly the Material one.
         val glass = rememberLiquidGlassEnabled()
         val backgroundBackdrop = rememberLayerBackdrop()
         val listBackdrop = rememberLayerBackdrop()
@@ -875,12 +875,11 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     bottomInset = if (glass) with(LocalDensity.current) { glassBarHeightPx.toDp() } else 0.dp,
                 )
                 if (glass) {
-                    InputBar(
+                    LiquidInputBar(
                         state = state,
                         listener = listener,
-                        glass = glassBackdrop,
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                            .onSizeChanged { glassBarHeightPx = it.height },
+                        backdrop = glassBackdrop,
+                        onBarHeight = { glassBarHeightPx = it },
                     )
                 }
             }
@@ -1796,6 +1795,8 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // Room left at the bottom for the floating glass message bar (liquid glass experiment); zero
     // in the ordinary layout, where the bar sits below the list instead of over it.
     bottomInset: Dp = 0.dp,
+    // The same for the top, where the glass top bar floats over the list.
+    topInset: Dp = 0.dp,
 ) {
     val revision = state.revision.intValue
     // Compute items in composable scope, not in derivedStateOf. derivedStateOf suppresses
@@ -2337,7 +2338,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 if (experimentalAnimations) null
                 else androidx.compose.foundation.rememberOverscrollEffect(),
             contentPadding =
-                androidx.compose.foundation.layout.PaddingValues(top = 8.dp, bottom = 8.dp + bottomInset),
+                androidx.compose.foundation.layout.PaddingValues(top = 8.dp + topInset, bottom = 8.dp + bottomInset),
         ) {
             // EXPERIMENTAL_ANIMATIONS: every row lifts by the shared rubber band, scaled by how far
             // it sits from the bottom (rubberOffsetFactor), so neighbours separate like a stretched
@@ -6490,7 +6491,7 @@ private fun ModerationDisclaimerDialog(
 }
 
 @Composable
-private fun ComposerBanner(state: ConversationScreenState, listener: ConversationScreenListener) {
+internal fun ComposerBanner(state: ConversationScreenState, listener: ConversationScreenListener) {
     // Revision read keeps this banner in sync with nextCounterpart changes.
     val revision = state.revision.intValue
     val conversation = state.conversation.value
@@ -6629,7 +6630,7 @@ private fun ComposerBanner(state: ConversationScreenState, listener: Conversatio
 
 /** Staged attachments waiting for the send button, with per-item remove. */
 @Composable
-private fun AttachmentPreviewStrip(state: ConversationScreenState) {
+internal fun AttachmentPreviewStrip(state: ConversationScreenState) {
     val context = LocalContext.current
     androidx.compose.foundation.lazy.LazyRow(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
@@ -7259,45 +7260,8 @@ private fun RecordingBar(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
-private fun InputBar(
-    state: ConversationScreenState,
-    listener: ConversationScreenListener,
-    // Liquid glass experiment: when given, the pieces of the bar (attach, field, send/mic, the
-    // recording bar) are drawn as separate glass bubbles over this backdrop instead of one flat
-    // bar. Everything else about the bar -- text input, attach menu, mic morph -- is shared.
-    glass: Backdrop? = null,
-    modifier: Modifier = Modifier,
-) {
+private fun InputBar(state: ConversationScreenState, listener: ConversationScreenListener) {
     val context = LocalContext.current
-    // One physics state per bubble; they only do anything when [glass] is set.
-    val attachLiquid = rememberLiquidState()
-    val fieldLiquid = rememberLiquidState()
-    val sendLiquid = rememberLiquidState()
-    val recordingLiquid = rememberLiquidState()
-    val glassTint = glassTint()
-    // How many lines the field shows, and how full its last line is: the field bounces when a line
-    // is added or removed, the text stretches as it nears the edge, the send button shrinks as the
-    // field grows. (Written from the EditText below.)
-    val lineCount = remember { androidx.compose.runtime.mutableIntStateOf(1) }
-    val lineFill = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    // The text starts to swell once the last line is four fifths full (up to 5%), on a bouncy spring.
-    val textStretch by animateFloatAsState(
-        targetValue = 1f + 0.05f * ((lineFill.floatValue - 0.8f) / 0.2f).coerceIn(0f, 1f),
-        animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f),
-        label = "textStretch",
-    )
-    var previousLines by remember { androidx.compose.runtime.mutableIntStateOf(1) }
-    LaunchedEffect(lineCount.intValue, glass != null) {
-        val lines = lineCount.intValue
-        if (glass != null) {
-            // A line added: the field jiggles like a drop that just grew; a line gone: it settles.
-            if (lines > previousLines) fieldLiquid.pulse(x = -0.012f, y = 0.035f)
-            else if (lines < previousLines) fieldLiquid.pulse(y = -0.03f)
-            // The send button gives way as the field takes more room.
-            sendLiquid.scaleTo(1f - 0.14f * ((lines - 1) / 5f).coerceIn(0f, 1f))
-        }
-        previousLines = lines
-    }
     val conversation = state.conversation.value
     val revision = state.revision.intValue
 
@@ -7320,7 +7284,7 @@ private fun InputBar(
     }
 
     if (isReadOnlyChannel) {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -7377,12 +7341,8 @@ private fun InputBar(
         if (!experimentalArch) Modifier
         else Modifier.drawBarArch(state.rubber, archColor)
 
-    SharedTransitionLayout(modifier = modifier) {
-    // In glass mode the bar has no body of its own: each bubble below is its own piece of glass.
-    Surface(
-        color = if (glass != null) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
-        modifier = if (glass != null) Modifier else archModifier,
-    ) {
+    SharedTransitionLayout {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = archModifier) {
         Column {
         ComposerBanner(state, listener)
         if (hasAttachments) {
@@ -7411,14 +7371,7 @@ private fun InputBar(
                     transitionSpec = { spring(stiffness = 380f, dampingRatio = 0.8f) },
                 ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
             lastActiveRecording?.let {
-                Box(
-                    modifier = Modifier.graphicsLayer { alpha = barAlpha }
-                        .then(
-                            if (glass != null)
-                                Modifier.padding(8.dp).liquidGlass(glass, RoundedCornerShape(28.dp), recordingLiquid, glassTint)
-                            else Modifier
-                        ),
-                ) {
+                Box(modifier = Modifier.graphicsLayer { alpha = barAlpha }) {
                     RecordingBar(it, listener)
                 }
             }
@@ -7489,9 +7442,8 @@ private fun InputBar(
                 if (isOpen) {
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = if (glass != null) Color.Transparent else MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.height(48.dp)
-                            .liquidGlass(glass, RoundedCornerShape(50), attachLiquid, glassTint),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.height(48.dp),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -7547,13 +7499,7 @@ private fun InputBar(
                         }
                     }
                 } else {
-                    IconButton(
-                        onClick = { attachMenuOpen = true },
-                        modifier = if (glass != null)
-                            Modifier.liquidFeel(attachLiquid)
-                                .liquidGlass(glass, CircleShape, attachLiquid, glassTint)
-                        else Modifier,
-                    ) {
+                    IconButton(onClick = { attachMenuOpen = true }) {
                         Icon(
                             painter = painterResource(R.drawable.ic_attach_file_24dp),
                             contentDescription = stringResource(R.string.attach_file),
@@ -7569,168 +7515,18 @@ private fun InputBar(
 
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = if (glass != null) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHighest,
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
-                    .then(
-                        if (glass != null)
-                            // Grows like a drop: the height follows the lines on a spring, and the
-                            // bounce on every added line is [fieldLiquid.pulse], see below.
-                            Modifier.animateContentSize(spring(dampingRatio = 0.6f, stiffness = 380f))
-                                .liquidGlass(glass, RoundedCornerShape(24.dp), fieldLiquid, glassTint)
-                        else Modifier
-                    ),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
             ) {
-              Box {
-                // Native EditText instead of BasicTextField: autocorrect-revert on some IMEs
-                // (reported: Samsung Keyboard) was landing edits in the wrong place against
-                // Compose's plain-String text field, producing duplicated words. EditText's
-                // Editable/InputConnection is the same mature, decades-tested implementation
-                // every other Android messenger's chat input uses, so IME edit commands
-                // (autocorrect, autocorrect-revert, composing regions) apply correctly.
-                val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
-                val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
-                val hintText =
-                    if (correcting) stringResource(R.string.send_corrected_message)
-                    else conversation?.let { UIHelper.getMessageHint(context, it) }
-                        ?: stringResource(R.string.send_message)
-                // Placeholder text lives here instead of EditText's native hint: the hint shares
-                // the field's own maxLines (6) and wraps to a second line under width pressure —
-                // always a wrapping risk on its own, and it also fought the attach-button shared-
-                // element transition's bounds animation when it happened mid-transition: the row
-                // would grow taller, snap the paperclip out of its animated position with no
-                // transition of its own, then spring back, 2-3 times in a row. Single-line +
-                // ellipsis here means the field's width can never affect its height, tap or not.
-                if (text.isEmpty()) {
-                    Text(
-                        text = hintText,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
-                }
-                AndroidView(
-                    factory = { ctx ->
-                        EditText(ctx).apply {
-                            background = null
-                            setPadding(0, 0, 0, 0)
-                            maxLines = 6
-                            inputType = InputType.TYPE_CLASS_TEXT or
-                                InputType.TYPE_TEXT_FLAG_MULTI_LINE or
-                                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-                            textSize = 16f
-                            // Tells the glass bar how many lines are showing (it bounces when one
-                            // is added, and shrinks the send button as the field grows).
-                            if (glass != null) {
-                                addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-                                    val lines = (v as EditText).lineCount.coerceAtLeast(1)
-                                    if (lines != lineCount.intValue) lineCount.intValue = lines
-                                }
-                            }
-                            var lastText = ""
-                            var programmatic = false
-                            // Index of the space we auto-inserted after a period, if the very
-                            // next keystroke is still pending — lets us tell "typed a real
-                            // sentence" from "typed another dot" (see below).
-                            var autoSpaceIndex: Int? = null
-                            addTextChangedListener(object : TextWatcher {
-                                override fun beforeTextChanged(
-                                    s: CharSequence?, start: Int, count: Int, after: Int,
-                                ) = Unit
-                                override fun onTextChanged(
-                                    s: CharSequence?, start: Int, before: Int, count: Int,
-                                ) = Unit
-                                override fun afterTextChanged(s: Editable?) {
-                                    if (programmatic || s == null) return
-                                    val newText = s.toString()
-                                    // Same "auto-space after a typed period" heuristic as
-                                    // before, but applied directly on the live Editable —
-                                    // afterTextChanged fires after IME composing regions
-                                    // actually settle, so this now fires reliably per
-                                    // keystroke regardless of keyboard/language.
-                                    val typedDot =
-                                        newText.length == lastText.length + 1 &&
-                                            newText == "$lastText."
-                                    if (typedDot) {
-                                        val pendingAutoSpace = autoSpaceIndex
-                                        if (pendingAutoSpace != null &&
-                                            pendingAutoSpace == lastText.length - 1 &&
-                                            lastText.getOrNull(pendingAutoSpace) == ' '
-                                        ) {
-                                            // A dot right after a space we just auto-inserted
-                                            // means the user is typing "...", not a new sentence
-                                            // — collapse the space so the dots stay together.
-                                            programmatic = true
-                                            s.delete(pendingAutoSpace, pendingAutoSpace + 1)
-                                            programmatic = false
-                                            autoSpaceIndex = null
-                                        } else {
-                                            val charBefore = lastText.lastOrNull()
-                                            if (charBefore != null && charBefore.isLetter()) {
-                                                programmatic = true
-                                                s.insert(newText.length, " ")
-                                                programmatic = false
-                                                autoSpaceIndex = newText.length
-                                            } else {
-                                                autoSpaceIndex = null
-                                            }
-                                        }
-                                    } else {
-                                        autoSpaceIndex = null
-                                    }
-                                    lastText = s.toString()
-                                    state.setInput(lastText)
-                                    listener.onInputChanged(lastText)
-                                }
-                            })
-                        }
-                    },
-                    update = { editText ->
-                        editText.setTextColor(onSurfaceColor)
-                        // How full the last line is, for the glass bar's "about to wrap" stretch.
-                        // (The layout is the one from just before this edit; for a soft visual
-                        // effect one keystroke of lag does not matter.)
-                        val textLayout = editText.layout
-                        if (glass != null && textLayout != null && textLayout.lineCount > 0) {
-                            val available =
-                                (editText.width - editText.paddingLeft - editText.paddingRight)
-                                    .coerceAtLeast(1)
-                            val fill =
-                                (textLayout.getLineWidth(textLayout.lineCount - 1) / available)
-                                    .coerceIn(0f, 1f)
-                            if (kotlin.math.abs(fill - lineFill.floatValue) > 0.01f) {
-                                lineFill.floatValue = fill
-                            }
-                        }
-                        if (editText.text?.toString() != text) {
-                            editText.setText(text)
-                            editText.setSelection((editText.text?.length ?: 0))
-                        }
-                        // setTextCursorDrawable exists since API 29 -- below that, the cursor
-                        // just keeps its default drawable/tint instead of the custom color/width.
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                            val cursorWidthPx =
-                                (2 * editText.resources.displayMetrics.density).toInt()
-                            editText.textCursorDrawable = GradientDrawable().apply {
-                                setColor(primaryColor)
-                                setSize(cursorWidthPx, -1)
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
-                        .then(
-                            if (glass != null)
-                                // The text swells a little as a line fills up, then relaxes on
-                                // the spring when it wraps.
-                                Modifier.graphicsLayer {
-                                    scaleX = textStretch
-                                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
-                                }
-                            else Modifier
-                        ),
+                ComposerTextField(
+                    state = state,
+                    listener = listener,
+                    text = text,
+                    hintText =
+                        if (correcting) stringResource(R.string.send_corrected_message)
+                        else conversation?.let { UIHelper.getMessageHint(context, it) }
+                            ?: stringResource(R.string.send_message),
                 )
-              }
             }
 
             // Morphing send button: rounded square at rest, springs to a pill once there
@@ -7759,27 +7555,13 @@ private fun InputBar(
                 colors =
                     IconButtonDefaults.filledIconButtonColors(
                         containerColor =
-                            if (glass != null) Color.Transparent
-                            else if (showMic) MaterialTheme.colorScheme.secondaryContainer
+                            if (showMic) MaterialTheme.colorScheme.secondaryContainer
                             else MaterialTheme.colorScheme.primary,
                         contentColor =
-                            if (showMic && glass != null) MaterialTheme.colorScheme.onSurface
-                            else if (showMic) MaterialTheme.colorScheme.onSecondaryContainer
+                            if (showMic) MaterialTheme.colorScheme.onSecondaryContainer
                             else MaterialTheme.colorScheme.onPrimary,
                     ),
-                modifier = Modifier.size(48.dp).then(
-                    if (glass != null)
-                        // Glass over the list; the send state is tinted with the accent so it
-                        // still reads as the primary action.
-                        Modifier.liquidFeel(sendLiquid).liquidGlass(
-                            glass,
-                            RoundedCornerShape(corner),
-                            sendLiquid,
-                            if (showMic) glassTint
-                            else MaterialTheme.colorScheme.primary.copy(alpha = 0.62f),
-                        )
-                    else Modifier
-                ),
+                modifier = Modifier.size(48.dp),
             ) {
                 // Always the plain round send icon, even when the conversation is encrypted —
                 // OMEMO still applies to the message, only the icon no longer changes for it.
@@ -7878,6 +7660,157 @@ private fun InputBar(
         }
     }
     } // end SharedTransitionLayout
+}
+
+/**
+ * The message field: the placeholder and a native EditText. Shared by the Material bar
+ * ([InputBar]) and the liquid glass one (LiquidInputBar): the container around it is theirs, the
+ * IME-sensitive part below is not copied. [onLayoutInfo], if given, is told how many lines the text
+ * shows and how full its last line is (0..1) whenever either may have changed, for the glass bar's
+ * stretch. [enabled] false stops it taking input (while a voice message is being recorded).
+ */
+@Composable
+internal fun ComposerTextField(
+    state: ConversationScreenState,
+    listener: ConversationScreenListener,
+    text: String,
+    hintText: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onLayoutInfo: ((lines: Int, lastLineFill: Float) -> Unit)? = null,
+) {
+    val currentLayoutInfo by androidx.compose.runtime.rememberUpdatedState(onLayoutInfo)
+    fun reportLayout(editText: EditText) {
+        val callback = currentLayoutInfo ?: return
+        val textLayout = editText.layout ?: return
+        if (textLayout.lineCount == 0) return
+        val available =
+            (editText.width - editText.paddingLeft - editText.paddingRight).coerceAtLeast(1)
+        callback(
+            textLayout.lineCount,
+            (textLayout.getLineWidth(textLayout.lineCount - 1) / available).coerceIn(0f, 1f),
+        )
+    }
+    Box(modifier) {
+        // Native EditText instead of BasicTextField: autocorrect-revert on some IMEs
+        // (reported: Samsung Keyboard) was landing edits in the wrong place against
+        // Compose's plain-String text field, producing duplicated words. EditText's
+        // Editable/InputConnection is the same mature, decades-tested implementation
+        // every other Android messenger's chat input uses, so IME edit commands
+        // (autocorrect, autocorrect-revert, composing regions) apply correctly.
+        val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
+        val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
+        // Placeholder text lives here instead of EditText's native hint: the hint shares
+        // the field's own maxLines (6) and wraps to a second line under width pressure —
+        // always a wrapping risk on its own, and it also fought the attach-button shared-
+        // element transition's bounds animation when it happened mid-transition: the row
+        // would grow taller, snap the paperclip out of its animated position with no
+        // transition of its own, then spring back, 2-3 times in a row. Single-line +
+        // ellipsis here means the field's width can never affect its height, tap or not.
+        if (text.isEmpty()) {
+            Text(
+                text = hintText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+        }
+        AndroidView(
+            factory = { ctx ->
+                EditText(ctx).apply {
+                    background = null
+                    setPadding(0, 0, 0, 0)
+                    maxLines = 6
+                    inputType = InputType.TYPE_CLASS_TEXT or
+                        InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                        InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                    textSize = 16f
+                    // The glass bar wants to know when the number of lines changes.
+                    addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ -> reportLayout(v as EditText) }
+                    var lastText = ""
+                    var programmatic = false
+                    // Index of the space we auto-inserted after a period, if the very
+                    // next keystroke is still pending — lets us tell "typed a real
+                    // sentence" from "typed another dot" (see below).
+                    var autoSpaceIndex: Int? = null
+                    addTextChangedListener(object : TextWatcher {
+                        override fun beforeTextChanged(
+                            s: CharSequence?, start: Int, count: Int, after: Int,
+                        ) = Unit
+                        override fun onTextChanged(
+                            s: CharSequence?, start: Int, before: Int, count: Int,
+                        ) = Unit
+                        override fun afterTextChanged(s: Editable?) {
+                            if (programmatic || s == null) return
+                            val newText = s.toString()
+                            // Same "auto-space after a typed period" heuristic as
+                            // before, but applied directly on the live Editable —
+                            // afterTextChanged fires after IME composing regions
+                            // actually settle, so this now fires reliably per
+                            // keystroke regardless of keyboard/language.
+                            val typedDot =
+                                newText.length == lastText.length + 1 &&
+                                    newText == "$lastText."
+                            if (typedDot) {
+                                val pendingAutoSpace = autoSpaceIndex
+                                if (pendingAutoSpace != null &&
+                                    pendingAutoSpace == lastText.length - 1 &&
+                                    lastText.getOrNull(pendingAutoSpace) == ' '
+                                ) {
+                                    // A dot right after a space we just auto-inserted
+                                    // means the user is typing "...", not a new sentence
+                                    // — collapse the space so the dots stay together.
+                                    programmatic = true
+                                    s.delete(pendingAutoSpace, pendingAutoSpace + 1)
+                                    programmatic = false
+                                    autoSpaceIndex = null
+                                } else {
+                                    val charBefore = lastText.lastOrNull()
+                                    if (charBefore != null && charBefore.isLetter()) {
+                                        programmatic = true
+                                        s.insert(newText.length, " ")
+                                        programmatic = false
+                                        autoSpaceIndex = newText.length
+                                    } else {
+                                        autoSpaceIndex = null
+                                    }
+                                }
+                            } else {
+                                autoSpaceIndex = null
+                            }
+                            lastText = s.toString()
+                            state.setInput(lastText)
+                            listener.onInputChanged(lastText)
+                        }
+                    })
+                }
+            },
+            update = { editText ->
+                editText.isEnabled = enabled
+                editText.setTextColor(onSurfaceColor)
+                if (editText.text?.toString() != text) {
+                    editText.setText(text)
+                    editText.setSelection((editText.text?.length ?: 0))
+                }
+                // setTextCursorDrawable exists since API 29 -- below that, the cursor
+                // just keeps its default drawable/tint instead of the custom color/width.
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    val cursorWidthPx =
+                        (2 * editText.resources.displayMetrics.density).toInt()
+                    editText.textCursorDrawable = GradientDrawable().apply {
+                        setColor(primaryColor)
+                        setSize(cursorWidthPx, -1)
+                    }
+                }
+                // How full the last line is, for the glass bar's stretch. (This is the layout of
+                // the text from just before this edit; one keystroke of lag does not matter.)
+                reportLayout(editText)
+            },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+    }
 }
 
 /** Draws the bar's share of the stretch: a slight bump above this node's top edge, the same color

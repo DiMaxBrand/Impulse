@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -44,6 +45,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
@@ -121,6 +123,9 @@ fun LiquidGlassButton(
     surfaceColor: Color = LiquidGlassDefaults.surfaceColor(),
     chromaticAberration: Boolean = true,
     interactiveHighlight: InteractiveHighlight = rememberInteractiveHighlight(),
+    // Applied after the button's own press/drag transform: lets whatever holds the button push or
+    // squeeze it (the message field pressing on the send button).
+    extraLayerBlock: (GraphicsLayerScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
@@ -133,30 +138,10 @@ fun LiquidGlassButton(
                     blur(2f.dp.toPx())
                     glassLens(12f.dp.toPx(), 24f.dp.toPx(), chromaticAberration)
                 },
-                layerBlock = if (isInteractive) {
+                layerBlock = if (isInteractive || extraLayerBlock != null) {
                     {
-                        val width = size.width
-                        val height = size.height
-
-                        val progress = interactiveHighlight.pressProgress
-                        val scale = lerp(1f, 1f + 4f.dp.toPx() / size.height, progress)
-
-                        val maxOffset = size.minDimension
-                        val initialDerivative = 0.05f
-                        val offset = interactiveHighlight.offset
-                        translationX = maxOffset * tanh(initialDerivative * offset.x / maxOffset)
-                        translationY = maxOffset * tanh(initialDerivative * offset.y / maxOffset)
-
-                        val maxDragScale = 4f.dp.toPx() / size.height
-                        val offsetAngle = atan2(offset.y, offset.x)
-                        scaleX =
-                            scale +
-                                maxDragScale * abs(cos(offsetAngle) * offset.x / size.maxDimension) *
-                                (width / height).fastCoerceAtMost(1f)
-                        scaleY =
-                            scale +
-                                maxDragScale * abs(sin(offsetAngle) * offset.y / size.maxDimension) *
-                                (height / width).fastCoerceAtMost(1f)
+                        if (isInteractive) buttonLayer(interactiveHighlight)
+                        extraLayerBlock?.invoke(this)
                     }
                 } else {
                     null
@@ -185,6 +170,68 @@ fun LiquidGlassButton(
                 }
             ),
         contentAlignment = Alignment.Center,
+        content = content,
+    )
+}
+
+/**
+ * The press and drag transform of a glass button, as the demo does it: a few dp of swell, a move
+ * of only ~5% of the finger's travel squeezed through `tanh`, and a stretch along the drag.
+ */
+private fun GraphicsLayerScope.buttonLayer(interactiveHighlight: InteractiveHighlight) {
+    val width = size.width
+    val height = size.height
+
+    val progress = interactiveHighlight.pressProgress
+    val scale = lerp(1f, 1f + 4f.dp.toPx() / size.height, progress)
+
+    val maxOffset = size.minDimension
+    val initialDerivative = 0.05f
+    val offset = interactiveHighlight.offset
+    translationX = maxOffset * tanh(initialDerivative * offset.x / maxOffset)
+    translationY = maxOffset * tanh(initialDerivative * offset.y / maxOffset)
+
+    val maxDragScale = 4f.dp.toPx() / size.height
+    val offsetAngle = atan2(offset.y, offset.x)
+    scaleX =
+        scale +
+            maxDragScale * abs(cos(offsetAngle) * offset.x / size.maxDimension) *
+            (width / height).fastCoerceAtMost(1f)
+    scaleY =
+        scale +
+            maxDragScale * abs(sin(offsetAngle) * offset.y / size.maxDimension) *
+            (height / width).fastCoerceAtMost(1f)
+}
+
+/**
+ * A glass container that is not a button: the body of the message field, the panels over the
+ * message bar. Same glass as [LiquidGlassButton] (without the press behaviour); [layerBlock] lets the
+ * caller stretch it, [contentAlignment] defaults to the top start because panels whose height
+ * animates reveal their content from the top.
+ */
+@Composable
+fun LiquidGlassPanel(
+    backdrop: Backdrop,
+    modifier: Modifier = Modifier,
+    shape: CornerBasedShape = RoundedCornerShape(24.dp),
+    surfaceColor: Color = LiquidGlassDefaults.surfaceColor(),
+    contentAlignment: Alignment = Alignment.TopStart,
+    layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Box(
+        modifier = modifier.drawBackdrop(
+            backdrop = backdrop,
+            shape = { shape },
+            effects = {
+                vibrancy()
+                blur(4f.dp.toPx())
+                glassLens(12f.dp.toPx(), 24f.dp.toPx())
+            },
+            layerBlock = layerBlock,
+            onDrawSurface = { if (surfaceColor.isSpecified) drawRect(surfaceColor) },
+        ),
+        contentAlignment = contentAlignment,
         content = content,
     )
 }

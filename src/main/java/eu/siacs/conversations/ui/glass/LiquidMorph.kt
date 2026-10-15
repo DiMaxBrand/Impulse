@@ -167,6 +167,11 @@ fun LiquidMenuOverlay(
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
     menuWidth: Dp = 236.dp,
+    // Which edge of the button the panel lines up with, and which way it grows: a button at the
+    // end of a bar at the top opens down and to the left; one at the start of a bar at the bottom
+    // opens up and to the right.
+    alignEnd: Boolean = true,
+    opensUp: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     LaunchedEffect(state.open) {
@@ -192,10 +197,14 @@ fun LiquidMenuOverlay(
                 val width = min(with(density) { menuWidth.roundToPx() }, overlay.width - 2 * margin)
                 val height = heightForWidth(width)
                 val a = state.anchor.translate(-origin)
-                // Right edge on the button's right edge (the buttons that open menus sit at the end
-                // of a bar), kept on screen.
-                val left = (a.right - width).coerceIn(margin.toFloat(), (overlay.width - width - margin).toFloat())
-                val top = a.top.coerceIn(margin.toFloat(), (overlay.height - height - margin).toFloat().coerceAtLeast(margin.toFloat()))
+                // Lined up with the button's edge, grown the way [opensUp] says, kept on screen.
+                val wanted = if (alignEnd) a.right - width else a.left
+                val left = wanted.coerceIn(margin.toFloat(), (overlay.width - width - margin).toFloat())
+                val wantedTop = if (opensUp) a.bottom - height else a.top
+                val top = wantedTop.coerceIn(
+                    margin.toFloat(),
+                    (overlay.height - height - margin).toFloat().coerceAtLeast(margin.toFloat()),
+                )
                 Rect(left, top, left + width, top + height)
             },
             backdrop = backdrop,
