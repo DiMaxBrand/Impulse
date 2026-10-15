@@ -2,24 +2,19 @@ package eu.siacs.conversations.ui.activity
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,7 +23,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +33,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +40,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -63,21 +55,20 @@ import eu.siacs.conversations.R
 import eu.siacs.conversations.ui.ActionBarActivity
 import eu.siacs.conversations.ui.ImpulseExpressiveTheme
 import eu.siacs.conversations.ui.LiquidGlass
-import eu.siacs.conversations.ui.LiquidGlassSurface
-import eu.siacs.conversations.ui.glassTint
-import eu.siacs.conversations.ui.liquidFeel
-import eu.siacs.conversations.ui.liquidTouch
-import eu.siacs.conversations.ui.rememberLiquidState
+import eu.siacs.conversations.ui.glass.LiquidBottomTab
+import eu.siacs.conversations.ui.glass.LiquidBottomTabs
+import eu.siacs.conversations.ui.glass.LiquidGlassButton
+import eu.siacs.conversations.ui.glass.LiquidSlider
+import eu.siacs.conversations.ui.glass.LiquidToggle
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlinx.coroutines.launch
 
 /**
  * Developer-options screen for the liquid glass experiment: a colourful, slowly moving page and,
- * over it, the pieces the experiment uses -- glass buttons, a lens you can drag anywhere, and a
- * bottom tab bar whose indicator springs between the tabs (or can be dragged). The tab bar is only
- * here for now; it is not part of any real screen.
+ * over it, the pieces of the Backdrop library's own demo -- buttons that light up under the finger,
+ * a toggle, a slider, a bottom tab bar whose bubble can be dragged -- plus a lens to drag anywhere.
+ * The tab bar is only here for now; it is not part of any real screen.
  */
 class LiquidGlassPlaygroundActivity : ActionBarActivity() {
 
@@ -107,32 +98,31 @@ private fun Playground(onBack: () -> Unit) {
     // Everything behind the glass is recorded here; the glass is drawn on top and shows it.
     val backdrop = rememberLayerBackdrop()
     var taps by remember { mutableIntStateOf(0) }
+    var toggled by remember { mutableStateOf(true) }
+    var slider by remember { mutableFloatStateOf(0.4f) }
+    var tab by remember { mutableIntStateOf(0) }
 
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) { PlaygroundPage() }
 
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            // Top: a back bubble and a title bubble.
+            // Top: a back bubble and a title pill.
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val backState = rememberLiquidState()
-                LiquidGlassSurface(
+                LiquidGlassButton(
+                    onClick = onBack,
                     backdrop = backdrop,
-                    shape = CircleShape,
-                    state = backState,
-                    modifier = Modifier.size(52.dp).liquidTouch(backState, onBack),
+                    modifier = Modifier.size(52.dp),
                 ) {
                     Icon(painterResource(R.drawable.ic_arrow_back_24dp), contentDescription = null)
                 }
-                val titleState = rememberLiquidState()
-                LiquidGlassSurface(
+                LiquidGlassButton(
+                    onClick = { taps++ },
                     backdrop = backdrop,
-                    shape = CircleShape,
-                    state = titleState,
-                    modifier = Modifier.weight(1f).height(52.dp).liquidTouch(titleState) { taps++ },
+                    modifier = Modifier.weight(1f).height(52.dp),
                 ) {
                     Text(
                         stringResource(R.string.liquid_playground_title),
@@ -149,9 +139,9 @@ private fun Playground(onBack: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
             )
 
-            // Middle: four round buttons that stretch when pressed or dragged.
+            // Four round buttons: press and hold to see the light, drag to see how stiff it is.
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 for (icon in listOf(
@@ -160,12 +150,10 @@ private fun Playground(onBack: () -> Unit) {
                     R.drawable.ic_contacts_24dp,
                     R.drawable.ic_settings_24dp,
                 )) {
-                    val state = rememberLiquidState()
-                    LiquidGlassSurface(
+                    LiquidGlassButton(
+                        onClick = { taps++ },
                         backdrop = backdrop,
-                        shape = CircleShape,
-                        state = state,
-                        modifier = Modifier.size(60.dp).liquidTouch(state) { taps++ },
+                        modifier = Modifier.size(60.dp),
                     ) {
                         Icon(painterResource(icon), contentDescription = null)
                     }
@@ -177,11 +165,65 @@ private fun Playground(onBack: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
 
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.liquid_playground_toggle),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                LiquidToggle(
+                    selected = { toggled },
+                    onSelect = { toggled = it },
+                    backdrop = backdrop,
+                )
+            }
+
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)) {
+                Text(
+                    stringResource(R.string.liquid_playground_slider, (slider * 100).roundToInt()),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                LiquidSlider(
+                    value = { slider },
+                    onValueChange = { slider = it },
+                    valueRange = 0f..1f,
+                    visibilityThreshold = 0.001f,
+                    backdrop = backdrop,
+                    modifier = Modifier.padding(vertical = 12.dp),
+                )
+            }
+
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 DraggableLens(backdrop)
             }
 
-            GlassTabBar(backdrop, Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+            val tabs = listOf(
+                R.drawable.ic_chat_24dp to R.string.liquid_tab_chats,
+                R.drawable.ic_call_24dp to R.string.liquid_tab_calls,
+                R.drawable.ic_contacts_24dp to R.string.liquid_tab_contacts,
+                R.drawable.ic_settings_24dp to R.string.liquid_tab_settings,
+            )
+            LiquidBottomTabs(
+                selectedTabIndex = { tab },
+                onTabSelected = { tab = it },
+                backdrop = backdrop,
+                tabsCount = tabs.size,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                tabs.forEachIndexed { index, (icon, label) ->
+                    LiquidBottomTab({ tab = index }) {
+                        Icon(
+                            painterResource(icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Text(stringResource(label), style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
         }
     }
 }
@@ -231,21 +273,18 @@ private fun PlaygroundPage() {
     }
 }
 
-/** A glass circle that follows the finger around the page, stretching as it goes. */
+/** A big glass circle that follows the finger around the page. */
 @Composable
 private fun DraggableLens(backdrop: Backdrop) {
     val density = LocalDensity.current
     var offset by remember { mutableStateOf(with(density) { Offset(110.dp.toPx(), 40.dp.toPx()) }) }
-    val state = rememberLiquidState()
-    LiquidGlassSurface(
+    LiquidGlassButton(
+        onClick = {},
         backdrop = backdrop,
         shape = CircleShape,
-        state = state,
-        tint = glassTint(),
         modifier = Modifier
             .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
             .size(150.dp)
-            .liquidFeel(state)
             .pointerInput(Unit) {
                 detectDragGestures { change, drag ->
                     change.consume()
@@ -258,102 +297,5 @@ private fun DraggableLens(backdrop: Backdrop) {
             style = MaterialTheme.typography.labelLarge,
             textAlign = TextAlign.Center,
         )
-    }
-}
-
-/**
- * Four tabs on a glass bar. The selected one is marked by a second, smaller piece of glass that
- * springs to the tapped tab and jiggles when it arrives; it can also be grabbed and dragged along
- * the bar, and snaps to the nearest tab when let go.
- */
-@Composable
-private fun GlassTabBar(backdrop: Backdrop, modifier: Modifier = Modifier) {
-    val tabs = listOf(
-        R.drawable.ic_chat_24dp to R.string.liquid_tab_chats,
-        R.drawable.ic_call_24dp to R.string.liquid_tab_calls,
-        R.drawable.ic_contacts_24dp to R.string.liquid_tab_contacts,
-        R.drawable.ic_settings_24dp to R.string.liquid_tab_settings,
-    )
-    val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
-    val barState = rememberLiquidState()
-    val indicatorState = rememberLiquidState()
-    val position = remember { Animatable(0f) } // left edge of the indicator inside the bar, px
-    var selected by remember { mutableIntStateOf(0) }
-    var tabWidthPx by remember { mutableFloatStateOf(0f) }
-    val inset = with(density) { 6.dp.toPx() }
-    val barHeight = 72.dp
-
-    fun select(index: Int) {
-        val target = index.coerceIn(0, tabs.lastIndex)
-        if (target != selected) indicatorState.pulse(x = 0.12f, y = -0.04f)
-        selected = target
-        scope.launch { position.animateTo(target * tabWidthPx, spring(dampingRatio = 0.55f, stiffness = 320f)) }
-    }
-
-    Box(
-        modifier = modifier.fillMaxWidth().height(barHeight)
-            .onSizeChanged { tabWidthPx = (it.width - 2 * inset) / tabs.size },
-    ) {
-        LiquidGlassSurface(
-            backdrop = backdrop,
-            shape = CircleShape,
-            state = barState,
-            modifier = Modifier.fillMaxSize(),
-        ) {}
-
-        val tabWidth = with(density) { tabWidthPx.toDp() }
-        LiquidGlassSurface(
-            backdrop = backdrop,
-            shape = CircleShape,
-            state = indicatorState,
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f),
-            modifier = Modifier
-                .offset { IntOffset((inset + position.value).roundToInt(), inset.roundToInt()) }
-                .width(tabWidth)
-                .height(barHeight - 12.dp),
-        ) {}
-
-        Row(
-            Modifier.fillMaxSize()
-                .padding(horizontal = with(density) { inset.toDp() })
-                .pointerInput(tabWidthPx) {
-                    detectTapGestures { tap -> select((tap.x / tabWidthPx).toInt()) }
-                }
-                .pointerInput(tabWidthPx) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { indicatorState.setPressed(true) },
-                        onDragEnd = {
-                            indicatorState.setPressed(false)
-                            select((position.value / tabWidthPx).roundToInt())
-                        },
-                        onDragCancel = {
-                            indicatorState.setPressed(false)
-                            select(selected)
-                        },
-                        onHorizontalDrag = { change, dx ->
-                            change.consume()
-                            scope.launch {
-                                position.snapTo((position.value + dx).coerceIn(0f, tabWidthPx * tabs.lastIndex))
-                            }
-                        },
-                    )
-                },
-        ) {
-            tabs.forEachIndexed { index, (icon, label) ->
-                Column(
-                    Modifier.weight(1f).fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    val color =
-                        if (index == selected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.height(2.dp))
-                    Text(stringResource(label), style = MaterialTheme.typography.labelSmall, color = color)
-                }
-            }
-        }
     }
 }

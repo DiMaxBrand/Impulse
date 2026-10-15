@@ -1424,6 +1424,8 @@
     <string name="liquid_playground_hint">Press, drag and let go: everything stretches and springs back.</string>
     <string name="liquid_playground_taps">Taps: %1$d</string>
     <string name="liquid_playground_drag_me">Drag me</string>
+    <string name="liquid_playground_toggle">A toggle</string>
+    <string name="liquid_playground_slider">A slider: %1$d%%</string>
     <string name="liquid_playground_unsupported">Liquid glass needs Android 13 or newer.</string>
     <string name="liquid_tab_chats">Chats</string>
     <string name="liquid_tab_calls">Calls</string>

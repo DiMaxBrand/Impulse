@@ -30,15 +30,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import eu.siacs.conversations.R
+import eu.siacs.conversations.ui.glass.LiquidGlassButton
 
 /** Height of [LiquidTopRow] including its padding: the list leaves this much room above its first row. */
 val LiquidTopRowHeight = 68.dp
 
 /**
  * The chat list's top row in the liquid glass experiment: the search field, the QR button and your
- * picture are three separate glass bubbles side by side, each one stretching under the finger and
- * springing back. The picture does not fill its bubble; a rim of glass is left showing around it.
- * [onSearch] opens the same expanded search as the ordinary bar.
+ * picture are three separate glass bubbles side by side. Each lights up under the finger and gives
+ * a little to a drag, like the buttons of the library's demo ([LiquidGlassButton]). The picture does
+ * not fill its bubble; a rim of glass is left showing around it. [onSearch] opens the same expanded
+ * search as the ordinary bar.
  */
 @Composable
 fun LiquidTopRow(
@@ -56,12 +58,10 @@ fun LiquidTopRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val searchState = rememberLiquidState()
-        LiquidGlassSurface(
+        LiquidGlassButton(
+            onClick = onSearch,
             backdrop = backdrop,
-            shape = CircleShape,
-            state = searchState,
-            modifier = Modifier.weight(1f).height(52.dp).liquidTouch(searchState, onSearch),
+            modifier = Modifier.weight(1f).height(52.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
@@ -85,13 +85,11 @@ fun LiquidTopRow(
 
         if (anyQr) {
             var qrOpen by remember { mutableStateOf(false) }
-            val qrState = rememberLiquidState()
             Box {
-                LiquidGlassSurface(
+                LiquidGlassButton(
+                    onClick = { qrOpen = true },
                     backdrop = backdrop,
-                    shape = CircleShape,
-                    state = qrState,
-                    modifier = Modifier.size(52.dp).liquidTouch(qrState) { qrOpen = true },
+                    modifier = Modifier.size(52.dp),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_qr_code_scanner_24dp),
@@ -113,12 +111,10 @@ fun LiquidTopRow(
             }
         }
 
-        val avatarState = rememberLiquidState()
-        LiquidGlassSurface(
+        LiquidGlassButton(
+            onClick = actions.onManageAccount,
             backdrop = backdrop,
-            shape = CircleShape,
-            state = avatarState,
-            modifier = Modifier.size(52.dp).liquidTouch(avatarState, actions.onManageAccount),
+            modifier = Modifier.size(52.dp),
         ) {
             // Smaller than the bubble: the glass rim around the picture stays visible.
             val avatar = host.avatar

@@ -1,5 +1,29 @@
 # Impulse — To-Do
 
+## Liquid glass — where it is going (decided after testing beta.171)
+
+- **Graduation**: later the `LIQUID_GLASS` flag becomes an option on the Appearance screen, "enable
+  liquid glass". It is *not* a rendering-engine switch (Material vs glass): it turns glass on for
+  the parts that have a glass version, and the rest of the app stays Material.
+- **Two branches, not a layer on top**: with the option off, screens render exactly as before; with it
+  on, the glass version is its own from-scratch composable (no Material surface under it). beta.171
+  put glass on top of the Material bar and it showed: a clipped rectangular shadow (the Material
+  `Surface` clips its content), the old send-button shape under the glass, bubbles clipped to their
+  bounds. Glass pieces must never sit inside a clipping parent.
+- **Mechanics come from the Backdrop demo app** (`catalog/components`: LiquidButton, LiquidToggle,
+  LiquidSlider, LiquidBottomTabs, `InteractiveHighlight`, `DampedDragAnimation`), ported in
+  `ui/glass/`: press glow, ~5% follow with a `tanh` curve, stretch along the drag, velocity squash,
+  chromatic aberration. beta.172 did the core + playground + chat-list top row.
+- **Plan, shipped in parts**: (1) core + playground + top row; (2) the glass search pill morphs into
+  the expanded search, and a generic "button morphs into a menu" (Apple-style) used for QR, the
+  paperclip and the three dots; (3) chat message bar from scratch (separate bubbles, attach menu,
+  voice-recording mode with discard / timer / pause / send, the field stretches and pushes the send
+  bubble instead of the text stretching); (4) chat top bar as separate bubbles (back, name pill, call,
+  video, three-dots menu) and the birthday card with a glass tint.
+- **Known bug to chase in (3)**: with the glass bar, a line wrap in the field pushed the bar below the
+  keyboard until the keyboard was reopened. Not understood yet; rebuilding the bar without the
+  clipping `Surface`, the layer on the EditText and `animateContentSize` is the first thing to try.
+
 ## Liquid glass — experiment behind a flag (beta.171, branch unified-compose-search)
 
 `FeatureFlag.LIQUID_GLASS`, default off, Android 13+ only (the refraction is an AGSL shader; below
