@@ -28,6 +28,7 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.util.fastCoerceIn
@@ -62,7 +63,6 @@ suspend fun PointerInputScope.inspectDragGestures(
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
         onDragStart(down)
-        var last = down.position
         while (true) {
             val event = awaitPointerEvent(PointerEventPass.Initial)
             val change = event.changes.firstOrNull { it.id == down.id }
@@ -78,8 +78,11 @@ suspend fun PointerInputScope.inspectDragGestures(
                 onDragCancel()
                 return@awaitEachGesture
             }
-            val delta = change.position - last
-            last = change.position
+            // The finger's own movement. NOT "position minus the last position": a position is
+            // measured inside the element, and a thumb or bubble that follows the finger moves
+            // under it, so that difference shrinks to nothing as the element catches up. That made
+            // the slider, the toggle and the tab bar fight the drag and stop short of the end.
+            val delta = change.positionChange()
             if (delta != Offset.Zero) onDrag(change, delta)
         }
     }
