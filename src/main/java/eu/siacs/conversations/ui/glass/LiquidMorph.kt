@@ -117,7 +117,7 @@ fun LiquidMorphContainer(
     style: LiquidGlassStyle = LiquidGlassStyle.Menu,
     cornerFrom: Dp = 26.dp,
     cornerTo: Dp = 28.dp,
-    surfaceAlphaFrom: Float = 0.28f,
+    surfaceAlphaFrom: Float = 0f,
     glassUntil: Float = Float.POSITIVE_INFINITY,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -140,7 +140,7 @@ fun LiquidMorphContainer(
                         effects = {
                             if ((progressX() + progressY()) / 2f <= glassUntil) {
                                 if (style.vibrancy) vibrancy()
-                                blur(style.blur.toPx())
+                                if (style.blur > 0.dp) blur(style.blur.toPx())
                                 glassLens(
                                     style.lensHeight.toPx(),
                                     style.lensAmount.toPx(),

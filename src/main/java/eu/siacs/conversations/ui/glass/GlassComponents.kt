@@ -97,7 +97,7 @@ import kotlinx.coroutines.launch
 object LiquidGlassDefaults {
     /** The faint body of a glass piece, so it stays readable over very plain backgrounds. */
     @Composable
-    fun surfaceColor(): Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.28f)
+    fun surfaceColor(): Color = Color.Transparent
 
     /** The groove behind a toggle or slider. */
     @Composable
@@ -143,7 +143,7 @@ fun LiquidGlassButton(
                     // Too fast to see the glass anyway while the list flies past: skip the effects.
                     if (!GlassPerformance.lite) {
                         if (style.vibrancy) vibrancy()
-                        blur(style.blur.toPx())
+                        if (style.blur > 0.dp) blur(style.blur.toPx())
                         glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
                     }
                 },
@@ -253,7 +253,7 @@ fun LiquidGlassPanel(
                     effects = {
                         if (!GlassPerformance.lite) {
                             if (style.vibrancy) vibrancy()
-                            blur(style.blur.toPx())
+                            if (style.blur > 0.dp) blur(style.blur.toPx())
                             glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
                         }
                     },

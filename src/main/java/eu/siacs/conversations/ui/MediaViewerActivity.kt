@@ -753,7 +753,7 @@ private fun MediaViewerScreen(
                         onOpenExternally(currentMessage)
                     },
                     glass = glassStack,
-                    surfaceColor = Color.White.copy(alpha = 0.14f),
+                    surfaceColor = Color.Transparent,
                     modifier = Modifier.size(78.dp),
                 ) {
                     Icon(

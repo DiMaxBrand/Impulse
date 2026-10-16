@@ -5293,7 +5293,7 @@ private fun MediaThumbnailBubble(
                 LiquidGlassPanel(
                     glass = thumbStack,
                     shape = androidx.compose.foundation.shape.CircleShape,
-                    surfaceColor = Color.White.copy(alpha = 0.14f),
+                    surfaceColor = Color.Transparent,
                     style = LiquidGlassStyle.Button,
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.size(56.dp),
