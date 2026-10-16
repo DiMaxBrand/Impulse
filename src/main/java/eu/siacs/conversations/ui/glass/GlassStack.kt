@@ -83,8 +83,8 @@ internal fun GlassStack.rememberSlot(): GlassSlot {
 
 /**
  * How one glass piece looks. The options are the ones the library offers per piece, so a menu can
- * differ from a button without any of the code differing. By default there is no blur and no
- * tint at all: the glass is clear and only bends the light, not a frosted pane:
+ * differ from a button without any of the code differing. The glass is only the backdrop (blurred
+ * and bent); there is no tint layer over it by default:
  *
  *  - [blur]: how much the screen behind is blurred.
  *  - [surfaceAlpha]: the opacity of the surface colour laid over the glass. More opacity, and the
@@ -95,7 +95,7 @@ internal fun GlassStack.rememberSlot(): GlassSlot {
  */
 @Immutable
 data class LiquidGlassStyle(
-    val blur: Dp = 0.dp,
+    val blur: Dp = 2.dp,
     val surfaceAlpha: Float = 0f,
     val lensHeight: Dp = 12.dp,
     val lensAmount: Dp = 24.dp,
@@ -107,10 +107,11 @@ data class LiquidGlassStyle(
         val Button = LiquidGlassStyle()
 
         /** Panels that hold content (a text field, a banner): calmer. */
-        val Panel = LiquidGlassStyle(chromaticAberration = false)
+        val Panel = LiquidGlassStyle(blur = 4.dp, chromaticAberration = false)
 
-        /** Menus: a larger, stronger lens; like every glass piece no frosting (blur or tint). */
+        /** Menus: a blurrier backdrop and a larger, stronger lens; no tint over it. */
         val Menu = LiquidGlassStyle(
+            blur = 14.dp,
             lensHeight = 16.dp,
             lensAmount = 32.dp,
         )
