@@ -4,6 +4,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -161,20 +162,22 @@ fun LiquidTopBar(
                 }
             }
             // The three dots: where the menu grows out of (see LiquidChatMenuOverlay).
-            LiquidGlassButton(
-                onClick = { menu.open = true },
-                glass = backdrop,
-                modifier = Modifier.size(BubbleSize)
-                    .liquidMenuAnchor(menu)
-                    .liquidMenuPull(menu)
-                    .graphicsLayer { alpha = menu.anchorAlpha },
-            ) {
+            val dots: @Composable BoxScope.() -> Unit = {
                 Icon(
                     painter = painterResource(R.drawable.ic_more_horiz_24dp),
                     contentDescription = stringResource(R.string.more_options),
                     tint = colors.onSurface,
                 )
             }
+            LiquidGlassButton(
+                onClick = { menu.open = true },
+                glass = backdrop,
+                modifier = Modifier.size(BubbleSize)
+                    .liquidMenuAnchor(menu, dots)
+                    .liquidMenuPull(menu)
+                    .graphicsLayer { alpha = menu.anchorAlpha },
+                content = dots,
+            )
         }
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -119,6 +120,8 @@ fun LiquidMorphContainer(
     cornerTo: Dp = 28.dp,
     surfaceAlphaFrom: Float = 0f,
     glassUntil: Float = Float.POSITIVE_INFINITY,
+    // A rubber-banded nudge of the whole container toward a finger that pulls it (px).
+    shift: () -> Offset = { Offset.Zero },
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -170,8 +173,9 @@ fun LiquidMorphContainer(
         val squashH = if (px > 1f) 1f - 0.35f * (px - 1f) else 1f
         val w = (lerp(a.width, b.width, px) * squashW).roundToInt().coerceAtLeast(1)
         val h = (lerp(a.height, b.height, py) * squashH).roundToInt().coerceAtLeast(1)
-        val x = lerp(a.left, b.left, px).roundToInt()
-        val y = lerp(a.top, b.top, py).roundToInt()
+        val nudge = shift()
+        val x = (lerp(a.left, b.left, px) + nudge.x).roundToInt()
+        val y = (lerp(a.top, b.top, py) + nudge.y).roundToInt()
         val placeable = glassBox.measure(Constraints.fixed(w, h))
         layout(overlay.width, overlay.height) { placeable.place(x, y) }
     }
@@ -191,11 +195,20 @@ class LiquidMenuState {
     val progressX = Animatable(0f, 0.001f)
     val progressY = Animatable(0f, 0.001f)
 
+    /** How far the whole menu is nudged toward a finger that pulls it (px), springing back on release. */
+    val shiftX = Animatable(0f)
+    val shiftY = Animatable(0f)
+
+    /** The button's icon, drawn inside the menu too while it is still mostly the button. */
+    internal var anchorContent: (@Composable BoxScope.() -> Unit)? = null
+
     /** The two together: for the things that follow the morph as a whole (fades, corners). */
     val progress: Float get() = (progressX.value + progressY.value) / 2f
 
     /** For the button itself: it fades away as its bubble becomes the menu, and back when it closes. */
-    val anchorAlpha: Float get() = 1f - (progress * 4f).coerceIn(0f, 1f)
+    // The real button is gone the moment the menu is its own bubble: the menu draws the button's
+    // look (and icon) itself while it is small, so there is one glass piece, not two.
+    val anchorAlpha: Float get() = if (open || progress > 0.001f) 0f else 1f
 
     // Set by the overlay: which way the panel opens, so a pull on the button (or on the panel) knows
     // which direction counts, and how big the open panel is.
@@ -219,6 +232,9 @@ class LiquidMenuState {
 
     /** Springs to the open or closed state from wherever the progress is. */
     internal suspend fun settle() = coroutineScope {
+        // Whatever the finger nudged springs back, like a gel that is let go of.
+        launch { shiftX.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 320f)) }
+        launch { shiftY.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 320f)) }
         if (open) {
             // Opening: the width goes first and fast; the height follows a beat later, slower, and
             // swings further. The two never arrive together.
@@ -237,9 +253,11 @@ class LiquidMenuState {
         }
     }
 
-    internal suspend fun drag(x: Float, y: Float) {
+    internal suspend fun drag(x: Float, y: Float, shift: Offset = Offset.Zero) {
         progressX.snapTo(x)
         progressY.snapTo(y)
+        shiftX.snapTo(shift.x)
+        shiftY.snapTo(shift.y)
     }
 
     /** How far [offset] goes horizontally in the direction the menu grows (negative: the other way). */
@@ -254,8 +272,14 @@ class LiquidMenuState {
 fun rememberLiquidMenuState(): LiquidMenuState = remember { LiquidMenuState() }
 
 /** Marks the button that opens the menu, so the menu knows where to grow from. */
-fun Modifier.liquidMenuAnchor(state: LiquidMenuState): Modifier =
-    onGloballyPositioned { state.anchor = it.boundsInWindow() }
+fun Modifier.liquidMenuAnchor(
+    state: LiquidMenuState,
+    // What the button shows (its icon), so the menu can show the same while it grows out of it.
+    icon: (@Composable BoxScope.() -> Unit)? = null,
+): Modifier {
+    if (icon != null) state.anchorContent = icon
+    return onGloballyPositioned { state.anchor = it.boundsInWindow() }
+}
 
 /**
  * Pulling the (closed) button the way the menu opens: the menu starts to show, growing with the
@@ -280,7 +304,10 @@ fun Modifier.liquidMenuPull(state: LiquidMenuState): Modifier {
                 // A pull along one axis still widens the other a little, or it would only be a sliver.
                 val px = max(px0, 0.3f * py)
                 val pyy = max(py, 0.3f * px0)
-                scope.launch { state.drag(px, pyy) }
+                // The whole button also follows the finger a little, with a rubber band.
+                val cap = 18.dp.toPx()
+                val nudge = Offset(cap * tanh(total.x / (cap * 3f)), cap * tanh(total.y / (cap * 3f)))
+                scope.launch { state.drag(px, pyy, nudge) }
             },
             onDragEnd = { state.releaseTo(state.progress > 0.22f) },
             onDragCancel = { state.releaseTo(false) },
@@ -358,26 +385,66 @@ fun LiquidMenuOverlay(
             },
             glass = glass,
             style = style,
+            shift = { Offset(state.shiftX.value, state.shiftY.value) },
         ) {
             val reach = with(density) { 120.dp.toPx() }
             val menuWidthPx = with(density) { menuWidth.toPx() }
             var total = Offset.Zero
+            // Where on the panel the finger went down, 0 at the button's corner, 1 at the far one.
+            var touch = Offset(0.5f, 0.5f)
+            val cap = with(density) { 40.dp.toPx() }
+            // The button's own look while the menu is still mostly the button: its icon, in the corner
+            // the menu grows from, fading as the items come in.
+            val icon = state.anchorContent
+            if (icon != null) {
+                val aw = with(density) { state.anchor.width.toDp() }
+                val ah = with(density) { state.anchor.height.toDp() }
+                Box(
+                    Modifier
+                        .align(
+                            when {
+                                alignEnd && opensUp -> Alignment.BottomEnd
+                                alignEnd -> Alignment.TopEnd
+                                opensUp -> Alignment.BottomStart
+                                else -> Alignment.TopStart
+                            }
+                        )
+                        .requiredSize(aw, ah)
+                        .graphicsLayer { alpha = (1f - state.progress * 5f).coerceIn(0f, 1f) },
+                    contentAlignment = Alignment.Center,
+                    content = icon,
+                )
+            }
             Column(
                 Modifier
                     .requiredWidth(menuWidth)
                     // Pulling the open panel. (Not when it scrolls: then the scroll has the drag.)
                     .pointerInput(state) {
                         detectDragGestures(
-                            onDragStart = { total = Offset.Zero },
+                            onDragStart = { at ->
+                                total = Offset.Zero
+                                val fx = (at.x / menuWidthPx).coerceIn(0f, 1f)
+                                val fy = (at.y / state.panelHeightPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                                touch = Offset(if (alignEnd) 1f - fx else fx, if (opensUp) 1f - fy else fy)
+                            },
                             onDrag = { change, drag ->
                                 change.consume()
                                 total += drag
                                 // Each axis on its own: toward the button squeezes it that way (all the
                                 // way if need be), away stretches it up to ~16% past the open size, hard
                                 // to pull. A diagonal drag does both at once.
-                                val px = axisProgress(state.pullAlongX(total), -1f, menuWidthPx, reach)
-                                val py = axisProgress(state.pullAlongY(total), -1f, state.panelHeightPx, reach)
-                                scope.launch { state.drag(px, py) }
+                                // The grip decides how it moves: held near the far corner, that corner
+                                // follows the finger and the button's corner hardly moves; held near
+                                // the button's corner, the whole menu is dragged along and changes
+                                // size less.
+                                val gx = 0.6f + 0.4f * touch.x
+                                val gy = 0.6f + 0.4f * touch.y
+                                val px = axisProgress(state.pullAlongX(total) * gx, -1f, menuWidthPx, reach)
+                                val py = axisProgress(state.pullAlongY(total) * gy, -1f, state.panelHeightPx, reach)
+                                val wx = 0.1f + 0.3f * (1f - touch.x)
+                                val wy = 0.1f + 0.3f * (1f - touch.y)
+                                val nudge = Offset(wx * cap * tanh(total.x / cap), wy * cap * tanh(total.y / cap))
+                                scope.launch { state.drag(px, py, nudge) }
                             },
                             onDragEnd = { state.releaseTo(state.progress > 0.55f) },
                             onDragCancel = { state.releaseTo(true) },

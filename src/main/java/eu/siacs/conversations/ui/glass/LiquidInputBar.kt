@@ -317,7 +317,13 @@ private fun AttachOrDiscardBubble(
         onClick = onClick,
         glass = backdrop,
         modifier = Modifier.size(BubbleSize)
-            .liquidMenuAnchor(attachMenu)
+            .liquidMenuAnchor(attachMenu) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_attach_file_24dp),
+                    contentDescription = null,
+                    tint = colors.onSurface,
+                )
+            }
             // Pulling the paperclip is for the menu only; while recording it is the discard button.
             .then(if (rec.value < 0.01f) Modifier.liquidMenuPull(attachMenu) else Modifier)
             .graphicsLayer { alpha = attachMenu.anchorAlpha },

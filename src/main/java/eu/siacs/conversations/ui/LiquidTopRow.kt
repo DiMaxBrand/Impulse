@@ -2,6 +2,7 @@ package eu.siacs.conversations.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -96,20 +97,22 @@ fun LiquidTopRow(
         // The QR bubble grows into its menu (drawn by the host, see LiquidMenuOverlay): this
         // button is only where it starts, and fades while the menu is its own bubble.
         if (anyQr) {
-            LiquidGlassButton(
-                onClick = { qrMenu.open = true },
-                glass = glass,
-                modifier = Modifier.size(52.dp)
-                    .liquidMenuAnchor(qrMenu)
-                    .liquidMenuPull(qrMenu)
-                    .graphicsLayer { alpha = qrMenu.anchorAlpha * (1f - searchProgress()) },
-            ) {
+            val qrIcon: @Composable BoxScope.() -> Unit = {
                 Icon(
                     painter = painterResource(R.drawable.ic_qr_code_scanner_24dp),
                     contentDescription = stringResource(R.string.qr_code_actions),
                     tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
+            LiquidGlassButton(
+                onClick = { qrMenu.open = true },
+                glass = glass,
+                modifier = Modifier.size(52.dp)
+                    .liquidMenuAnchor(qrMenu, qrIcon)
+                    .liquidMenuPull(qrMenu)
+                    .graphicsLayer { alpha = qrMenu.anchorAlpha * (1f - searchProgress()) },
+                content = qrIcon,
+            )
         }
 
         LiquidGlassButton(

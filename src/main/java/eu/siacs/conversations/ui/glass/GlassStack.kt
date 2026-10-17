@@ -111,7 +111,7 @@ data class LiquidGlassStyle(
 
         /** Menus: a blurrier backdrop and a larger, stronger lens; no tint over it. */
         val Menu = LiquidGlassStyle(
-            blur = 14.dp,
+            blur = 8.dp,
             lensHeight = 16.dp,
             lensAmount = 32.dp,
         )
