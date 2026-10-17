@@ -20,6 +20,8 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.RepeatMode
@@ -872,13 +874,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 enter = EnterTransition.None,
                 exit = ExitTransition.None,
             ) {
-                PinnedBanner(
-                    pinnedMessages = pinned,
-                    onDismiss = { state.pinnedBannerVisible.value = false },
-                    onUnpin = { listener.onUnpinMessage(it) },
-                    onScrollTo = { listener.onScrollToMessage(it) },
-                    onLongPress = { state.showPinnedMessagesOverlay.value = true },
-                    modifier = Modifier.sharedBounds(
+                val bannerShared = Modifier.sharedBounds(
                         rememberSharedContentState("pinned_card"),
                         animatedVisibilityScope = this@AnimatedVisibility,
                         enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
@@ -887,8 +883,27 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                             spring(stiffness = 380f, dampingRatio = 0.8f)
                         },
                         resizeMode = androidx.compose.animation.SharedTransitionScope.ResizeMode.RemeasureToBounds,
-                    ),
-                )
+                    )
+                if (glass) {
+                    LiquidPinnedBanner(
+                        pinnedMessages = pinned,
+                        glass = glassStack,
+                        onDismiss = { state.pinnedBannerVisible.value = false },
+                        onUnpin = { listener.onUnpinMessage(it) },
+                        onScrollTo = { listener.onScrollToMessage(it) },
+                        onOpenAll = { state.showPinnedMessagesOverlay.value = true },
+                        modifier = bannerShared,
+                    )
+                } else {
+                    PinnedBanner(
+                        pinnedMessages = pinned,
+                        onDismiss = { state.pinnedBannerVisible.value = false },
+                        onUnpin = { listener.onUnpinMessage(it) },
+                        onScrollTo = { listener.onScrollToMessage(it) },
+                        onLongPress = { state.showPinnedMessagesOverlay.value = true },
+                        modifier = bannerShared,
+                    )
+                }
             }
         }
         // The message list, the same in both layouts: it is told how much room to leave at the top and
@@ -1306,6 +1321,118 @@ private fun PinnedBanner(
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp),
                 )
+            }
+        }
+    }
+}
+
+/**
+ * The pinned message in the glass chat: a floating glass pill that can be pulled down (it follows the
+ * finger with a rubber band and springs back); pulled far enough and let go, it opens the full list
+ * of pinned messages, which is the ordinary Material card, unchanged. Tap still jumps to the pinned
+ * message, long-press opens the list as well.
+ */
+@Composable
+private fun LiquidPinnedBanner(
+    pinnedMessages: List<Message>,
+    glass: eu.siacs.conversations.ui.glass.GlassStack,
+    onDismiss: () -> Unit,
+    onUnpin: (Message) -> Unit,
+    onScrollTo: (Message) -> Unit,
+    onOpenAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var currentIndex by remember(pinnedMessages) { mutableIntStateOf(0) }
+    val message = pinnedMessages.getOrNull(currentIndex) ?: return
+    val total = pinnedMessages.size
+    val colors = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val cap = with(density) { 64.dp.toPx() }
+    val openAt = with(density) { 70.dp.toPx() }
+    val pull = remember { Animatable(0f) }
+    var dragged = 0f
+
+    Box(modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp)) {
+        LiquidGlassPanel(
+            glass = glass,
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { translationY = pull.value }
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragStart = { dragged = 0f },
+                        onVerticalDrag = { change, delta ->
+                            change.consume()
+                            dragged = (dragged + delta).coerceAtLeast(-cap / 4f)
+                            // A rubber band: it gives with the finger, less and less.
+                            scope.launch { pull.snapTo(cap * kotlin.math.tanh(dragged / (cap * 1.4f))) }
+                        },
+                        onDragEnd = {
+                            val open = dragged > openAt
+                            scope.launch { pull.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 320f)) }
+                            if (open) onOpenAll()
+                        },
+                        onDragCancel = {
+                            scope.launch { pull.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 320f)) }
+                        },
+                    )
+                },
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_push_pin_24dp),
+                    contentDescription = null,
+                    tint = colors.onSurface,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(
+                    modifier = Modifier.weight(1f).combinedClickable(
+                        onClick = {
+                            onScrollTo(message)
+                            currentIndex = (currentIndex + 1) % total
+                        },
+                        onLongClick = onOpenAll,
+                    )
+                ) {
+                    Text(
+                        text = if (total > 1)
+                            stringResource(R.string.pinned_message) + " ${currentIndex + 1}/$total"
+                        else
+                            stringResource(R.string.pinned_message),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                    Text(
+                        text = MessageUtils.replyPreview(message),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_visibility_off),
+                        contentDescription = stringResource(R.string.hide),
+                        tint = colors.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                IconButton(onClick = { onUnpin(message) }, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_push_pin_off_24dp),
+                        contentDescription = stringResource(R.string.unpin_message),
+                        tint = colors.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
     }
