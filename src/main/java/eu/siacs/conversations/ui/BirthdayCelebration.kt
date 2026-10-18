@@ -60,7 +60,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.DialogFragment
-import androidx.fragment.app.FragmentActivity
 import eu.siacs.conversations.R
 import eu.siacs.conversations.utils.BirthdayStore
 import java.time.LocalDate
@@ -68,6 +67,7 @@ import java.time.Month
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.random.Random
 
 /**
@@ -194,7 +194,7 @@ private fun BirthdayScreen(personal: Boolean, name: String?, onDone: () -> Unit)
     val totalWords = lines.sumOf { it.first.split(' ').size }
     LaunchedEffect(Unit) {
         started = true
-        kotlinx.coroutines.delay((startMs + totalWords * wordMs + 600).toLong())
+        kotlinx.coroutines.delay((startMs + totalWords * wordMs + 600).milliseconds)
         showButton = true
     }
     // The new screen fades in while the confetti is still flying.

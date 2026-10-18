@@ -1,3 +1,5 @@
+@file:Suppress("RestrictedApi")
+
 package eu.siacs.conversations.ui
 
 import android.content.Context
@@ -40,7 +42,7 @@ private var cachedScheme: ColorScheme? = null
  */
 fun dynamicOrStaticColorScheme(context: Context, isDark: Boolean): ColorScheme {
     val settings = AppSettings(context)
-    val dynamic = settings.isDynamicColorsDesired && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val dynamic = settings.isDynamicColorsDesired && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
     val seed = settings.accentSeed
     val key = Triple(isDark, dynamic, if (dynamic) 0 else seed)
     // Dynamic schemes depend on the wallpaper, which can change: never cache those.

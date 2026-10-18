@@ -1,3 +1,5 @@
+@file:Suppress("RestrictedApi")
+
 package eu.siacs.conversations.ui
 
 import android.graphics.drawable.GradientDrawable

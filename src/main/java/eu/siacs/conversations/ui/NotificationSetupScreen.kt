@@ -167,7 +167,12 @@ fun NotificationSetupScreen(
     val callRingtoneLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val picked = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        val picked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        }
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             callSoundUri = picked ?: callSoundUri
             callSoundIsUserSet = true
@@ -313,7 +318,7 @@ fun NotificationSetupScreen(
                 val fullScreenIntentSettingsIntent = remember {
                     android.content.Intent(
                         android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-                        android.net.Uri.parse("package:" + context.packageName),
+                        Uri.parse("package:" + context.packageName),
                     )
                 }
                 // Below API 34 the permission itself doesn't exist, so there's nothing to resolve

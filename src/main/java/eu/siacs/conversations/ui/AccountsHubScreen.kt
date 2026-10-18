@@ -274,11 +274,10 @@ private fun AccountCard(
     onServerInfoChange: (Boolean) -> Unit,
     actions: AccountsHubActions,
 ) {
-    val context = LocalContext.current
     var expanded by remember(account.getUuid()) { mutableStateOf(startExpanded) }
     val arrow by animateFloatAsState(if (expanded) 180f else 0f, spring(stiffness = 380f, dampingRatio = 0.8f), label = "arrow")
     val online = account.isOnlineAndConnected()
-    val statusText = remember(revision, account.getStatus()) { context.getString(account.getStatus().getReadableId()) }
+    val statusText = stringResource(account.getStatus().getReadableId())
     val isError = remember(revision) { account.getStatus().isError() }
     Surface(
         shape = RoundedCornerShape(28.dp),

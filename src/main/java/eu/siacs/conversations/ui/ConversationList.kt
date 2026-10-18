@@ -29,11 +29,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LocalContentColor
@@ -49,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -101,10 +100,12 @@ import eu.siacs.conversations.xmpp.manager.ChatStateManager
 import eu.siacs.conversations.xmpp.manager.JingleManager
 import im.conversations.android.xmpp.model.stanza.Presence
 import im.conversations.android.xmpp.model.state.Composing
+import androidx.core.graphics.get
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.math.ceil
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -239,7 +240,6 @@ private fun ImpulseTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = colorScheme, content = content)
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ConnectingStrip(isConnecting: Boolean) {
     AnimatedVisibility(
@@ -268,8 +268,10 @@ fun ConversationList(
     }
 
     val listState = rememberLazyListState()
-    LaunchedEffect(listState.firstVisibleItemIndex) {
-        onFirstVisibleIndexChanged(listState.firstVisibleItemIndex)
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }.collect { index ->
+            onFirstVisibleIndexChanged(index)
+        }
     }
 
     val context = LocalContext.current
@@ -278,7 +280,7 @@ fun ConversationList(
     var today by remember { mutableStateOf(LocalDate.now()) }
     LaunchedEffect(today) {
         val nextMidnight = LocalDate.now().plusDays(1).atStartOfDay()
-        delay(Duration.between(LocalDateTime.now(), nextMidnight).toMillis() + 500)
+        delay((Duration.between(LocalDateTime.now(), nextMidnight).toMillis() + 500).milliseconds)
         today = LocalDate.now()
     }
     // Somebody's birthday goes above everything, pinned chats included, and keeps its usual order
@@ -294,7 +296,7 @@ fun ConversationList(
     LazyColumn(state = listState, modifier = modifier, contentPadding = contentPadding) {
         itemsIndexed(
             ordered,
-            key = { _, c -> c.getUuid() ?: c.hashCode().toString() },
+            key = { _, c -> c.getUuid() },
         ) { index, conversation ->
             val shape = conversationItemShape(index, ordered.size)
             ConversationItem(
@@ -321,8 +323,8 @@ fun ConversationList(
 /** A one-to-one chat whose contact has a birthday on [today], as far as the phone knows it. */
 private fun birthdayToday(store: BirthdayStore, conversation: Conversation, today: LocalDate): Boolean {
     if (conversation.getMode() != Conversational.MODE_SINGLE) return false
+    val accountUuid = conversation.getAccount().getUuid() ?: return false
     return try {
-        val accountUuid = conversation.getAccount().getUuid() ?: return false
         store.get(accountUuid, conversation.getAddress().asBareJid().toString())?.isOn(today) == true
     } catch (_: Exception) {
         false
@@ -429,23 +431,19 @@ private fun ConversationItem(
     }
 
     val isFeminine: Boolean = remember(conversation, revision) {
-        if (conversation.getMode() == Conversational.MODE_SINGLE)
-            try {
-                UIHelper.resolveGender(context, conversation.getContact()) ==
-                    eu.siacs.conversations.utils.NameGenderGuesser.Gender.FEMININE
-            } catch (_: Exception) { false }
-        else false
+        conversation.getMode() == Conversational.MODE_SINGLE && try {
+            UIHelper.resolveGender(context, conversation.getContact()) ==
+                eu.siacs.conversations.utils.NameGenderGuesser.Gender.FEMININE
+        } catch (_: Exception) { false }
     }
 
     val isTyping: Boolean = remember(conversation, revision) {
-        if (conversation.getMode() == Conversational.MODE_SINGLE)
-            try {
-                val state = conversation.getAccount().getXmppConnection()
-                    ?.getManager(ChatStateManager::class.java)
-                    ?.getIncoming(conversation.getAddress())
-                state == Composing::class.java
-            } catch (_: Exception) { false }
-        else false
+        conversation.getMode() == Conversational.MODE_SINGLE && try {
+            val state = conversation.getAccount().xmppConnection
+                ?.getManager(ChatStateManager::class.java)
+                ?.getIncoming(conversation.getAddress())
+            state == Composing::class.java
+        } catch (_: Exception) { false }
     }
 
     val avatarItemDistance = dimensionResource(R.dimen.avatar_item_distance)
@@ -563,7 +561,7 @@ private fun ConversationItem(
                                     "${dn.substringBefore(" ")}:"
                                 }
                                 status == Message.STATUS_RECEIVED -> null
-                                message.type != Message.TYPE_STATUS -> "${context.getString(R.string.me)}:"
+                                message.type != Message.TYPE_STATUS -> "${stringResource(R.string.me)}:"
                                 else -> null
                             }
                             if (senderText != null) {
@@ -696,7 +694,7 @@ private fun ConversationAvatar(
             if (isGroup) true
             else {
                 val contact = conversation.getContact()
-                contact.getAvatar() != null || contact.getProfilePhoto() != null
+                contact.getAvatar() != null || contact.profilePhoto != null
             }
         } catch (_: Exception) { false }
     }
@@ -714,7 +712,7 @@ private fun ConversationAvatar(
             activity.avatarService().get(conversation, avatarLoadSizePx, false)
         } ?: return@LaunchedEffect
         avatarState.value = bm.asImageBitmap()
-        val key = conversation.getUuid() ?: return@LaunchedEffect
+        val key = conversation.getUuid()
         AvatarSegmenter.segment(bm, key, shouldSegment = !isGroup && hasRealPhoto) { segBm ->
             segmentedState.value = segBm?.asImageBitmap()
         }
@@ -733,7 +731,7 @@ private fun ConversationAvatar(
             var top = -1; var bottom = -1; var left = -1; var right = -1
             for (row in 0 until bmp.height) {
                 for (col in 0 until bmp.width) {
-                    if (android.graphics.Color.alpha(bmp.getPixel(col, row)) > 32) {
+                    if (android.graphics.Color.alpha(bmp[col, row]) > 32) {
                         if (top == -1) top = row
                         bottom = row
                         if (left == -1 || col < left) left = col
@@ -741,7 +739,7 @@ private fun ConversationAvatar(
                     }
                 }
             }
-            if (top >= 0 && bottom > top && right >= left) {
+            if (top in 0..bottom && right >= left) {
                 PersonBounds(
                     top = top.toFloat() / bmp.height,
                     bottom = bottom.toFloat() / bmp.height,
