@@ -2,7 +2,7 @@ import java.util.Properties
 
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
-    id("com.android.application") version "9.2.1"
+    id("com.android.application") version "9.4.1"
     id("com.diffplug.spotless") version "8.4.0"
     id("org.jetbrains.kotlin.plugin.compose") version "2.3.21"
 }
@@ -31,6 +31,10 @@ spotless {
 val baseVersionCode = 42650
 val appVersion = "1.15.0-beta.187+2.20.0"
 
+base {
+    archivesName.set("Impulse")
+}
+
 @Suppress("DEPRECATION")
 android {
     namespace = "eu.siacs.conversations"
@@ -45,9 +49,6 @@ android {
         resValue("string", "applicationId", applicationId!!)
         val appName = "Impulse"
         buildConfigField("String", "APP_NAME", "\"$appName\"")
-        base {
-            archivesName.set("Impulse")
-        }
     }
 
     splits {
@@ -144,6 +145,7 @@ afterEvaluate {
     }
 }
 
+@Suppress("UnstableApiUsage")
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
@@ -172,7 +174,7 @@ dependencies {
 
     val composeBom = platform("androidx.compose:compose-bom:2026.05.01")
     implementation(composeBom)
-    androidTestImplementation(composeBom)
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.05.01"))
     // Override BOM's stable material3:1.4.0 with the latest alpha to get full M3 Expressive APIs
     implementation("androidx.compose.material3:material3:1.5.0-alpha21")
     implementation("androidx.compose.ui:ui-tooling-preview")
