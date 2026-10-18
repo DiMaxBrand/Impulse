@@ -11,4 +11,4 @@ plugins {
 }
 include(":libs:annotation", ":libs:annotation-processor")
 
-rootProject.name = "Conversations"
+rootProject.name = "Impulse"
