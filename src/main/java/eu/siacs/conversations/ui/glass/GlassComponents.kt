@@ -123,6 +123,9 @@ fun LiquidGlassButton(
     // Unspecified: the style's own surface colour (the theme's surface at the style's opacity).
     surfaceColor: Color = Color.Unspecified,
     style: LiquidGlassStyle = LiquidGlassStyle.Button,
+    // Whether this button is recorded as what the glass above looks through. A menu's own button turns it
+    // off once the menu has taken its place, or the menu's glass would show the button's icon inside it.
+    recording: Boolean = true,
     interactiveHighlight: InteractiveHighlight = rememberInteractiveHighlight(),
     // Applied after the button's own press/drag transform: lets whatever holds the button push or
     // squeeze it (the message field pressing on the send button).
@@ -135,7 +138,7 @@ fun LiquidGlassButton(
     val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
     Box(
         modifier = modifier
-            .layerBackdrop(slot.record)
+            .then(if (recording) Modifier.layerBackdrop(slot.record) else Modifier)
             .drawBackdrop(
                 backdrop = slot.backdrop,
                 shape = { shape },

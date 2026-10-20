@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
@@ -270,6 +271,15 @@ class LiquidMenuState {
 
 @Composable
 fun rememberLiquidMenuState(): LiquidMenuState = remember { LiquidMenuState() }
+
+/**
+ * True once the menu has taken the button's place (being pulled, opening or open). The button then
+ * stops recording itself for the glass above ([LiquidGlassButton]'s `recording`), so the menu's glass
+ * no longer shows the button's icon through itself.
+ */
+@Composable
+fun rememberAnchorHidden(menu: LiquidMenuState): State<Boolean> =
+    remember(menu) { derivedStateOf { menu.open || menu.progress > 0.001f } }
 
 /** Marks the button that opens the menu, so the menu knows where to grow from. */
 fun Modifier.liquidMenuAnchor(

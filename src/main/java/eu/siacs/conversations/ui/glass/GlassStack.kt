@@ -106,6 +106,10 @@ data class LiquidGlassStyle(
         /** Buttons and bubbles: clear glass with a strong rim. */
         val Button = LiquidGlassStyle()
 
+        /** The chat's top bar: more blur than a button, so what is behind it smears out and the text
+         * on it reads more smoothly. No tint. */
+        val Bar = LiquidGlassStyle(blur = 12.dp, chromaticAberration = false)
+
         /** Panels that hold content (a text field, a banner): calmer. */
         val Panel = LiquidGlassStyle(blur = 4.dp, chromaticAberration = false)
 

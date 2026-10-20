@@ -1,5 +1,6 @@
 package eu.siacs.conversations.ui.glass
 
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -35,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
@@ -63,12 +65,18 @@ private val PillHeight = 54.dp
 private val BubbleWidth = 44.dp
 private val TallHeight = 68.dp
 
+// How far down the screen the text colour is judged from: the strip the bar sits on.
+private val BarSampleHeight = 150.dp
+
 @Composable
 fun LiquidTopBar(
     conversation: Conversation?,
     revision: Int,
     listener: ConversationScreenListener,
     backdrop: GlassStack,
+    // What the bar sits over, in draw order: the wallpaper and the messages. The text colour follows it.
+    underBackground: LayerBackdrop,
+    underMessages: LayerBackdrop,
     menu: LiquidMenuState,
     selectedCount: Int,
     copyEnabled: Boolean,
@@ -78,7 +86,8 @@ fun LiquidTopBar(
     onDeleteSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val underDark by rememberUnderIsDark(underBackground, underMessages, BarSampleHeight)
+    val colors = onGlassColors(MaterialTheme.colorScheme, underDark)
     val header = rememberChatHeaderState(conversation, revision)
     val inSelection = selectedCount > 0
     // Whether the line under the name needs two lines (reported by the text itself); decides the
@@ -97,6 +106,7 @@ fun LiquidTopBar(
         LiquidGlassButton(
             onClick = if (inSelection) onExitSelection else listener::onBackPressed,
             glass = backdrop,
+            style = LiquidGlassStyle.Bar,
             modifier = Modifier.width(BubbleWidth).height(bubbleHeight),
         ) {
             Crossfade(targetState = inSelection, animationSpec = tween(160), label = "topBarBack") { selecting ->
@@ -111,6 +121,7 @@ fun LiquidTopBar(
         if (inSelection) {
             LiquidGlassPanel(
                 glass = backdrop,
+                style = LiquidGlassStyle.Bar,
                 shape = CircleShape,
                 contentAlignment = Alignment.CenterStart,
                 modifier = Modifier.weight(1f).height(bubbleHeight),
@@ -122,18 +133,19 @@ fun LiquidTopBar(
                     modifier = Modifier.padding(horizontal = 18.dp),
                 )
             }
-            ActionBubble(backdrop, bubbleHeight, R.drawable.ic_forward_24dp, stringResource(R.string.forward_message), onForwardSelected)
-            ActionBubble(backdrop, bubbleHeight, R.drawable.ic_delete_24dp, stringResource(R.string.delete_message), onDeleteSelected)
+            ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_forward_24dp, stringResource(R.string.forward_message), onForwardSelected)
+            ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_delete_24dp, stringResource(R.string.delete_message), onDeleteSelected)
             // A bubble of its own for copy (the Material bar hides it in an overflow menu that has
             // only this one entry).
             if (copyEnabled) {
-                ActionBubble(backdrop, bubbleHeight, R.drawable.ic_check_24dp, stringResource(android.R.string.copy), onCopySelected)
+                ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_check_24dp, stringResource(android.R.string.copy), onCopySelected)
             }
         } else {
             // The contact: picture, name, and the line under it.
             LiquidGlassButton(
                 onClick = listener::onOpenDetails,
                 glass = backdrop,
+                style = LiquidGlassStyle.Bar,
                 modifier = Modifier.weight(1f).height(pillHeight),
             ) {
                 Row(
@@ -176,14 +188,15 @@ fun LiquidTopBar(
                 }
             }
             if (header.isSingle) {
-                ActionBubble(backdrop, bubbleHeight, R.drawable.ic_call_24dp, stringResource(R.string.audio_call)) {
+                ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_call_24dp, stringResource(R.string.audio_call)) {
                     listener.onCall(false)
                 }
-                ActionBubble(backdrop, bubbleHeight, R.drawable.ic_videocam_24dp, stringResource(R.string.video_call)) {
+                ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_videocam_24dp, stringResource(R.string.video_call)) {
                     listener.onCall(true)
                 }
             }
             // The three dots: where the menu grows out of (see LiquidChatMenuOverlay).
+            val anchorHidden by rememberAnchorHidden(menu)
             val dots: @Composable BoxScope.() -> Unit = {
                 Icon(
                     painter = painterResource(R.drawable.ic_more_horiz_24dp),
@@ -194,6 +207,8 @@ fun LiquidTopBar(
             LiquidGlassButton(
                 onClick = { menu.open = true },
                 glass = backdrop,
+                style = LiquidGlassStyle.Bar,
+                recording = !anchorHidden,
                 modifier = Modifier.width(BubbleWidth).height(bubbleHeight)
                     .liquidMenuAnchor(menu, dots)
                     .liquidMenuPull(menu)
@@ -205,12 +220,17 @@ fun LiquidTopBar(
 }
 
 @Composable
-private fun ActionBubble(backdrop: GlassStack, height: Dp, iconRes: Int, description: String, onClick: () -> Unit) {
-    LiquidGlassButton(onClick = onClick, glass = backdrop, modifier = Modifier.width(BubbleWidth).height(height)) {
+private fun ActionBubble(backdrop: GlassStack, height: Dp, tint: Color, iconRes: Int, description: String, onClick: () -> Unit) {
+    LiquidGlassButton(
+        onClick = onClick,
+        glass = backdrop,
+        style = LiquidGlassStyle.Bar,
+        modifier = Modifier.width(BubbleWidth).height(height),
+    ) {
         Icon(
             painter = painterResource(iconRes),
             contentDescription = description,
-            tint = MaterialTheme.colorScheme.onSurface,
+            tint = tint,
         )
     }
 }

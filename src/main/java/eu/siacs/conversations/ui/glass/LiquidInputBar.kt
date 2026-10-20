@@ -313,9 +313,11 @@ private fun AttachOrDiscardBubble(
 ) {
     val colors = MaterialTheme.colorScheme
     val normal = LiquidGlassDefaults.surfaceColor()
+    val anchorHidden by rememberAnchorHidden(attachMenu)
     LiquidGlassButton(
         onClick = onClick,
         glass = backdrop,
+        recording = !anchorHidden,
         modifier = Modifier.size(BubbleSize)
             .liquidMenuAnchor(attachMenu) {
                 Icon(

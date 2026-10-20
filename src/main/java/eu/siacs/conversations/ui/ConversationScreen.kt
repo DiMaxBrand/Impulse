@@ -952,6 +952,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     conversation = conversation,
                     revision = state.revision.intValue,
                     listener = listener,
+                    underBackground = backgroundBackdrop,
+                    underMessages = listBackdrop,
                     backdrop = glassStack,
                     menu = topMenu,
                     selectedCount = selectedUuids.size,

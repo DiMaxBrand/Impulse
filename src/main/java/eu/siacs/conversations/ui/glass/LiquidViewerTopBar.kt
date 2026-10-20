@@ -1,5 +1,6 @@
 package eu.siacs.conversations.ui.glass
 
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -174,9 +175,11 @@ fun LiquidViewerTopBar(
                 tint = colors.onSurface,
             )
         }
+        val anchorHidden by rememberAnchorHidden(menu)
         LiquidGlassButton(
             onClick = { menu.open = true },
             glass = glass,
+            recording = !anchorHidden,
             modifier = Modifier.size(BubbleSize)
                 .liquidMenuAnchor(menu, dots)
                 .liquidMenuPull(menu)
