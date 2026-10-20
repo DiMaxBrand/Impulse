@@ -22,11 +22,17 @@ private const val ROWS = 4
  * second and only as a tiny image, with hysteresis so it does not flicker around the middle.
  */
 @Composable
-fun rememberUnderIsDark(background: LayerBackdrop, foreground: LayerBackdrop, height: Dp): State<Boolean> {
+fun rememberUnderIsDark(
+    background: LayerBackdrop,
+    foreground: LayerBackdrop?,
+    height: Dp,
+    enabled: Boolean = true,
+): State<Boolean> {
     val cropPx = with(LocalDensity.current) { height.roundToPx() }
-    return produceState(initialValue = true, background, foreground, cropPx) {
+    return produceState(initialValue = true, background, foreground, cropPx, enabled) {
         while (true) {
             delay(900)
+            if (!enabled) continue
             val luma = try {
                 sampleLuma(background, foreground, cropPx)
             } catch (_: Exception) {
@@ -50,20 +56,29 @@ fun onGlassColors(scheme: ColorScheme, underDark: Boolean): ColorScheme =
         onSurfaceVariant = if (underDark) Color(0xFFE6E0E9) else Color(0xFF45464F),
     )
 
-private suspend fun sampleLuma(background: LayerBackdrop, foreground: LayerBackdrop, cropPx: Int): Float {
+private suspend fun sampleLuma(background: LayerBackdrop, foreground: LayerBackdrop?, cropPx: Int): Float {
     val under = smallPixels(background, cropPx)
-    val over = smallPixels(foreground, cropPx)
-    var sum = 0f
-    for (i in under.indices) {
+    // With no layer on top (the viewer's single layer), the bottom one is all there is.
+    val over = foreground?.let { smallPixels(it, cropPx) } ?: return lumaOf(under)
+    val merged = IntArray(under.size) { i ->
         val u = under[i]
         val o = over[i]
         val alpha = ((o ushr 24) and 0xFF) / 255f
-        val r = mix(o, u, 16, alpha)
-        val g = mix(o, u, 8, alpha)
-        val b = mix(o, u, 0, alpha)
+        fun channel(shift: Int) = (mix(o, u, shift, alpha) * 255f).toInt()
+        (0xFF shl 24) or (channel(16) shl 16) or (channel(8) shl 8) or channel(0)
+    }
+    return lumaOf(merged)
+}
+
+private fun lumaOf(pixels: IntArray): Float {
+    var sum = 0f
+    for (c in pixels) {
+        val r = ((c shr 16) and 0xFF) / 255f
+        val g = ((c shr 8) and 0xFF) / 255f
+        val b = (c and 0xFF) / 255f
         sum += 0.2126f * r + 0.7152f * g + 0.0722f * b
     }
-    return sum / under.size
+    return sum / pixels.size
 }
 
 /** One channel, top layer over the bottom one, 0..1. */

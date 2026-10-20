@@ -98,6 +98,8 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import eu.siacs.conversations.ui.glass.LiquidGlassButton
 import eu.siacs.conversations.ui.glass.LiquidViewerMenuOverlay
 import eu.siacs.conversations.ui.glass.LiquidViewerTopBar
+import eu.siacs.conversations.ui.glass.LiquidGlassStyle
+import eu.siacs.conversations.ui.glass.rememberUnderIsDark
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import eu.siacs.conversations.ui.util.ShareUtil
@@ -446,41 +448,10 @@ private fun MediaViewerScreen(
     val glass = rememberLiquidGlassEnabled()
     val viewerBackdrop = rememberLayerBackdrop()
     val glassStack = rememberGlassStack(viewerBackdrop)
-    // Brightness of what is under the top bar, sampled from the recorded viewer layer (photo, black
-    // bars around it, zoom and all): on a change of page and then every so often. Hysteresis keeps
-    // the colours from flickering around the middle.
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    LaunchedEffect(glass) {
-        if (!glass) return@LaunchedEffect
-        val cropPx = with(density) { 150.dp.roundToPx() }
-        while (true) {
-            kotlinx.coroutines.delay(500)
-            val luma = try {
-                val img = viewerBackdrop.graphicsLayer.toImageBitmap()
-                val src = img.asAndroidBitmap().let {
-                    if (it.config == android.graphics.Bitmap.Config.HARDWARE) it.copy(android.graphics.Bitmap.Config.ARGB_8888, false) else it
-                }
-                val strip = android.graphics.Bitmap.createBitmap(src, 0, 0, src.width, minOf(cropPx, src.height).coerceAtLeast(1))
-                val small = android.graphics.Bitmap.createScaledBitmap(strip, 16, 4, true)
-                val px = IntArray(64)
-                small.getPixels(px, 0, 16, 0, 0, 16, 4)
-                var sum = 0f
-                for (c in px) {
-                    val r = ((c shr 16) and 0xFF) / 255f
-                    val g = ((c shr 8) and 0xFF) / 255f
-                    val b = (c and 0xFF) / 255f
-                    sum += 0.2126f * r + 0.7152f * g + 0.0722f * b
-                }
-                sum / px.size
-            } catch (e: Exception) {
-                null
-            }
-            if (luma != null) {
-                if (chromeOnDark.value && luma > 0.58f) chromeOnDark.value = false
-                else if (!chromeOnDark.value && luma < 0.42f) chromeOnDark.value = true
-            }
-        }
-    }
+    // What is under the top bar, judged by the same sampler as the chat's bar (see
+    // rememberUnderIsDark). It feeds the viewer's dark or light colour scheme for the glass menu.
+    val underDark by rememberUnderIsDark(viewerBackdrop, null, 150.dp, enabled = glass)
+    LaunchedEffect(underDark) { chromeOnDark.value = underDark }
     val topMenu = rememberLiquidMenuState()
     // 0: the top bar still looks like the chat's; 1: it is the viewer's. Starts done unless the
     // viewer came from the chat's glass bar.
@@ -667,6 +638,7 @@ private fun MediaViewerScreen(
         ) {
             if (glass) {
                 LiquidViewerTopBar(
+                    underDark = underDark,
                     conversation = conversation,
                     revision = revision,
                     dateText = rememberViewerDateText(currentMessage),
@@ -687,6 +659,7 @@ private fun MediaViewerScreen(
                             LiquidGlassButton(
                                 onClick = { saveCardExpanded = true },
                                 glass = glassStack,
+                                style = LiquidGlassStyle.Bar,
                                 modifier = Modifier.size(48.dp).sharedBounds(
                                     rememberSharedContentState("save_card"),
                                     animatedVisibilityScope = this@AnimatedVisibility,

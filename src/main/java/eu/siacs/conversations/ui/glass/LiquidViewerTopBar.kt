@@ -60,6 +60,8 @@ private val AvatarGap = 12.dp
 
 @Composable
 fun LiquidViewerTopBar(
+    // The text colour follows what is under the bar (see rememberUnderIsDark), as the chat's bar does.
+    underDark: Boolean,
     conversation: Conversation,
     revision: Int,
     dateText: String,
@@ -73,7 +75,7 @@ fun LiquidViewerTopBar(
     downloadBubble: @Composable (icon: @Composable BoxScope.() -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = onGlassColors(MaterialTheme.colorScheme, underDark)
     val header = rememberChatHeaderState(conversation, revision)
     val chatLine = chatSubtitle(conversation, header)
 
@@ -85,7 +87,7 @@ fun LiquidViewerTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        LiquidGlassButton(onClick = onBack, glass = glass, modifier = Modifier.size(BubbleSize)) {
+        LiquidGlassButton(onClick = onBack, glass = glass, style = LiquidGlassStyle.Bar, modifier = Modifier.size(BubbleSize)) {
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_back_24dp),
                 contentDescription = stringResource(R.string.back),
@@ -97,6 +99,7 @@ fun LiquidViewerTopBar(
         LiquidGlassButton(
             onClick = {},
             glass = glass,
+            style = LiquidGlassStyle.Bar,
             modifier = Modifier.weight(1f).height(PillHeight),
         ) {
             Row(
@@ -161,7 +164,7 @@ fun LiquidViewerTopBar(
         }
 
         // Call becomes share...
-        LiquidGlassButton(onClick = onShare, glass = glass, modifier = Modifier.size(BubbleSize)) {
+        LiquidGlassButton(onClick = onShare, glass = glass, style = LiquidGlassStyle.Bar, modifier = Modifier.size(BubbleSize)) {
             SwapIcon(R.drawable.ic_call_24dp, R.drawable.ic_share_24dp, enter)
         }
         // ...and video becomes download.
@@ -179,6 +182,7 @@ fun LiquidViewerTopBar(
         LiquidGlassButton(
             onClick = { menu.open = true },
             glass = glass,
+            style = LiquidGlassStyle.Bar,
             recording = !anchorHidden,
             modifier = Modifier.size(BubbleSize)
                 .liquidMenuAnchor(menu, dots)
