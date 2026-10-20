@@ -1,7 +1,13 @@
 package eu.siacs.conversations.ui.glass
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxScope
@@ -28,6 +34,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
@@ -49,6 +56,13 @@ import eu.siacs.conversations.ui.rememberChatMenuFlags
 private val BubbleSize = 48.dp
 private val PillHeight = 54.dp
 
+// Narrower bubbles than they are tall, so the contact's pill gets room for its text: on a phone the
+// four bubbles used to leave it a sliver and the "last seen" line was cut off. When that line still
+// needs two lines, the pill grows to [TallHeight] and every bubble grows with it (they become
+// capsules, the same height as the pill, not circles standing beside it).
+private val BubbleWidth = 44.dp
+private val TallHeight = 68.dp
+
 @Composable
 fun LiquidTopBar(
     conversation: Conversation?,
@@ -67,17 +81,23 @@ fun LiquidTopBar(
     val colors = MaterialTheme.colorScheme
     val header = rememberChatHeaderState(conversation, revision)
     val inSelection = selectedCount > 0
+    // Whether the line under the name needs two lines (reported by the text itself); decides the
+    // height of the pill and of the bubbles beside it.
+    var wrapped by remember { mutableStateOf(false) }
+    val grown = wrapped && !inSelection
+    val pillHeight by animateDpAsState(if (grown) TallHeight else PillHeight, label = "topBarPill")
+    val bubbleHeight by animateDpAsState(if (grown) TallHeight else BubbleSize, label = "topBarBubble")
 
     Row(
         modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         // Back, or close while messages are selected.
         LiquidGlassButton(
             onClick = if (inSelection) onExitSelection else listener::onBackPressed,
             glass = backdrop,
-            modifier = Modifier.size(BubbleSize),
+            modifier = Modifier.width(BubbleWidth).height(bubbleHeight),
         ) {
             Crossfade(targetState = inSelection, animationSpec = tween(160), label = "topBarBack") { selecting ->
                 Icon(
@@ -93,7 +113,7 @@ fun LiquidTopBar(
                 glass = backdrop,
                 shape = CircleShape,
                 contentAlignment = Alignment.CenterStart,
-                modifier = Modifier.weight(1f).height(BubbleSize),
+                modifier = Modifier.weight(1f).height(bubbleHeight),
             ) {
                 Text(
                     text = stringResource(R.string.messages_selected_count, selectedCount),
@@ -102,22 +122,22 @@ fun LiquidTopBar(
                     modifier = Modifier.padding(horizontal = 18.dp),
                 )
             }
-            ActionBubble(backdrop, R.drawable.ic_forward_24dp, stringResource(R.string.forward_message), onForwardSelected)
-            ActionBubble(backdrop, R.drawable.ic_delete_24dp, stringResource(R.string.delete_message), onDeleteSelected)
+            ActionBubble(backdrop, bubbleHeight, R.drawable.ic_forward_24dp, stringResource(R.string.forward_message), onForwardSelected)
+            ActionBubble(backdrop, bubbleHeight, R.drawable.ic_delete_24dp, stringResource(R.string.delete_message), onDeleteSelected)
             // A bubble of its own for copy (the Material bar hides it in an overflow menu that has
             // only this one entry).
             if (copyEnabled) {
-                ActionBubble(backdrop, R.drawable.ic_check_24dp, stringResource(android.R.string.copy), onCopySelected)
+                ActionBubble(backdrop, bubbleHeight, R.drawable.ic_check_24dp, stringResource(android.R.string.copy), onCopySelected)
             }
         } else {
             // The contact: picture, name, and the line under it.
             LiquidGlassButton(
                 onClick = listener::onOpenDetails,
                 glass = backdrop,
-                modifier = Modifier.weight(1f).height(PillHeight),
+                modifier = Modifier.weight(1f).height(pillHeight),
             ) {
                 Row(
-                    Modifier.fillMaxWidth().padding(start = 7.dp, end = 16.dp),
+                    Modifier.fillMaxWidth().padding(start = 7.dp, end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     val avatar = header.avatar.value
@@ -126,12 +146,12 @@ fun LiquidTopBar(
                             bitmap = avatar,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(40.dp).clip(CircleShape),
+                            modifier = Modifier.size(36.dp).clip(CircleShape),
                         )
                     } else {
-                        Box(Modifier.size(40.dp).clip(CircleShape).background(colors.primaryContainer))
+                        Box(Modifier.size(36.dp).clip(CircleShape).background(colors.primaryContainer))
                     }
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
                             text = conversation?.getName()?.toString() ?: "",
@@ -146,18 +166,20 @@ fun LiquidTopBar(
                                 text = subtitle,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = if (header.isTyping) colors.primary else colors.onSurfaceVariant,
-                                maxLines = 1,
+                                // Two lines before it is cut; a second line makes the bar taller.
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
+                                onTextLayout = { wrapped = it.lineCount > 1 },
                             )
                         }
                     }
                 }
             }
             if (header.isSingle) {
-                ActionBubble(backdrop, R.drawable.ic_call_24dp, stringResource(R.string.audio_call)) {
+                ActionBubble(backdrop, bubbleHeight, R.drawable.ic_call_24dp, stringResource(R.string.audio_call)) {
                     listener.onCall(false)
                 }
-                ActionBubble(backdrop, R.drawable.ic_videocam_24dp, stringResource(R.string.video_call)) {
+                ActionBubble(backdrop, bubbleHeight, R.drawable.ic_videocam_24dp, stringResource(R.string.video_call)) {
                     listener.onCall(true)
                 }
             }
@@ -172,7 +194,7 @@ fun LiquidTopBar(
             LiquidGlassButton(
                 onClick = { menu.open = true },
                 glass = backdrop,
-                modifier = Modifier.size(BubbleSize)
+                modifier = Modifier.width(BubbleWidth).height(bubbleHeight)
                     .liquidMenuAnchor(menu, dots)
                     .liquidMenuPull(menu)
                     .graphicsLayer { alpha = menu.anchorAlpha },
@@ -183,8 +205,8 @@ fun LiquidTopBar(
 }
 
 @Composable
-private fun ActionBubble(backdrop: GlassStack, iconRes: Int, description: String, onClick: () -> Unit) {
-    LiquidGlassButton(onClick = onClick, glass = backdrop, modifier = Modifier.size(BubbleSize)) {
+private fun ActionBubble(backdrop: GlassStack, height: Dp, iconRes: Int, description: String, onClick: () -> Unit) {
+    LiquidGlassButton(onClick = onClick, glass = backdrop, modifier = Modifier.width(BubbleWidth).height(height)) {
         Icon(
             painter = painterResource(iconRes),
             contentDescription = description,
