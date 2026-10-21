@@ -707,7 +707,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
     // The glass pieces of the chat look through the background, the messages and each other.
     // How bright what is under each glass piece is, sampled from the two layers the chat draws.
-    val underGrid = rememberUnderGrid(backgroundBackdrop, listBackdrop, enabled = glass)
+    val underGrid = rememberUnderGrid(backgroundBackdrop, listBackdrop, enabled = glass, base = MaterialTheme.colorScheme.background)
     val glassStack = rememberGlassStack(glassBackdrop, underGrid)
     val topMenu = rememberLiquidMenuState()
 

@@ -1,5 +1,8 @@
 package eu.siacs.conversations.ui.glass
 
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
@@ -136,8 +139,10 @@ fun LiquidGlassButton(
     // through the screen and the glass below it.
     val slot = glass.rememberSlot()
     val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
+    val ink = rememberGlassInk(glass.under)
     Box(
         modifier = modifier
+            .onGloballyPositioned { ink.place.value = it.boundsInWindow() }
             .then(if (recording) Modifier.layerBackdrop(slot.record) else Modifier)
             .drawBackdrop(
                 backdrop = slot.backdrop,
@@ -163,9 +168,9 @@ fun LiquidGlassButton(
                         drawRect(tint, blendMode = BlendMode.Hue)
                         drawRect(tint.copy(alpha = 0.75f))
                     }
-                    if (body.isSpecified) {
-                        drawRect(body)
-                    }
+                    // A piece with its own colour keeps it; otherwise the glass takes the tint its ink needs.
+                    val fill = if (surfaceColor.isSpecified || style.surfaceAlpha > 0f) body else ink.fill.value
+                    if (fill.alpha > 0f) drawRect(fill)
                 },
             )
             .clickable(
@@ -182,7 +187,7 @@ fun LiquidGlassButton(
                 }
             ),
         contentAlignment = Alignment.Center,
-        content = { GlassInk(Modifier.matchParentSize(), Alignment.Center, glass.under, content) },
+        content = { GlassInkBox(Modifier.matchParentSize(), Alignment.Center, ink, glass.under != null, content) },
     )
 }
 
@@ -241,10 +246,11 @@ fun LiquidGlassPanel(
 ) {
     val slot = glass.rememberSlot()
     val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
+    val ink = rememberGlassInk(glass.under)
     // Two layers, not one: the glass (which [layerBlock] deforms) and the content on top of it
     // (which nothing deforms). The recording for the glass above covers both.
     Box(
-        modifier = modifier.layerBackdrop(slot.record),
+        modifier = modifier.onGloballyPositioned { ink.place.value = it.boundsInWindow() }.layerBackdrop(slot.record),
         contentAlignment = contentAlignment,
     ) {
         Box(
@@ -261,13 +267,17 @@ fun LiquidGlassPanel(
                         }
                     },
                     layerBlock = layerBlock,
-                    onDrawSurface = { if (body.isSpecified) drawRect(body) },
+                    onDrawSurface = {
+                        val fill = if (surfaceColor.isSpecified || style.surfaceAlpha > 0f) body else ink.fill.value
+                        if (fill.alpha > 0f) drawRect(fill)
+                    },
                 ),
         )
-        GlassInk(
+        GlassInkBox(
             if (clipContent) Modifier.matchParentSize().clip(shape) else Modifier.clip(shape),
             contentAlignment,
-            glass.under,
+            ink,
+            glass.under != null,
             content,
         )
     }

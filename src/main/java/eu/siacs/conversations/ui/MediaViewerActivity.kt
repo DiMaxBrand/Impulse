@@ -448,7 +448,7 @@ private fun MediaViewerScreen(
     val glass = rememberLiquidGlassEnabled()
     val viewerBackdrop = rememberLayerBackdrop()
     // How bright what is under each glass piece is, from the photo layer (see rememberUnderGrid).
-    val underGrid = rememberUnderGrid(viewerBackdrop, null, enabled = glass)
+    val underGrid = rememberUnderGrid(viewerBackdrop, null, enabled = glass, base = Color.Black)
     val glassStack = rememberGlassStack(viewerBackdrop, underGrid)
     val topMenu = rememberLiquidMenuState()
     // 0: the top bar still looks like the chat's; 1: it is the viewer's. Starts done unless the

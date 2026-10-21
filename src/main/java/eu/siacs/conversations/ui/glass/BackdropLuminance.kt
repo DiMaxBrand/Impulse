@@ -8,14 +8,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlin.math.abs
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -54,12 +57,18 @@ class UnderGrid(private val luma: FloatArray, private val widthPx: Int, private 
  * one expensive step; off when [enabled] is false.
  */
 @Composable
-fun rememberUnderGrid(background: LayerBackdrop, foreground: LayerBackdrop?, enabled: Boolean = true): State<UnderGrid?> =
-    produceState<UnderGrid?>(initialValue = null, background, foreground, enabled) {
+fun rememberUnderGrid(
+    background: LayerBackdrop,
+    foreground: LayerBackdrop?,
+    enabled: Boolean = true,
+    // What a transparent part of the background shows: the theme's background, not black.
+    base: Color = Color.White,
+): State<UnderGrid?> =
+    produceState<UnderGrid?>(initialValue = null, background, foreground, enabled, base) {
         while (true) {
             if (enabled) {
                 val grid = try {
-                    sampleGrid(background, foreground)
+                    sampleGrid(background, foreground, base.toArgb())
                 } catch (_: Exception) {
                     null
                 }
@@ -70,35 +79,53 @@ fun rememberUnderGrid(background: LayerBackdrop, foreground: LayerBackdrop?, ena
     }
 
 /**
- * The text and icon colours for a glass piece: each piece reads the brightness under itself, not the
- * whole screen's, so the same bar can have a white icon over a dark photo and a dark one over a
- * bright bubble. Hysteresis keeps a piece at the middle of the range from flickering.
- *
- * Without a grid (no under-sampling on this screen) the piece keeps the theme's colours.
+ * What one glass piece does with its brightness, decided together: the glass gets a light tint when
+ * the screen under it is in the middle (dark ink then reads on it), a dark one when it is dimly in the
+ * middle (light ink reads), and nothing when it is clearly bright or dark. [dark] is the ink.
  */
+class GlassInk internal constructor(
+    val dark: Boolean,
+    val fill: State<Color>,
+    internal val place: MutableState<Rect>,
+)
+
 @Composable
-fun GlassInk(
+fun rememberGlassInk(under: State<UnderGrid?>?): GlassInk {
+    val place = remember { mutableStateOf(Rect.Zero) }
+    val plan by remember(under) { derivedStateOf { under?.value?.lumaIn(place.value)?.let { planFor(it) } } }
+    // Hysteresis on the brightness the ink actually sees (after the tint), so it does not flicker.
+    var dark by remember(under) { mutableStateOf(true) }
+    LaunchedEffect(plan?.effective) {
+        val e = plan?.effective ?: return@LaunchedEffect
+        if (dark && e > 0.55f) dark = false
+        else if (!dark && e < 0.45f) dark = true
+    }
+    val fill = remember(under) { derivedStateOf { plan?.let { it.tint.copy(alpha = it.alpha) } ?: Color.Transparent } }
+    return GlassInk(dark, fill, place)
+}
+
+private class Plan(val tint: Color, val alpha: Float, val effective: Float)
+
+private fun planFor(raw: Float): Plan {
+    // Strongest in the middle, none at the ends; at most 30% of the tint.
+    val alpha = 0.3f * (1f - abs(raw - 0.5f) * 2f).coerceIn(0f, 1f)
+    val light = raw >= 0.5f
+    val effective = if (light) raw * (1f - alpha) + alpha else raw * (1f - alpha)
+    return Plan(if (light) Color.White else Color.Black, alpha, effective)
+}
+
+/** The content of a glass piece with its ink; themed as usual when the screen has no grid. */
+@Composable
+fun GlassInkBox(
     modifier: Modifier,
     alignment: Alignment,
-    under: State<UnderGrid?>?,
+    ink: GlassInk,
+    sampled: Boolean,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    var place by remember { mutableStateOf(Rect.Zero) }
-    val luma by remember(under) { derivedStateOf { under?.value?.lumaIn(place) } }
-    var dark by remember { mutableStateOf(true) }
-    LaunchedEffect(luma) {
-        val l = luma ?: return@LaunchedEffect
-        // Dark behind it: light ink. Bright behind it: dark ink. In between, keep the last.
-        if (dark && l > 0.58f) dark = false
-        else if (!dark && l < 0.42f) dark = true
-    }
-    val scheme = if (under == null) MaterialTheme.colorScheme else onGlassColors(MaterialTheme.colorScheme, dark)
+    val scheme = if (sampled) onGlassColors(MaterialTheme.colorScheme, ink.dark) else MaterialTheme.colorScheme
     MaterialTheme(colorScheme = scheme) {
-        Box(
-            modifier.onGloballyPositioned { place = it.boundsInWindow() },
-            contentAlignment = alignment,
-            content = content,
-        )
+        Box(modifier, contentAlignment = alignment, content = content)
     }
 }
 
@@ -109,10 +136,10 @@ fun onGlassColors(scheme: ColorScheme, underDark: Boolean): ColorScheme =
         onSurfaceVariant = if (underDark) Color(0xFFE6E0E9) else Color(0xFF45464F),
     )
 
-private suspend fun sampleGrid(background: LayerBackdrop, foreground: LayerBackdrop?): UnderGrid {
-    val under = smallPixels(background)
+private suspend fun sampleGrid(background: LayerBackdrop, foreground: LayerBackdrop?, base: Int): UnderGrid {
+    val under = smallPixels(background, base)
     // With no layer on top (the viewer's single layer), the bottom one is all there is.
-    val over = foreground?.let { smallPixels(it) }
+    val over = foreground?.let { smallPixels(it, null) }
     val luma = FloatArray(COLS * ROWS)
     for (i in luma.indices) {
         val u = under.pixels[i]
@@ -128,6 +155,13 @@ private suspend fun sampleGrid(background: LayerBackdrop, foreground: LayerBackd
 
 private class Small(val pixels: IntArray, val width: Int, val height: Int)
 
+/** [top] over an opaque [bottom], opaque. */
+private fun over(top: Int, bottom: Int): Int {
+    val a = ((top ushr 24) and 0xFF) / 255f
+    fun ch(shift: Int) = (((top ushr shift) and 0xFF) * a + ((bottom ushr shift) and 0xFF) * (1f - a)).toInt()
+    return (0xFF shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
+}
+
 /** One channel, top layer over the bottom one, 0..1. */
 private fun mix(top: Int, bottom: Int, shift: Int, topAlpha: Float): Float {
     val t = (top ushr shift) and 0xFF
@@ -135,11 +169,13 @@ private fun mix(top: Int, bottom: Int, shift: Int, topAlpha: Float): Float {
     return (t * topAlpha + b * (1f - topAlpha)) / 255f
 }
 
-private suspend fun smallPixels(layer: LayerBackdrop): Small {
+private suspend fun smallPixels(layer: LayerBackdrop, base: Int?): Small {
     val src = layer.graphicsLayer.toImageBitmap().asAndroidBitmap().let {
         if (it.config == Bitmap.Config.HARDWARE) it.copy(Bitmap.Config.ARGB_8888, false) else it
     }
     val small = Bitmap.createScaledBitmap(src, COLS, ROWS, true)
     val pixels = IntArray(COLS * ROWS).also { small.getPixels(it, 0, COLS, 0, 0, COLS, ROWS) }
+    // A transparent part of the background shows the theme's background underneath it.
+    if (base != null) for (i in pixels.indices) pixels[i] = over(pixels[i], base)
     return Small(pixels, src.width, src.height)
 }
