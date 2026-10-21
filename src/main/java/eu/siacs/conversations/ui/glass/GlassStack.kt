@@ -112,19 +112,16 @@ data class LiquidGlassStyle(
         /** Buttons and bubbles: clear glass with a strong rim. */
         val Button = LiquidGlassStyle()
 
-        /** The chat's top bar: more blur than a button, so what is behind it smears out and the text
-         * on it reads more smoothly. No tint. */
-        val Bar = LiquidGlassStyle(blur = 12.dp, chromaticAberration = false)
+        /** The chat's top bar: the demo's button glass. Its legibility comes from the brightness
+         * adjustment (see rememberGlassInk), not from smearing the backdrop with blur. */
+        val Bar = LiquidGlassStyle()
 
-        /** Panels that hold content (a text field, a banner): calmer. */
-        val Panel = LiquidGlassStyle(blur = 4.dp, chromaticAberration = false)
+        /** Panels that hold content (a text field, a banner): the demo's glass without the colour
+         * fringes. */
+        val Panel = LiquidGlassStyle(chromaticAberration = false)
 
-        /** Menus: a blurrier backdrop and a larger, stronger lens; no tint over it. */
-        val Menu = LiquidGlassStyle(
-            blur = 8.dp,
-            lensHeight = 16.dp,
-            lensAmount = 32.dp,
-        )
+        /** Menus: the demo's glass as well; the menu's size, not its blur, is what sets it apart. */
+        val Menu = LiquidGlassStyle(chromaticAberration = false)
 
         /** Large surfaces that cover most of the screen: nearly solid, and cheap (a small blur and
          * the plain lens: both cost in proportion to the area). */
