@@ -170,7 +170,7 @@ fun LiquidGlassButton(
                 onDrawSurface = {
                     if (tint.isSpecified) {
                         drawRect(tint, blendMode = BlendMode.Hue)
-                        drawRect(tint.copy(alpha = 0.75f))
+                        drawRect(tint.copy(alpha = 0.75f * tint.alpha))
                     }
                     if (body.alpha > 0f) drawRect(body)
                 },
@@ -277,7 +277,7 @@ fun LiquidGlassPanel(
                     onDrawSurface = {
                         if (tint.isSpecified) {
                             drawRect(tint, blendMode = BlendMode.Hue)
-                            drawRect(tint.copy(alpha = 0.75f))
+                            drawRect(tint.copy(alpha = 0.75f * tint.alpha))
                         }
                         if (body.alpha > 0f) drawRect(body)
                     },
