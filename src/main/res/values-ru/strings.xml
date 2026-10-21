@@ -1574,6 +1574,13 @@
     <string name="updated_sheet_title">Импульс обновлён!</string>
     <string name="updated_sheet_whats_new">Что нового:</string>
     <string name="updated_sheet_dismiss">Закрыть</string>
+    <string name="updates_auto_off_title">Оставьте автообновление включённым</string>
+    <string name="updates_auto_off_body">Если забудете обновиться вручную, останетесь на старой версии, пока остальные уже на новой. Из-за этого часть сообщений может показываться неправильно.</string>
+    <string name="updates_auto_off_tip_fast">Предлагает слишком часто? Поставьте «Пауза между обновлениями» до 7 дней, чтобы не получать напоминание при каждом открытии приложения.</string>
+    <string name="updates_auto_off_tip_rc">Предлагает слишком часто? Сборки RC выходят примерно раз в день. Поставьте «Паузу между обновлениями» на 1 день и больше.</string>
+    <string name="updates_auto_off_overnight">А лучше оставьте включённым «Обновляться ночью»: если телефон позволяет, Импульс обновится сам ночью, а если не получится, придёт уведомление, чтобы вы завершили обновление.</string>
+    <string name="updates_auto_off_keep">Оставить включённым</string>
+    <string name="updates_auto_off_anyway">Всё равно выключить</string>
     <string name="updates_nightly_label">Обновляться ночью</string>
     <string name="updates_nightly_description">Около 2:30 ночи, если вы не в звонке и не в приложении, Импульс сам устанавливает скачанное обновление.</string>
     <string name="developer_options_silent_update_test">Тест тихого обновления</string>

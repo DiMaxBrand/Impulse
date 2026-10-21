@@ -1508,6 +1508,13 @@
     <string name="updated_sheet_title">Impulse was updated!</string>
     <string name="updated_sheet_whats_new">See what\'s new:</string>
     <string name="updated_sheet_dismiss">Dismiss</string>
+    <string name="updates_auto_off_title">Keep auto-updates on</string>
+    <string name="updates_auto_off_body">Forget to update by hand and you stay on an old version while everyone else moves on. Some messages may then not show correctly.</string>
+    <string name="updates_auto_off_tip_fast">Asked too often? Set “Wait between updates” up to 7 days, so you aren\'t nudged every time you open the app.</string>
+    <string name="updates_auto_off_tip_rc">Asked too often? RC builds come about once a day. Set “Wait between updates” to 1 day or more.</string>
+    <string name="updates_auto_off_overnight">Even better, keep “Update overnight” on: if your phone allows it, Impulse installs by itself at night, and if that fails you get a notification to finish.</string>
+    <string name="updates_auto_off_keep">Keep on</string>
+    <string name="updates_auto_off_anyway">Turn off anyway</string>
     <string name="updates_nightly_label">Update overnight</string>
     <string name="updates_nightly_description">Around 2:30 at night, when you are not on a call or in the app, Impulse installs a downloaded update by itself.</string>
     <string name="developer_options_silent_update_test">Test silent update</string>

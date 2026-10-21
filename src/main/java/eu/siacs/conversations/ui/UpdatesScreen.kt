@@ -111,6 +111,9 @@ fun UpdatesScreen(
     onAllowInstallApps: () -> Unit = {},
 ) {
     var intervalPickerVisible by remember { mutableStateOf(false) }
+    // The "keep auto-updates on" card: opens instead of switching the auto-check off, on any channel
+    // that is not stable.
+    var autoOffVisible by remember { mutableStateOf(false) }
     var channelPickerVisible by remember { mutableStateOf(false) }
     var infoChannel by remember { mutableStateOf<UpdateChannel?>(null) }
 
@@ -121,7 +124,7 @@ fun UpdatesScreen(
 
     // Scrim animates independently of the shared-element transition
     val scrimAlpha by animateFloatAsState(
-        targetValue = if (channelPickerVisible || intervalPickerVisible) 0.32f else 0f,
+        targetValue = if (channelPickerVisible || intervalPickerVisible || autoOffVisible) 0.32f else 0f,
         animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
         label = "scrim_alpha",
     )
@@ -199,17 +202,55 @@ fun UpdatesScreen(
 
                 Spacer(Modifier.height(6.dp))
 
-                ExpressiveGroupRow(GroupPosition.TOP) {
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.updates_auto_check_label)) },
-                        trailingContent = {
-                            Switch(
-                                checked = state.autoCheck,
-                                onCheckedChange = onAutoCheckToggled,
+                // Source of the row -> card container transform for the "keep auto-updates on" card
+                // (same technique as the interval row below): a Spacer of the row's own height holds
+                // its place while the card is up.
+                val autoDensity = LocalDensity.current
+                var autoRowHeightPx by remember { mutableStateOf(0) }
+                Box {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !autoOffVisible,
+                        enter = EnterTransition.None,
+                        exit = ExitTransition.None,
+                    ) {
+                        ExpressiveGroupRow(
+                            GroupPosition.TOP,
+                            modifier = Modifier
+                                .onSizeChanged { autoRowHeightPx = it.height }
+                                .sharedBounds(
+                                    rememberSharedContentState("auto_off_card"),
+                                    animatedVisibilityScope = this@AnimatedVisibility,
+                                    enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                    exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                    boundsTransform = BoundsTransform { _, _ ->
+                                        spring(stiffness = 380f, dampingRatio = 0.8f)
+                                    },
+                                    resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                                ),
+                        ) {
+                            ListItem(
+                                headlineContent = { Text(stringResource(R.string.updates_auto_check_label)) },
+                                trailingContent = {
+                                    Switch(
+                                        checked = state.autoCheck,
+                                        onCheckedChange = { on ->
+                                            // Off on a fast channel: ask first (the card). Stable has
+                                            // few releases, so it switches off straight away.
+                                            if (!on && state.selectedChannel != UpdateChannel.STABLE) {
+                                                autoOffVisible = true
+                                            } else {
+                                                onAutoCheckToggled(on)
+                                            }
+                                        },
+                                    )
+                                },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             )
-                        },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    )
+                        }
+                    }
+                    if (autoOffVisible) {
+                        Spacer(Modifier.height(with(autoDensity) { autoRowHeightPx.toDp() }))
+                    }
                 }
                 // Without the "install unknown apps" permission Impulse cannot install anything by
                 // itself -- the overnight update would skip silently. Shown only while it is off.
@@ -241,9 +282,12 @@ fun UpdatesScreen(
                             Text(stringResource(R.string.updates_nightly_description))
                         },
                         trailingContent = {
+                            // The overnight run only installs what the automatic check has found and
+                            // downloaded, so with the auto-check off it has nothing to do.
                             Switch(
                                 checked = state.nightlyInstall,
                                 onCheckedChange = onNightlyInstallToggled,
+                                enabled = state.autoCheck,
                             )
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -535,11 +579,65 @@ fun UpdatesScreen(
                     }
                 }
             }
+
+            // ── "Keep auto-updates on" card: destination of the auto-check row's container
+            // transform (same spring and fades as the pickers above) ─
+            AnimatedVisibility(
+                visible = autoOffVisible,
+                enter = EnterTransition.None,
+                exit = ExitTransition.None,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) { autoOffVisible = false },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp,
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp)
+                            .fillMaxWidth()
+                            .sharedBounds(
+                                rememberSharedContentState("auto_off_card"),
+                                animatedVisibilityScope = this@AnimatedVisibility,
+                                enter = fadeIn(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                exit = fadeOut(spring(stiffness = 1600f, dampingRatio = 1.0f)),
+                                boundsTransform = BoundsTransform { _, _ ->
+                                    spring(stiffness = 380f, dampingRatio = 0.8f)
+                                },
+                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                            )
+                            // Consume touches so tapping inside the card doesn't dismiss it
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() },
+                            ) {},
+                    ) {
+                        AutoOffContent(
+                            channel = state.selectedChannel,
+                            onKeepOn = { autoOffVisible = false },
+                            onTurnOff = {
+                                autoOffVisible = false
+                                onAutoCheckToggled(false)
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 
     androidx.activity.compose.BackHandler(enabled = intervalPickerVisible) {
         intervalPickerVisible = false
+    }
+    androidx.activity.compose.BackHandler(enabled = autoOffVisible) {
+        autoOffVisible = false
     }
 
     // Download-progress UI (the sheet) is no longer rendered inline here -- it's the shared
@@ -1512,6 +1610,72 @@ data class UpdatesUiState(
     val canInstallDirectly: Boolean = true,
     val isFirstUpdate: Boolean = false,
 )
+
+/**
+ * The inside of the "keep auto-updates on" card: a hero icon, why, what to do about being asked too
+ * often (on RC the builds come about daily, on beta/alpha at every launch), and the overnight
+ * install. The primary button keeps the setting; turning it off anyway is a quiet text button.
+ */
+@Composable
+private fun AutoOffContent(
+    channel: UpdateChannel,
+    onKeepOn: () -> Unit,
+    onTurnOff: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp)
+            .padding(top = 24.dp, bottom = 16.dp),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_system_update_24dp),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(48.dp),
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = stringResource(R.string.updates_auto_off_title),
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = stringResource(R.string.updates_auto_off_body),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = stringResource(
+                if (channel == UpdateChannel.RC) R.string.updates_auto_off_tip_rc
+                else R.string.updates_auto_off_tip_fast
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = stringResource(R.string.updates_auto_off_overnight),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(20.dp))
+        Button(onClick = onKeepOn, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.updates_auto_off_keep))
+        }
+        androidx.compose.material3.TextButton(onClick = onTurnOff, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.updates_auto_off_anyway),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
 
 /** The "Wait between updates" choices: hours -> label. 0 = off. */
 private val WAIT_OPTIONS = listOf(
