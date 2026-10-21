@@ -856,7 +856,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     // The same card colour, but as a tint on glass instead of an opaque slab.
                     LiquidGlassPanel(
                         glass = glassStack,
-                        surfaceColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.42f),
+                        tint = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
                         contentAlignment = Alignment.CenterStart,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
                     ) {

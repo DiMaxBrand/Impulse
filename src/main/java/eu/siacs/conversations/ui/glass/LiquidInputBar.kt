@@ -312,7 +312,6 @@ private fun AttachOrDiscardBubble(
     onClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val normal = LiquidGlassDefaults.surfaceColor()
     val anchorHidden by rememberAnchorHidden(attachMenu)
     LiquidGlassButton(
         onClick = onClick,
@@ -330,7 +329,7 @@ private fun AttachOrDiscardBubble(
             .then(if (rec.value < 0.01f) Modifier.liquidMenuPull(attachMenu) else Modifier)
             .graphicsLayer { alpha = attachMenu.anchorAlpha },
         // The body goes red as it becomes the discard button.
-        surfaceColor = lerpColor(normal, colors.error.copy(alpha = 0.5f), rec.value),
+        tint = colors.error.copy(alpha = 0.5f * rec.value),
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_attach_file_24dp),
@@ -532,11 +531,7 @@ private fun SendBubble(
         onClick = { if (enabled) onClick() },
         glass = backdrop,
         modifier = Modifier.size(BubbleSize).graphicsLayer { alpha = if (enabled) 1f else 0.5f },
-        surfaceColor = lerpColor(
-            LiquidGlassDefaults.surfaceColor(),
-            colors.primary.copy(alpha = 0.78f),
-            sendProgress.coerceIn(0f, 1f),
-        ),
+        tint = colors.primary.copy(alpha = 0.78f * sendProgress.coerceIn(0f, 1f)),
         extraLayerBlock = {
             val p = push()
             translationX += p * 6.dp.toPx()

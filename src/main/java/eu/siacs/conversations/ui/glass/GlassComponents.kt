@@ -235,6 +235,9 @@ fun LiquidGlassPanel(
     shape: CornerBasedShape = RoundedCornerShape(24.dp),
     // Unspecified: the style's own surface colour.
     surfaceColor: Color = Color.Unspecified,
+    // A colour for the glass, as the demo does it: a Hue blend keeps the backdrop's lightness, so the
+    // glass takes the colour without going milky (surfaceColor is a plain wash and does go milky).
+    tint: Color = Color.Unspecified,
     style: LiquidGlassStyle = LiquidGlassStyle.Panel,
     contentAlignment: Alignment = Alignment.TopStart,
     // The panel has a size of its own (a fixed or animated one) and [content] may be bigger than it
@@ -272,6 +275,10 @@ fun LiquidGlassPanel(
                     },
                     layerBlock = layerBlock,
                     onDrawSurface = {
+                        if (tint.isSpecified) {
+                            drawRect(tint, blendMode = BlendMode.Hue)
+                            drawRect(tint.copy(alpha = 0.75f))
+                        }
                         if (body.alpha > 0f) drawRect(body)
                     },
                 ),
