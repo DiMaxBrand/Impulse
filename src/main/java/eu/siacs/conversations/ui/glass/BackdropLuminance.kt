@@ -8,6 +8,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -15,7 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import kotlin.math.abs
+import kotlin.math.sign
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -79,39 +82,48 @@ fun rememberUnderGrid(
     }
 
 /**
- * What one glass piece does with its brightness, decided together: the glass gets a light tint when
- * the screen under it is in the middle (dark ink then reads on it), a dark one when it is dimly in the
- * middle (light ink reads), and nothing when it is clearly bright or dark. [dark] is the ink.
+ * How one glass piece reacts to what is under it, as the Backdrop demo's adaptive glass does. Its
+ * [level] (0 black .. 1 white, animated over a second) makes the glass itself brighter over a bright
+ * backdrop and darker over a dark one (see [glassBrightness] and [glassContrast]), and [lightInk]
+ * is the text colour: white on the dark side of the middle, black on the bright side.
  */
 class GlassInk internal constructor(
-    val dark: Boolean,
-    val fill: State<Color>,
+    val lightInk: Boolean,
+    internal val level: Animatable<Float, AnimationVector1D>,
     internal val place: MutableState<Rect>,
 )
 
 @Composable
 fun rememberGlassInk(under: State<UnderGrid?>?): GlassInk {
     val place = remember { mutableStateOf(Rect.Zero) }
-    val plan by remember(under) { derivedStateOf { under?.value?.lumaIn(place.value)?.let { planFor(it) } } }
-    // Hysteresis on the brightness the ink actually sees (after the tint), so it does not flicker.
-    var dark by remember(under) { mutableStateOf(true) }
-    LaunchedEffect(plan?.effective) {
-        val e = plan?.effective ?: return@LaunchedEffect
-        if (dark && e > 0.55f) dark = false
-        else if (!dark && e < 0.45f) dark = true
+    val raw by remember(under) { derivedStateOf { under?.value?.lumaIn(place.value) } }
+    val level = remember { Animatable(0.5f) }
+    LaunchedEffect(raw) {
+        val r = raw ?: return@LaunchedEffect
+        level.animateTo(r, tween(durationMillis = 1000))
     }
-    val fill = remember(under) { derivedStateOf { plan?.let { it.tint.copy(alpha = it.alpha) } ?: Color.Transparent } }
-    return GlassInk(dark, fill, place)
+    // Hysteresis around the middle, so the text does not flicker when the backdrop sits right on it.
+    var lightInk by remember { mutableStateOf(true) }
+    LaunchedEffect(raw) {
+        val r = raw ?: return@LaunchedEffect
+        if (lightInk && r > 0.54f) lightInk = false
+        else if (!lightInk && r < 0.46f) lightInk = true
+    }
+    return GlassInk(lightInk, level, place)
 }
 
-private class Plan(val tint: Color, val alpha: Float, val effective: Float)
+/** Brightness of the glass for a backdrop of this luminance: the demo's mapping. */
+internal fun glassBrightness(level: Float): Float {
+    val x = level * 2f - 1f
+    val l = sign(x) * x * x
+    return if (l > 0f) 0.1f + (0.5f - 0.1f) * l else 0.1f + (-0.2f - 0.1f) * (-l)
+}
 
-private fun planFor(raw: Float): Plan {
-    // Strongest in the middle, none at the ends; at most 30% of the tint.
-    val alpha = 0.3f * (1f - abs(raw - 0.5f) * 2f).coerceIn(0f, 1f)
-    val light = raw >= 0.5f
-    val effective = if (light) raw * (1f - alpha) + alpha else raw * (1f - alpha)
-    return Plan(if (light) Color.White else Color.Black, alpha, effective)
+/** Contrast of the glass: lower over a bright backdrop, so the light does not wash out. */
+internal fun glassContrast(level: Float): Float {
+    val x = level * 2f - 1f
+    val l = sign(x) * x * x
+    return if (l > 0f) 1f - l else 1f
 }
 
 /** The content of a glass piece with its ink; themed as usual when the screen has no grid. */
@@ -123,7 +135,7 @@ fun GlassInkBox(
     sampled: Boolean,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val scheme = if (sampled) onGlassColors(MaterialTheme.colorScheme, ink.dark) else MaterialTheme.colorScheme
+    val scheme = if (sampled) onGlassColors(MaterialTheme.colorScheme, ink.lightInk) else MaterialTheme.colorScheme
     MaterialTheme(colorScheme = scheme) {
         Box(modifier, contentAlignment = alignment, content = content)
     }

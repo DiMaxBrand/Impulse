@@ -73,6 +73,7 @@ import com.kyant.backdrop.backdrops.rememberBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
@@ -150,6 +151,9 @@ fun LiquidGlassButton(
                 effects = {
                     // Too fast to see the glass anyway while the list flies past: skip the effects.
                     if (!GlassPerformance.lite) {
+                        // The glass itself brightens over a bright backdrop and darkens over a dark one.
+                        val level = ink.level.value
+                        colorControls(glassBrightness(level), glassContrast(level), 1f)
                         if (style.vibrancy) vibrancy()
                         if (style.blur > 0.dp) blur(style.blur.toPx())
                         glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
@@ -168,9 +172,7 @@ fun LiquidGlassButton(
                         drawRect(tint, blendMode = BlendMode.Hue)
                         drawRect(tint.copy(alpha = 0.75f))
                     }
-                    // A piece with its own colour keeps it; otherwise the glass takes the tint its ink needs.
-                    val fill = if (surfaceColor.isSpecified || style.surfaceAlpha > 0f) body else ink.fill.value
-                    if (fill.alpha > 0f) drawRect(fill)
+                    if (body.alpha > 0f) drawRect(body)
                 },
             )
             .clickable(
@@ -261,6 +263,8 @@ fun LiquidGlassPanel(
                     shape = { shape },
                     effects = {
                         if (!GlassPerformance.lite) {
+                            val level = ink.level.value
+                            colorControls(glassBrightness(level), glassContrast(level), 1f)
                             if (style.vibrancy) vibrancy()
                             if (style.blur > 0.dp) blur(style.blur.toPx())
                             glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
@@ -268,8 +272,7 @@ fun LiquidGlassPanel(
                     },
                     layerBlock = layerBlock,
                     onDrawSurface = {
-                        val fill = if (surfaceColor.isSpecified || style.surfaceAlpha > 0f) body else ink.fill.value
-                        if (fill.alpha > 0f) drawRect(fill)
+                        if (body.alpha > 0f) drawRect(body)
                     },
                 ),
         )
