@@ -157,6 +157,7 @@ import eu.siacs.conversations.ui.glass.LiquidInputBar
 import eu.siacs.conversations.ui.glass.LiquidTopBar
 import eu.siacs.conversations.ui.glass.rememberGlassScrollMeter
 import eu.siacs.conversations.ui.glass.rememberGlassStack
+import eu.siacs.conversations.ui.glass.rememberUnderGrid
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -705,7 +706,9 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val listBackdrop = rememberLayerBackdrop()
     val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
     // The glass pieces of the chat look through the background, the messages and each other.
-    val glassStack = rememberGlassStack(glassBackdrop)
+    // How bright what is under each glass piece is, sampled from the two layers the chat draws.
+    val underGrid = rememberUnderGrid(backgroundBackdrop, listBackdrop, enabled = glass)
+    val glassStack = rememberGlassStack(glassBackdrop, underGrid)
     val topMenu = rememberLiquidMenuState()
 
     // What the top bar's selection actions do; both top bars use these.
@@ -952,8 +955,6 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     conversation = conversation,
                     revision = state.revision.intValue,
                     listener = listener,
-                    underBackground = backgroundBackdrop,
-                    underMessages = listBackdrop,
                     backdrop = glassStack,
                     menu = topMenu,
                     selectedCount = selectedUuids.size,
@@ -1392,7 +1393,7 @@ private fun LiquidPinnedBanner(
                 Icon(
                     painter = painterResource(R.drawable.ic_push_pin_24dp),
                     contentDescription = null,
-                    tint = colors.onSurface,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(16.dp),
                 )
                 Spacer(Modifier.width(10.dp))
@@ -1411,12 +1412,12 @@ private fun LiquidPinnedBanner(
                         else
                             stringResource(R.string.pinned_message),
                         style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         text = MessageUtils.replyPreview(message),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1425,7 +1426,7 @@ private fun LiquidPinnedBanner(
                     Icon(
                         painter = painterResource(R.drawable.ic_visibility_off),
                         contentDescription = stringResource(R.string.hide),
-                        tint = colors.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -1433,7 +1434,7 @@ private fun LiquidPinnedBanner(
                     Icon(
                         painter = painterResource(R.drawable.ic_push_pin_off_24dp),
                         contentDescription = stringResource(R.string.unpin_message),
-                        tint = colors.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp),
                     )
                 }

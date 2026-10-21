@@ -99,7 +99,7 @@ import eu.siacs.conversations.ui.glass.LiquidGlassButton
 import eu.siacs.conversations.ui.glass.LiquidViewerMenuOverlay
 import eu.siacs.conversations.ui.glass.LiquidViewerTopBar
 import eu.siacs.conversations.ui.glass.LiquidGlassStyle
-import eu.siacs.conversations.ui.glass.rememberUnderIsDark
+import eu.siacs.conversations.ui.glass.rememberUnderGrid
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import eu.siacs.conversations.ui.util.ShareUtil
@@ -447,11 +447,9 @@ private fun MediaViewerScreen(
     // flag off none of this is used and the viewer is as it was.
     val glass = rememberLiquidGlassEnabled()
     val viewerBackdrop = rememberLayerBackdrop()
-    val glassStack = rememberGlassStack(viewerBackdrop)
-    // What is under the top bar, judged by the same sampler as the chat's bar (see
-    // rememberUnderIsDark). It feeds the viewer's dark or light colour scheme for the glass menu.
-    val underDark by rememberUnderIsDark(viewerBackdrop, null, 150.dp, enabled = glass)
-    LaunchedEffect(underDark) { chromeOnDark.value = underDark }
+    // How bright what is under each glass piece is, from the photo layer (see rememberUnderGrid).
+    val underGrid = rememberUnderGrid(viewerBackdrop, null, enabled = glass)
+    val glassStack = rememberGlassStack(viewerBackdrop, underGrid)
     val topMenu = rememberLiquidMenuState()
     // 0: the top bar still looks like the chat's; 1: it is the viewer's. Starts done unless the
     // viewer came from the chat's glass bar.
@@ -638,7 +636,6 @@ private fun MediaViewerScreen(
         ) {
             if (glass) {
                 LiquidViewerTopBar(
-                    underDark = underDark,
                     conversation = conversation,
                     revision = revision,
                     dateText = rememberViewerDateText(currentMessage),

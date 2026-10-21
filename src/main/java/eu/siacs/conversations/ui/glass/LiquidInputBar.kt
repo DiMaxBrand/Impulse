@@ -323,7 +323,7 @@ private fun AttachOrDiscardBubble(
                 Icon(
                     painter = painterResource(R.drawable.ic_attach_file_24dp),
                     contentDescription = null,
-                    tint = colors.onSurface,
+                    tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
             // Pulling the paperclip is for the menu only; while recording it is the discard button.
@@ -335,7 +335,7 @@ private fun AttachOrDiscardBubble(
         Icon(
             painter = painterResource(R.drawable.ic_attach_file_24dp),
             contentDescription = stringResource(R.string.attach_file),
-            tint = colors.onSurface,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.graphicsLayer {
                 alpha = 1f - rec.value
                 rotationZ = -45f * rec.value
@@ -344,7 +344,7 @@ private fun AttachOrDiscardBubble(
         Icon(
             painter = painterResource(R.drawable.ic_delete_24dp),
             contentDescription = stringResource(R.string.cancel),
-            tint = colors.onSurface,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.graphicsLayer {
                 alpha = rec.value
                 rotationZ = 45f * (1f - rec.value)
@@ -552,7 +552,7 @@ private fun SendBubble(
                 contentDescription = stringResource(
                     if (isMic) R.string.attachment_choice_recording else R.string.send_message
                 ),
-                tint = if (isMic) colors.onSurface else colors.onPrimary,
+                tint = if (isMic) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onPrimary,
             )
         }
     }

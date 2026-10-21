@@ -1,6 +1,5 @@
 package eu.siacs.conversations.ui.glass
 
-import com.kyant.backdrop.backdrops.LayerBackdrop
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -36,7 +35,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import eu.siacs.conversations.R
 import eu.siacs.conversations.entities.Conversation
@@ -65,18 +63,12 @@ private val PillHeight = 54.dp
 private val BubbleWidth = 44.dp
 private val TallHeight = 68.dp
 
-// How far down the screen the text colour is judged from: the strip the bar sits on.
-private val BarSampleHeight = 150.dp
-
 @Composable
 fun LiquidTopBar(
     conversation: Conversation?,
     revision: Int,
     listener: ConversationScreenListener,
     backdrop: GlassStack,
-    // What the bar sits over, in draw order: the wallpaper and the messages. The text colour follows it.
-    underBackground: LayerBackdrop,
-    underMessages: LayerBackdrop,
     menu: LiquidMenuState,
     selectedCount: Int,
     copyEnabled: Boolean,
@@ -86,8 +78,6 @@ fun LiquidTopBar(
     onDeleteSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val underDark by rememberUnderIsDark(underBackground, underMessages, BarSampleHeight)
-    val colors = onGlassColors(MaterialTheme.colorScheme, underDark)
     val header = rememberChatHeaderState(conversation, revision)
     val inSelection = selectedCount > 0
     // Whether the line under the name needs two lines (reported by the text itself); decides the
@@ -113,7 +103,7 @@ fun LiquidTopBar(
                 Icon(
                     painter = painterResource(if (selecting) R.drawable.ic_close_24dp else R.drawable.ic_arrow_back_24dp),
                     contentDescription = stringResource(if (selecting) R.string.close_selection else R.string.back),
-                    tint = colors.onSurface,
+                    tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
@@ -129,16 +119,16 @@ fun LiquidTopBar(
                 Text(
                     text = stringResource(R.string.messages_selected_count, selectedCount),
                     style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = 18.dp),
                 )
             }
-            ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_forward_24dp, stringResource(R.string.forward_message), onForwardSelected)
-            ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_delete_24dp, stringResource(R.string.delete_message), onDeleteSelected)
+            ActionBubble(backdrop, bubbleHeight, R.drawable.ic_forward_24dp, stringResource(R.string.forward_message), onForwardSelected)
+            ActionBubble(backdrop, bubbleHeight, R.drawable.ic_delete_24dp, stringResource(R.string.delete_message), onDeleteSelected)
             // A bubble of its own for copy (the Material bar hides it in an overflow menu that has
             // only this one entry).
             if (copyEnabled) {
-                ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_check_24dp, stringResource(android.R.string.copy), onCopySelected)
+                ActionBubble(backdrop, bubbleHeight, R.drawable.ic_check_24dp, stringResource(android.R.string.copy), onCopySelected)
             }
         } else {
             // The contact: picture, name, and the line under it.
@@ -161,14 +151,14 @@ fun LiquidTopBar(
                             modifier = Modifier.size(36.dp).clip(CircleShape),
                         )
                     } else {
-                        Box(Modifier.size(36.dp).clip(CircleShape).background(colors.primaryContainer))
+                        Box(Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer))
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
                             text = conversation?.getName()?.toString() ?: "",
                             style = MaterialTheme.typography.titleMedium,
-                            color = colors.onSurface,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -177,7 +167,7 @@ fun LiquidTopBar(
                             Text(
                                 text = subtitle,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (header.isTyping) colors.primary else colors.onSurfaceVariant,
+                                color = if (header.isTyping) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 // Two lines before it is cut; a second line makes the bar taller.
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
@@ -188,10 +178,10 @@ fun LiquidTopBar(
                 }
             }
             if (header.isSingle) {
-                ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_call_24dp, stringResource(R.string.audio_call)) {
+                ActionBubble(backdrop, bubbleHeight, R.drawable.ic_call_24dp, stringResource(R.string.audio_call)) {
                     listener.onCall(false)
                 }
-                ActionBubble(backdrop, bubbleHeight, colors.onSurface, R.drawable.ic_videocam_24dp, stringResource(R.string.video_call)) {
+                ActionBubble(backdrop, bubbleHeight, R.drawable.ic_videocam_24dp, stringResource(R.string.video_call)) {
                     listener.onCall(true)
                 }
             }
@@ -201,7 +191,7 @@ fun LiquidTopBar(
                 Icon(
                     painter = painterResource(R.drawable.ic_more_horiz_24dp),
                     contentDescription = stringResource(R.string.more_options),
-                    tint = colors.onSurface,
+                    tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
             LiquidGlassButton(
@@ -220,7 +210,7 @@ fun LiquidTopBar(
 }
 
 @Composable
-private fun ActionBubble(backdrop: GlassStack, height: Dp, tint: Color, iconRes: Int, description: String, onClick: () -> Unit) {
+private fun ActionBubble(backdrop: GlassStack, height: Dp, iconRes: Int, description: String, onClick: () -> Unit) {
     LiquidGlassButton(
         onClick = onClick,
         glass = backdrop,
@@ -230,7 +220,7 @@ private fun ActionBubble(backdrop: GlassStack, height: Dp, tint: Color, iconRes:
         Icon(
             painter = painterResource(iconRes),
             contentDescription = description,
-            tint = tint,
+            tint = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

@@ -60,8 +60,6 @@ private val AvatarGap = 12.dp
 
 @Composable
 fun LiquidViewerTopBar(
-    // The text colour follows what is under the bar (see rememberUnderIsDark), as the chat's bar does.
-    underDark: Boolean,
     conversation: Conversation,
     revision: Int,
     dateText: String,
@@ -75,7 +73,6 @@ fun LiquidViewerTopBar(
     downloadBubble: @Composable (icon: @Composable BoxScope.() -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = onGlassColors(MaterialTheme.colorScheme, underDark)
     val header = rememberChatHeaderState(conversation, revision)
     val chatLine = chatSubtitle(conversation, header)
 
@@ -91,7 +88,7 @@ fun LiquidViewerTopBar(
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_back_24dp),
                 contentDescription = stringResource(R.string.back),
-                tint = colors.onSurface,
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
 
@@ -128,14 +125,14 @@ fun LiquidViewerTopBar(
                             modifier = Modifier.size(AvatarSize).clip(CircleShape),
                         )
                     } else {
-                        Box(Modifier.size(AvatarSize).clip(CircleShape).background(colors.primaryContainer))
+                        Box(Modifier.size(AvatarSize).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer))
                     }
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = conversation.getName()?.toString() ?: "",
                         style = MaterialTheme.typography.titleMedium,
-                        color = colors.onSurface,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -144,7 +141,7 @@ fun LiquidViewerTopBar(
                             Text(
                                 text = chatLine,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = colors.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.graphicsLayer { alpha = 1f - enter().coerceIn(0f, 1f) },
@@ -153,7 +150,7 @@ fun LiquidViewerTopBar(
                         Text(
                             text = dateText,
                             style = MaterialTheme.typography.labelMedium,
-                            color = colors.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.graphicsLayer { alpha = enter().coerceIn(0f, 1f) },
@@ -175,7 +172,7 @@ fun LiquidViewerTopBar(
             Icon(
                 painter = painterResource(R.drawable.ic_more_horiz_24dp),
                 contentDescription = stringResource(R.string.more_options),
-                tint = colors.onSurface,
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
         val anchorHidden by rememberAnchorHidden(menu)

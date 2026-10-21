@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
@@ -31,7 +32,11 @@ import kotlin.math.min
  * one: double refraction.
  */
 @Stable
-class GlassStack internal constructor(internal val base: Backdrop) {
+class GlassStack internal constructor(
+    internal val base: Backdrop,
+    // How bright what is under each piece is, so its text can read (null: the theme's colours).
+    val under: State<UnderGrid?>? = null,
+) {
     private val layers = mutableStateListOf<LayerBackdrop?>()
 
     internal fun allocate(layer: LayerBackdrop): Int {
@@ -66,7 +71,8 @@ class GlassStack internal constructor(internal val base: Backdrop) {
 
 /** The stack for a screen whose content (what glass shows through itself) is recorded in [base]. */
 @Composable
-fun rememberGlassStack(base: Backdrop): GlassStack = remember(base) { GlassStack(base) }
+fun rememberGlassStack(base: Backdrop, under: State<UnderGrid?>? = null): GlassStack =
+    remember(base, under) { GlassStack(base, under) }
 
 /** A piece's place in a [GlassStack]: what it looks through, and where it records itself. */
 @Immutable

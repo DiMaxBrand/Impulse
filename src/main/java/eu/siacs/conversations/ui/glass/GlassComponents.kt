@@ -182,7 +182,7 @@ fun LiquidGlassButton(
                 }
             ),
         contentAlignment = Alignment.Center,
-        content = content,
+        content = { GlassInk(Modifier.matchParentSize(), Alignment.Center, glass.under, content) },
     )
 }
 
@@ -264,11 +264,12 @@ fun LiquidGlassPanel(
                     onDrawSurface = { if (body.isSpecified) drawRect(body) },
                 ),
         )
-        if (clipContent) {
-            Box(Modifier.matchParentSize().clip(shape), contentAlignment = contentAlignment) { content() }
-        } else {
-            Box(Modifier.clip(shape), contentAlignment = contentAlignment, content = content)
-        }
+        GlassInk(
+            if (clipContent) Modifier.matchParentSize().clip(shape) else Modifier.clip(shape),
+            contentAlignment,
+            glass.under,
+            content,
+        )
     }
 }
 
