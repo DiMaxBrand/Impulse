@@ -85,6 +85,11 @@ fun rememberUnderGrid(
                     null
                 }
                 if (grid != null) value = grid
+                // A layer that has not been drawn yet is empty: try again soon, not in a second.
+                if (grid == null) {
+                    delay(250)
+                    continue
+                }
             }
             delay(900)
         }
@@ -177,9 +182,9 @@ fun onGlassColors(scheme: ColorScheme, underDark: Boolean): ColorScheme =
     )
 
 private suspend fun sampleGrid(background: LayerBackdrop, foreground: LayerBackdrop?, base: Int): UnderGrid {
-    val under = smallPixels(background, base)
+    val under = smallPixels(background, base, "background")
     // With no layer on top (the viewer's single layer), the bottom one is all there is.
-    val over = foreground?.let { smallPixels(it, null) }
+    val over = foreground?.let { smallPixels(it, null, "messages") }
     val luma = FloatArray(COLS * ROWS)
     for (i in luma.indices) {
         val u = under.pixels[i]
@@ -209,10 +214,12 @@ private fun mix(top: Int, bottom: Int, shift: Int, topAlpha: Float): Float {
     return (t * topAlpha + b * (1f - topAlpha)) / 255f
 }
 
-private suspend fun smallPixels(layer: LayerBackdrop, base: Int?): Small {
+private suspend fun smallPixels(layer: LayerBackdrop, base: Int?, name: String): Small {
     val src = layer.graphicsLayer.toImageBitmap().asAndroidBitmap().let {
         if (it.config == Bitmap.Config.HARDWARE) it.copy(Bitmap.Config.ARGB_8888, false) else it
     }
+    // DEBUG: say which layer is empty, instead of the bare Bitmap exception.
+    if (src.width <= 0 || src.height <= 0) throw IllegalStateException("$name layer empty ${src.width}x${src.height}")
     val small = Bitmap.createScaledBitmap(src, COLS, ROWS, true)
     val pixels = IntArray(COLS * ROWS).also { small.getPixels(it, 0, COLS, 0, 0, COLS, ROWS) }
     // A transparent part of the background shows the theme's background underneath it.
