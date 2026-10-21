@@ -1,175 +1,139 @@
 package eu.siacs.conversations.ui.glass
 
 import android.graphics.Bitmap
-import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.Modifier
-import kotlin.math.sign
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import com.kyant.backdrop.backdrops.LayerBackdrop
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlin.math.sign
 
-// DEBUG: the last failure of the sampler, shown on the readout (remove with the readout).
+/*
+ * Adaptive luminance glass, done the way the Backdrop demo does it (AdaptiveLuminanceGlassContent):
+ * each glass piece records what is behind it into its own [GlassInk.layer] while it draws (see the
+ * onDrawBackdrop of LiquidGlassButton / LiquidGlassPanel), and about once a second that layer is
+ * shrunk to 5 x 5 pixels and averaged. That one number drives both the glass (brighter or darker)
+ * and the text on it (black or white), so the two always agree.
+ */
+
+/** DEBUG: the last sampling failure; the readout only shows while something is wrong. */
 var lastSampleError by mutableStateOf<String?>(null)
 
-// The grid the screen is judged on: one cell per 1/24 of its width and 1/12 of its height. Coarse on
-// purpose; each glass piece only needs to know whether the part of the screen under it is bright.
-private const val COLS = 24
-private const val ROWS = 12
-
-/** Brightness (0 black .. 1 white) of each cell of the screen, as the glass sees it. */
-class UnderGrid(private val luma: FloatArray, private val widthPx: Int, private val heightPx: Int) {
-    /** The average brightness of the cells under [rect] (window pixels), or null if it is empty. */
-    fun lumaIn(rect: Rect): Float? {
-        if (rect.isEmpty || widthPx <= 0 || heightPx <= 0) return null
-        val c0 = (rect.left / widthPx * COLS).toInt().coerceIn(0, COLS - 1)
-        val c1 = (rect.right / widthPx * COLS).toInt().coerceIn(c0, COLS - 1)
-        val r0 = (rect.top / heightPx * ROWS).toInt().coerceIn(0, ROWS - 1)
-        val r1 = (rect.bottom / heightPx * ROWS).toInt().coerceIn(r0, ROWS - 1)
-        var sum = 0f
-        var n = 0
-        for (r in r0..r1) for (c in c0..c1) {
-            sum += luma[r * COLS + c]
-            n++
-        }
-        return sum / n
-    }
-}
-
-/**
- * The brightness grid of what the glass looks through (in draw order: [background] first, then
- * [foreground] on top of it, or nothing above it). Sampled about once a second as a tiny image, the
- * one expensive step; off when [enabled] is false.
- */
-@Composable
-fun rememberUnderGrid(
-    background: LayerBackdrop,
-    foreground: LayerBackdrop?,
-    enabled: Boolean = true,
-    // What a transparent part of the background shows: the theme's background, not black.
-    base: Color = Color.White,
-): State<UnderGrid?> =
-    produceState<UnderGrid?>(initialValue = null, background, foreground, enabled, base) {
-        while (true) {
-            if (enabled) {
-                val grid = try {
-                    sampleGrid(background, foreground, base.toArgb())
-                } catch (e: Exception) {
-                    // DEBUG: the swallowed failure, shown on the readout.
-                    lastSampleError = e.javaClass.simpleName + ": " + e.message
-                    null
-                }
-                if (grid != null) value = grid
-                // A layer that has not been drawn yet is empty: try again soon, not in a second.
-                if (grid == null) {
-                    delay(250)
-                    continue
-                }
-            }
-            delay(900)
-        }
-    }
-
-/**
- * How one glass piece reacts to what is under it, as the Backdrop demo's adaptive glass does. Its
- * [level] (0 black .. 1 white, animated over a second) makes the glass itself brighter over a bright
- * backdrop and darker over a dark one (see [glassBrightness] and [glassContrast]), and [lightInk]
- * is the text colour: white on the dark side of the middle, black on the bright side.
- */
 class GlassInk internal constructor(
+    /** White text when true, black when false. */
     val lightInk: Boolean,
+    /** What is behind the piece, 0 black .. 1 white, animated over a second. */
     internal val level: Animatable<Float, AnimationVector1D>,
-    internal val place: MutableState<Rect>,
-    // DEBUG: the brightness measured under this piece, and whether there is a grid at all.
-    val measured: Float?,
-    val hasGrid: Boolean,
+    /** Where the piece records what is behind it. */
+    internal val layer: GraphicsLayer,
+    internal val measured: Float?,
+    internal val adaptive: Boolean,
 )
 
 @Composable
-fun rememberGlassInk(under: State<UnderGrid?>?): GlassInk {
-    val place = remember { mutableStateOf(Rect.Zero) }
-    val raw by remember(under) { derivedStateOf { under?.value?.lumaIn(place.value) } }
+fun rememberGlassInk(adaptive: Boolean): GlassInk {
+    val layer = rememberGraphicsLayer()
     val level = remember { Animatable(0.5f) }
-    LaunchedEffect(raw) {
-        val r = raw ?: return@LaunchedEffect
-        level.animateTo(r, tween(durationMillis = 1000))
-    }
-    // Hysteresis around the middle, so the text does not flicker when the backdrop sits right on it.
     var lightInk by remember { mutableStateOf(true) }
-    LaunchedEffect(raw) {
-        val r = raw ?: return@LaunchedEffect
-        if (lightInk && r > 0.54f) lightInk = false
-        else if (!lightInk && r < 0.46f) lightInk = true
+    var measured by remember { mutableStateOf<Float?>(null) }
+    // A transparent part of what is behind counts as the theme's background, not as black.
+    val baseLuma = MaterialTheme.colorScheme.background.luminance()
+    LaunchedEffect(layer, adaptive, baseLuma) {
+        if (!adaptive) return@LaunchedEffect
+        while (isActive) {
+            val l = try {
+                sampleLuma(layer, baseLuma)
+            } catch (e: Exception) {
+                lastSampleError = e.javaClass.simpleName + ": " + e.message
+                null
+            }
+            if (l == null) {
+                // Not drawn yet: try again soon.
+                delay(250)
+                continue
+            }
+            measured = l
+            // Hysteresis around the middle, so the text does not flicker on a mid-grey backdrop.
+            if (lightInk && l > 0.54f) lightInk = false
+            else if (!lightInk && l < 0.46f) lightInk = true
+            // The glass follows over a second, as in the demo; this also paces the loop.
+            level.animateTo(l, tween(durationMillis = 1000))
+        }
     }
-    return GlassInk(lightInk, level, place, raw, under != null)
+    return GlassInk(lightInk, level, layer, measured, adaptive)
 }
 
-/** Brightness of the glass for a backdrop of this luminance: the demo's mapping. */
+private suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float): Float? {
+    if (layer.size.width <= 0 || layer.size.height <= 0) return null
+    val src = layer.toImageBitmap().asAndroidBitmap().let {
+        if (it.config == Bitmap.Config.HARDWARE) it.copy(Bitmap.Config.ARGB_8888, false) else it
+    }
+    if (src.width <= 0 || src.height <= 0) return null
+    val small = Bitmap.createScaledBitmap(src, 5, 5, true)
+    val pixels = IntArray(25).also { small.getPixels(it, 0, 5, 0, 0, 5, 5) }
+    var sum = 0f
+    for (c in pixels) {
+        val a = ((c ushr 24) and 0xFF) / 255f
+        val r = ((c shr 16) and 0xFF) / 255f
+        val g = ((c shr 8) and 0xFF) / 255f
+        val b = (c and 0xFF) / 255f
+        val l = 0.2126f * r + 0.7152f * g + 0.0722f * b
+        sum += l * a + baseLuma * (1f - a)
+    }
+    return sum / pixels.size
+}
+
+/** Brightness of the glass for a backdrop of this luminance (no lift on the bright side: milky). */
 internal fun glassBrightness(level: Float): Float {
     val x = level * 2f - 1f
     val l = sign(x) * x * x
-    // No lift over a bright backdrop: raising the brightness there turned the glass milky white.
     return if (l > 0f) 0.1f else 0.1f + (-0.2f - 0.1f) * (-l)
 }
 
-/** Contrast of the glass: lower over a bright backdrop, so the light does not wash out. */
-internal fun glassContrast(level: Float): Float {
-    val x = level * 2f - 1f
-    val l = sign(x) * x * x
-    // Contrast stays whole: lowering it greyed the glass over bright backgrounds.
-    return 1f
-}
+/** Contrast of the glass: kept whole (lowering it greyed the glass). */
+@Suppress("UNUSED_PARAMETER")
+internal fun glassContrast(level: Float): Float = 1f
 
-/** The content of a glass piece with its ink; themed as usual when the screen has no grid. */
+/** The content of a glass piece with its ink; themed as usual on a screen that does not adapt. */
 @Composable
 fun GlassInkBox(
     modifier: Modifier,
     alignment: Alignment,
     ink: GlassInk,
-    sampled: Boolean,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val scheme = if (sampled) onGlassColors(MaterialTheme.colorScheme, ink.lightInk) else MaterialTheme.colorScheme
+    val scheme = if (ink.adaptive) onGlassColors(MaterialTheme.colorScheme, ink.lightInk) else MaterialTheme.colorScheme
     MaterialTheme(colorScheme = scheme) {
         Box(modifier, contentAlignment = alignment) {
             content()
-            // DEBUG readout: the measured brightness (0..1) and which ink was chosen (L = white, D = black).
-            val m = ink.measured
-            androidx.compose.material3.Text(
-                text = when {
-                    m != null -> "%.2f %s".format(m, if (ink.lightInk) "L" else "D")
-                    !ink.hasGrid -> "no grid"
-                    else -> "no pos"
-                } + (lastSampleError?.let { " E:" + it.take(60) } ?: ""),
-                fontSize = 7.sp,
-                color = androidx.compose.ui.graphics.Color.Red,
-                modifier = Modifier.align(Alignment.TopEnd),
-            )
+            // DEBUG: only while no brightness has been measured; disappears once it works.
+            if (ink.adaptive && ink.measured == null) {
+                Text(
+                    text = "--" + (lastSampleError?.let { " E:" + it.take(60) } ?: ""),
+                    fontSize = 7.sp,
+                    color = Color.Red,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                )
+            }
         }
     }
 }
@@ -180,49 +144,3 @@ fun onGlassColors(scheme: ColorScheme, underDark: Boolean): ColorScheme =
         onSurface = if (underDark) Color.White else Color(0xFF1B1B1F),
         onSurfaceVariant = if (underDark) Color(0xFFE6E0E9) else Color(0xFF45464F),
     )
-
-private suspend fun sampleGrid(background: LayerBackdrop, foreground: LayerBackdrop?, base: Int): UnderGrid {
-    val under = smallPixels(background, base, "background")
-    // With no layer on top (the viewer's single layer), the bottom one is all there is.
-    val over = foreground?.let { smallPixels(it, null, "messages") }
-    val luma = FloatArray(COLS * ROWS)
-    for (i in luma.indices) {
-        val u = under.pixels[i]
-        val o = over?.pixels?.get(i) ?: u
-        val alpha = if (over == null) 1f else ((o ushr 24) and 0xFF) / 255f
-        val r = mix(o, u, 16, alpha)
-        val g = mix(o, u, 8, alpha)
-        val b = mix(o, u, 0, alpha)
-        luma[i] = 0.2126f * r + 0.7152f * g + 0.0722f * b
-    }
-    return UnderGrid(luma, under.width, under.height)
-}
-
-private class Small(val pixels: IntArray, val width: Int, val height: Int)
-
-/** [top] over an opaque [bottom], opaque. */
-private fun over(top: Int, bottom: Int): Int {
-    val a = ((top ushr 24) and 0xFF) / 255f
-    fun ch(shift: Int) = (((top ushr shift) and 0xFF) * a + ((bottom ushr shift) and 0xFF) * (1f - a)).toInt()
-    return (0xFF shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
-}
-
-/** One channel, top layer over the bottom one, 0..1. */
-private fun mix(top: Int, bottom: Int, shift: Int, topAlpha: Float): Float {
-    val t = (top ushr shift) and 0xFF
-    val b = (bottom ushr shift) and 0xFF
-    return (t * topAlpha + b * (1f - topAlpha)) / 255f
-}
-
-private suspend fun smallPixels(layer: LayerBackdrop, base: Int?, name: String): Small {
-    val src = layer.graphicsLayer.toImageBitmap().asAndroidBitmap().let {
-        if (it.config == Bitmap.Config.HARDWARE) it.copy(Bitmap.Config.ARGB_8888, false) else it
-    }
-    // DEBUG: say which layer is empty, instead of the bare Bitmap exception.
-    if (src.width <= 0 || src.height <= 0) throw IllegalStateException("$name layer empty ${src.width}x${src.height}")
-    val small = Bitmap.createScaledBitmap(src, COLS, ROWS, true)
-    val pixels = IntArray(COLS * ROWS).also { small.getPixels(it, 0, COLS, 0, 0, COLS, ROWS) }
-    // A transparent part of the background shows the theme's background underneath it.
-    if (base != null) for (i in pixels.indices) pixels[i] = over(pixels[i], base)
-    return Small(pixels, src.width, src.height)
-}

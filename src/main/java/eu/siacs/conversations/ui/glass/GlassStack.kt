@@ -34,8 +34,8 @@ import kotlin.math.min
 @Stable
 class GlassStack internal constructor(
     internal val base: Backdrop,
-    // How bright what is under each piece is, so its text can read (null: the theme's colours).
-    val under: State<UnderGrid?>? = null,
+    // Whether each piece adapts its glass and text to what is behind it (see rememberGlassInk).
+    val adaptive: Boolean = false,
 ) {
     private val layers = mutableStateListOf<LayerBackdrop?>()
 
@@ -71,8 +71,8 @@ class GlassStack internal constructor(
 
 /** The stack for a screen whose content (what glass shows through itself) is recorded in [base]. */
 @Composable
-fun rememberGlassStack(base: Backdrop, under: State<UnderGrid?>? = null): GlassStack =
-    remember(base, under) { GlassStack(base, under) }
+fun rememberGlassStack(base: Backdrop, adaptive: Boolean = false): GlassStack =
+    remember(base, adaptive) { GlassStack(base, adaptive) }
 
 /** A piece's place in a [GlassStack]: what it looks through, and where it records itself. */
 @Immutable

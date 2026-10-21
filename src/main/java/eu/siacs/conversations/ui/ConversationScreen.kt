@@ -157,7 +157,6 @@ import eu.siacs.conversations.ui.glass.LiquidInputBar
 import eu.siacs.conversations.ui.glass.LiquidTopBar
 import eu.siacs.conversations.ui.glass.rememberGlassScrollMeter
 import eu.siacs.conversations.ui.glass.rememberGlassStack
-import eu.siacs.conversations.ui.glass.rememberUnderGrid
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -706,9 +705,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val listBackdrop = rememberLayerBackdrop()
     val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
     // The glass pieces of the chat look through the background, the messages and each other.
-    // How bright what is under each glass piece is, sampled from the two layers the chat draws.
-    val underGrid = rememberUnderGrid(backgroundBackdrop, listBackdrop, enabled = glass, base = MaterialTheme.colorScheme.background)
-    val glassStack = rememberGlassStack(glassBackdrop, underGrid)
+    // Each glass piece adapts its glass and text to what is behind it.
+    val glassStack = rememberGlassStack(glassBackdrop, adaptive = true)
     val topMenu = rememberLiquidMenuState()
 
     // What the top bar's selection actions do; both top bars use these.

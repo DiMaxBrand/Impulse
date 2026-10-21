@@ -140,10 +140,9 @@ fun LiquidGlassButton(
     // through the screen and the glass below it.
     val slot = glass.rememberSlot()
     val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
-    val ink = rememberGlassInk(glass.under)
+    val ink = rememberGlassInk(glass.adaptive)
     Box(
         modifier = modifier
-            .onGloballyPositioned { ink.place.value = it.boundsInWindow() }
             .then(if (recording) Modifier.layerBackdrop(slot.record) else Modifier)
             .drawBackdrop(
                 backdrop = slot.backdrop,
@@ -167,6 +166,11 @@ fun LiquidGlassButton(
                 } else {
                     null
                 },
+                onDrawBackdrop = { drawBackdrop ->
+                    drawBackdrop()
+                    // What is behind this piece, for its adaptive glass and text (see rememberGlassInk).
+                    if (ink.adaptive) ink.layer.record { drawBackdrop() }
+                },
                 onDrawSurface = {
                     if (tint.isSpecified) {
                         drawRect(tint, blendMode = BlendMode.Hue)
@@ -189,7 +193,7 @@ fun LiquidGlassButton(
                 }
             ),
         contentAlignment = Alignment.Center,
-        content = { GlassInkBox(Modifier.matchParentSize(), Alignment.Center, ink, glass.under != null, content) },
+        content = { GlassInkBox(Modifier.matchParentSize(), Alignment.Center, ink, content) },
     )
 }
 
@@ -251,11 +255,11 @@ fun LiquidGlassPanel(
 ) {
     val slot = glass.rememberSlot()
     val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
-    val ink = rememberGlassInk(glass.under)
+    val ink = rememberGlassInk(glass.adaptive)
     // Two layers, not one: the glass (which [layerBlock] deforms) and the content on top of it
     // (which nothing deforms). The recording for the glass above covers both.
     Box(
-        modifier = modifier.onGloballyPositioned { ink.place.value = it.boundsInWindow() }.layerBackdrop(slot.record),
+        modifier = modifier.layerBackdrop(slot.record),
         contentAlignment = contentAlignment,
     ) {
         Box(
@@ -274,7 +278,12 @@ fun LiquidGlassPanel(
                         }
                     },
                     layerBlock = layerBlock,
-                    onDrawSurface = {
+                    onDrawBackdrop = { drawBackdrop ->
+                        drawBackdrop()
+                        // What is behind this piece, for its adaptive glass and text (see rememberGlassInk).
+                        if (ink.adaptive) ink.layer.record { drawBackdrop() }
+                    },
+                onDrawSurface = {
                         if (tint.isSpecified) {
                             drawRect(tint, blendMode = BlendMode.Hue)
                             drawRect(tint.copy(alpha = 0.75f * tint.alpha))
@@ -287,7 +296,6 @@ fun LiquidGlassPanel(
             if (clipContent) Modifier.matchParentSize().clip(shape) else Modifier.clip(shape),
             contentAlignment,
             ink,
-            glass.under != null,
             content,
         )
     }

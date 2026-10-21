@@ -99,7 +99,6 @@ import eu.siacs.conversations.ui.glass.LiquidGlassButton
 import eu.siacs.conversations.ui.glass.LiquidViewerMenuOverlay
 import eu.siacs.conversations.ui.glass.LiquidViewerTopBar
 import eu.siacs.conversations.ui.glass.LiquidGlassStyle
-import eu.siacs.conversations.ui.glass.rememberUnderGrid
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import eu.siacs.conversations.ui.util.ShareUtil
@@ -447,9 +446,8 @@ private fun MediaViewerScreen(
     // flag off none of this is used and the viewer is as it was.
     val glass = rememberLiquidGlassEnabled()
     val viewerBackdrop = rememberLayerBackdrop()
-    // How bright what is under each glass piece is, from the photo layer (see rememberUnderGrid).
-    val underGrid = rememberUnderGrid(viewerBackdrop, null, enabled = glass, base = Color.Black)
-    val glassStack = rememberGlassStack(viewerBackdrop, underGrid)
+    // Each glass piece adapts its glass and text to the photo behind it.
+    val glassStack = rememberGlassStack(viewerBackdrop, adaptive = true)
     val topMenu = rememberLiquidMenuState()
     // 0: the top bar still looks like the chat's; 1: it is the viewer's. Starts done unless the
     // viewer came from the chat's glass bar.
