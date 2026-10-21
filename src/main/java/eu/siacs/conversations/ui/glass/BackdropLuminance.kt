@@ -17,6 +17,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
 import kotlin.math.sign
 import androidx.compose.ui.geometry.Rect
@@ -91,6 +92,8 @@ class GlassInk internal constructor(
     val lightInk: Boolean,
     internal val level: Animatable<Float, AnimationVector1D>,
     internal val place: MutableState<Rect>,
+    // DEBUG: the brightness measured under this piece, shown on it. Remove with the readout.
+    val measured: Float?,
 )
 
 @Composable
@@ -109,7 +112,7 @@ fun rememberGlassInk(under: State<UnderGrid?>?): GlassInk {
         if (lightInk && r > 0.54f) lightInk = false
         else if (!lightInk && r < 0.46f) lightInk = true
     }
-    return GlassInk(lightInk, level, place)
+    return GlassInk(lightInk, level, place, raw)
 }
 
 /** Brightness of the glass for a backdrop of this luminance: the demo's mapping. */
@@ -139,7 +142,17 @@ fun GlassInkBox(
 ) {
     val scheme = if (sampled) onGlassColors(MaterialTheme.colorScheme, ink.lightInk) else MaterialTheme.colorScheme
     MaterialTheme(colorScheme = scheme) {
-        Box(modifier, contentAlignment = alignment, content = content)
+        Box(modifier, contentAlignment = alignment) {
+            content()
+            // DEBUG readout: the measured brightness (0..1) and which ink was chosen (L = white, D = black).
+            val m = ink.measured
+            androidx.compose.material3.Text(
+                text = if (m == null) "--" else "%.2f %s".format(m, if (ink.lightInk) "L" else "D"),
+                fontSize = 8.sp,
+                color = androidx.compose.ui.graphics.Color.Red,
+                modifier = Modifier.align(Alignment.TopEnd),
+            )
+        }
     }
 }
 
