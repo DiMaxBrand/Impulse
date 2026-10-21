@@ -116,14 +116,16 @@ fun rememberGlassInk(under: State<UnderGrid?>?): GlassInk {
 internal fun glassBrightness(level: Float): Float {
     val x = level * 2f - 1f
     val l = sign(x) * x * x
-    return if (l > 0f) 0.1f + (0.5f - 0.1f) * l else 0.1f + (-0.2f - 0.1f) * (-l)
+    // No lift over a bright backdrop: raising the brightness there turned the glass milky white.
+    return if (l > 0f) 0.1f else 0.1f + (-0.2f - 0.1f) * (-l)
 }
 
 /** Contrast of the glass: lower over a bright backdrop, so the light does not wash out. */
 internal fun glassContrast(level: Float): Float {
     val x = level * 2f - 1f
     val l = sign(x) * x * x
-    return if (l > 0f) 1f - l else 1f
+    // Contrast stays whole: lowering it greyed the glass over bright backgrounds.
+    return 1f
 }
 
 /** The content of a glass piece with its ink; themed as usual when the screen has no grid. */
