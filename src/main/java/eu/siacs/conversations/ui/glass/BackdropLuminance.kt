@@ -15,6 +15,9 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.sp
@@ -30,6 +33,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import kotlinx.coroutines.delay
+
+// DEBUG: the last failure of the sampler, shown on the readout (remove with the readout).
+var lastSampleError by mutableStateOf<String?>(null)
 
 // The grid the screen is judged on: one cell per 1/24 of its width and 1/12 of its height. Coarse on
 // purpose; each glass piece only needs to know whether the part of the screen under it is bright.
@@ -73,7 +79,9 @@ fun rememberUnderGrid(
             if (enabled) {
                 val grid = try {
                     sampleGrid(background, foreground, base.toArgb())
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    // DEBUG: the swallowed failure, shown on the readout.
+                    lastSampleError = e.javaClass.simpleName + ": " + e.message
                     null
                 }
                 if (grid != null) value = grid
@@ -92,8 +100,9 @@ class GlassInk internal constructor(
     val lightInk: Boolean,
     internal val level: Animatable<Float, AnimationVector1D>,
     internal val place: MutableState<Rect>,
-    // DEBUG: the brightness measured under this piece, shown on it. Remove with the readout.
+    // DEBUG: the brightness measured under this piece, and whether there is a grid at all.
     val measured: Float?,
+    val hasGrid: Boolean,
 )
 
 @Composable
@@ -112,7 +121,7 @@ fun rememberGlassInk(under: State<UnderGrid?>?): GlassInk {
         if (lightInk && r > 0.54f) lightInk = false
         else if (!lightInk && r < 0.46f) lightInk = true
     }
-    return GlassInk(lightInk, level, place, raw)
+    return GlassInk(lightInk, level, place, raw, under != null)
 }
 
 /** Brightness of the glass for a backdrop of this luminance: the demo's mapping. */
@@ -147,8 +156,12 @@ fun GlassInkBox(
             // DEBUG readout: the measured brightness (0..1) and which ink was chosen (L = white, D = black).
             val m = ink.measured
             androidx.compose.material3.Text(
-                text = if (m == null) "--" else "%.2f %s".format(m, if (ink.lightInk) "L" else "D"),
-                fontSize = 8.sp,
+                text = when {
+                    m != null -> "%.2f %s".format(m, if (ink.lightInk) "L" else "D")
+                    !ink.hasGrid -> "no grid"
+                    else -> "no pos"
+                } + (lastSampleError?.let { " E:" + it.take(60) } ?: ""),
+                fontSize = 7.sp,
                 color = androidx.compose.ui.graphics.Color.Red,
                 modifier = Modifier.align(Alignment.TopEnd),
             )
