@@ -1582,7 +1582,7 @@
     <string name="updates_auto_off_keep">Оставить включённым</string>
     <string name="updates_auto_off_anyway">Всё равно выключить</string>
     <string name="updates_nightly_label">Обновляться ночью</string>
-    <string name="updates_nightly_description">Около 2:30 ночи, если вы не в звонке и не в приложении, Импульс сам устанавливает скачанное обновление.</string>
+    <string name="updates_nightly_description">Около 2:30 ночи Импульс ищет обновление и, если вы не в звонке и не в приложении, сам его устанавливает. Это работает и при выключенной автопроверке.</string>
     <string name="developer_options_silent_update_test">Тест тихого обновления</string>
     <string name="developer_options_silent_update_test_summary">Запускает ночную тихую установку сейчас и показывает ответ Android</string>
     <string name="developer_options_silent_update_test_started">Пробую тихую установку: %1$s. Если получится, приложение перезапустится.</string>

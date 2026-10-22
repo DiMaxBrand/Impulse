@@ -95,7 +95,9 @@ object UpdateCheckHelper {
      * itself is shown separately, driven by this prefs state (ConversationsActivity's
      * maybeShowUpdateSheet() / UpdateSheetFragment.shouldShow()). Blocking — call off the main
      * thread. */
-    fun performCheck(context: Context) {
+    @JvmStatic
+    @JvmOverloads
+    fun performCheck(context: Context, overnight: Boolean = false) {
         val prefs = UpdatePreferences(context)
         // Self-heal here too, not just at process startup (Conversations.kt's Application.onCreate):
         // without this, a device where the process never fully cold-starts between an update
@@ -108,7 +110,10 @@ object UpdateCheckHelper {
         prefs.clearIfNotNewerThan(eu.siacs.conversations.BuildConfig.VERSION_NAME)
         // A fix that is now installed no longer needs to be tracked.
         BugReportRegistry(context).dropInstalled(eu.siacs.conversations.BuildConfig.VERSION_NAME)
-        if (!prefs.autoCheck) return
+        // "Auto-check" is about the daytime checks (and the nudges that follow). The overnight run
+        // still checks, downloads and installs while "Update overnight" is on, so a person who
+        // switched the nudges off still ends up on the current version in the morning.
+        if (!prefs.autoCheck && !(overnight && prefs.nightlyInstall)) return
         // "Wait between updates": stay completely quiet (no network check, nothing marked pending,
         // no auto-download) until enough time has passed since the app was last updated.
         if (prefs.isWithinQuietWindow(context)) return

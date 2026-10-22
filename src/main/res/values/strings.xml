@@ -1516,7 +1516,7 @@
     <string name="updates_auto_off_keep">Keep on</string>
     <string name="updates_auto_off_anyway">Turn off anyway</string>
     <string name="updates_nightly_label">Update overnight</string>
-    <string name="updates_nightly_description">Around 2:30 at night, when you are not on a call or in the app, Impulse installs a downloaded update by itself.</string>
+    <string name="updates_nightly_description">Around 2:30 at night Impulse looks for an update and, when you are not on a call or in the app, installs it by itself. This works even with the auto-check off.</string>
     <string name="developer_options_silent_update_test">Test silent update</string>
     <string name="developer_options_silent_update_test_summary">Runs the overnight silent install now and reports what Android answered</string>
     <string name="developer_options_silent_update_test_started">Trying a silent install of %1$s. If it works the app restarts.</string>

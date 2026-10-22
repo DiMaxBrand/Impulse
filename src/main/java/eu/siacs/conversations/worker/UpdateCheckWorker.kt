@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit
 class UpdateCheckWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
-        UpdateCheckHelper.performCheck(applicationContext)
+        UpdateCheckHelper.performCheck(applicationContext, overnight = true)
         installIfQuiet(applicationContext)
         return Result.success()
     }

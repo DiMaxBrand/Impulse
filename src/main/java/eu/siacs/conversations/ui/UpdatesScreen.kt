@@ -282,12 +282,9 @@ fun UpdatesScreen(
                             Text(stringResource(R.string.updates_nightly_description))
                         },
                         trailingContent = {
-                            // The overnight run only installs what the automatic check has found and
-                            // downloaded, so with the auto-check off it has nothing to do.
                             Switch(
                                 checked = state.nightlyInstall,
                                 onCheckedChange = onNightlyInstallToggled,
-                                enabled = state.autoCheck,
                             )
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
