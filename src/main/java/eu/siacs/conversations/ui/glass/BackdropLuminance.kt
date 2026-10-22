@@ -1,6 +1,7 @@
 package eu.siacs.conversations.ui.glass
 
 import android.graphics.Bitmap
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
@@ -121,7 +122,15 @@ fun GlassInkBox(
     ink: GlassInk,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val scheme = if (ink.adaptive) onGlassColors(MaterialTheme.colorScheme, ink.lightInk) else MaterialTheme.colorScheme
+    // The ink fades over a second, as in the demo, instead of jumping when the backdrop crosses the middle.
+    val target = onGlassColors(MaterialTheme.colorScheme, ink.lightInk)
+    val onSurface by animateColorAsState(target.onSurface, tween(durationMillis = 1000), label = "inkOnSurface")
+    val onSurfaceVariant by animateColorAsState(target.onSurfaceVariant, tween(durationMillis = 1000), label = "inkOnSurfaceVariant")
+    val scheme = if (ink.adaptive) {
+        MaterialTheme.colorScheme.copy(onSurface = onSurface, onSurfaceVariant = onSurfaceVariant)
+    } else {
+        MaterialTheme.colorScheme
+    }
     MaterialTheme(colorScheme = scheme) {
         Box(modifier, contentAlignment = alignment) {
             content()
