@@ -61,6 +61,11 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
     LaunchedEffect(layer, adaptive, baseLuma) {
         if (!adaptive) return@LaunchedEffect
         while (isActive) {
+            // While the list flies past nobody reads the text; skip the readback and catch up after.
+            if (GlassPerformance.lite) {
+                delay(300)
+                continue
+            }
             val l = try {
                 sampleLuma(layer, baseLuma)
             } catch (e: Exception) {
@@ -76,8 +81,9 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
             // Hysteresis around the middle, so the text does not flicker on a mid-grey backdrop.
             if (lightInk && l > 0.54f) lightInk = false
             else if (!lightInk && l < 0.46f) lightInk = true
-            // The glass follows over a second, as in the demo; this also paces the loop.
-            level.animateTo(l, tween(durationMillis = 1000))
+            // The glass follows quickly (the demo's one second is for a still backdrop; here the list
+            // scrolls under the piece); this also paces the loop, about three samples a second.
+            level.animateTo(l, tween(durationMillis = 300))
         }
     }
     return GlassInk(lightInk, level, layer, measured, adaptive)
@@ -122,10 +128,11 @@ fun GlassInkBox(
     ink: GlassInk,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    // The ink fades over a second, as in the demo, instead of jumping when the backdrop crosses the middle.
+    // The ink fades instead of jumping, but quickly: black to white passes through grey, which reads
+    // worst, so the fade is short enough that the grey is only a flash.
     val target = onGlassColors(MaterialTheme.colorScheme, ink.lightInk)
-    val onSurface by animateColorAsState(target.onSurface, tween(durationMillis = 1000), label = "inkOnSurface")
-    val onSurfaceVariant by animateColorAsState(target.onSurfaceVariant, tween(durationMillis = 1000), label = "inkOnSurfaceVariant")
+    val onSurface by animateColorAsState(target.onSurface, tween(durationMillis = 250), label = "inkOnSurface")
+    val onSurfaceVariant by animateColorAsState(target.onSurfaceVariant, tween(durationMillis = 250), label = "inkOnSurfaceVariant")
     val scheme = if (ink.adaptive) {
         MaterialTheme.colorScheme.copy(onSurface = onSurface, onSurfaceVariant = onSurfaceVariant)
     } else {
