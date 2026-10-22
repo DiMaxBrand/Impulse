@@ -39,6 +39,16 @@ import kotlin.math.sign
 /** DEBUG: the last sampling failure; the readout only shows while something is wrong. */
 var lastSampleError by mutableStateOf<String?>(null)
 
+/**
+ * Whether the piece should record what is behind it on its next draw. Recording every piece on every
+ * frame was a lot of GPU work for a value that is read about three times a second, so a piece only
+ * records when its sampler has asked. (Not snapshot state: it is read while drawing.)
+ */
+internal class RecordRequest {
+    @Volatile var due = true
+    fun take(): Boolean { val d = due; due = false; return d }
+}
+
 class GlassInk internal constructor(
     /** White text when true, black when false. */
     val lightInk: Boolean,
@@ -48,11 +58,13 @@ class GlassInk internal constructor(
     internal val layer: GraphicsLayer,
     internal val measured: Float?,
     internal val adaptive: Boolean,
+    internal val request: RecordRequest,
 )
 
 @Composable
 fun rememberGlassInk(adaptive: Boolean): GlassInk {
     val layer = rememberGraphicsLayer()
+    val request = remember { RecordRequest() }
     val level = remember { Animatable(0.5f) }
     var lightInk by remember { mutableStateOf(true) }
     var measured by remember { mutableStateOf<Float?>(null) }
@@ -66,6 +78,9 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
                 delay(300)
                 continue
             }
+            // Ask for a fresh recording and give a frame time to draw it.
+            request.due = true
+            delay(60)
             val l = try {
                 sampleLuma(layer, baseLuma)
             } catch (e: Exception) {
@@ -86,7 +101,7 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
             level.animateTo(l, tween(durationMillis = 300))
         }
     }
-    return GlassInk(lightInk, level, layer, measured, adaptive)
+    return GlassInk(lightInk, level, layer, measured, adaptive, request)
 }
 
 private suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float): Float? {

@@ -169,7 +169,7 @@ fun LiquidGlassButton(
                 onDrawBackdrop = { drawBackdrop ->
                     drawBackdrop()
                     // What is behind this piece, for its adaptive glass and text (see rememberGlassInk).
-                    if (ink.adaptive) ink.layer.record { drawBackdrop() }
+                    if (ink.adaptive && ink.request.take()) ink.layer.record { drawBackdrop() }
                 },
                 onDrawSurface = {
                     if (tint.isSpecified) {
@@ -281,7 +281,7 @@ fun LiquidGlassPanel(
                     onDrawBackdrop = { drawBackdrop ->
                         drawBackdrop()
                         // What is behind this piece, for its adaptive glass and text (see rememberGlassInk).
-                        if (ink.adaptive) ink.layer.record { drawBackdrop() }
+                        if (ink.adaptive && ink.request.take()) ink.layer.record { drawBackdrop() }
                     },
                 onDrawSurface = {
                         if (tint.isSpecified) {
