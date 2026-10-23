@@ -88,6 +88,7 @@ object UpdateNotifications {
                         when (kind) {
                             BugReportRegistry.KIND_IMPROVEMENT -> R.string.tracked_notification_title_improvement
                             BugReportRegistry.KIND_FEATURE -> R.string.tracked_notification_title_feature
+                            BugReportRegistry.KIND_CHANGE -> R.string.tracked_notification_title_change
                             else -> R.string.tracked_notification_title_bug
                         }
                     )

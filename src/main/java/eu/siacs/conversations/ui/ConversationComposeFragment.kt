@@ -1240,41 +1240,64 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         HelpSupportSheetFragment().show(parentFragmentManager, HelpSupportSheetFragment.TAG)
     }
 
-    /** Support only: sends the tracking message (see SupportTracking). The phone that gets it files
-     * the item only if it comes from the support address, so this does nothing useful on a phone
-     * that merely shows the option. */
+    /** Support only: files something support tracks for this person. Sent as a stanza with no body
+     * (see SupportCommandManager): nothing appears in the chat, the server keeps it for a phone
+     * that is offline, and the phone only accepts it from the support address. */
     override fun onTrackForContact(
         kind: String,
         titleEn: String,
         titleRu: String,
-        note: String,
         checkNow: Boolean,
     ) {
-        val c = conversation ?: return
-        val service = getXmppConnectionService() ?: return
+        val c = supportTarget() ?: return
         val context = context ?: return
+        val id = eu.siacs.conversations.update.BugReportRegistry(context).newId(kind)
+        val item = eu.siacs.conversations.update.SupportTracking.Item(id, kind, titleEn, titleRu, checkNow)
+        val sent =
+            c.getAccount().xmppConnection
+                .getManager(eu.siacs.conversations.xmpp.manager.SupportCommandManager::class.java)
+                .sendTrack(c.getAddress(), item)
+        if (!sent) {
+            Toast.makeText(context, R.string.support_not_connected, Toast.LENGTH_LONG).show()
+            return
+        }
+        val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText(id, id))
+        Toast.makeText(context, getString(R.string.track_sent_copied, id), Toast.LENGTH_LONG).show()
+    }
+
+    /** Support only: asks this contact's phone to look for an update. It answers in this chat. */
+    override fun onSupportCheckUpdates() {
+        val c = supportTarget() ?: return
+        val context = context ?: return
+        val sent =
+            c.getAccount().xmppConnection
+                .getManager(eu.siacs.conversations.xmpp.manager.SupportCommandManager::class.java)
+                .sendCheckRequest(c.getAddress())
+        Toast.makeText(
+            context,
+            if (sent) R.string.support_check_sent else R.string.support_not_connected,
+            Toast.LENGTH_LONG,
+        ).show()
+    }
+
+    /** The conversation the support tools act on: one-to-one, and this phone has a support account.
+     * The phone that receives the command checks the sender itself; this only hides the tools. */
+    private fun supportTarget(): Conversation? {
+        val c = conversation ?: return null
+        val context = context ?: return null
         if (c.getMode() != Conversational.MODE_SINGLE ||
             !eu.siacs.conversations.utils.SupportAccounts.hasSupportAccount(context)
         ) {
-            return
+            return null
         }
-        when (c.nextEncryption) {
-            Message.ENCRYPTION_AXOLOTL ->
-                if (trustKeysIfNeeded(c) { onTrackForContact(kind, titleEn, titleRu, note, checkNow) }) return
-            Message.ENCRYPTION_PGP -> {
-                Toast.makeText(context, R.string.openpgp_error, Toast.LENGTH_SHORT).show()
-                return
-            }
-        }
-        val id = eu.siacs.conversations.update.BugReportRegistry(context).newId(kind)
-        val item = eu.siacs.conversations.update.SupportTracking.Item(id, kind, titleEn, titleRu, checkNow)
-        service.sendMessage(
-            Message(c, eu.siacs.conversations.update.SupportTracking.messageBody(item, note), c.nextEncryption)
+        return c
+    }
+
+    override fun onOpenUpdates() {
+        startActivity(
+            android.content.Intent(requireContext(), eu.siacs.conversations.ui.activity.UpdatesActivity::class.java)
         )
-        val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
-        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText(id, id))
-        Toast.makeText(context, getString(R.string.track_copied, id), Toast.LENGTH_LONG).show()
-        refreshMessages()
     }
 
     override fun onBlockContact() {

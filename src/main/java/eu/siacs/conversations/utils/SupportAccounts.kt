@@ -19,13 +19,13 @@ object SupportAccounts {
     fun isSupportAddress(jid: Jid?): Boolean =
         jid != null && jid.asBareJid().toString().lowercase() == SUPPORT
 
-    /** Re-checks the connected accounts and stores the answer. Call it whenever the account list is
-     * loaded or changes. */
+    /** Stores the addresses of the connected accounts (for [FlagAudience] targeting and for
+     * [hasSupportAccount]). Call it whenever the account list is loaded or changes. */
     @JvmStatic
     fun refresh(context: Context, accounts: List<Account>) {
-        val has = accounts.any { isSupportAddress(it.getJid()) }
+        val addresses = accounts.map { it.getJid().asBareJid().toString().lowercase() }.toSet()
         val prefs = FeatureFlagPreferences(context)
-        if (prefs.hasSupportAccount != has) prefs.hasSupportAccount = has
+        if (prefs.connectedAccounts != addresses) prefs.connectedAccounts = addresses
     }
 
     /** True while a support account is connected on this phone: what shows the support-only tools.
@@ -33,5 +33,5 @@ object SupportAccounts {
      * account, by editing a copy of the app, achieves nothing: the person who gets the message only
      * accepts it from the support address.) */
     @JvmStatic
-    fun hasSupportAccount(context: Context): Boolean = FeatureFlagPreferences(context).hasSupportAccount
+    fun hasSupportAccount(context: Context): Boolean = SUPPORT in FeatureFlagPreferences(context).connectedAccounts
 }

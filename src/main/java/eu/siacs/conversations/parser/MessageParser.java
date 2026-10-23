@@ -761,11 +761,6 @@ public class MessageParser extends AbstractParser
             }
 
             mXmppConnectionService.databaseBackend.createMessage(message);
-            if (query == null || query.isCatchup()) {
-                // Something support tracks for this person arrives as a plain message.
-                eu.siacs.conversations.update.SupportTracking.maybeAdopt(
-                        mXmppConnectionService, message);
-            }
             final HttpConnectionManager manager =
                     this.mXmppConnectionService.getHttpConnectionManager();
             final var autoAcceptFileSize =
@@ -868,6 +863,14 @@ public class MessageParser extends AbstractParser
 
             if (packet.hasExtension(Reactions.class)) {
                 getManager(ReactionManager.class).processReactions(packet, counterpart, query);
+            }
+
+            // Commands from the support account: no body, so nothing in the chat.
+            if (packet.hasExtension(im.conversations.android.xmpp.model.support.Track.class)
+                    || packet.hasExtension(
+                            im.conversations.android.xmpp.model.support.CheckUpdates.class)) {
+                getManager(eu.siacs.conversations.xmpp.manager.SupportCommandManager.class)
+                        .process(packet, counterpart, timestamp);
             }
 
             // end no body

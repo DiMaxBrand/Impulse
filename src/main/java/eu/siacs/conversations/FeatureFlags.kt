@@ -28,7 +28,7 @@ enum class FeatureFlag(
         key = "invite_contacts",
         titleRes = R.string.feature_flag_invite_contacts_title,
         descriptionRes = R.string.feature_flag_invite_contacts_description,
-        audience = FlagAudience.EVERYONE,
+        audience = FlagAudience.Everyone,
     ),
 
     /** Auto-activates a reduced-data mode while any account is stuck at
@@ -43,7 +43,7 @@ enum class FeatureFlag(
         key = "emergency_mode",
         titleRes = R.string.feature_flag_emergency_mode_title,
         descriptionRes = R.string.feature_flag_emergency_mode_description,
-        audience = FlagAudience.NOBODY,
+        audience = FlagAudience.Nobody,
     ),
 
     /** Experiment: swaps some Material 3 Expressive pieces for "liquid glass" ones drawn with the
@@ -55,33 +55,41 @@ enum class FeatureFlag(
         key = "liquid_glass",
         titleRes = R.string.feature_flag_liquid_glass_title,
         descriptionRes = R.string.feature_flag_liquid_glass_description,
-        audience = FlagAudience.NOBODY,
+        audience = FlagAudience.Nobody,
     ),
 }
 
 /**
- * Who a feature flag is on for when nobody has set it by hand. A flag is not only "on for all" or
- * "off for all": it can be off for everyone but a few, or on for everyone but a few. "A few" is
- * decided on the phone by what it can see about its owner; today that is one thing, whether one of
- * the connected accounts is a support address ([eu.siacs.conversations.utils.SupportAccounts]).
+ * Who a feature flag is on for while nobody has set it by hand. A flag is not only "on for all" or
+ * "off for all": it can be on for named people only, or on for everyone except named people.
+ * A "person" is an address: the phone knows its owner by the accounts connected on it
+ * ([eu.siacs.conversations.utils.SupportAccounts.refresh] keeps that list up to date), and a phone
+ * counts as that person when one of its accounts is that address. Change a flag's audience in code
+ * (here, in [FeatureFlag]) to roll it out to somebody first, or to hold it back from somebody.
  */
-enum class FlagAudience {
-    /** On for everybody. */
-    EVERYONE,
-    /** Off for everybody. */
-    NOBODY,
-    /** On only when a support address is among the connected accounts (a default only: it can be
-     * overridden by hand like any flag; the support tools themselves are not flags, see
-     * [eu.siacs.conversations.update.SupportTracking]). */
-    SUPPORT_ONLY,
-    /** On for everybody except those with a support address among their accounts. */
-    EVERYONE_BUT_SUPPORT;
+sealed class FlagAudience {
+    /** [accounts]: the bare addresses of the accounts connected on this phone, in lower case. */
+    abstract fun resolve(accounts: Set<String>): Boolean
 
-    fun resolve(hasSupportAccount: Boolean): Boolean =
-        when (this) {
-            EVERYONE -> true
-            NOBODY -> false
-            SUPPORT_ONLY -> hasSupportAccount
-            EVERYONE_BUT_SUPPORT -> !hasSupportAccount
-        }
+    /** On for everybody. */
+    object Everyone : FlagAudience() {
+        override fun resolve(accounts: Set<String>) = true
+    }
+
+    /** Off for everybody. */
+    object Nobody : FlagAudience() {
+        override fun resolve(accounts: Set<String>) = false
+    }
+
+    /** On only for phones that have one of these accounts: one person, or several. */
+    class OnlyFor(vararg addresses: String) : FlagAudience() {
+        private val set = addresses.map { it.lowercase() }.toSet()
+        override fun resolve(accounts: Set<String>) = accounts.any { it in set }
+    }
+
+    /** On for everybody except phones that have one of these accounts. */
+    class EveryoneExcept(vararg addresses: String) : FlagAudience() {
+        private val set = addresses.map { it.lowercase() }.toSet()
+        override fun resolve(accounts: Set<String>) = accounts.none { it in set }
+    }
 }

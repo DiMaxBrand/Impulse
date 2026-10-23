@@ -12,6 +12,8 @@ import okhttp3.OkHttpClient
 object UpdateCheckHelper {
 
     private const val LAUNCH_CHECK_MIN_INTERVAL_MS = 5 * 60 * 1000L
+    // The tracked-only check on stable/RC is rarer: it exists only to nudge for one thing.
+    private const val TRACKED_LAUNCH_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000L
 
     /** Runs an extra check on app launch, but only for beta/alpha — those channels move fast
      * enough that waiting for the next scheduled UpdateCheckWorker run (once daily, 10:00
@@ -29,24 +31,26 @@ object UpdateCheckHelper {
     fun checkOnLaunchIfEligible(activity: AppCompatActivity, onChecked: Runnable? = null) {
         val prefs = UpdatePreferences(activity.applicationContext)
         val channel = prefs.selectedChannel
-        // Beta and alpha move fast. Any channel also checks on launch while support is tracking
-        // something for this person (a fix or a feature they are waiting for): they should get it
-        // the moment it is out, not at the next nightly run.
-        if (channel != UpdateChannel.BETA &&
-            channel != UpdateChannel.ALPHA &&
-            !BugReportRegistry(activity.applicationContext).hasWaitingFromSupport()
-        ) return
+        // Beta and alpha move fast and are checked on every launch. Any other channel is checked on
+        // launch only while support is tracking something for this person (a fix or feature they are
+        // waiting for), and then it is a "tracked only" check: it nudges for an update only when a
+        // release already has what is being tracked, and ignores every other update (those come with
+        // the nightly run, as ever).
+        val fast = channel == UpdateChannel.BETA || channel == UpdateChannel.ALPHA
+        val trackedOnly = !fast && BugReportRegistry(activity.applicationContext).hasWaitingFromSupport()
+        if (!fast && !trackedOnly) return
         // At most one launch check per five minutes: onResume fires on every return to the main
         // screen, and GitHub allows about 60 unauthenticated requests an hour per network address
         // (shared by everyone on the same Wi-Fi). A refused request would show up as a failed
         // check and make an update or a bug fix notice late. The manual "Check now" and the
         // nightly run are not affected.
         val now = System.currentTimeMillis()
-        if (now - prefs.lastLaunchCheckAt < LAUNCH_CHECK_MIN_INTERVAL_MS) return
+        val minInterval = if (fast) LAUNCH_CHECK_MIN_INTERVAL_MS else TRACKED_LAUNCH_CHECK_MIN_INTERVAL_MS
+        if (now - prefs.lastLaunchCheckAt < minInterval) return
         prefs.lastLaunchCheckAt = now
         activity.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                performCheck(activity.applicationContext)
+                performCheck(activity.applicationContext, trackedOnly = trackedOnly)
             }
             onChecked?.run()
         }
@@ -112,7 +116,14 @@ object UpdateCheckHelper {
      * thread. */
     @JvmStatic
     @JvmOverloads
-    fun performCheck(context: Context, overnight: Boolean = false, forced: Boolean = false) {
+    fun performCheck(
+        context: Context,
+        overnight: Boolean = false,
+        forced: Boolean = false,
+        // Only act on an update when a release already has something support tracks for this person;
+        // any other update is ignored (nothing marked pending, nothing downloaded, no nudge).
+        trackedOnly: Boolean = false,
+    ) {
         val prefs = UpdatePreferences(context)
         // Self-heal here too, not just at process startup (Conversations.kt's Application.onCreate):
         // without this, a device where the process never fully cold-starts between an update
@@ -143,6 +154,7 @@ object UpdateCheckHelper {
         // available, already up to date ...): the fix may be in a version already installed.
         // A fix not installed yet stays marked "fixed in X" until it is.
         matchBugReports(context, checker.lastReleaseNotes)
+        if (trackedOnly && BugReportRegistry(context).fixed().none { it.fromSupport }) return
         if (result !is UpdateChecker.CheckResult.UpdateAvailable) return
         val info = result.info
 

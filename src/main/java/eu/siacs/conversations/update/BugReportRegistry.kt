@@ -46,7 +46,7 @@ class BugReportRegistry(context: Context) {
 
     /** A fresh ID that is not remembered here: for an item registered on someone else's behalf,
      * where the ID is sent to the person and filed on their phone (see [adopt]). The prefix says
-     * what it is: BUG-, IMP- (improvement) or NEW- (new feature). */
+     * what it is: BUG-, IMP- (improvement), NEW- (new feature) or CHG- (change). */
     @Synchronized
     fun newId(kind: String = KIND_BUG, now: Long = System.currentTimeMillis()): String {
         val existing = entries(now).map { it.id }.toSet()
@@ -54,6 +54,7 @@ class BugReportRegistry(context: Context) {
             when (kind) {
                 KIND_IMPROVEMENT -> "IMP"
                 KIND_FEATURE -> "NEW"
+                KIND_CHANGE -> "CHG"
                 else -> "BUG"
             }
         var id: String
@@ -210,7 +211,9 @@ class BugReportRegistry(context: Context) {
         const val KIND_BUG = "bug"
         const val KIND_IMPROVEMENT = "improvement"
         const val KIND_FEATURE = "feature"
-        val KINDS = listOf(KIND_BUG, KIND_IMPROVEMENT, KIND_FEATURE)
+        /** Anything that is none of the above. */
+        const val KIND_CHANGE = "change"
+        val KINDS = listOf(KIND_BUG, KIND_IMPROVEMENT, KIND_FEATURE, KIND_CHANGE)
 
         private const val KEY = "pending"
         // No 0/O/1/I/L: the ID gets read aloud and typed by hand into release notes.

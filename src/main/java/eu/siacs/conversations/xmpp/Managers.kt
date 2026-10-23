@@ -42,6 +42,7 @@ import eu.siacs.conversations.xmpp.manager.RegistrationManager
 import eu.siacs.conversations.xmpp.manager.RosterManager
 import eu.siacs.conversations.xmpp.manager.StanzaIdManager
 import eu.siacs.conversations.xmpp.manager.StreamHostManager
+import eu.siacs.conversations.xmpp.manager.SupportCommandManager
 import eu.siacs.conversations.xmpp.manager.UnifiedPushManager
 import eu.siacs.conversations.xmpp.manager.VCardManager
 
@@ -89,6 +90,7 @@ object Managers {
             .put(RegistrationManager::class.java, RegistrationManager(context, connection))
             .put(RosterManager::class.java, RosterManager(context, connection))
             .put(StanzaIdManager::class.java, StanzaIdManager(context, connection))
+            .put(SupportCommandManager::class.java, SupportCommandManager(context, connection))
             .put(StreamHostManager::class.java, StreamHostManager(context, connection))
             .put(UnifiedPushManager::class.java, UnifiedPushManager(context, connection))
             .put(VCardManager::class.java, VCardManager(context, connection))

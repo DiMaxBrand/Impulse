@@ -65,7 +65,7 @@ internal fun TrackItemOverlay(
     visible: Boolean,
     contactName: String,
     onDismiss: () -> Unit,
-    onSend: (kind: String, titleEn: String, titleRu: String, note: String, checkNow: Boolean) -> Unit,
+    onSend: (kind: String, titleEn: String, titleRu: String, checkNow: Boolean) -> Unit,
 ) {
     BackHandler(enabled = visible, onBack = onDismiss)
     AnimatedVisibility(
@@ -122,12 +122,11 @@ internal fun TrackItemOverlay(
 private fun TrackItemContent(
     contactName: String,
     onDismiss: () -> Unit,
-    onSend: (kind: String, titleEn: String, titleRu: String, note: String, checkNow: Boolean) -> Unit,
+    onSend: (kind: String, titleEn: String, titleRu: String, checkNow: Boolean) -> Unit,
 ) {
     var kind by rememberSaveable { mutableStateOf(BugReportRegistry.KIND_BUG) }
     var titleEn by rememberSaveable { mutableStateOf("") }
     var titleRu by rememberSaveable { mutableStateOf("") }
-    var note by rememberSaveable { mutableStateOf("") }
     var checkNow by rememberSaveable { mutableStateOf(true) }
     Column(
         modifier =
@@ -168,6 +167,7 @@ private fun TrackItemContent(
                                 when (k) {
                                     BugReportRegistry.KIND_IMPROVEMENT -> R.string.tracked_kind_improvement
                                     BugReportRegistry.KIND_FEATURE -> R.string.tracked_kind_feature
+                                    BugReportRegistry.KIND_CHANGE -> R.string.tracked_kind_change
                                     else -> R.string.tracked_kind_bug
                                 }
                             )
@@ -195,14 +195,6 @@ private fun TrackItemContent(
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = note,
-            onValueChange = { note = it },
-            label = { Text(stringResource(R.string.track_field_note)) },
-            minLines = 2,
-            maxLines = 4,
-            modifier = Modifier.fillMaxWidth(),
-        )
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -214,7 +206,7 @@ private fun TrackItemContent(
         }
         Spacer(Modifier.height(16.dp))
         Button(
-            onClick = { onSend(kind, titleEn.trim(), titleRu.trim(), note.trim(), checkNow) },
+            onClick = { onSend(kind, titleEn.trim(), titleRu.trim(), checkNow) },
             enabled = titleEn.isNotBlank() || titleRu.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         ) {

@@ -129,6 +129,8 @@ object Namespace {
     const val SERVICE_OUTAGE_STATUS = "urn:xmpp:sos:0"
     const val FALLBACK_INDICATION = "urn:xmpp:fallback:0"
     const val REPLIES = "urn:xmpp:reply:0"
+    // Impulse-only: commands from the support account to a phone (see SupportCommandManager).
+    const val SUPPORT = "urn:impulse:support:0"
     const val IMPULSE_EDITING = "im.dimax.impulse:editing:0"
     const val IMPULSE_LISTEN_STATUS = "im.dimax.impulse:listen-status:0"
     const val IMPULSE_VIEW_STATUS = "im.dimax.impulse:view-status:0"

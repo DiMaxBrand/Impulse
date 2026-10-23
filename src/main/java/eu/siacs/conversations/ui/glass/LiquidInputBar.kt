@@ -154,6 +154,10 @@ fun LiquidInputBar(
                         attachMenu.open = false
                         state.trackCardVisible.value = true
                     }
+                    LiquidMenuItem(R.drawable.ic_system_update_24dp, stringResource(R.string.support_check_menu_label)) {
+                        attachMenu.open = false
+                        listener.onSupportCheckUpdates()
+                    }
                 }
             }
         }

@@ -303,7 +303,13 @@ interface ConversationScreenListener {
     fun onAttachFile()
 
     /** Support only: track a fix, improvement or feature for this contact (see SupportTracking). */
-    fun onTrackForContact(kind: String, titleEn: String, titleRu: String, note: String, checkNow: Boolean)
+    fun onTrackForContact(kind: String, titleEn: String, titleRu: String, checkNow: Boolean)
+
+    /** Support only: ask this contact's phone to look for an update and answer in this chat. */
+    fun onSupportCheckUpdates()
+
+    /** Opens the Updates screen (the "Update" button under an automatic check's answer). */
+    fun onOpenUpdates()
 
     fun onCall(video: Boolean)
 
@@ -1034,9 +1040,9 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             visible = state.trackCardVisible.value,
             contactName = conversation?.getName()?.toString().orEmpty(),
             onDismiss = { state.trackCardVisible.value = false },
-            onSend = { kind, en, ru, note, check ->
+            onSend = { kind, en, ru, check ->
                 state.trackCardVisible.value = false
-                listener.onTrackForContact(kind, en, ru, note, check)
+                listener.onTrackForContact(kind, en, ru, check)
             },
         )
         // "A message was sent again automatically": expands out of the scroll button.
@@ -4568,6 +4574,24 @@ private fun MessageBubble(
                         listener = listener,
                     )
                 }
+                // The answer of an automatic check that support asked for: when it says a new version
+                // is out and it is still newer than what is installed, the phone that said so offers a
+                // way into the Updates screen. It only opens it; installing is the person's own tap.
+                if (outgoing) {
+                    val answer = remember(message.getUuid(), revision) {
+                        eu.siacs.conversations.update.SupportTracking.parseCheckAnswer(message.body)
+                    }
+                    val stillNewer = answer != null && answer.updateAvailable &&
+                        eu.siacs.conversations.update.UpdateChecker.isNewerThanInstalled(answer.version)
+                    if (stillNewer) {
+                        androidx.compose.material3.FilledTonalButton(
+                            onClick = { listener.onOpenUpdates() },
+                            modifier = Modifier.padding(top = 6.dp),
+                        ) {
+                            Text(stringResource(R.string.auto_check_update_button))
+                        }
+                    }
+                }
                 if (!isBeingEdited) {
                     MessageFooter(message = message, outgoing = outgoing, revision = revision)
                 }
@@ -7827,6 +7851,17 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                                     Icon(
                                         painter = painterResource(R.drawable.ic_report_24dp),
                                         contentDescription = stringResource(R.string.track_menu_label),
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        attachMenuOpen = false
+                                        listener.onSupportCheckUpdates()
+                                    }
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_system_update_24dp),
+                                        contentDescription = stringResource(R.string.support_check_menu_label),
                                     )
                                 }
                             }

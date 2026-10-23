@@ -30,16 +30,16 @@ class FeatureFlagPreferences(context: Context) {
     /** What app code actually asking "is this flag on" should call — resolves the override if
      * one is set, otherwise the flag's audience for this phone (see [FeatureFlag.audience]). */
     fun isEnabled(flag: FeatureFlag): Boolean =
-        getOverride(flag) ?: flag.audience.resolve(hasSupportAccount)
+        getOverride(flag) ?: flag.audience.resolve(connectedAccounts)
 
-    /** True while a support address is among the connected accounts; kept up to date by
+    /** The bare addresses (lower case) of the accounts connected on this phone; kept up to date by
      * [SupportAccounts.refresh]. Stored so flag checks anywhere (no service at hand) can read it. */
-    var hasSupportAccount: Boolean
-        get() = prefs.getBoolean(KEY_SUPPORT_ACCOUNT, false)
-        set(value) = prefs.edit { putBoolean(KEY_SUPPORT_ACCOUNT, value) }
+    var connectedAccounts: Set<String>
+        get() = prefs.getStringSet(KEY_ACCOUNTS, emptySet()) ?: emptySet()
+        set(value) = prefs.edit { putStringSet(KEY_ACCOUNTS, value) }
 
     private companion object {
         // Not a flag key (flag keys are the ones in FeatureFlag), so it never reads as an override.
-        const val KEY_SUPPORT_ACCOUNT = "_has_support_account"
+        const val KEY_ACCOUNTS = "_connected_accounts"
     }
 }
