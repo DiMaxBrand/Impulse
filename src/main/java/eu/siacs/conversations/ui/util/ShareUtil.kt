@@ -114,10 +114,16 @@ object ShareUtil {
      * text and attachments into one forward.
      */
     @JvmStatic
-    fun forward(activity: XmppActivity, messages: List<Message>) {
+    fun forward(activity: XmppActivity, messages: List<Message>, caption: String? = null) {
         if (messages.isEmpty()) return
         if (messages.size == 1) {
-            forward(activity, messages[0])
+            val single = buildSendIntent(activity, messages[0]) ?: return
+            // The text that was sent with a photo goes along as its caption.
+            if (!caption.isNullOrBlank() && messages[0].isFileOrImage) {
+                single.putExtra(Intent.EXTRA_TEXT, caption)
+            }
+            single.setClass(activity, ShareWithActivity::class.java)
+            activity.startActivity(single)
             return
         }
         val fileMessages = messages.filter { it.isFileOrImage }
@@ -141,6 +147,7 @@ object ShareUtil {
             intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             intent.type = "*/*"
+            if (!caption.isNullOrBlank()) intent.putExtra(Intent.EXTRA_TEXT, caption)
         } else {
             val text = messages.mapNotNull { it.body }.filter { it.isNotBlank() }.joinToString("\n\n")
             if (text.isBlank()) return

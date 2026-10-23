@@ -1730,4 +1730,6 @@
     <string name="hub_collapse">Скрыть подробности</string>
     <string name="hub_unverified_device">Не подтверждено</string>
     <string name="hub_verified_device">Подтверждено</string>
+    <string name="caption_photos_failed">Фото выше не были отправлены</string>
+    <string name="caption_photo_failed">Фото выше не было отправлено</string>
 </resources>

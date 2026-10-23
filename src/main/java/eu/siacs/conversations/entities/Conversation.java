@@ -247,6 +247,13 @@ public class Conversation extends AbstractEntity
         return null;
     }
 
+    /** A copy of the loaded messages, oldest first, safe to walk while others are added. */
+    public java.util.List<Message> snapshotMessages() {
+        synchronized (this.messages) {
+            return new ArrayList<>(this.messages);
+        }
+    }
+
     public void findWaitingMessages(OnMessageFound onMessageFound) {
         final ArrayList<Message> results = new ArrayList<>();
         synchronized (this.messages) {

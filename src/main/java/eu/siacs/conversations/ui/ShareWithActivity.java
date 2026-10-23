@@ -213,6 +213,7 @@ public class ShareWithActivity extends XmppActivity
                 this.share.uris.clear();
                 this.share.uris.add(uri);
                 this.share.type = type;
+                this.share.text = text;
             } else {
                 this.share.text = text;
                 this.share.asQuote = asQuote;
@@ -223,6 +224,7 @@ public class ShareWithActivity extends XmppActivity
             if (type != null) {
                 this.share.type = type;
             }
+            this.share.text = intent.getStringExtra(Intent.EXTRA_TEXT);
         }
     }
 
@@ -276,6 +278,10 @@ public class ShareWithActivity extends XmppActivity
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             if (share.type != null) {
                 intent.putExtra(ConversationsActivity.EXTRA_TYPE, share.type);
+            }
+            // Text shared along with the files becomes their caption.
+            if (share.text != null) {
+                intent.putExtra(Intent.EXTRA_TEXT, share.text);
             }
         } else if (share.text != null) {
             intent.setAction(ConversationsActivity.ACTION_VIEW_CONVERSATION);

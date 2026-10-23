@@ -2045,7 +2045,9 @@ public class XmppConnectionService extends Service {
         if (error == null || error.isBlank()) {
             return true;
         }
-        if (Message.ERROR_MESSAGE_CANCELLED.equals(error)) {
+        if (Message.ERROR_MESSAGE_CANCELLED.equals(error)
+                || Message.ERROR_CAPTION_PHOTOS.equals(error)
+                || Message.ERROR_CAPTION_PHOTO.equals(error)) {
             return false;
         }
         final String lower = error.toLowerCase(Locale.ROOT);
@@ -2107,7 +2109,39 @@ public class XmppConnectionService extends Service {
         }
     }
 
+    /**
+     * Sends [caption] as the text of the photos that were attached since [knownUuids] was taken
+     * (the messages that were in the chat before): it is created paused and let go by
+     * CaptionResolver when those photos have a verdict. Returns false when no photo was
+     * attached, so the caller can keep the text.
+     */
+    public boolean sendCaption(
+            final Conversation conversation,
+            final Message caption,
+            final java.util.Set<String> knownUuids) {
+        final List<String> photos = new ArrayList<>();
+        for (final Message m : conversation.snapshotMessages()) {
+            if (m.getStatus() != Message.STATUS_RECEIVED
+                    && m.getStatus() != Message.STATUS_PAUSED
+                    && m.isFileOrImage()
+                    && !knownUuids.contains(m.getUuid())) {
+                photos.add(m.getUuid());
+            }
+        }
+        if (photos.isEmpty()) {
+            return false;
+        }
+        caption.captionFor = photos;
+        caption.setStatus(Message.STATUS_PAUSED);
+        conversation.add(caption);
+        databaseBackend.createMessage(caption);
+        updateConversationUi();
+        CaptionResolver.resolve(this, caption, false);
+        return true;
+    }
+
     public void sendUnsentMessages(final Conversation conversation) {
+        CaptionResolver.resolveAll(this, conversation);
         conversation.findWaitingMessages(message -> resendMessage(message, true));
     }
 
@@ -3744,6 +3778,9 @@ public class XmppConnectionService extends Service {
         if (oldStatus != status && status == Message.STATUS_SEND_FAILED) {
             mNotificationService.pushFailedDelivery(message);
         }
+        if (oldStatus != status) {
+            CaptionResolver.onMessageChanged(this, message);
+        }
     }
 
     private SharedPreferences getPreferences() {
@@ -4143,6 +4180,16 @@ public class XmppConnectionService extends Service {
     public void resendFailedMessages(final Message message, final boolean forceP2P) {
         this.mNotificationService.clearFailedDelivery(message);
         message.setTime(System.currentTimeMillis());
+        if (Message.ERROR_CAPTION_PHOTOS.equals(message.getErrorMessage())
+                || Message.ERROR_CAPTION_PHOTO.equals(message.getErrorMessage())) {
+            // A caption whose photos failed: look at the photos again (see CaptionResolver).
+            CaptionResolver.resolve(this, message, true);
+            if (message.getConversation() instanceof Conversation c) {
+                c.sort();
+            }
+            updateConversationUi();
+            return;
+        }
         markMessage(message, Message.STATUS_WAITING);
         this.sendMessage(message, true, false, forceP2P);
         if (message.getConversation() instanceof Conversation c) {

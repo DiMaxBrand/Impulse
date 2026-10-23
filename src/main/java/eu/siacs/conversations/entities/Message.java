@@ -49,6 +49,12 @@ public class Message extends AbstractEntity
     public static final int STATUS_SEND_RECEIVED = 7;
     public static final int STATUS_SEND_DISPLAYED = 8;
 
+    /**
+     * A caption written together with photos: waits (not sent, not failed) until the photos it
+     * belongs to have a verdict. See CaptionResolver.
+     */
+    public static final int STATUS_PAUSED = 9;
+
     public static final int ENCRYPTION_NONE = 0;
     public static final int ENCRYPTION_PGP = 1;
     public static final int ENCRYPTION_OTR = 2;
@@ -112,6 +118,17 @@ public class Message extends AbstractEntity
     public static final String VIEW_STATUS_VIEWED = "viewed";
 
     public static final String ERROR_MESSAGE_CANCELLED = "eu.siacs.conversations.cancelled";
+
+    /** A caption that was not sent because none of its photos went through (several / one). */
+    public static final String ERROR_CAPTION_PHOTOS = "eu.siacs.conversations.caption_photos";
+
+    public static final String ERROR_CAPTION_PHOTO = "eu.siacs.conversations.caption_photo";
+
+    /**
+     * Uuids of the photos a paused caption belongs to. Not persisted: after a restart the
+     * photos are found again as the run of own media right above the caption.
+     */
+    public java.util.List<String> captionFor = null;
 
     public boolean markable = false;
     protected String conversationUuid;

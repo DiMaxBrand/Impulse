@@ -826,10 +826,17 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
         val attachments = state.attachments.toList()
         state.attachments.clear()
-        commitAttachments(attachments)
+        // What is typed next to the attachments is their caption (see CaptionResolver).
+        var caption = state.getInput().trim()
+        if (caption.isNotEmpty() && c.nextEncryption == Message.ENCRYPTION_PGP) {
+            Toast.makeText(requireContext(), R.string.openpgp_error, Toast.LENGTH_SHORT).show()
+            caption = ""
+        }
+        if (caption.isNotEmpty()) state.setInput("")
+        commitAttachments(attachments, caption)
     }
 
-    private fun commitAttachments(attachments: List<Attachment>) {
+    private fun commitAttachments(attachments: List<Attachment>, caption: String = "") {
         val c = conversation ?: return
         val service = getXmppConnectionService() ?: return
         val context = context ?: return
@@ -842,6 +849,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
         } else null
         state.replyingTo.value = null
+        val known = c.snapshotMessages().map { it.getUuid() }.toSet()
+        val futures = ArrayList<com.google.common.util.concurrent.ListenableFuture<Void>>()
         for (attachment in attachments) {
             val future =
                 when (attachment.type) {
@@ -851,6 +860,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                         service.attachImageToConversation(c, attachment.uri, attachment.mime, replyId)
                     else -> service.attachFileToConversation(c, attachment.uri, attachment.mime, replyId)
                 }
+            futures.add(future)
             Futures.addCallback(
                 future,
                 object : FutureCallback<Void?> {
@@ -871,6 +881,28 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                             )
                         }
                     }
+                },
+                ContextCompat.getMainExecutor(context),
+            )
+        }
+        if (caption.isNotEmpty()) {
+            // Once every attachment has been prepared the text follows, linked to them.
+            Futures.addCallback(
+                Futures.successfulAsList(futures),
+                object : FutureCallback<List<Void?>> {
+                    override fun onSuccess(result: List<Void?>) {
+                        val text = Message(c, caption, c.nextEncryption)
+                        Message.configurePrivateMessage(text)
+                        if (!service.sendCaption(c, text, known)) {
+                            runOnUiThread { if (state.getInput().isEmpty()) state.setInput(caption) }
+                        }
+                        runOnUiThread {
+                            refreshMessages()
+                            markRead()
+                        }
+                    }
+
+                    override fun onFailure(t: Throwable) {}
                 },
                 ContextCompat.getMainExecutor(context),
             )
@@ -1528,7 +1560,16 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onForwardMessage(message: Message) {
         val activity = requireXmppActivity()
-        eu.siacs.conversations.ui.util.ShareUtil.forward(activity, message)
+        eu.siacs.conversations.ui.util.ShareUtil.forward(activity, listOf(message), captionTextFor(listOf(message)))
+    }
+
+    /** The text that was sent with these photos, to forward along with them (null when none). */
+    private fun captionTextFor(photos: List<Message>): String? {
+        val media = photos.filter { it.isFileOrImage }
+        val all = (media.firstOrNull()?.conversation as? Conversation)?.snapshotMessages() ?: return null
+        val last = media.maxByOrNull { all.indexOf(it) } ?: return null
+        val candidate = all.getOrNull(all.indexOf(last) + 1)
+        return if (isCaptionFor(media, candidate)) candidate?.body?.trim() else null
     }
 
     override fun onPrivateMessage(message: Message) {
@@ -1657,7 +1698,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onForwardSelectedMessages(messages: List<Message>) {
-        eu.siacs.conversations.ui.util.ShareUtil.forward(requireXmppActivity(), messages)
+        eu.siacs.conversations.ui.util.ShareUtil.forward(requireXmppActivity(), messages, captionTextFor(messages))
     }
 
     override fun onEditingStarted(message: Message) {

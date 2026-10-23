@@ -69,6 +69,9 @@ private val StemRetractEasing = CubicBezierEasing(0.1f, 0.7f, 0.05f, 1f)
 enum class CheckmarkPhase {
     WAITING, UPLOADING, SENT, DELIVERED, READ, OFFERED, CANCELLED,
     LISTENING, LISTENED, LISTEN_UNKNOWN, LISTEN_PAUSED,
+    // A caption waiting for its photos (STATUS_PAUSED): the Material pause symbol, which turns into
+    // the waiting dots (and from there the usual story) once the caption is let go.
+    PAUSED,
 }
 
 private fun CheckmarkPhase.isListenPhase() =
@@ -100,6 +103,7 @@ private fun staticIconFor(
     // pulsing (pulseScale sits frozen at 1f), so this shares LISTENING's color entirely and only
     // differs in whether the render section's graphicsLayer scale is actively being driven.
     CheckmarkPhase.LISTEN_PAUSED -> R.drawable.ic_headphones_24dp to grayColor
+    CheckmarkPhase.PAUSED -> R.drawable.ic_pause_24dp to grayColor
 }
 
 /**
@@ -128,6 +132,7 @@ fun checkmarkPhaseForStatus(
     errorMessage: String?,
 ): CheckmarkPhase? = when (status) {
     Message.STATUS_WAITING -> CheckmarkPhase.WAITING
+    Message.STATUS_PAUSED -> CheckmarkPhase.PAUSED
     // STATUS_UNSEND covers two different things: a file genuinely mid-upload (transferable !=
     // null — gets its own dots-into-upload-icon morph) and a text message written to the socket
     // but not yet stream-management-acknowledged, which reads as "still sending" to a user and
@@ -264,9 +269,12 @@ fun MessageStatusIcon(
     // keeps animating even at rest (the continuous "this is live" pulse) — see pulseScale below.
     var isAnimating by remember { mutableStateOf(false) }
 
-    val reposition = remember { Animatable(if (phase == CheckmarkPhase.WAITING) 0f else 1f) }
-    val expand1 = remember { Animatable(if (phase == CheckmarkPhase.WAITING) 0f else 1f) }
-    val expand2 = remember { Animatable(if (phase == CheckmarkPhase.WAITING) 0f else 1f) }
+    val dotsFamily = phase == CheckmarkPhase.WAITING || phase == CheckmarkPhase.PAUSED
+    val reposition = remember { Animatable(if (dotsFamily) 0f else 1f) }
+    val expand1 = remember { Animatable(if (dotsFamily) 0f else 1f) }
+    val expand2 = remember { Animatable(if (dotsFamily) 0f else 1f) }
+    // 0 = the pause symbol's two bars, 1 = the waiting dots. Only touched by paused <-> waiting.
+    val pauseMorph = remember { Animatable(if (phase == CheckmarkPhase.PAUSED) 0f else 1f) }
     val doubleSlide = remember {
         Animatable(if (phase == CheckmarkPhase.DELIVERED || phase == CheckmarkPhase.READ) 1f else 0f)
     }
@@ -351,6 +359,19 @@ fun MessageStatusIcon(
                 continue
             }
             when {
+                from == CheckmarkPhase.PAUSED && to != CheckmarkPhase.PAUSED -> {
+                    isAnimating = true
+                    // The bars become the waiting dots first; whatever comes next (dots, then
+                    // check, ...) is the ordinary story from there, picked up by the next leg.
+                    pauseMorph.animateTo(1f, tween(280, easing = StandardEasing))
+                    currentPhase = CheckmarkPhase.WAITING
+                    isAnimating = false
+                    continue
+                }
+                from == CheckmarkPhase.WAITING && to == CheckmarkPhase.PAUSED -> {
+                    isAnimating = true
+                    pauseMorph.animateTo(0f, tween(280, easing = StandardEasing))
+                }
                 from == CheckmarkPhase.WAITING && to == CheckmarkPhase.SENT -> {
                     isAnimating = true
                     reposition.animateTo(1f, tween(180, easing = StandardEasing))
@@ -539,9 +560,11 @@ fun MessageStatusIcon(
                     // multi-second morph the user never saw the start of. Never worth animating, so
                     // isAnimating stays false, which renders the real bundled drawable for whatever
                     // `to` is directly — every phase has one now, listen family included.
-                    reposition.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
-                    expand1.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
-                    expand2.snapTo(if (to >= CheckmarkPhase.SENT) 1f else 0f)
+                    val past = to >= CheckmarkPhase.SENT && to != CheckmarkPhase.PAUSED
+                    pauseMorph.snapTo(if (to == CheckmarkPhase.PAUSED) 0f else 1f)
+                    reposition.snapTo(if (past) 1f else 0f)
+                    expand1.snapTo(if (past) 1f else 0f)
+                    expand2.snapTo(if (past) 1f else 0f)
                     doubleSlide.snapTo(if (to >= CheckmarkPhase.DELIVERED) 1f else 0f)
                     bounceScale.snapTo(1f)
                     morphProgress.snapTo(if (to.isListenPhase()) 1f else 0f)
@@ -587,6 +610,34 @@ fun MessageStatusIcon(
     // incoming target. OFFERED joins this same branch since waiting <-> p2p and p2p -> uploading
     // both live here too (the p2p dots settle onto the exact same canonical positions the
     // chevron already starts from, so the two families share one Canvas block).
+    if (phase == CheckmarkPhase.PAUSED || currentPhase == CheckmarkPhase.PAUSED) {
+        // Pause bars <-> dots. Both are rounded rectangles drawn as a 2-unit stroke on a
+        // centerline: the pause symbol's bars are 4x12 (outer 6x14), and shrunk to 2x2 the
+        // same stroke fills in to a dot of radius 2 -- so one shape morphs, nothing is faked.
+        Canvas(modifier = modifier) {
+            val s = size.minDimension / 24f
+            val t = pauseMorph.value
+            val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f * s)
+            val corner = androidx.compose.ui.geometry.CornerRadius(1f * s, 1f * s)
+            val w = lerp(4f, 2f, t)
+            val h = lerp(12f, 2f, t)
+            for ((from, to) in listOf(8f to 6f, 16f to 18f)) {
+                val cx = lerp(from, to, t)
+                drawRoundRect(
+                    color = grayColor,
+                    topLeft = Offset((cx - w / 2f) * s, (12f - h / 2f) * s),
+                    size = androidx.compose.ui.geometry.Size(w * s, h * s),
+                    cornerRadius = corner,
+                    style = stroke,
+                )
+            }
+            // The middle dot grows in late, once the bars are mostly dots.
+            val mid = ((t - 0.5f) / 0.5f).coerceIn(0f, 1f)
+            if (mid > 0f) drawCircle(color = grayColor, radius = DOT_RADIUS * mid * s, center = DOT2 * s)
+        }
+        return
+    }
+
     val inArrowFamily = phase == CheckmarkPhase.UPLOADING || currentPhase == CheckmarkPhase.UPLOADING ||
         phase == CheckmarkPhase.OFFERED || currentPhase == CheckmarkPhase.OFFERED
     if (inArrowFamily) {

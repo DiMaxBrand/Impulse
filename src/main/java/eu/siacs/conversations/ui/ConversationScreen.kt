@@ -499,6 +499,8 @@ private sealed interface ChatItem {
         val message: Message,
         val firstOfGroup: Boolean,
         val lastOfGroup: Boolean,
+        // The text sent with this photo, shown inside its bubble (see isCaptionFor).
+        val caption: Message? = null,
     ) : ChatItem {
         override val key: String
             get() = message.getUuid() ?: message.hashCode().toString()
@@ -519,6 +521,8 @@ private sealed interface ChatItem {
         val messages: List<Message>,
         val firstOfGroup: Boolean,
         val lastOfGroup: Boolean,
+        // The text sent with these photos, shown inside the bubble below them (see isCaptionFor).
+        val caption: Message? = null,
     ) : ChatItem {
         override val key: String
             get() = messages.first().getUuid() ?: messages.hashCode().toString()
@@ -606,6 +610,35 @@ private fun sameSender(a: Message, b: Message): Boolean {
 
 private const val GROUP_WINDOW_MILLIS = 5 * 60 * 1000L
 
+/**
+ * Is [c] the caption of the photos just before it: text from the same sender that is waiting for
+ * them (paused), that replies to one of them, or that was not sent because they were not. It is
+ * then drawn inside the photos' bubble instead of as a bubble of its own.
+ */
+internal fun isCaptionFor(photos: List<Message>, c: Message?): Boolean {
+    if (c == null || photos.isEmpty()) return false
+    if (c.type != Message.TYPE_TEXT && c.type != Message.TYPE_PRIVATE) return false
+    if (c.isFileOrImage || c.isDeleted || c.body.isNullOrBlank()) return false
+    if (!sameSender(photos.last(), c)) return false
+    if (c.status == Message.STATUS_PAUSED) return true
+    if (c.status == Message.STATUS_SEND_FAILED &&
+        (c.errorMessage == Message.ERROR_CAPTION_PHOTOS || c.errorMessage == Message.ERROR_CAPTION_PHOTO)
+    ) {
+        return true
+    }
+    val reply = c.repliedTo ?: return false
+    return photos.any { p -> reply == p.getUuid() || reply == p.serverMsgId || reply == p.remoteMsgId }
+}
+
+/** The error text to show: the caption failures are stored as markers, shown in the app's language. */
+@Composable
+internal fun displayError(error: String): String =
+    when (error) {
+        Message.ERROR_CAPTION_PHOTOS -> stringResource(R.string.caption_photos_failed)
+        Message.ERROR_CAPTION_PHOTO -> stringResource(R.string.caption_photo_failed)
+        else -> error
+    }
+
 private fun groupable(a: Message, b: Message): Boolean {
     if (a.type == Message.TYPE_STATUS || b.type == Message.TYPE_STATUS) return false
     if (a.type == Message.TYPE_RTP_SESSION || b.type == Message.TYPE_RTP_SESSION) return false
@@ -656,12 +689,27 @@ private fun buildChatItems(
                     break
                 }
             }
+            // The text sent with the photos sits right after them and belongs to their bubble.
+            val captionCandidate = messages.getOrNull(j)
+            val caption =
+                if (captionCandidate != null && captionCandidate.getUuid() != newMessagesBoundaryUuid &&
+                    isCaptionFor(run, captionCandidate)) captionCandidate else null
+            if (caption != null) j++
             if (run.size >= 2) {
                 val next = messages.getOrNull(j)
                 val firstOfGroup = previous == null || !groupable(previous, message)
                 val lastOfGroup =
                     next == null || !groupable(run.last(), next) || !sameDay(run.last().timeSent, next.timeSent)
-                chronological.add(ChatItem.MediaGroup(run, firstOfGroup, lastOfGroup))
+                chronological.add(ChatItem.MediaGroup(run, firstOfGroup, lastOfGroup, caption))
+                i = j
+                continue
+            }
+            if (caption != null) {
+                val next = messages.getOrNull(j)
+                val firstOfGroup = previous == null || !groupable(previous, message)
+                val lastOfGroup =
+                    next == null || !groupable(caption, next) || !sameDay(caption.timeSent, next.timeSent)
+                chronological.add(ChatItem.Msg(message, firstOfGroup, lastOfGroup, caption))
                 i = j
                 continue
             }
@@ -2604,8 +2652,9 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         if (scrollToUuid != null) {
             val idx = items.indexOfFirst { item ->
                 when (item) {
-                    is ChatItem.Msg -> item.message.getUuid() == scrollToUuid
-                    is ChatItem.MediaGroup -> item.messages.any { it.getUuid() == scrollToUuid }
+                    is ChatItem.Msg -> item.message.getUuid() == scrollToUuid || item.caption?.getUuid() == scrollToUuid
+                    is ChatItem.MediaGroup ->
+                        item.messages.any { it.getUuid() == scrollToUuid } || item.caption?.getUuid() == scrollToUuid
                     else -> false
                 }
             }
@@ -2764,8 +2813,8 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         fun itemIndexOf(uuid: String): Int =
             items.indexOfFirst {
                 when (it) {
-                    is ChatItem.Msg -> it.message.getUuid() == uuid
-                    is ChatItem.MediaGroup -> it.messages.any { m -> m.getUuid() == uuid }
+                    is ChatItem.Msg -> it.message.getUuid() == uuid || it.caption?.getUuid() == uuid
+                    is ChatItem.MediaGroup -> it.messages.any { m -> m.getUuid() == uuid } || it.caption?.getUuid() == uuid
                     else -> false
                 }
             }
@@ -2824,9 +2873,9 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                         val idx =
                             items.indexOfFirst {
                                 when (it) {
-                                    is ChatItem.Msg -> it.message.getUuid() == resentUuid
+                                    is ChatItem.Msg -> it.message.getUuid() == resentUuid || it.caption?.getUuid() == resentUuid
                                     is ChatItem.MediaGroup ->
-                                        it.messages.any { m -> m.getUuid() == resentUuid }
+                                        it.messages.any { m -> m.getUuid() == resentUuid } || it.caption?.getUuid() == resentUuid
                                     else -> false
                                 }
                             }
@@ -3796,13 +3845,24 @@ private fun MediaGroupRow(
                                     it.status != Message.STATUS_OFFERED
                             }
                         }
+                        val caption = item.caption
+                        if (caption != null) {
+                            CaptionBlock(
+                                caption = caption,
+                                revision = revision,
+                                contentColor = if (outgoing) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurface,
+                                onLongPress = { onLongPressCell(caption, listOf(caption), false) },
+                            )
+                        }
                         MessageFooter(
-                            message = messages.last(),
+                            message = caption ?: messages.last(),
                             outgoing = outgoing,
                             revision = revision,
                             statusMessage = remember(revision) { groupStatusRepresentative(messages) },
                             groupSentCount = if (outgoing) sentCount to messages.size else null,
                             groupMessages = messages,
+                            caption = caption,
                         )
                     }
                 }
@@ -4611,8 +4671,24 @@ private fun MessageBubble(
                         }
                     }
                 }
+                val caption = item.caption
+                if (caption != null) {
+                    CaptionBlock(
+                        caption = caption,
+                        revision = revision,
+                        contentColor = contentColor,
+                        onLongPress = { onLongPress(caption) },
+                    )
+                }
                 if (!isBeingEdited) {
-                    MessageFooter(message = message, outgoing = outgoing, revision = revision)
+                    MessageFooter(
+                        message = caption ?: message,
+                        outgoing = outgoing,
+                        revision = revision,
+                        statusMessage = message,
+                        groupMessages = if (caption != null) listOf(message) else null,
+                        caption = caption,
+                    )
                 }
             }
         }
@@ -5551,6 +5627,35 @@ private fun FileActionRow(
     }
 }
 
+/** The text sent with photos, inside their bubble; a caption that could not go says why. */
+@Composable
+private fun CaptionBlock(
+    caption: Message,
+    revision: Int,
+    contentColor: Color,
+    onLongPress: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(top = 6.dp)) {
+        LinkifiedMessageText(
+            message = caption,
+            revision = revision,
+            contentColor = contentColor,
+            onLongPress = onLongPress,
+        )
+        val error = if (caption.status == Message.STATUS_SEND_FAILED &&
+            caption.errorMessage != Message.ERROR_MESSAGE_CANCELLED
+        ) caption.errorMessage else null
+        if (!error.isNullOrBlank()) {
+            Text(
+                text = displayError(error),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     message: Message,
@@ -5569,6 +5674,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     // The whole batch for a grid tile (null for single messages). The status icons summarize all
     // of it -- see summarizeStatus -- instead of only the footer's own last message.
     groupMessages: List<Message>? = null,
+    // The text sent with the photos (shown inside their bubble): its status is the bubble's.
+    caption: Message? = null,
 ) {
     // Message is a mutated-in-place Java entity; reading `revision` here is what
     // makes Compose re-read message.status after an in-place status change.
@@ -5613,10 +5720,28 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     // whole batch, plus the "viewed 2 of 4" counts, in one place. See summarizeStatus.
     val statusSummary =
         if (outgoing && statusMessage.type != Message.TYPE_RTP_SESSION) {
-            summarizeStatus(
+            val photos = summarizeStatus(
                 groupMessages ?: listOf(statusMessage),
                 if (groupMessages == null) listenIconState else null,
             )
+            if (caption == null) {
+                photos
+            } else {
+                // The caption speaks for the bubble (paused while the photos go, then its own dots
+                // and checks); what is known only about the photos -- one failed, how many were
+                // seen -- is kept next to it.
+                val text = summarizeStatus(listOf(caption), null)
+                val settled = text.phase != CheckmarkPhase.PAUSED && text.phase != CheckmarkPhase.WAITING &&
+                    text.phase != CheckmarkPhase.UPLOADING
+                val eye = if (settled) photos.eye else null
+                StatusSummary(
+                    error = text.error ?: photos.error,
+                    eye = eye,
+                    phase = if (eye != null) null else text.phase,
+                    viewedCount = photos.viewedCount,
+                    viewableCount = photos.viewableCount,
+                )
+            }
         } else null
     val viewProgressLabel = statusSummary?.let {
         if (it.viewableCount > 1 && it.viewedCount in 1 until it.viewableCount)
@@ -6433,7 +6558,7 @@ private fun MessageContextSheet(
                                 text = stringResource(
                                     R.string.photo_n_failed,
                                     photoNumbers.joinToString(", "),
-                                    error,
+                                    displayError(error),
                                 ),
                             )
                         }
@@ -6442,7 +6567,7 @@ private fun MessageContextSheet(
                             message.errorMessage
                         } else null
                         if (!errorMessage.isNullOrBlank()) {
-                            ErrorBanner(text = errorMessage)
+                            ErrorBanner(text = displayError(errorMessage))
                         }
                     }
                     actions.forEachIndexed { index, action ->

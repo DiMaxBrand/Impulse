@@ -1664,4 +1664,6 @@
     <string name="hub_collapse">Hide details</string>
     <string name="hub_unverified_device">Not verified</string>
     <string name="hub_verified_device">Verified</string>
+    <string name="caption_photos_failed">The photos above were not sent</string>
+    <string name="caption_photo_failed">The photo above was not sent</string>
 </resources>

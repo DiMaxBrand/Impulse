@@ -46,7 +46,7 @@ fun legendKeyFor(viewState: ViewStatusManager.State?, phase: CheckmarkPhase?): S
         else -> {}
     }
     return when (phase) {
-        CheckmarkPhase.WAITING -> StatusLegendKey.DOTS
+        CheckmarkPhase.WAITING, CheckmarkPhase.PAUSED -> StatusLegendKey.DOTS
         CheckmarkPhase.SENT -> StatusLegendKey.SENT
         CheckmarkPhase.DELIVERED -> StatusLegendKey.DELIVERED
         CheckmarkPhase.READ -> StatusLegendKey.READ
