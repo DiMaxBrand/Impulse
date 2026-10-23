@@ -444,8 +444,16 @@ internal fun ImpulseExpressiveTheme(content: @Composable () -> Unit) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
             motionScheme = MotionScheme.expressive(),
-            content = content,
-        )
+        ) {
+            // Nothing sets a content colour for text that has none of its own unless a Surface does,
+            // and the default is black. A ComposeView hosted in a bottom sheet or a dialog (the update
+            // sheet, for one) has no Surface at its root, so its text was black on the dark sheet in
+            // dark mode. Provide the theme's own text colour once, here.
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.material3.LocalContentColor provides colorScheme.onSurface,
+                content = content,
+            )
+        }
     }
 }
 
