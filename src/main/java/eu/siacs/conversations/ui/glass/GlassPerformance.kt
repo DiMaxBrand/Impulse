@@ -14,6 +14,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.layout.ime
 import kotlin.math.abs
 
 /**
@@ -23,8 +26,13 @@ import kotlin.math.abs
  * app, because there is only ever one list scrolling under glass at a time.
  */
 object GlassPerformance {
-    var lite by mutableStateOf(false)
-        internal set
+    internal var scrollFast by mutableStateOf(false)
+
+    /** True while the keyboard slides in or out: every frame resizes the screen and the glass over it. */
+    internal var keyboardMoving by mutableStateOf(false)
+
+    /** Glass draws as plain tinted bubbles while the list flies past or the keyboard moves. */
+    val lite: Boolean get() = scrollFast || keyboardMoving
 
     /** More than this many screens per second counts as fast. */
     const val FAST = 1.0f
@@ -52,11 +60,11 @@ fun rememberGlassScrollMeter(): Modifier {
             val screens = distance[0] / viewport[0].coerceAtLeast(1)
             distance[0] = 0f
             val speed = screens / seconds
-            if (!GlassPerformance.lite && speed > GlassPerformance.FAST) GlassPerformance.lite = true
-            else if (GlassPerformance.lite && speed < GlassPerformance.SLOW) GlassPerformance.lite = false
+            if (!GlassPerformance.scrollFast && speed > GlassPerformance.FAST) GlassPerformance.scrollFast = true
+            else if (GlassPerformance.scrollFast && speed < GlassPerformance.SLOW) GlassPerformance.scrollFast = false
         }
     }
-    DisposableEffect(Unit) { onDispose { GlassPerformance.lite = false } }
+    DisposableEffect(Unit) { onDispose { GlassPerformance.scrollFast = false } }
     val connection = remember {
         object : NestedScrollConnection {
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
@@ -66,4 +74,24 @@ fun rememberGlassScrollMeter(): Modifier {
         }
     }
     return Modifier.onSizeChanged { viewport[0] = it.height }.nestedScroll(connection)
+}
+
+/**
+ * While the keyboard moves, the screen is resized on every frame and each glass piece would redo its
+ * blur and refraction over it, which made the keyboard open slowly and the messages, the status bar
+ * and the gesture bar flicker behind it. So glass goes plain ([GlassPerformance.lite]) from the first
+ * change of the keyboard's height until it has been still for a moment, and is back after that.
+ */
+@Composable
+fun rememberGlassKeyboardMeter() {
+    val ime = androidx.compose.foundation.layout.WindowInsets.ime
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    LaunchedEffect(Unit) {
+        snapshotFlow { ime.getBottom(density) }.collectLatest {
+            GlassPerformance.keyboardMoving = true
+            delay(350)
+            GlassPerformance.keyboardMoving = false
+        }
+    }
+    DisposableEffect(Unit) { onDispose { GlassPerformance.keyboardMoving = false } }
 }

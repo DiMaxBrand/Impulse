@@ -158,6 +158,7 @@ import eu.siacs.conversations.ui.glass.LiquidGlassStyle
 import eu.siacs.conversations.ui.glass.LiquidInputBar
 import eu.siacs.conversations.ui.glass.LiquidTopBar
 import eu.siacs.conversations.ui.glass.rememberGlassScrollMeter
+import eu.siacs.conversations.ui.glass.rememberGlassKeyboardMeter
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
 import androidx.compose.ui.unit.dp
@@ -1026,6 +1027,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             // the messages instead of being cut off by a bar it stands on). Each bar is only its
             // bubbles: no bar-shaped surface behind them.
             val density = LocalDensity.current
+            // Glass goes plain while the keyboard slides, so the keyboard opens smoothly.
+            rememberGlassKeyboardMeter()
             messageList(
                 // The meter flips the glass to its cheap look while the list flies past.
                 Modifier.fillMaxSize().layerBackdrop(listBackdrop).then(rememberGlassScrollMeter()),
