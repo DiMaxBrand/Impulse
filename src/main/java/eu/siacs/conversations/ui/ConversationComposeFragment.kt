@@ -1240,6 +1240,43 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         HelpSupportSheetFragment().show(parentFragmentManager, HelpSupportSheetFragment.TAG)
     }
 
+    /** Support only: sends the tracking message (see SupportTracking). The phone that gets it files
+     * the item only if it comes from the support address, so this does nothing useful on a phone
+     * that merely shows the option. */
+    override fun onTrackForContact(
+        kind: String,
+        titleEn: String,
+        titleRu: String,
+        note: String,
+        checkNow: Boolean,
+    ) {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        val context = context ?: return
+        if (c.getMode() != Conversational.MODE_SINGLE ||
+            !eu.siacs.conversations.utils.SupportAccounts.hasSupportAccount(context)
+        ) {
+            return
+        }
+        when (c.nextEncryption) {
+            Message.ENCRYPTION_AXOLOTL ->
+                if (trustKeysIfNeeded(c) { onTrackForContact(kind, titleEn, titleRu, note, checkNow) }) return
+            Message.ENCRYPTION_PGP -> {
+                Toast.makeText(context, R.string.openpgp_error, Toast.LENGTH_SHORT).show()
+                return
+            }
+        }
+        val id = eu.siacs.conversations.update.BugReportRegistry(context).newId(kind)
+        val item = eu.siacs.conversations.update.SupportTracking.Item(id, kind, titleEn, titleRu, checkNow)
+        service.sendMessage(
+            Message(c, eu.siacs.conversations.update.SupportTracking.messageBody(item, note), c.nextEncryption)
+        )
+        val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText(id, id))
+        Toast.makeText(context, getString(R.string.track_copied, id), Toast.LENGTH_LONG).show()
+        refreshMessages()
+    }
+
     override fun onBlockContact() {
         val c = conversation ?: return
         val activity = activity as? XmppActivity ?: return

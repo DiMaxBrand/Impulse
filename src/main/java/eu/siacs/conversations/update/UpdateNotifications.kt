@@ -58,6 +58,46 @@ object UpdateNotifications {
     }
 
     private const val BUG_FIXED_NOTIFICATION_ID = 90019
+    private const val BUG_REGISTERED_NOTIFICATION_ID = 90020
+
+    /** Support is tracking something for this person: say so once, on the same quiet channel. */
+    fun postTracked(context: Context, kind: String, title: String) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL_ID,
+                    context.getString(R.string.update_channel_name),
+                    NotificationManager.IMPORTANCE_LOW,
+                )
+            )
+        }
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+        val pending =
+            PendingIntent.getActivity(
+                context,
+                149,
+                launch,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val notification =
+            NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_system_update_24dp)
+                .setContentTitle(
+                    context.getString(
+                        when (kind) {
+                            BugReportRegistry.KIND_IMPROVEMENT -> R.string.tracked_notification_title_improvement
+                            BugReportRegistry.KIND_FEATURE -> R.string.tracked_notification_title_feature
+                            else -> R.string.tracked_notification_title_bug
+                        }
+                    )
+                )
+                .setContentText(context.getString(R.string.tracked_notification_text, title))
+                .setContentIntent(pending)
+                .setAutoCancel(true)
+                .build()
+        manager.notify(BUG_REGISTERED_NOTIFICATION_ID, notification)
+    }
 
     /** A report this phone sent is named in the notes of the release just found: tell the
      * reporter, with the same quiet channel as the other update notices. */
@@ -66,6 +106,8 @@ object UpdateNotifications {
         ids: List<String>,
         version: String,
         alreadyInstalled: Boolean = false,
+        // False when something other than a bug fix is among them: "fixed" is the wrong word then.
+        bugsOnly: Boolean = true,
     ) {
         val manager = context.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -88,10 +130,18 @@ object UpdateNotifications {
         val notification =
             NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_system_update_24dp)
-                .setContentTitle(context.getString(R.string.bug_fixed_notification_title))
+                .setContentTitle(
+                    context.getString(
+                        if (bugsOnly) R.string.bug_fixed_notification_title
+                        else R.string.tracked_ready_notification_title
+                    )
+                )
                 .setContentText(
                     context.getString(
-                        if (alreadyInstalled) R.string.bug_fixed_installed_notification_text
+                        if (!bugsOnly) {
+                            if (alreadyInstalled) R.string.tracked_ready_installed_notification_text
+                            else R.string.tracked_ready_notification_text
+                        } else if (alreadyInstalled) R.string.bug_fixed_installed_notification_text
                         else R.string.bug_fixed_notification_text,
                         ids.joinToString(", "),
                         version,

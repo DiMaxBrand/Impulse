@@ -30,19 +30,71 @@ class BugReportRegistry(context: Context) {
         val sentAt: Long,
         /** Version name of the oldest newer release whose notes name this ID, once found. */
         val fixedIn: String? = null,
-    )
+        /** [KIND_BUG], [KIND_IMPROVEMENT] or [KIND_FEATURE]: what the item is. */
+        val kind: String = KIND_BUG,
+        /** What support typed for it, in English and in Russian (either may be empty): shown on the
+         * Updates screen in place of the generic "waiting for a fix". */
+        val titleEn: String = "",
+        val titleRu: String = "",
+        /** Filed by support on this person's behalf, not reported from this phone. */
+        val fromSupport: Boolean = false,
+    ) {
+        /** The title for the phone's language, falling back to the other one; empty if none. */
+        fun title(russian: Boolean): String =
+            (if (russian) titleRu else titleEn).ifBlank { titleEn.ifBlank { titleRu } }
+    }
+
+    /** A fresh ID that is not remembered here: for an item registered on someone else's behalf,
+     * where the ID is sent to the person and filed on their phone (see [adopt]). The prefix says
+     * what it is: BUG-, IMP- (improvement) or NEW- (new feature). */
+    @Synchronized
+    fun newId(kind: String = KIND_BUG, now: Long = System.currentTimeMillis()): String {
+        val existing = entries(now).map { it.id }.toSet()
+        val prefix =
+            when (kind) {
+                KIND_IMPROVEMENT -> "IMP"
+                KIND_FEATURE -> "NEW"
+                else -> "BUG"
+            }
+        var id: String
+        do {
+            id = prefix + "-" + (1..4).map { ALPHABET.random() }.joinToString("")
+        } while (id in existing)
+        return id
+    }
 
     /** Makes a new ID (BUG-XXXX), remembers it with the channel the reporter is on, returns it. */
     @Synchronized
     fun register(channel: String, now: Long = System.currentTimeMillis()): String {
-        val existing = entries(now).map { it.id }.toSet()
-        var id: String
-        do {
-            id = "BUG-" + (1..4).map { ALPHABET.random() }.joinToString("")
-        } while (id in existing)
+        val id = newId(KIND_BUG, now)
         write(entries(now) + Entry(id, channel, now))
         return id
     }
+
+    /** Files an ID that someone else made (support, on this person's behalf) as this phone's own
+     * waiting report. False when it is already there, so a repeated message adds nothing. */
+    @Synchronized
+    fun adopt(
+        id: String,
+        channel: String,
+        kind: String,
+        titleEn: String,
+        titleRu: String,
+        now: Long = System.currentTimeMillis(),
+    ): Boolean {
+        val all = entries(now)
+        if (all.any { it.id.equals(id, ignoreCase = true) }) return false
+        write(
+            all +
+                Entry(id.uppercase(), channel, now, null, kind, titleEn, titleRu, fromSupport = true)
+        )
+        return true
+    }
+
+    /** True while an item support filed for this person is still waiting: the app then also checks
+     * for updates when it is opened, on any channel, so the person gets it as soon as it is out. */
+    fun hasWaitingFromSupport(now: Long = System.currentTimeMillis()): Boolean =
+        waiting(now).any { it.fromSupport }
 
     @Synchronized
     fun pending(now: Long = System.currentTimeMillis()): List<Entry> = entries(now)
@@ -125,6 +177,10 @@ class BugReportRegistry(context: Context) {
                     o.optString("channel"),
                     o.optLong("sentAt"),
                     o.optString("fixedIn").ifEmpty { null },
+                    o.optString("kind").ifEmpty { KIND_BUG },
+                    o.optString("titleEn"),
+                    o.optString("titleRu"),
+                    o.optBoolean("fromSupport"),
                 )
             }
         } catch (_: Exception) {
@@ -141,12 +197,21 @@ class BugReportRegistry(context: Context) {
         list.forEach {
             val o = JSONObject().put("id", it.id).put("channel", it.channel).put("sentAt", it.sentAt)
             it.fixedIn?.let { fixed -> o.put("fixedIn", fixed) }
+            if (it.kind != KIND_BUG) o.put("kind", it.kind)
+            if (it.titleEn.isNotEmpty()) o.put("titleEn", it.titleEn)
+            if (it.titleRu.isNotEmpty()) o.put("titleRu", it.titleRu)
+            if (it.fromSupport) o.put("fromSupport", true)
             array.put(o)
         }
         prefs.edit { putString(KEY, array.toString()) }
     }
 
     companion object {
+        const val KIND_BUG = "bug"
+        const val KIND_IMPROVEMENT = "improvement"
+        const val KIND_FEATURE = "feature"
+        val KINDS = listOf(KIND_BUG, KIND_IMPROVEMENT, KIND_FEATURE)
+
         private const val KEY = "pending"
         // No 0/O/1/I/L: the ID gets read aloud and typed by hand into release notes.
         private const val ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"

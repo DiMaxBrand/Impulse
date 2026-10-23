@@ -219,6 +219,8 @@ class ConversationScreenState {
     // The "a message was sent again automatically" card (expanded from the scroll button).
     internal val resentCardVisible = mutableStateOf(false)
     internal val showPinnedMessagesOverlay = mutableStateOf(false)
+    // The support-only "Track for this person" card (see TrackItemCard.kt).
+    internal val trackCardVisible = mutableStateOf(false)
     // Bumped (event counter) by MessageList when the list reaches the bottom after being scrolled
     // away; InputBar plays its springy arch on every change. Only ever written behind the
     // EXPERIMENTAL_ANIMATIONS flag.
@@ -299,6 +301,9 @@ interface ConversationScreenListener {
     fun onTakePhoto()
 
     fun onAttachFile()
+
+    /** Support only: track a fix, improvement or feature for this contact (see SupportTracking). */
+    fun onTrackForContact(kind: String, titleEn: String, titleRu: String, note: String, checkNow: Boolean)
 
     fun onCall(video: Boolean)
 
@@ -1024,6 +1029,16 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 ),
             )
         }
+        // Support only: the "Track for this person" card, from the attach menu's option.
+        TrackItemOverlay(
+            visible = state.trackCardVisible.value,
+            contactName = conversation?.getName()?.toString().orEmpty(),
+            onDismiss = { state.trackCardVisible.value = false },
+            onSend = { kind, en, ru, note, check ->
+                state.trackCardVisible.value = false
+                listener.onTrackForContact(kind, en, ru, note, check)
+            },
+        )
         // "A message was sent again automatically": expands out of the scroll button.
         val resentVisible = state.resentCardVisible.value
         val resentScrim by animateFloatAsState(
@@ -7618,6 +7633,13 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
     }
 
     var attachMenuOpen by remember { mutableStateOf(false) }
+    // Support only: a phone with the support account connected, in a one-to-one chat.
+    val trackContext = androidx.compose.ui.platform.LocalContext.current
+    val showTrack = remember(conversation) {
+        conversation != null &&
+            conversation.getMode() == Conversational.MODE_SINGLE &&
+            eu.siacs.conversations.utils.SupportAccounts.hasSupportAccount(trackContext)
+    }
     val text = state.inputText.value
     val hasText = text.isNotBlank()
     val correcting = state.correcting.value != null
@@ -7794,6 +7816,19 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                                             animatedVisibilityScope = this@AnimatedContent,
                                         ),
                                 )
+                            }
+                            if (showTrack) {
+                                IconButton(
+                                    onClick = {
+                                        attachMenuOpen = false
+                                        state.trackCardVisible.value = true
+                                    }
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_report_24dp),
+                                        contentDescription = stringResource(R.string.track_menu_label),
+                                    )
+                                }
                             }
                             IconButton(onClick = { attachMenuOpen = false }) {
                                 Icon(

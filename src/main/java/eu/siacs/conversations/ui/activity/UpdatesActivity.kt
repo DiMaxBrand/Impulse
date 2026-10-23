@@ -131,6 +131,21 @@ class UpdatesActivity : ActionBarActivity() {
         initState()
     }
 
+    // The titles support typed for an item, in the phone's language.
+    private fun trackedWaiting(): List<eu.siacs.conversations.ui.TrackedItemUi> {
+        val ru = eu.siacs.conversations.update.SupportTracking.isRussian()
+        return eu.siacs.conversations.update.BugReportRegistry(this).waiting().map {
+            eu.siacs.conversations.ui.TrackedItemUi(it.id, it.kind, it.title(ru))
+        }
+    }
+
+    private fun trackedFixed(): List<eu.siacs.conversations.ui.TrackedItemUi> {
+        val ru = eu.siacs.conversations.update.SupportTracking.isRussian()
+        return eu.siacs.conversations.update.BugReportRegistry(this).fixed().map {
+            eu.siacs.conversations.ui.TrackedItemUi(it.id, it.kind, it.title(ru), it.fixedIn)
+        }
+    }
+
     private fun initState() {
         eu.siacs.conversations.update.BugReportRegistry(this).dropInstalled(BuildConfig.VERSION_NAME)
         val rawVersion = BuildConfig.VERSION_NAME
@@ -154,8 +169,8 @@ class UpdatesActivity : ActionBarActivity() {
             minUpdateIntervalHours = prefs.minUpdateIntervalHours,
             nightlyInstall = prefs.nightlyInstall,
             canInstallApps = packageManager.canRequestPackageInstalls(),
-            pendingBugReportIds = eu.siacs.conversations.update.BugReportRegistry(this).waiting().map { it.id },
-            fixedBugReports = eu.siacs.conversations.update.BugReportRegistry(this).fixed().map { it.id to (it.fixedIn ?: "") },
+            waitingItems = trackedWaiting(),
+            fixedItems = trackedFixed(),
             bugReportsStale = eu.siacs.conversations.update.BugReportRegistry(this).hasStale(),
             downloadPhase = restoredPhase,
             pendingVersion = pendingVersion ?: if (restoredPhase == DownloadPhase.READY) prefs.downloadedVersion else null,
@@ -181,8 +196,8 @@ class UpdatesActivity : ActionBarActivity() {
             run {
                 val bugRegistry = eu.siacs.conversations.update.BugReportRegistry(this@UpdatesActivity)
                 uiState = uiState.copy(
-                    pendingBugReportIds = bugRegistry.waiting().map { it.id },
-                    fixedBugReports = bugRegistry.fixed().map { it.id to (it.fixedIn ?: "") },
+                    waitingItems = trackedWaiting(),
+                    fixedItems = trackedFixed(),
                     bugReportsStale = bugRegistry.hasStale(),
                 )
             }

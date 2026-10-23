@@ -761,6 +761,11 @@ public class MessageParser extends AbstractParser
             }
 
             mXmppConnectionService.databaseBackend.createMessage(message);
+            if (query == null || query.isCatchup()) {
+                // Something support tracks for this person arrives as a plain message.
+                eu.siacs.conversations.update.SupportTracking.maybeAdopt(
+                        mXmppConnectionService, message);
+            }
             final HttpConnectionManager manager =
                     this.mXmppConnectionService.getHttpConnectionManager();
             final var autoAcceptFileSize =

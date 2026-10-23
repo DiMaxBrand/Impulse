@@ -142,6 +142,19 @@ fun LiquidInputBar(
                     attachMenu.open = false
                     listener.onAttachFile()
                 }
+                // Support only: a phone with the support account connected, in a one-to-one chat.
+                val trackContext = androidx.compose.ui.platform.LocalContext.current
+                val showTrack = remember(conversation) {
+                    conversation != null &&
+                        conversation.getMode() == Conversational.MODE_SINGLE &&
+                        eu.siacs.conversations.utils.SupportAccounts.hasSupportAccount(trackContext)
+                }
+                if (showTrack) {
+                    LiquidMenuItem(R.drawable.ic_report_24dp, stringResource(R.string.track_menu_label)) {
+                        attachMenu.open = false
+                        state.trackCardVisible.value = true
+                    }
+                }
             }
         }
     }

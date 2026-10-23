@@ -29,7 +29,13 @@ object UpdateCheckHelper {
     fun checkOnLaunchIfEligible(activity: AppCompatActivity, onChecked: Runnable? = null) {
         val prefs = UpdatePreferences(activity.applicationContext)
         val channel = prefs.selectedChannel
-        if (channel != UpdateChannel.BETA && channel != UpdateChannel.ALPHA) return
+        // Beta and alpha move fast. Any channel also checks on launch while support is tracking
+        // something for this person (a fix or a feature they are waiting for): they should get it
+        // the moment it is out, not at the next nightly run.
+        if (channel != UpdateChannel.BETA &&
+            channel != UpdateChannel.ALPHA &&
+            !BugReportRegistry(activity.applicationContext).hasWaitingFromSupport()
+        ) return
         // At most one launch check per five minutes: onResume fires on every return to the main
         // screen, and GitHub allows about 60 unauthenticated requests an hour per network address
         // (shared by everyone on the same Wi-Fi). A refused request would show up as a failed
@@ -69,20 +75,29 @@ object UpdateCheckHelper {
                     v != null && current != null && UpdateChecker.compareSemver(v, current) <= 0
                 }
             val pending = fixed - installed.toSet()
+            // What the notice names: the title support typed for the item in the phone's language, or
+            // the ID for a report this phone sent itself.
+            val ru = SupportTracking.isRussian()
+            fun names(list: List<BugReportRegistry.Entry>) =
+                list.map { it.title(ru).ifBlank { it.id } }
+            fun bugsOnly(list: List<BugReportRegistry.Entry>) =
+                list.all { it.kind == BugReportRegistry.KIND_BUG }
             if (pending.isNotEmpty()) {
                 UpdateNotifications.postBugFixed(
                     context,
-                    pending.map { it.id },
+                    names(pending),
                     pending.mapNotNull { it.fixedIn }.first(),
                     alreadyInstalled = false,
+                    bugsOnly = bugsOnly(pending),
                 )
             }
             if (installed.isNotEmpty()) {
                 UpdateNotifications.postBugFixed(
                     context,
-                    installed.map { it.id },
+                    names(installed),
                     installed.mapNotNull { it.fixedIn }.first(),
                     alreadyInstalled = true,
+                    bugsOnly = bugsOnly(installed),
                 )
             }
         }
@@ -97,7 +112,7 @@ object UpdateCheckHelper {
      * thread. */
     @JvmStatic
     @JvmOverloads
-    fun performCheck(context: Context, overnight: Boolean = false) {
+    fun performCheck(context: Context, overnight: Boolean = false, forced: Boolean = false) {
         val prefs = UpdatePreferences(context)
         // Self-heal here too, not just at process startup (Conversations.kt's Application.onCreate):
         // without this, a device where the process never fully cold-starts between an update
@@ -113,10 +128,10 @@ object UpdateCheckHelper {
         // "Auto-check" is about the daytime checks (and the nudges that follow). The overnight run
         // still checks, downloads and installs while "Update overnight" is on, so a person who
         // switched the nudges off still ends up on the current version in the morning.
-        if (!prefs.autoCheck && !(overnight && prefs.nightlyInstall)) return
+        if (!forced && !prefs.autoCheck && !(overnight && prefs.nightlyInstall)) return
         // "Wait between updates": stay completely quiet (no network check, nothing marked pending,
         // no auto-download) until enough time has passed since the app was last updated.
-        if (prefs.isWithinQuietWindow(context)) return
+        if (!forced && prefs.isWithinQuietWindow(context)) return
         val checker = UpdateChecker(OkHttpClient())
         val result = try {
             checker.checkForUpdate(prefs.selectedChannel)

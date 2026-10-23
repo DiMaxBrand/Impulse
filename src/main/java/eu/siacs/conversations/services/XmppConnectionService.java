@@ -1263,6 +1263,8 @@ public class XmppConnectionService extends Service {
         for (final var account : this.accounts) {
             account.setXmppConnection(new XmppConnection(account, this));
         }
+        // Whether a support address is among the accounts decides some feature flags' defaults.
+        eu.siacs.conversations.utils.SupportAccounts.refresh(this, this.accounts);
         final boolean hasEnabledAccounts = hasEnabledAccounts();
         toggleSetProfilePictureActivity(hasEnabledAccounts);
         reconfigurePushDistributor();
@@ -2695,6 +2697,7 @@ public class XmppConnectionService extends Service {
             CallIntegrationConnectionService.togglePhoneAccountAsync(this, account);
         }
         this.accounts.add(account);
+        eu.siacs.conversations.utils.SupportAccounts.refresh(this, this.accounts);
         this.reconnectAccountInBackground(account);
         updateAccountUi();
         Conversations.getInstance(this).resetAccounts();
@@ -2872,6 +2875,7 @@ public class XmppConnectionService extends Service {
                         }
                     });
             this.accounts.remove(account);
+            eu.siacs.conversations.utils.SupportAccounts.refresh(this, this.accounts);
             if (CallIntegration.hasSystemFeature(this)) {
                 CallIntegrationConnectionService.unregisterPhoneAccount(this, account);
             }

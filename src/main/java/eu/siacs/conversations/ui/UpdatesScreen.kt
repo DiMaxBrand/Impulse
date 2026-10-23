@@ -1,5 +1,6 @@
 package eu.siacs.conversations.ui
 
+import eu.siacs.conversations.update.BugReportRegistry
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedVisibility
@@ -379,8 +380,9 @@ fun UpdatesScreen(
                 // release).
                 // Fixed already, waiting for the update to be installed (overnight or by the
                 // Install button): stays until then.
-                if (state.fixedBugReports.isNotEmpty()) {
+                if (state.fixedItems.isNotEmpty()) {
                     Spacer(Modifier.height(16.dp))
+                    val onlyBugs = state.fixedItems.all { it.kind == BugReportRegistry.KIND_BUG }
                     androidx.compose.material3.Surface(
                         shape = RoundedCornerShape(28.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
@@ -389,27 +391,31 @@ fun UpdatesScreen(
                     ) {
                         Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                             Text(
-                                text = stringResource(R.string.bug_fixed_title),
+                                text = stringResource(
+                                    if (onlyBugs) R.string.bug_fixed_title else R.string.tracked_ready_title
+                                ),
                                 style = MaterialTheme.typography.titleMedium,
                             )
-                            state.fixedBugReports.forEach { (id, version) ->
-                                Text(
-                                    text = "$id  →  ${eu.siacs.conversations.update.UpdateChecker.stripBuildMeta(version)}",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                    modifier = Modifier.padding(top = 4.dp),
-                                )
+                            state.fixedItems.forEach { item ->
+                                TrackedItemLine(item, suffix = "  →  " + eu.siacs.conversations.update.UpdateChecker.stripBuildMeta(item.fixedIn ?: ""))
                             }
                             Text(
-                                text = stringResource(R.string.bug_fixed_text),
+                                text = stringResource(
+                                    if (onlyBugs) R.string.bug_fixed_text else R.string.tracked_ready_text
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
                         }
                     }
                 }
-                if (state.pendingBugReportIds.isNotEmpty()) {
+                // What support (or this phone's own report) is waiting on a release for. Items support
+                // typed a title for show that title and what kind of thing it is; a report sent from
+                // this phone still shows its ID. Stale after a couple of weeks without a match: the
+                // wording stops promising an automatic notice and points at support instead.
+                if (state.waitingItems.isNotEmpty()) {
                     Spacer(Modifier.height(16.dp))
+                    val onlyBugs = state.waitingItems.all { it.kind == BugReportRegistry.KIND_BUG }
                     androidx.compose.material3.Surface(
                         shape = RoundedCornerShape(28.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer,
@@ -421,16 +427,12 @@ fun UpdatesScreen(
                                 text =
                                     stringResource(
                                         if (state.bugReportsStale) R.string.bug_waiting_stale_title
-                                        else R.string.bug_waiting_title
+                                        else if (onlyBugs) R.string.bug_waiting_title
+                                        else R.string.tracked_waiting_title
                                     ),
                                 style = MaterialTheme.typography.titleMedium,
                             )
-                            Text(
-                                text = state.pendingBugReportIds.joinToString(", "),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
+                            state.waitingItems.forEach { item -> TrackedItemLine(item) }
                             Text(
                                 text =
                                     stringResource(
@@ -1582,6 +1584,46 @@ private fun sheetStatusText(state: UpdatesUiState): String? = when {
 // ─── State model ─────────────────────────────────────────────────────────────
 
 enum class CheckStatus { IDLE, CHECKING, UP_TO_DATE, UPDATE_AVAILABLE, CHANNEL_BEHIND, CHECK_FAILED }
+/** One line of the waiting/fixed cards: an ID, what kind of thing it is, and the title support typed
+ * for it in the phone's language (empty for a report this phone sent itself). */
+data class TrackedItemUi(
+    val id: String,
+    val kind: String,
+    val title: String,
+    val fixedIn: String? = null,
+)
+
+/** A tracked item on the Updates screen: its kind and title when it has one, else just its ID. */
+@Composable
+private fun TrackedItemLine(item: TrackedItemUi, suffix: String = "") {
+    Column(Modifier.padding(top = 6.dp)) {
+        if (item.title.isNotBlank()) {
+            Text(
+                text = stringResource(
+                    when (item.kind) {
+                        BugReportRegistry.KIND_IMPROVEMENT -> R.string.tracked_kind_improvement
+                        BugReportRegistry.KIND_FEATURE -> R.string.tracked_kind_feature
+                        else -> R.string.tracked_kind_bug
+                    }
+                ),
+                style = MaterialTheme.typography.labelMedium,
+            )
+            Text(text = item.title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = item.id + suffix,
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            )
+        } else {
+            Text(
+                text = item.id + suffix,
+                style = MaterialTheme.typography.bodyLarge,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            )
+        }
+    }
+}
+
 enum class DownloadPhase { IDLE, NO_WIFI_PENDING, DOWNLOADING, PROCESSING, READY, CANCELING }
 
 data class UpdatesUiState(
@@ -1591,8 +1633,10 @@ data class UpdatesUiState(
     val minUpdateIntervalHours: Int = 0,
     val nightlyInstall: Boolean = true,
     val canInstallApps: Boolean = true,
-    val pendingBugReportIds: List<String> = emptyList(),
-    val fixedBugReports: List<Pair<String, String>> = emptyList(),
+    /** What is waiting on a release (the user's own reports and what support tracks for them). */
+    val waitingItems: List<TrackedItemUi> = emptyList(),
+    /** Items a newer release already has, not installed yet. */
+    val fixedItems: List<TrackedItemUi> = emptyList(),
     val bugReportsStale: Boolean = false,
     val checkStatus: CheckStatus = CheckStatus.IDLE,
     val downloadPhase: DownloadPhase = DownloadPhase.IDLE,
