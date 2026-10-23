@@ -1561,7 +1561,7 @@
     <string name="auto_check_update_button">Update</string>
     <string name="track_sent_copied">%1$s sent silently and copied: put it in the release notes</string>
     <string name="support_check_menu_label">Check for updates</string>
-    <string name="support_check_sent">Asked their phone to check. The answer will appear in this chat.</string>
+    <string name="support_check_sent">Asked their phone to check. The answer will appear in the support account\'s chat with them.</string>
     <string name="support_not_connected">Not connected right now: try again in a moment</string>
     <string name="attach_phone_contact">Contact</string>
     <string name="attach_impulse_contact">Impulse contact</string>

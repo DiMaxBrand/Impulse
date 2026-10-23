@@ -1627,7 +1627,7 @@
     <string name="auto_check_update_button">Обновить</string>
     <string name="track_sent_copied">%1$s отправлен без сообщения и скопирован: впишите его в заметки к релизу</string>
     <string name="support_check_menu_label">Проверить обновления</string>
-    <string name="support_check_sent">Попросили его телефон проверить обновления. Ответ появится в этом чате.</string>
+    <string name="support_check_sent">Попросили его телефон проверить обновления. Ответ появится в чате аккаунта поддержки с ним.</string>
     <string name="support_not_connected">Сейчас нет подключения: попробуйте через минуту</string>
     <string name="attach_phone_contact">Контакт</string>
     <string name="attach_impulse_contact">Контакт Импульса</string>

@@ -32,8 +32,8 @@ class SupportCommandManager(
 ) : AbstractManager(service.getApplicationContext(), connection) {
 
     /** Sends the tracked item to [to]; false when this account is not connected. */
-    fun sendTrack(to: Jid, item: SupportTracking.Item): Boolean =
-        sendToAll(to) { target ->
+    fun sendTrack(to: Jid, item: SupportTracking.Item, known: List<Jid> = emptyList()): Boolean =
+        sendToAll(to, known) { target ->
             val packet = newPacket(target)
             packet.addExtension(Track.create(item.id, item.kind, item.titleEn, item.titleRu, item.checkNow))
             packet.addExtension(Store())
@@ -41,8 +41,8 @@ class SupportCommandManager(
         }
 
     /** Asks [to]'s phone to look for an update and report in the chat; false when not connected. */
-    fun sendCheckRequest(to: Jid): Boolean =
-        sendToAll(to) { target ->
+    fun sendCheckRequest(to: Jid, known: List<Jid> = emptyList()): Boolean =
+        sendToAll(to, known) { target ->
             val packet = newPacket(target)
             packet.addExtension(CheckUpdates())
             packet.addExtension(Store())
@@ -55,9 +55,12 @@ class SupportCommandManager(
      * person is signed in on more than one device, or an old session is still listed, the command
      * could land on the wrong one and the phone in their hand never saw it. Each resource that
      * shows as online therefore gets its own copy; with none known, the bare address is used.
+     * [known] are resources seen by another of this phone's accounts (the chat with the person
+     * usually belongs to the personal account, while the commands must be sent from the support one).
      */
     private fun sendToAll(
         to: Jid,
+        known: List<Jid>,
         build: (Jid) -> im.conversations.android.xmpp.model.stanza.Message,
     ): Boolean {
         if (!getAccount().isOnlineAndConnected()) return false
@@ -65,6 +68,7 @@ class SupportCommandManager(
             getManager(PresenceManager::class.java)
                 .getPresences(to.asBareJid())
                 .mapNotNull { it.getFrom() }
+                .plus(known)
                 .filter { !it.isBareJid() }
                 .distinct()
         val targets = if (resources.isEmpty()) listOf(to.asBareJid()) else resources

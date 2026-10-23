@@ -1440,10 +1440,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val context = context ?: return
         val id = eu.siacs.conversations.update.BugReportRegistry(context).newId(kind)
         val item = eu.siacs.conversations.update.SupportTracking.Item(id, kind, titleEn, titleRu, checkNow)
-        val sent =
-            c.getAccount().xmppConnection
-                .getManager(eu.siacs.conversations.xmpp.manager.SupportCommandManager::class.java)
-                .sendTrack(c.getAddress(), item)
+        val sent = supportManager()?.sendTrack(c.getAddress(), item, knownResources(c)) ?: false
         if (!sent) {
             Toast.makeText(context, R.string.support_not_connected, Toast.LENGTH_LONG).show()
             return
@@ -1457,16 +1454,34 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     override fun onSupportCheckUpdates() {
         val c = supportTarget() ?: return
         val context = context ?: return
-        val sent =
-            c.getAccount().xmppConnection
-                .getManager(eu.siacs.conversations.xmpp.manager.SupportCommandManager::class.java)
-                .sendCheckRequest(c.getAddress())
+        val sent = supportManager()?.sendCheckRequest(c.getAddress(), knownResources(c)) ?: false
         Toast.makeText(
             context,
             if (sent) R.string.support_check_sent else R.string.support_not_connected,
             Toast.LENGTH_LONG,
         ).show()
     }
+
+    /**
+     * The commands must come from the support address -- the phone that receives them accepts
+     * nothing else -- so they are sent over the support account's connection even though the chat
+     * with the person usually belongs to a personal account of this phone.
+     */
+    private fun supportManager(): eu.siacs.conversations.xmpp.manager.SupportCommandManager? {
+        val service = getXmppConnectionService() ?: return null
+        val account = service.accounts.firstOrNull {
+            eu.siacs.conversations.utils.SupportAccounts.isSupportAddress(it.jid) && it.isOnlineAndConnected
+        } ?: return null
+        return account.xmppConnection
+            .getManager(eu.siacs.conversations.xmpp.manager.SupportCommandManager::class.java)
+    }
+
+    /** The online sessions of the person as seen by the account the chat belongs to. */
+    private fun knownResources(c: Conversation): List<eu.siacs.conversations.xmpp.Jid> =
+        c.getAccount().xmppConnection
+            .getManager(eu.siacs.conversations.xmpp.manager.PresenceManager::class.java)
+            .getPresences(c.getAddress().asBareJid())
+            .mapNotNull { it.from }
 
     /** The conversation the support tools act on: one-to-one, and this phone has a support account.
      * The phone that receives the command checks the sender itself; this only hides the tools. */
