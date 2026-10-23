@@ -596,6 +596,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     @Override
     public void onPause() {
         this.mActivityPaused = true;
+        eu.siacs.conversations.ui.glass.SystemBarKeeper.INSTANCE.detach(this);
         super.onPause();
     }
 
@@ -603,6 +604,12 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     public void onResume() {
         super.onResume();
         this.mActivityPaused = false;
+        // Liquid glass experiment: keep the status bar and gesture bar strips drawn every frame.
+        if (LiquidGlass.INSTANCE.getSupported()
+                && new eu.siacs.conversations.utils.FeatureFlagPreferences(this)
+                        .isEnabled(eu.siacs.conversations.FeatureFlag.LIQUID_GLASS)) {
+            eu.siacs.conversations.ui.glass.SystemBarKeeper.INSTANCE.attach(this);
+        }
         // The immediate call below only ever reflects whatever a *previous* check already wrote
         // to prefs — checkOnLaunchIfEligible's own network fetch hasn't returned by the time it
         // returns, so a version detected by *this* check wouldn't show until some later resume

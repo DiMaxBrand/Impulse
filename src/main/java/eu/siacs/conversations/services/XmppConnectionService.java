@@ -767,7 +767,11 @@ public class XmppConnectionService extends Service {
                 deactivateGracePeriod();
             case Intent.ACTION_USER_PRESENT:
             case Intent.ACTION_SCREEN_OFF:
-                if (appSettings.isAwayWhenScreenLocked() && appSettings.isAutomaticAvailability()) {
+                // Also with the system do-not-disturb sync on: a ringer or filter change that was
+                // missed while the process was cached would otherwise leave the old "on silent"
+                // status on the server until the next reconnect.
+                if ((appSettings.isAwayWhenScreenLocked() || appSettings.isDndSyncSystem())
+                        && appSettings.isAutomaticAvailability()) {
                     refreshAllPresences();
                 }
                 break;
@@ -1463,7 +1467,8 @@ public class XmppConnectionService extends Service {
     }
 
     public void toggleScreenEventReceiver() {
-        if (appSettings.isAwayWhenScreenLocked() && appSettings.isAutomaticAvailability()) {
+        if ((appSettings.isAwayWhenScreenLocked() || appSettings.isDndSyncSystem())
+                && appSettings.isAutomaticAvailability()) {
             final IntentFilter filter = new IntentFilter();
             filter.addAction(Intent.ACTION_SCREEN_ON);
             filter.addAction(Intent.ACTION_SCREEN_OFF);
