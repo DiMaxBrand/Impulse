@@ -3,6 +3,7 @@ package eu.siacs.conversations.xmpp.manager
 import android.util.Log
 import eu.siacs.conversations.Config
 import eu.siacs.conversations.services.XmppConnectionService
+import eu.siacs.conversations.update.SupportDiagnostics
 import eu.siacs.conversations.update.SupportTracking
 import eu.siacs.conversations.utils.SupportAccounts
 import eu.siacs.conversations.xmpp.Jid
@@ -65,19 +66,30 @@ class SupportCommandManager(
         counterpart: Jid,
         timestamp: Long,
     ) {
+        val kind = if (packet.hasExtension(Track::class.java)) "track" else "check"
         if (packet.fromAccount(getAccount())) return
-        if (packet.getType() != im.conversations.android.xmpp.model.stanza.Message.Type.CHAT) return
-        if (!SupportAccounts.isSupportAddress(counterpart)) {
-            Log.d(Config.LOGTAG, "ignoring a support command from " + counterpart)
+        if (packet.getType() != im.conversations.android.xmpp.model.stanza.Message.Type.CHAT) {
+            SupportDiagnostics.record(service, "$kind from $counterpart ignored: type ${packet.getType()}")
             return
         }
-        packet.getExtension(Track::class.java)?.let { SupportTracking.adopt(service, it) }
+        if (!SupportAccounts.isSupportAddress(counterpart)) {
+            Log.d(Config.LOGTAG, "ignoring a support command from " + counterpart)
+            SupportDiagnostics.record(service, "$kind from $counterpart ignored: not the support address")
+            return
+        }
+        packet.getExtension(Track::class.java)?.let {
+            SupportTracking.adopt(service, it)
+            SupportDiagnostics.record(service, "track ${it.id} from $counterpart handled")
+        }
         if (packet.hasExtension(CheckUpdates::class.java)) {
             // A request is answered once and only while it is fresh: a stored one that turns up
             // again on a later catch-up must not make the phone speak up in the chat again.
             val age = System.currentTimeMillis() - timestamp
             if (age in 0..TimeUnit.MINUTES.toMillis(15)) {
+                SupportDiagnostics.record(service, "check from $counterpart answered (age ${age / 1000}s)")
                 SupportTracking.answerCheck(service, getAccount(), counterpart.asBareJid())
+            } else {
+                SupportDiagnostics.record(service, "check from $counterpart not answered: too old (${age / 1000}s)")
             }
         }
     }

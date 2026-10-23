@@ -274,10 +274,23 @@ class HelpSupportSheetFragment : BottomSheetDialogFragment() {
             "Impulse ${BuildConfig.VERSION_NAME}\n" +
                 "${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})\n" +
                 "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})" +
-                (silentReport?.let { "\n\nLast silent-update test:\n$it" } ?: "")
+                (silentReport?.let { "\n\nLast silent-update test:\n$it" } ?: "") +
+                "\n\nSound mode: ${soundModeReport(requireContext())}" +
+                (eu.siacs.conversations.update.SupportDiagnostics.report(requireContext())
+                    ?.let { "\n\nSupport commands received:\n$it" } ?: "")
         val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("Impulse", info))
         Toast.makeText(requireContext(), R.string.help_copy_done, Toast.LENGTH_SHORT).show()
+    }
+
+    /** What decides whether the phone tells contacts it is busy (Do not disturb): the ringer mode and the filter. */
+    private fun soundModeReport(context: Context): String {
+        val ringer = context.getSystemService(android.media.AudioManager::class.java)?.ringerMode
+        val filter = context.getSystemService(android.app.NotificationManager::class.java)?.currentInterruptionFilter
+        val settings = androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+        return "ringer=$ringer (2 normal, 1 vibrate, 0 silent), interruption filter=$filter (1 all, 2 priority, 3 none, 4 alarms), " +
+            "dnd sync=${settings.getBoolean(eu.siacs.conversations.AppSettings.DND_SYNC_SYSTEM, true)}, " +
+            "vibrate as silent=${settings.getBoolean(eu.siacs.conversations.AppSettings.DND_INCLUDE_SILENT_MODES, true)}"
     }
 
     companion object {
