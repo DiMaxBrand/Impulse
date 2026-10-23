@@ -290,7 +290,26 @@ class HelpSupportSheetFragment : BottomSheetDialogFragment() {
         val settings = androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
         return "ringer=$ringer (2 normal, 1 vibrate, 0 silent), interruption filter=$filter (1 all, 2 priority, 3 none, 4 alarms), " +
             "dnd sync=${settings.getBoolean(eu.siacs.conversations.AppSettings.DND_SYNC_SYSTEM, true)}, " +
-            "vibrate as silent=${settings.getBoolean(eu.siacs.conversations.AppSettings.DND_INCLUDE_SILENT_MODES, true)}"
+            "vibrate as silent=${settings.getBoolean(eu.siacs.conversations.AppSettings.DND_INCLUDE_SILENT_MODES, true)}, " +
+            "this phone counts as silenced=${eu.siacs.conversations.android.Device(context).isPhoneSilenced(
+                settings.getBoolean(eu.siacs.conversations.AppSettings.DND_INCLUDE_SILENT_MODES, true))}" +
+            ownPresences()
+    }
+
+    /** Every resource of the account itself that the server shows: a contact is shown as "on silent" if ANY of them is. */
+    private fun ownPresences(): String {
+        val service = (activity as? XmppActivity)?.xmppConnectionService ?: return ""
+        return try {
+            service.accounts.joinToString("") { account ->
+                val own = account.xmppConnection
+                    .getManager(eu.siacs.conversations.xmpp.manager.PresenceManager::class.java)
+                    .getPresences(account.jid.asBareJid())
+                "\n${account.jid.asBareJid()} presences: " +
+                    (own.joinToString { "${it.from?.resource}=${it.availability}" }.ifBlank { "none" })
+            }
+        } catch (e: Exception) {
+            ""
+        }
     }
 
     companion object {
