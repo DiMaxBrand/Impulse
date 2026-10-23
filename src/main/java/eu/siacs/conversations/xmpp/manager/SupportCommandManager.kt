@@ -32,32 +32,54 @@ class SupportCommandManager(
 ) : AbstractManager(service.getApplicationContext(), connection) {
 
     /** Sends the tracked item to [to]; false when this account is not connected. */
-    fun sendTrack(to: Jid, item: SupportTracking.Item): Boolean {
-        val packet = newPacket(to)
-        packet.addExtension(Track.create(item.id, item.kind, item.titleEn, item.titleRu, item.checkNow))
-        packet.addExtension(Store())
-        return send(packet)
-    }
+    fun sendTrack(to: Jid, item: SupportTracking.Item): Boolean =
+        sendToAll(to) { target ->
+            val packet = newPacket(target)
+            packet.addExtension(Track.create(item.id, item.kind, item.titleEn, item.titleRu, item.checkNow))
+            packet.addExtension(Store())
+            packet
+        }
 
     /** Asks [to]'s phone to look for an update and report in the chat; false when not connected. */
-    fun sendCheckRequest(to: Jid): Boolean {
-        val packet = newPacket(to)
-        packet.addExtension(CheckUpdates())
-        packet.addExtension(Store())
-        return send(packet)
+    fun sendCheckRequest(to: Jid): Boolean =
+        sendToAll(to) { target ->
+            val packet = newPacket(target)
+            packet.addExtension(CheckUpdates())
+            packet.addExtension(Store())
+            packet
+        }
+
+    /**
+     * A chat stanza to a bare address is delivered by the server to one resource only (the most
+     * available), and carbons only copy messages that have a body -- these have none. So when the
+     * person is signed in on more than one device, or an old session is still listed, the command
+     * could land on the wrong one and the phone in their hand never saw it. Each resource that
+     * shows as online therefore gets its own copy; with none known, the bare address is used.
+     */
+    private fun sendToAll(
+        to: Jid,
+        build: (Jid) -> im.conversations.android.xmpp.model.stanza.Message,
+    ): Boolean {
+        if (!getAccount().isOnlineAndConnected()) return false
+        val resources =
+            getManager(PresenceManager::class.java)
+                .getPresences(to.asBareJid())
+                .mapNotNull { it.getFrom() }
+                .filter { !it.isBareJid() }
+                .distinct()
+        val targets = if (resources.isEmpty()) listOf(to.asBareJid()) else resources
+        for (target in targets) {
+            this.connection.sendMessagePacket(build(target))
+        }
+        SupportDiagnostics.record(service, "sent a command to ${targets.joinToString()}")
+        return true
     }
 
     private fun newPacket(to: Jid): im.conversations.android.xmpp.model.stanza.Message {
         val packet = im.conversations.android.xmpp.model.stanza.Message()
         packet.setType(im.conversations.android.xmpp.model.stanza.Message.Type.CHAT)
-        packet.setTo(to.asBareJid())
+        packet.setTo(to)
         return packet
-    }
-
-    private fun send(packet: im.conversations.android.xmpp.model.stanza.Message): Boolean {
-        if (!getAccount().isOnlineAndConnected()) return false
-        this.connection.sendMessagePacket(packet)
-        return true
     }
 
     /** Called by the message parser for a body-less stanza that has one of the support elements. */
