@@ -18,6 +18,10 @@
     <cache-path
         name="recordings"
         path="Recordings" />
+    <!-- A contact picked from the address book is written here as a vCard before it is attached. -->
+    <cache-path
+        name="shared_contacts"
+        path="SharedContacts/" />
     <external-files-path
         name="downloads"
         path="Downloads/" />

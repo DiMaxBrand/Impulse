@@ -97,6 +97,59 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             if (uri != null) stageUris(listOf(uri), Attachment.Type.FILE)
         }
 
+    // Location: the old chat's logic, kept. The picker (the share-location plugin if the person uses
+    // one, else the built-in map) answers with latitude, longitude and an accuracy; the place is
+    // staged as a LOCATION attachment, shown in the preview strip and sent with the send button
+    // through attachLocationToConversation (a plain geo: message, no storage permission needed).
+    private val shareLocationLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != AppCompatActivity.RESULT_OK) return@registerForActivityResult
+            val data = result.data ?: return@registerForActivityResult
+            val ctx = context ?: return@registerForActivityResult
+            val latitude = data.getDoubleExtra("latitude", 0.0)
+            val longitude = data.getDoubleExtra("longitude", 0.0)
+            val accuracy = data.getIntExtra("accuracy", 0)
+            val geo =
+                if (accuracy > 0) Uri.parse("geo:$latitude,$longitude;u=$accuracy")
+                else Uri.parse("geo:$latitude,$longitude")
+            state.attachments.addAll(Attachment.of(ctx, geo, Attachment.Type.LOCATION))
+        }
+
+    // A contact from the phone's address book, attached as a vCard file. Picking gives a temporary
+    // read of that one contact; if the system still refuses to hand over the card, the contacts
+    // permission is asked for once and the same contact is read again.
+    private var pendingContactUri: Uri? = null
+
+    private val pickPhoneContactLauncher =
+        registerForActivityResult(ActivityResultContracts.PickContact()) { uri ->
+            if (uri != null) stagePhoneContact(uri)
+        }
+
+    private val readContactsPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val uri = pendingContactUri
+            pendingContactUri = null
+            if (granted && uri != null) {
+                stagePhoneContact(uri)
+            } else {
+                val ctx = context ?: return@registerForActivityResult
+                Toast.makeText(
+                    ctx,
+                    getString(R.string.no_contacts_permission, getString(R.string.app_name)),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+
+    // An Impulse contact, sent as an xmpp: link (the chat shows it as a tappable chip that opens a
+    // conversation with that person).
+    private val pickImpulseContactLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != AppCompatActivity.RESULT_OK) return@registerForActivityResult
+            val jid = result.data?.getStringExtra("contact") ?: return@registerForActivityResult
+            sendPlainMessage("xmpp:$jid")
+        }
+
     private val trustKeysLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == AppCompatActivity.RESULT_OK) {
@@ -791,9 +844,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         state.replyingTo.value = null
         for (attachment in attachments) {
             val future =
-                if (attachment.type == Attachment.Type.IMAGE)
-                    service.attachImageToConversation(c, attachment.uri, attachment.mime, replyId)
-                else service.attachFileToConversation(c, attachment.uri, attachment.mime, replyId)
+                when (attachment.type) {
+                    // A place is just a geo: message (the old chat's logic), not an upload.
+                    Attachment.Type.LOCATION -> service.attachLocationToConversation(c, attachment.uri)
+                    Attachment.Type.IMAGE ->
+                        service.attachImageToConversation(c, attachment.uri, attachment.mime, replyId)
+                    else -> service.attachFileToConversation(c, attachment.uri, attachment.mime, replyId)
+                }
             Futures.addCallback(
                 future,
                 object : FutureCallback<Void?> {
@@ -924,6 +981,104 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onAttachFile() {
         pickFileLauncher.launch("*/*")
+    }
+
+    override fun onShareLocation() {
+        shareLocationLauncher.launch(eu.siacs.conversations.utils.GeoHelper.getFetchIntent(requireContext()))
+    }
+
+    override fun onSharePhoneContact() {
+        pickPhoneContactLauncher.launch(null)
+    }
+
+    override fun onShareImpulseContact() {
+        val c = conversation ?: return
+        val intent =
+            Intent(requireActivity(), ChooseContactActivity::class.java).apply {
+                putExtra(ChooseContactActivity.EXTRA_TITLE_RES_ID, R.string.attach_impulse_contact_title)
+                putExtra(ChooseContactActivity.EXTRA_SELECT_MULTIPLE, false)
+                putExtra(ChooseContactActivity.EXTRA_SHOW_ENTER_JID, false)
+                putExtra(
+                    XmppActivity.EXTRA_ACCOUNT,
+                    c.getAccount().getJid().asBareJid().toString(),
+                )
+            }
+        pickImpulseContactLauncher.launch(intent)
+    }
+
+    /** Reads the picked contact's vCard into a cache file and stages it as a file attachment. */
+    private fun stagePhoneContact(contactUri: Uri) {
+        val ctx = context ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            var denied = false
+            val vcard =
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        readVCard(ctx, contactUri)
+                    } catch (_: SecurityException) {
+                        denied = true
+                        null
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            when {
+                vcard != null -> stageUris(listOf(vcard), Attachment.Type.FILE)
+                denied -> {
+                    pendingContactUri = contactUri
+                    readContactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                }
+                else -> Toast.makeText(ctx, R.string.contact_read_failed, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun readVCard(ctx: Context, contactUri: Uri): Uri? {
+        val resolver = ctx.contentResolver
+        val (lookup, name) =
+            resolver
+                .query(
+                    contactUri,
+                    arrayOf(
+                        android.provider.ContactsContract.Contacts.LOOKUP_KEY,
+                        android.provider.ContactsContract.Contacts.DISPLAY_NAME,
+                    ),
+                    null,
+                    null,
+                    null,
+                )
+                ?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) to cursor.getString(1) else null
+                } ?: return null
+        val vcardUri =
+            Uri.withAppendedPath(android.provider.ContactsContract.Contacts.CONTENT_VCARD_URI, lookup)
+        val directory = java.io.File(ctx.cacheDir, "SharedContacts").apply { mkdirs() }
+        val fileName = name.orEmpty().replace(Regex("[^\\p{L}\\p{N} _.-]"), "").trim().ifEmpty { "contact" }
+        val file = java.io.File(directory, "$fileName.vcf")
+        resolver.openAssetFileDescriptor(vcardUri, "r")?.use { afd ->
+            afd.createInputStream().use { input -> file.outputStream().use { input.copyTo(it) } }
+        } ?: return null
+        return eu.siacs.conversations.persistance.FileBackend.getUriForFile(ctx, file)
+    }
+
+    /** Sends [body] as it is, without touching the text field or a reply in progress (the Impulse
+     * contact link). Same encryption rules as a typed message. */
+    private fun sendPlainMessage(body: String) {
+        val c = conversation ?: return
+        val service = getXmppConnectionService() ?: return
+        when (c.nextEncryption) {
+            Message.ENCRYPTION_AXOLOTL ->
+                if (trustKeysIfNeeded(c) { sendPlainMessage(body) }) return
+            Message.ENCRYPTION_PGP -> {
+                Toast.makeText(requireContext(), R.string.openpgp_error, Toast.LENGTH_SHORT).show()
+                return
+            }
+        }
+        val message = Message(c, body, c.nextEncryption)
+        Message.configurePrivateMessage(message)
+        service.sendMessage(message)
+        refreshMessages()
+        markRead()
     }
 
     override fun onCall(video: Boolean) {

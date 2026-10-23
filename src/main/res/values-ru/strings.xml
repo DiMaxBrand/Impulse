@@ -1629,6 +1629,11 @@
     <string name="support_check_menu_label">Проверить обновления</string>
     <string name="support_check_sent">Попросили его телефон проверить обновления. Ответ появится в этом чате.</string>
     <string name="support_not_connected">Сейчас нет подключения: попробуйте через минуту</string>
+    <string name="attach_phone_contact">Контакт</string>
+    <string name="attach_impulse_contact">Контакт Импульса</string>
+    <string name="attach_impulse_contact_title">Поделиться контактом</string>
+    <string name="attach_support_section">Поддержка</string>
+    <string name="contact_read_failed">Не удалось прочитать этот контакт</string>
     <string name="tracked_kind_bug">Исправление ошибки</string>
     <string name="tracked_kind_improvement">Улучшение</string>
     <string name="tracked_kind_feature">Новая функция</string>

@@ -122,6 +122,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.ComposeView
@@ -221,6 +223,12 @@ class ConversationScreenState {
     internal val showPinnedMessagesOverlay = mutableStateOf(false)
     // The support-only "Track for this person" card (see TrackItemCard.kt).
     internal val trackCardVisible = mutableStateOf(false)
+    // The attach card (see AttachCard.kt): open or not, how far its expansion has got, where the
+    // paperclip button is (window coordinates) and how tall the message bar is.
+    internal val attachCardOpen = mutableStateOf(false)
+    internal val attachProgress = androidx.compose.animation.core.Animatable(0f)
+    internal val attachAnchor = mutableStateOf(androidx.compose.ui.geometry.Rect.Zero)
+    internal val inputBarHeightPx = mutableIntStateOf(0)
     // Bumped (event counter) by MessageList when the list reaches the bottom after being scrolled
     // away; InputBar plays its springy arch on every change. Only ever written behind the
     // EXPERIMENTAL_ANIMATIONS flag.
@@ -301,6 +309,15 @@ interface ConversationScreenListener {
     fun onTakePhoto()
 
     fun onAttachFile()
+
+    /** Opens the location picker; the chosen place is staged like any attachment. */
+    fun onShareLocation()
+
+    /** Pick someone from the phone's address book and attach them as a contact card (vCard). */
+    fun onSharePhoneContact()
+
+    /** Pick an Impulse contact and send it as a link that opens a chat with them. */
+    fun onShareImpulseContact()
 
     /** Support only: track a fix, improvement or feature for this contact (see SupportTracking). */
     fun onTrackForContact(kind: String, titleEn: String, titleRu: String, checkNow: Boolean)
@@ -1035,6 +1052,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 ),
             )
         }
+        // The Material layout's attach card, grown out of the paperclip.
+        AttachCardOverlay(state, listener)
         // Support only: the "Track for this person" card, from the attach menu's option.
         TrackItemOverlay(
             visible = state.trackCardVisible.value,
@@ -7060,12 +7079,13 @@ internal fun AttachmentPreviewStrip(state: ConversationScreenState) {
                             Icon(
                                 painter =
                                     painterResource(
-                                        if (attachment.type ==
-                                            eu.siacs.conversations.ui.util.Attachment.Type
-                                                .RECORDING
-                                        )
-                                            R.drawable.ic_mic_24dp
-                                        else R.drawable.ic_attach_file_24dp
+                                        when (attachment.type) {
+                                            eu.siacs.conversations.ui.util.Attachment.Type.RECORDING ->
+                                                R.drawable.ic_mic_24dp
+                                            eu.siacs.conversations.ui.util.Attachment.Type.LOCATION ->
+                                                R.drawable.ic_location_pin_24dp
+                                            else -> R.drawable.ic_attach_file_24dp
+                                        }
                                     ),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -7656,14 +7676,6 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         return
     }
 
-    var attachMenuOpen by remember { mutableStateOf(false) }
-    // Support only: a phone with the support account connected, in a one-to-one chat.
-    val trackContext = androidx.compose.ui.platform.LocalContext.current
-    val showTrack = remember(conversation) {
-        conversation != null &&
-            conversation.getMode() == Conversational.MODE_SINGLE &&
-            eu.siacs.conversations.utils.SupportAccounts.hasSupportAccount(trackContext)
-    }
     val text = state.inputText.value
     val hasText = text.isNotBlank()
     val correcting = state.correcting.value != null
@@ -7693,7 +7705,11 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         else Modifier.drawBarArch(state.rubber, archColor)
 
     SharedTransitionLayout {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = archModifier) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        // The attach card sits right above the whole bar, so it needs to know how tall that is.
+        modifier = archModifier.onSizeChanged { state.inputBarHeightPx.intValue = it.height },
+    ) {
         Column {
         ComposerBanner(state, listener)
         if (hasAttachments) {
@@ -7763,129 +7779,21 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                     .padding(horizontal = 8.dp, vertical = 8.dp)
                     .graphicsLayer { alpha = rowAlpha },
         ) {
-            // Attach button → toolbar container transform.
-            // AnimatedContent + SizeTransform give a spring-driven horizontal expand from the
-            // button position: the button's container grows rightward into a pill-shaped
-            // toolbar with M3 Expressive spring physics, then shrinks back on dismiss.
-            AnimatedContent(
-                targetState = attachMenuOpen,
-                transitionSpec = {
-                    // M3 Expressive DefaultSpatial spring (380f/0.8f) throughout.
-                    ContentTransform(
-                        targetContentEnter =
-                            expandHorizontally(
-                                expandFrom = Alignment.Start,
-                                animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
-                            ) + fadeIn(),
-                        initialContentExit =
-                            shrinkHorizontally(
-                                shrinkTowards = Alignment.Start,
-                                animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
-                            ) + fadeOut(),
-                        sizeTransform =
-                            SizeTransform(clip = false) { _, _ ->
-                                spring(stiffness = 380f, dampingRatio = 0.8f)
-                            },
-                    )
-                },
-                label = "attachTransform",
-            ) { isOpen ->
-                if (isOpen) {
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.height(48.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    attachMenuOpen = false
-                                    listener.onAttachImage()
-                                }
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_image_24dp),
-                                    contentDescription =
-                                        stringResource(R.string.attachment_choice_gallery),
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    attachMenuOpen = false
-                                    listener.onTakePhoto()
-                                }
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_camera_alt_24dp),
-                                    contentDescription =
-                                        stringResource(R.string.attachment_choice_camera),
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    attachMenuOpen = false
-                                    listener.onAttachFile()
-                                }
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_attach_file_24dp),
-                                    contentDescription =
-                                        stringResource(R.string.attachment_choice_file),
-                                    modifier =
-                                        Modifier.sharedElement(
-                                            rememberSharedContentState(key = "attach_paperclip"),
-                                            animatedVisibilityScope = this@AnimatedContent,
-                                        ),
-                                )
-                            }
-                            if (showTrack) {
-                                IconButton(
-                                    onClick = {
-                                        attachMenuOpen = false
-                                        state.trackCardVisible.value = true
-                                    }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_report_24dp),
-                                        contentDescription = stringResource(R.string.track_menu_label),
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        attachMenuOpen = false
-                                        listener.onSupportCheckUpdates()
-                                    }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_system_update_24dp),
-                                        contentDescription = stringResource(R.string.support_check_menu_label),
-                                    )
-                                }
-                            }
-                            IconButton(onClick = { attachMenuOpen = false }) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_close_24dp),
-                                    contentDescription = stringResource(R.string.cancel),
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    IconButton(onClick = { attachMenuOpen = true }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_attach_file_24dp),
-                            contentDescription = stringResource(R.string.attach_file),
-                            modifier =
-                                Modifier.sharedElement(
-                                    rememberSharedContentState(key = "attach_paperclip"),
-                                    animatedVisibilityScope = this@AnimatedContent,
-                                ),
-                        )
-                    }
-                }
+            // The paperclip: tapping it opens the attach card (AttachCard.kt), which grows out of this
+            // very button. The button reports where it is, so the card knows where to grow from, and
+            // hides itself while the card is out (the card carries the paperclip icon with it).
+            IconButton(
+                onClick = { state.attachCardOpen.value = true },
+                modifier =
+                    Modifier.onGloballyPositioned { state.attachAnchor.value = it.boundsInWindow() }
+                        .graphicsLayer {
+                            alpha = if (state.attachProgress.value > 0.002f) 0f else 1f
+                        },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_attach_file_24dp),
+                    contentDescription = stringResource(R.string.attach_file),
+                )
             }
 
             Surface(

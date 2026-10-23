@@ -142,6 +142,18 @@ fun LiquidInputBar(
                     attachMenu.open = false
                     listener.onAttachFile()
                 }
+                LiquidMenuItem(R.drawable.ic_location_pin_24dp, stringResource(R.string.attachment_choice_location)) {
+                    attachMenu.open = false
+                    listener.onShareLocation()
+                }
+                LiquidMenuItem(R.drawable.ic_contacts_24dp, stringResource(R.string.attach_phone_contact)) {
+                    attachMenu.open = false
+                    listener.onSharePhoneContact()
+                }
+                LiquidMenuItem(R.drawable.ic_person_24dp, stringResource(R.string.attach_impulse_contact)) {
+                    attachMenu.open = false
+                    listener.onShareImpulseContact()
+                }
                 // Support only: a phone with the support account connected, in a one-to-one chat.
                 val trackContext = androidx.compose.ui.platform.LocalContext.current
                 val showTrack = remember(conversation) {
