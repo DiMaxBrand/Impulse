@@ -10,11 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
@@ -56,6 +56,12 @@ internal fun BoxScope.FrostedInterior(
     Box(
         Modifier
             .matchParentSize()
+            // The glass is stretched by [layerBlock] (a pulled or squeezed piece): the frost and its
+            // fade are stretched with it, as one layer. The frost is blurred anyway, so it does not
+            // need the backdrop held still the way the clear glass does. (Before, the stretch was
+            // done by the backdrop modifier inside, and the fade stayed at the unstretched outline:
+            // an inner outline showed where the two disagreed.)
+            .then(if (layerBlock != null) Modifier.graphicsLayer(layerBlock) else Modifier)
             .graphicsLayer {
                 alpha = visible()
                 compositingStrategy = CompositingStrategy.Offscreen
@@ -95,7 +101,6 @@ internal fun BoxScope.FrostedInterior(
                 highlight = null,
                 shadow = null,
                 innerShadow = null,
-                layerBlock = layerBlock,
                 onDrawSurface = { drawRect(surface.copy(alpha = frost.surfaceAlpha)) },
             ),
     )
