@@ -1778,4 +1778,20 @@
     <string name="developer_options_updated_sheet_summary">Окно после обновления с примером текста, сколько угодно раз. В стиле жидкого стекла оно открывается каплей стекла.</string>
     <string name="updated_sheet_preview_title">Импульс 1.15.0: пример заголовка для предпросмотра</string>
     <string name="updated_sheet_preview_notes">**EN**\nThis is sample text for the preview of the sheet that follows an update.\n\n**RU**\nЭто пример текста для предпросмотра окна после обновления.</string>
+    <string name="glass_lab_title">Лаборатория жидкого стекла</string>
+    <string name="glass_lab_summary">Настройте, как стекло выглядит и ведёт себя</string>
+    <string name="glass_lab_intro">Изменения применяются сразу, их видно на стекле вокруг этих элементов.</string>
+    <string name="glass_lab_section_look">Вид</string>
+    <string name="glass_lab_section_behaviour">Поведение</string>
+    <string name="glass_lab_blur">Размытие</string>
+    <string name="glass_lab_refraction">Преломление</string>
+    <string name="glass_lab_frost">Матовые слои</string>
+    <string name="glass_lab_jelly">Желейность</string>
+    <string name="glass_lab_fringes">Цветные края</string>
+    <string name="glass_lab_fringes_summary">Расщепляет цвета по краю кнопок и панелей</string>
+    <string name="glass_lab_less_often">Спокойное стекло при прокрутке</string>
+    <string name="glass_lab_less_often_summary">Пока список летит или двигается клавиатура, стекло — это картинка, снимаемая несколько раз в секунду</string>
+    <string name="glass_lab_bar_blur">Размытие под системными панелями</string>
+    <string name="glass_lab_bar_blur_summary">Размытые полосы под строкой состояния и полоской жестов</string>
+    <string name="glass_lab_reset">Сбросить</string>
 </resources>

@@ -1712,4 +1712,20 @@
     <string name="developer_options_updated_sheet_summary">The sheet that follows an update, with sample text, as often as you like. In the glass style it opens with the glass drop.</string>
     <string name="updated_sheet_preview_title">Impulse 1.15.0: a sample title for the preview</string>
     <string name="updated_sheet_preview_notes">**EN**\nThis is sample text for the preview of the sheet that follows an update.\n\n**RU**\nЭто пример текста для предпросмотра окна после обновления.</string>
+    <string name="glass_lab_title">Glass lab</string>
+    <string name="glass_lab_summary">Tune how the glass looks and behaves</string>
+    <string name="glass_lab_intro">Changes apply at once, and you can watch them on the glass around these controls.</string>
+    <string name="glass_lab_section_look">Look</string>
+    <string name="glass_lab_section_behaviour">Behaviour</string>
+    <string name="glass_lab_blur">Blur</string>
+    <string name="glass_lab_refraction">Refraction</string>
+    <string name="glass_lab_frost">Frosted layers</string>
+    <string name="glass_lab_jelly">Jelly</string>
+    <string name="glass_lab_fringes">Colour fringes</string>
+    <string name="glass_lab_fringes_summary">Splits the colours on the rim of buttons and bars</string>
+    <string name="glass_lab_less_often">Calm glass while scrolling</string>
+    <string name="glass_lab_less_often_summary">While a list flies past or the keyboard moves, glass is a picture taken a few times a second</string>
+    <string name="glass_lab_bar_blur">Blur under the system bars</string>
+    <string name="glass_lab_bar_blur_summary">The blurred bands under the status bar and the gesture bar</string>
+    <string name="glass_lab_reset">Reset</string>
 </resources>

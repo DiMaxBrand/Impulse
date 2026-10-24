@@ -41,7 +41,7 @@ import eu.siacs.conversations.R
 @Composable
 fun GlassStatusBarBlur(backdrop: Backdrop, modifier: Modifier = Modifier) {
     val inset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    if (inset <= 0.dp) return
+    if (inset <= 0.dp || !GlassTuning.barBlur) return
     Box(modifier.fillMaxWidth().height(inset)) {
         BlurBand(backdrop, inset, radius = 22.dp, washAlpha = 0.55f, fadeStart = 0.35f, fromBottom = false)
         BlurBand(backdrop, inset, radius = 7.dp, washAlpha = 0.25f, fadeStart = 0.0f, fromBottom = false)
@@ -52,7 +52,7 @@ fun GlassStatusBarBlur(backdrop: Backdrop, modifier: Modifier = Modifier) {
 @Composable
 fun GlassNavigationBarBlur(backdrop: Backdrop, modifier: Modifier = Modifier) {
     val inset = rememberGlassNavInset()
-    if (inset <= 0.dp) return
+    if (inset <= 0.dp || !GlassTuning.barBlur) return
     Box(modifier.fillMaxWidth().height(inset)) {
         BlurBand(backdrop, inset, radius = 22.dp, washAlpha = 0.55f, fadeStart = 0.35f, fromBottom = true)
         BlurBand(backdrop, inset, radius = 7.dp, washAlpha = 0.25f, fadeStart = 0.0f, fromBottom = true)

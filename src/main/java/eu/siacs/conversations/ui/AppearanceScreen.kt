@@ -79,6 +79,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.siacs.conversations.R
+import eu.siacs.conversations.ui.glass.rememberGlassStack
+import eu.siacs.conversations.ui.glass.LiquidGlassButton
+import eu.siacs.conversations.ui.glass.LiquidBottomTabs
+import eu.siacs.conversations.ui.glass.LiquidBottomTab
+import eu.siacs.conversations.ui.glass.GlassTuning
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 import eu.siacs.conversations.ui.glass.LiquidSlider
 import eu.siacs.conversations.ui.glass.LiquidToggle
 import eu.siacs.conversations.ui.glass.LocalGlassSkin
@@ -151,7 +158,7 @@ private val QUICK_ACTION_LABELS = listOf(
 private val springBounds = BoundsTransform { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
 private val quickFade = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
 
-internal enum class AppearancePage { MAIN, BUBBLES }
+internal enum class AppearancePage { MAIN, BUBBLES, LAB }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -167,11 +174,12 @@ internal fun AppearanceScreen(
     onScreenshotsChanged: () -> Unit,
     onOpenBubbles: () -> Unit,
     onStyleChosen: (InterfaceStyle) -> Unit = {},
+    onOpenLab: () -> Unit = {},
 ) {
     AnimatedContent(
         targetState = page,
         transitionSpec = {
-            if (targetState == AppearancePage.BUBBLES) {
+            if (targetState != AppearancePage.MAIN) {
                 (slideInHorizontally { it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 } + fadeOut())
             } else {
                 (slideInHorizontally { -it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { it / 4 } + fadeOut())
@@ -181,11 +189,13 @@ internal fun AppearanceScreen(
     ) { target ->
         if (target == AppearancePage.BUBBLES) {
             BubblesPage(settings)
+        } else if (target == AppearancePage.LAB) {
+            GlassLabPage()
         } else {
             MainPage(
                 settings, dynamicAvailable, onThemeChosen, onDynamicChanged, onAccentChanged,
                 onPickBackgroundImage, onOpenQuickReactions, onScreenshotsChanged, onOpenBubbles,
-                onStyleChosen,
+                onStyleChosen, onOpenLab,
             )
         }
     }
@@ -372,6 +382,7 @@ private fun MainPage(
     onScreenshotsChanged: () -> Unit,
     onOpenBubbles: () -> Unit,
     onStyleChosen: (InterfaceStyle) -> Unit,
+    onOpenLab: () -> Unit,
 ) {
     var openPicker by remember { mutableStateOf<String?>(null) }
     val scrim by animateFloatAsState(
@@ -398,6 +409,21 @@ private fun MainPage(
                     stringResource(R.string.interface_style_title),
                     stringResource(InterfaceStyle.of(s.interfaceStyle.value).titleRes),
                 ) { openPicker = "style" }
+                // The Glass lab: only while the glass style is on.
+                AnimatedVisibility(
+                    visible = LiquidGlass.supported && s.interfaceStyle.value == InterfaceStyle.GLASS.key,
+                    enter = expandVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) + fadeIn(),
+                    exit = shrinkVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) + fadeOut(),
+                ) {
+                    Column {
+                        Spacer(Modifier.height(2.dp))
+                        NavRow(
+                            GroupPosition.SINGLE, R.drawable.ic_lightbulb_24dp,
+                            stringResource(R.string.glass_lab_title),
+                            stringResource(R.string.glass_lab_summary), onOpenLab,
+                        )
+                    }
+                }
 
                 // ── Colors ──
                 SectionTitle(stringResource(R.string.appearance_section_colors))
@@ -702,6 +728,11 @@ private fun SharedTransitionScope.StyleInfoPage(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+            if (style == InterfaceStyle.GLASS && LiquidGlass.supported) {
+                Spacer(Modifier.height(16.dp))
+                // The real components, live: touch them.
+                GlassPreview()
+            }
             Spacer(Modifier.height(16.dp))
             // A static shape, not the animated press-morph: this button first composes while its
             // card is still mid transition (see the same note on the update channel picker).
@@ -996,5 +1027,135 @@ private fun BubblesPage(s: AppearanceSettings) {
             s.avatarsAccounts.value && !s.alignStart.value,
             enabled = !s.alignStart.value,
         ) { s.avatarsAccounts.set(it) }
+    }
+}
+
+
+// ─── Glass: the live preview in the info card, and the lab ───────────────────────────────
+
+/** A button, a toggle, a slider and a bottom bar of the glass style, over colour, to try out. */
+@Composable
+private fun GlassPreview() {
+    val layer = rememberLayerBackdrop()
+    val stack = rememberGlassStack(layer)
+    var toggled by remember { mutableStateOf(true) }
+    var slider by remember { mutableFloatStateOf(0.6f) }
+    var tab by remember { mutableIntStateOf(0) }
+    val a = MaterialTheme.colorScheme.primaryContainer
+    val b = MaterialTheme.colorScheme.tertiaryContainer
+    val c = MaterialTheme.colorScheme.secondaryContainer
+    val base = MaterialTheme.colorScheme.surface
+    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))) {
+        // What the glass shows: colour with a few soft blobs.
+        androidx.compose.foundation.Canvas(Modifier.matchParentSize().layerBackdrop(layer)) {
+            drawRect(base)
+            val w = size.width
+            val h = size.height
+            drawCircle(
+                androidx.compose.ui.graphics.Brush.radialGradient(listOf(a, Color.Transparent), androidx.compose.ui.geometry.Offset(w * 0.2f, h * 0.2f), w * 0.55f),
+                radius = w * 0.55f, center = androidx.compose.ui.geometry.Offset(w * 0.2f, h * 0.2f),
+            )
+            drawCircle(
+                androidx.compose.ui.graphics.Brush.radialGradient(listOf(b, Color.Transparent), androidx.compose.ui.geometry.Offset(w * 0.85f, h * 0.5f), w * 0.55f),
+                radius = w * 0.55f, center = androidx.compose.ui.geometry.Offset(w * 0.85f, h * 0.5f),
+            )
+            drawCircle(
+                androidx.compose.ui.graphics.Brush.radialGradient(listOf(c, Color.Transparent), androidx.compose.ui.geometry.Offset(w * 0.3f, h * 0.9f), w * 0.6f),
+                radius = w * 0.6f, center = androidx.compose.ui.geometry.Offset(w * 0.3f, h * 0.9f),
+            )
+        }
+        Column(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                LiquidGlassButton(
+                    onClick = {},
+                    glass = stack,
+                    modifier = Modifier.weight(1f).height(46.dp),
+                ) {
+                    Text(stringResource(R.string.interface_style_glass), style = MaterialTheme.typography.labelLarge)
+                }
+                LiquidToggle(selected = { toggled }, onSelect = { toggled = it }, backdrop = layer)
+            }
+            LiquidSlider(
+                value = { slider },
+                onValueChange = { slider = it },
+                valueRange = 0f..1f,
+                visibilityThreshold = 0.01f,
+                backdrop = layer,
+            )
+            LiquidBottomTabs(
+                selectedTabIndex = { tab },
+                onTabSelected = { tab = it },
+                backdrop = layer,
+                tabsCount = 3,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+            ) {
+                LiquidBottomTab({ tab = 0 }) { Icon(painterResource(R.drawable.ic_chat_24dp), null) }
+                LiquidBottomTab({ tab = 1 }) { Icon(painterResource(R.drawable.ic_call_24dp), null) }
+                LiquidBottomTab({ tab = 2 }) { Icon(painterResource(R.drawable.ic_person_24dp), null) }
+            }
+        }
+    }
+}
+
+/** The Glass lab: sliders and switches for how the glass looks and behaves, live on this very screen. */
+@Composable
+private fun GlassLabPage() {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            stringResource(R.string.glass_lab_intro),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        )
+        SectionTitle(stringResource(R.string.glass_lab_section_look))
+        LabSlider(GroupPosition.TOP, R.string.glass_lab_blur, GlassTuning.blur) { GlassTuning.putBlur(it) }
+        LabSlider(GroupPosition.MIDDLE, R.string.glass_lab_refraction, GlassTuning.refraction) { GlassTuning.putRefraction(it) }
+        LabSlider(GroupPosition.MIDDLE, R.string.glass_lab_frost, GlassTuning.frost) { GlassTuning.putFrost(it) }
+        LabSlider(GroupPosition.BOTTOM, R.string.glass_lab_jelly, GlassTuning.jelly) { GlassTuning.putJelly(it) }
+        Spacer(Modifier.height(6.dp))
+        SectionTitle(stringResource(R.string.glass_lab_section_behaviour))
+        SwitchRow(
+            GroupPosition.TOP, R.drawable.ic_palette_24dp,
+            stringResource(R.string.glass_lab_fringes), stringResource(R.string.glass_lab_fringes_summary),
+            GlassTuning.fringes,
+        ) { GlassTuning.putFringes(it) }
+        SwitchRow(
+            GroupPosition.MIDDLE, R.drawable.ic_hourglass_top_24dp,
+            stringResource(R.string.glass_lab_less_often), stringResource(R.string.glass_lab_less_often_summary),
+            GlassTuning.lessOften,
+        ) { GlassTuning.putLessOften(it) }
+        SwitchRow(
+            GroupPosition.BOTTOM, R.drawable.ic_touch_app_24dp,
+            stringResource(R.string.glass_lab_bar_blur), stringResource(R.string.glass_lab_bar_blur_summary),
+            GlassTuning.barBlur,
+        ) { GlassTuning.putBarBlur(it) }
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(onClick = { GlassTuning.reset() }, modifier = Modifier.padding(horizontal = 12.dp)) {
+            Text(stringResource(R.string.glass_lab_reset))
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun LabSlider(position: GroupPosition, label: Int, value: Float, onChange: (Float) -> Unit) {
+    ExpressiveGroupRow(position) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(label), Modifier.weight(1f))
+                Text("${(value * 100).toInt()}%", color = MaterialTheme.colorScheme.primary)
+            }
+            SkinSlider(value = value, onValueChange = { onChange((Math.round(it * 20) / 20f)) }, valueRange = 0f..2f)
+        }
     }
 }

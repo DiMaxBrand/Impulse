@@ -328,9 +328,10 @@ fun BackdropEffectScope.glassLens(
  * flies past, so the backdrop turns into colour and the changing of it cannot be followed. It is
  * still the glass (backdrop and refraction), with no overlay on top.
  */
-fun BackdropEffectScope.glassBlur(base: Float) {
+fun BackdropEffectScope.glassBlur(base: Float, useLabScale: Boolean = true) {
     val boost = GlassPerformance.scrollBlur
-    val radius = base + (GlassPerformance.FAST_SCROLL_BLUR.toPx() - base).coerceAtLeast(0f) * boost
+    val tuned = if (useLabScale) base * GlassTuning.blur else base
+    val radius = tuned + (GlassPerformance.FAST_SCROLL_BLUR.toPx() - tuned).coerceAtLeast(0f) * boost
     if (radius > 0.5f) blur(radius)
 }
 
@@ -342,4 +343,8 @@ fun BackdropEffectScope.glassLensEased(
     refractionHeight: Float,
     refractionAmount: Float,
     chromaticAberration: Boolean = false,
-) = glassLens(refractionHeight, refractionAmount, chromaticAberration)
+) = glassLens(
+    refractionHeight,
+    refractionAmount * GlassTuning.refraction,
+    chromaticAberration && GlassTuning.fringes,
+)

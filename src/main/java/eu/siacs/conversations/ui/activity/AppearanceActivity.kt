@@ -61,7 +61,7 @@ class AppearanceActivity : ActionBarActivity() {
                 var celebrate by remember { mutableStateOf(0) }
                 val glassOn = eu.siacs.conversations.ui.LiquidGlass.supported &&
                     settings.interfaceStyle.value == eu.siacs.conversations.ui.InterfaceStyle.GLASS.key
-                BackHandler(enabled = page == AppearancePage.BUBBLES) { page = AppearancePage.MAIN }
+                BackHandler(enabled = page != AppearancePage.MAIN) { page = AppearancePage.MAIN }
                 val pickImage = rememberLauncherForActivityResult(
                     ActivityResultContracts.GetContent()) { uri -> if (uri != null) importBackground(settings, uri) }
                 eu.siacs.conversations.ui.glass.GlassSkinHost(
@@ -75,12 +75,15 @@ class AppearanceActivity : ActionBarActivity() {
                         TopAppBar(
                             title = {
                                 Text(stringResource(
-                                    if (page == AppearancePage.BUBBLES) R.string.pref_chat_bubbles
-                                    else R.string.appearance_screen_title))
+                                    when (page) {
+                                        AppearancePage.BUBBLES -> R.string.pref_chat_bubbles
+                                        AppearancePage.LAB -> R.string.glass_lab_title
+                                        else -> R.string.appearance_screen_title
+                                    }))
                             },
                             navigationIcon = {
                                 IconButton(onClick = {
-                                    if (page == AppearancePage.BUBBLES) page = AppearancePage.MAIN else finish()
+                                    if (page != AppearancePage.MAIN) page = AppearancePage.MAIN else finish()
                                 }) {
                                     Icon(painterResource(R.drawable.ic_arrow_back_24dp), contentDescription = null)
                                 }
@@ -108,6 +111,7 @@ class AppearanceActivity : ActionBarActivity() {
                             },
                             onScreenshotsChanged = { SettingsUtils.applyScreenshotSetting(this@AppearanceActivity) },
                             onOpenBubbles = { page = AppearancePage.BUBBLES },
+                            onOpenLab = { page = AppearancePage.LAB },
                             onStyleChosen = { picked ->
                                 if (picked == eu.siacs.conversations.ui.InterfaceStyle.GLASS) celebrate++
                             },

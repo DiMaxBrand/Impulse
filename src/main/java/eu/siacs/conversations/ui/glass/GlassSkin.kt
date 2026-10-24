@@ -168,7 +168,8 @@ fun GlassGroupRow(
     LaunchedEffect(skin.epoch) {
         delay(delayMs)
         wobble.snapTo(0f)
-        wobble.animateTo(1f, spring(dampingRatio = 0.34f, stiffness = 190f))
+        // Less jelly is also more damped.
+        wobble.animateTo(1f, spring(dampingRatio = (0.34f + 0.3f * (1f - GlassTuning.jelly)).coerceIn(0.2f, 0.95f), stiffness = 190f))
     }
     Box(
         modifier
@@ -192,14 +193,16 @@ fun GlassGroupRow(
                 .graphicsLayer {
                     alpha = skin.reveal.value.coerceIn(0f, 1f)
                     val w = wobble.value
-                    scaleX = 0.94f + 0.06f * w
-                    scaleY = 0.94f + 0.06f * w
+                    val j = GlassTuning.jelly
+                    scaleX = 1f - 0.06f * j * (1f - w)
+                    scaleY = 1f - 0.06f * j * (1f - w)
                 },
             // The glass alone stretches (the content keeps its shape), wide and flat first.
             layerBlock = {
                 val w = wobble.value
-                scaleX = 1f + 0.06f * (1f - w)
-                scaleY = 1f - 0.16f * (1f - w)
+                val j = GlassTuning.jelly
+                scaleX = 1f + 0.06f * j * (1f - w)
+                scaleY = 1f - 0.16f * j * (1f - w)
             },
             content = { content() },
         )

@@ -51,7 +51,7 @@ fun Modifier.glassSnapshot(): Modifier {
     val layer = rememberGraphicsLayer()
     val state = remember { SnapshotState() }
     LaunchedEffect(Unit) {
-        snapshotFlow { GlassPerformance.lite }.collectLatest { slow ->
+        snapshotFlow { GlassPerformance.lite && GlassTuning.lessOften }.collectLatest { slow ->
             if (!slow) {
                 state.current = null
                 state.previous = null
@@ -81,7 +81,7 @@ fun Modifier.glassSnapshot(): Modifier {
         }
     }
     return this.drawWithContent {
-        if (!GlassPerformance.lite) {
+        if (!GlassPerformance.lite || !GlassTuning.lessOften) {
             drawContent()
             return@drawWithContent
         }

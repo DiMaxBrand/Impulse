@@ -54,6 +54,8 @@ object LiquidGlass {
 
     /** The chosen style (Material until somebody picks glass, or had the old flag on). */
     fun style(context: Context): InterfaceStyle {
+        // Whoever asks about the style is about to draw glass: load the Glass lab's settings too.
+        eu.siacs.conversations.ui.glass.GlassTuning.ensureLoaded(context)
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         if (!prefs.contains(PREF_KEY)) {
             val old = context.getSharedPreferences("feature_flag_prefs", Context.MODE_PRIVATE)

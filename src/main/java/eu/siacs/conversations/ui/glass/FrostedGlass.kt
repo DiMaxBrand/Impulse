@@ -96,12 +96,14 @@ internal fun BoxScope.FrostedInterior(
                 shape = { shape },
                 effects = {
                     colorControls(0f, frost.contrast, frost.saturation)
-                    glassBlur(frost.blur.toPx())
+                    glassBlur(frost.blur.toPx() * GlassTuning.frost, useLabScale = false)
                 },
                 highlight = null,
                 shadow = null,
                 innerShadow = null,
-                onDrawSurface = { drawRect(surface.copy(alpha = frost.surfaceAlpha)) },
+                onDrawSurface = {
+                    drawRect(surface.copy(alpha = (frost.surfaceAlpha * GlassTuning.frost).coerceIn(0f, 0.9f)))
+                },
             ),
     )
 }
