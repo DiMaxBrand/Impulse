@@ -1603,6 +1603,7 @@ private fun TrackedItemLine(item: TrackedItemUi, suffix: String = "") {
                     when (item.kind) {
                         BugReportRegistry.KIND_IMPROVEMENT -> R.string.tracked_kind_improvement
                         BugReportRegistry.KIND_FEATURE -> R.string.tracked_kind_feature
+                        BugReportRegistry.KIND_CHANGE -> R.string.tracked_kind_change
                         else -> R.string.tracked_kind_bug
                     }
                 ),
