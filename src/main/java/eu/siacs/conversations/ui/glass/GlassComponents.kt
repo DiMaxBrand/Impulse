@@ -251,18 +251,24 @@ fun LiquidGlassPanel(
     // Stretches the GLASS only: what is inside keeps its shape, so a bulging field does not squash
     // its own letters.
     layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
+    // A piece that nothing is ever drawn over (the rows of a settings screen): it looks through the
+    // screen only, instead of through every piece below it (which is what makes a screen of dozens
+    // of them cost more with each one), and does not record itself for the ones above.
+    standalone: Boolean = false,
+    // False while the piece is off screen: the glass is not drawn at all, only what is on it.
+    visible: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val slot = glass.rememberSlot()
+    val slot = if (standalone) glass.rememberStandaloneSlot() else glass.rememberSlot()
     val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
     val ink = rememberGlassInk(glass.adaptive)
     // Two layers, not one: the glass (which [layerBlock] deforms) and the content on top of it
     // (which nothing deforms). The recording for the glass above covers both.
     Box(
-        modifier = modifier.layerBackdrop(slot.record),
+        modifier = if (standalone) modifier else modifier.layerBackdrop(slot.record),
         contentAlignment = contentAlignment,
     ) {
-        Box(
+        if (visible) Box(
             Modifier
                 .matchParentSize()
                 .glassSnapshot()

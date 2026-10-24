@@ -78,6 +78,14 @@ fun rememberGlassStack(base: Backdrop, adaptive: Boolean = false): GlassStack =
 @Immutable
 class GlassSlot internal constructor(val backdrop: Backdrop, val record: LayerBackdrop)
 
+/** A place for a piece that nothing is drawn over: it sees the screen only, and records nothing. */
+@Composable
+internal fun GlassStack.rememberStandaloneSlot(): GlassSlot {
+    val stack = this
+    val own = rememberLayerBackdrop()
+    return remember(stack, own) { GlassSlot(stack.base, own) }
+}
+
 @Composable
 internal fun GlassStack.rememberSlot(): GlassSlot {
     val stack = this

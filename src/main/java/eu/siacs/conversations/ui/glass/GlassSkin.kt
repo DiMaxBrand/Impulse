@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
@@ -187,10 +188,20 @@ fun GlassGroupRow(
         // Less jelly is also more damped.
         wobble.animateTo(1f, spring(dampingRatio = (0.34f + 0.3f * (1f - GlassTuning.jelly)).coerceIn(0.2f, 0.95f), stiffness = 190f))
     }
+    // Glass is drawn only for the rows on (or just next to) the screen: a screen of a few dozen
+    // pieces of glass was too much for a phone, and nobody sees the ones that are scrolled away.
+    var onScreen by remember { androidx.compose.runtime.mutableStateOf(true) }
+    val rootView = androidx.compose.ui.platform.LocalView.current
     Box(
         modifier
             .fillMaxWidth()
-            .onGloballyPositioned { delayMs = ((it.positionInParent().y / 7f).toLong()).coerceIn(0L, 360L) },
+            .onGloballyPositioned {
+                delayMs = ((it.positionInParent().y / 7f).toLong()).coerceIn(0L, 360L)
+                val b = it.boundsInWindow()
+                val margin = 300f
+                val visibleNow = b.bottom > -margin && b.top < rootView.rootView.height + margin
+                if (visibleNow != onScreen) onScreen = visibleNow
+            },
     ) {
         // The Material row underneath, fading out as the glass fades in.
         Surface(
@@ -204,6 +215,8 @@ fun GlassGroupRow(
             glass = skin.stack,
             shape = shape,
             style = LiquidGlassStyle.Row,
+            standalone = true,
+            visible = onScreen,
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer {
