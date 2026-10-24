@@ -17,6 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.ime
+import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 
 /**
@@ -31,8 +32,17 @@ object GlassPerformance {
     /** True while the keyboard slides in or out: every frame resizes the screen and the glass over it. */
     internal var keyboardMoving by mutableStateOf(false)
 
-    /** Glass draws as plain tinted bubbles while the list flies past or the keyboard moves. */
+    /** True while the list flies past or the keyboard moves: nothing needs measuring then. */
     val lite: Boolean get() = scrollFast || keyboardMoving
+
+    /** 0..1, eased: how far the glass has blurred out because the list is flying past. */
+    internal var scrollBlur by androidx.compose.runtime.mutableFloatStateOf(0f)
+
+    /** 0..1, eased: how far the glass has eased off (less refraction) because the keyboard moves. */
+    internal var keyboardEase by androidx.compose.runtime.mutableFloatStateOf(0f)
+
+    /** The blur the glass grows to while scrolling fast: the backdrop can no longer be read. */
+    val FAST_SCROLL_BLUR = 26.dp
 
     /** More than this many screens per second counts as fast. */
     const val FAST = 1.0f
@@ -64,7 +74,25 @@ fun rememberGlassScrollMeter(): Modifier {
             else if (GlassPerformance.scrollFast && speed < GlassPerformance.SLOW) GlassPerformance.scrollFast = false
         }
     }
-    DisposableEffect(Unit) { onDispose { GlassPerformance.scrollFast = false } }
+    // The glass blurs out and back on an ease instead of switching: it is never off.
+    LaunchedEffect(Unit) {
+        snapshotFlow { GlassPerformance.scrollFast }.collectLatest { fast ->
+            androidx.compose.animation.core.animate(
+                initialValue = GlassPerformance.scrollBlur,
+                targetValue = if (fast) 1f else 0f,
+                animationSpec = androidx.compose.animation.core.tween(
+                    if (fast) 260 else 420,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing,
+                ),
+            ) { value, _ -> GlassPerformance.scrollBlur = value }
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            GlassPerformance.scrollFast = false
+            GlassPerformance.scrollBlur = 0f
+        }
+    }
     val connection = remember {
         object : NestedScrollConnection {
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
@@ -79,8 +107,9 @@ fun rememberGlassScrollMeter(): Modifier {
 /**
  * While the keyboard moves, the screen is resized on every frame and each glass piece would redo its
  * blur and refraction over it, which made the keyboard open slowly and the messages, the status bar
- * and the gesture bar flicker behind it. So glass goes plain ([GlassPerformance.lite]) from the first
- * change of the keyboard's height until it has been still for a moment, and is back after that.
+ * and the gesture bar flicker behind it. So from the first change of the keyboard's height until it
+ * has been still for a moment, the refraction eases off ([GlassPerformance.keyboardEase]) and eases
+ * back after that.
  */
 @Composable
 fun rememberGlassKeyboardMeter() {
@@ -93,5 +122,24 @@ fun rememberGlassKeyboardMeter() {
             GlassPerformance.keyboardMoving = false
         }
     }
-    DisposableEffect(Unit) { onDispose { GlassPerformance.keyboardMoving = false } }
+    // The refraction (the costly part) eases off while the keyboard moves and eases back; the glass
+    // itself stays.
+    LaunchedEffect(Unit) {
+        snapshotFlow { GlassPerformance.keyboardMoving }.collectLatest { moving ->
+            androidx.compose.animation.core.animate(
+                initialValue = GlassPerformance.keyboardEase,
+                targetValue = if (moving) 1f else 0f,
+                animationSpec = androidx.compose.animation.core.tween(
+                    if (moving) 200 else 450,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing,
+                ),
+            ) { value, _ -> GlassPerformance.keyboardEase = value }
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            GlassPerformance.keyboardMoving = false
+            GlassPerformance.keyboardEase = 0f
+        }
+    }
 }

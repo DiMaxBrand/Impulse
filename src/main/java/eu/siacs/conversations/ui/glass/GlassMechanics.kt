@@ -33,6 +33,7 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.util.fastCoerceIn
 import com.kyant.backdrop.BackdropEffectScope
+import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import kotlin.math.abs
 import kotlin.math.min
@@ -320,4 +321,27 @@ fun BackdropEffectScope.glassLens(
         refractionAmount = min(refractionAmount, size.minDimension),
         chromaticAberration = chromaticAberration,
     )
+}
+
+/**
+ * The blur of a glass piece: [base], eased up to [GlassPerformance.FAST_SCROLL_BLUR] while the list
+ * flies past, so the backdrop turns into colour and the changing of it cannot be followed. It is
+ * still the glass (backdrop and refraction), with no overlay on top.
+ */
+fun BackdropEffectScope.glassBlur(base: Float) {
+    val boost = GlassPerformance.scrollBlur
+    val radius = base + (GlassPerformance.FAST_SCROLL_BLUR.toPx() - base).coerceAtLeast(0f) * boost
+    if (radius > 0.5f) blur(radius)
+}
+
+/** [glassLens] eased down while the keyboard moves ([GlassPerformance.keyboardEase]) and back after. */
+fun BackdropEffectScope.glassLensEased(
+    refractionHeight: Float,
+    refractionAmount: Float,
+    chromaticAberration: Boolean = false,
+) {
+    val ease = GlassPerformance.keyboardEase
+    val keep = 1f - 0.85f * ease
+    if (keep <= 0.02f) return
+    glassLens(refractionHeight, refractionAmount * keep, chromaticAberration && ease < 0.5f)
 }

@@ -148,15 +148,14 @@ fun LiquidGlassButton(
                 backdrop = slot.backdrop,
                 shape = { shape },
                 effects = {
-                    // Too fast to see the glass anyway while the list flies past: skip the effects.
-                    if (!GlassPerformance.lite) {
-                        // The glass itself brightens over a bright backdrop and darkens over a dark one.
-                        val level = ink.level.value
-                        colorControls(glassBrightness(level), glassContrast(level), 1f)
-                        if (style.vibrancy) vibrancy()
-                        if (style.blur > 0.dp) blur(style.blur.toPx())
-                        glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
-                    }
+                    // The glass itself brightens over a bright backdrop and darkens over a dark one.
+                    val level = ink.level.value
+                    colorControls(glassBrightness(level), glassContrast(level), 1f)
+                    if (style.vibrancy) vibrancy()
+                    // Blurs out while the list flies past, refracts less while the keyboard moves
+                    // (both eased, never off): see GlassPerformance.
+                    glassBlur(style.blur.toPx())
+                    glassLensEased(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
                 },
                 layerBlock = if (isInteractive || extraLayerBlock != null) {
                     {
@@ -269,13 +268,11 @@ fun LiquidGlassPanel(
                     backdrop = slot.backdrop,
                     shape = { shape },
                     effects = {
-                        if (!GlassPerformance.lite) {
-                            val level = ink.level.value
-                            colorControls(glassBrightness(level), glassContrast(level), 1f)
-                            if (style.vibrancy) vibrancy()
-                            if (style.blur > 0.dp) blur(style.blur.toPx())
-                            glassLens(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
-                        }
+                        val level = ink.level.value
+                        colorControls(glassBrightness(level), glassContrast(level), 1f)
+                        if (style.vibrancy) vibrancy()
+                        glassBlur(style.blur.toPx())
+                        glassLensEased(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
                     },
                     layerBlock = layerBlock,
                     onDrawBackdrop = { drawBackdrop ->
