@@ -48,6 +48,9 @@ class AppearanceActivity : ActionBarActivity() {
     @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Writes the chosen style once (and moves anyone who had the old glass flag on over to it)
+        // before the settings read it.
+        eu.siacs.conversations.ui.LiquidGlass.style(this)
         val settings = AppearanceSettings(
             PreferenceManager.getDefaultSharedPreferences(this), resources)
         setContent {

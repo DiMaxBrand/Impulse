@@ -163,10 +163,7 @@ class MediaViewerActivity : XmppActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         batchUuids = intent.getStringArrayListExtra(EXTRA_BATCH_UUIDS)?.toSet() ?: emptySet()
-        glassCarryOver = intent.getBooleanExtra(EXTRA_FROM_CHAT, false) &&
-            LiquidGlass.supported &&
-            eu.siacs.conversations.utils.FeatureFlagPreferences(this)
-                .isEnabled(eu.siacs.conversations.FeatureFlag.LIQUID_GLASS)
+        glassCarryOver = intent.getBooleanExtra(EXTRA_FROM_CHAT, false) && LiquidGlass.enabled(this)
         if (glassCarryOver) {
             // Not the default slide: the chat stays where it is and the viewer fades in over it
             // (and out again on the way back), so the top bar, which is in both, does not move.

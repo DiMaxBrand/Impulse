@@ -1431,8 +1431,6 @@
     <string name="liquid_tab_calls">Calls</string>
     <string name="liquid_tab_contacts">Contacts</string>
     <string name="liquid_tab_settings">Settings</string>
-    <string name="feature_flag_liquid_glass_title">Liquid glass</string>
-    <string name="feature_flag_liquid_glass_description">Early experiment: the chat list\'s top row and the chat\'s message bar are drawn as stretchy glass bubbles. Needs Android 13 or newer, and may look rough.</string>
     <string name="birthday_title">Наташа, с днём рождения! 🎉</string>
     <string name="birthday_line_1">Желаю тебе счастья, здоровья, достатка, добра и успехов во всём.</string>
     <string name="birthday_line_2">И чтобы Импульс сам обновлялся :)</string>
@@ -1700,4 +1698,14 @@
     <string name="download_duration_seconds">%1$d s</string>
     <string name="download_duration_minutes">%1$d min</string>
     <string name="download_duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="appearance_section_style">Style</string>
+    <string name="interface_style_title">Interface style</string>
+    <string name="interface_style_material">Material 3 Expressive</string>
+    <string name="interface_style_material_summary">The standard look. Light on battery.</string>
+    <string name="interface_style_material_info">The standard look of Impulse: Material 3 Expressive, with your colours, soft shapes and springy motion. It is the lightest on the battery and works on every Android version.</string>
+    <string name="interface_style_glass">Liquid glass</string>
+    <string name="interface_style_glass_summary">Frosted, bending glass over the chat.</string>
+    <string name="interface_style_glass_info">The bars, menus and message field are glass: they blur and bend what is behind them, and stretch when you touch them. It looks richer and uses more battery. Needs Android 13 or newer.</string>
+    <string name="interface_style_glass_unsupported">Needs Android 13 or newer</string>
+    <string name="interface_style_info">About this style</string>
 </resources>

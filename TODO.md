@@ -2,9 +2,12 @@
 
 ## Liquid glass — where it is going (decided after testing beta.171)
 
-- **Graduation**: later the `LIQUID_GLASS` flag becomes an option on the Appearance screen, "enable
-  liquid glass". It is *not* a rendering-engine switch (Material vs glass): it turns glass on for
-  the parts that have a glass version, and the rest of the app stays Material.
+- **Graduated (beta.233)**: the `LIQUID_GLASS` flag is gone. Appearance has an "Interface style"
+  picker (Material 3 Expressive, the default, or Liquid glass; same card as the update channel picker,
+  with an info button per option). It is *not* a rendering-engine switch: it turns glass on for the
+  parts that have a glass version, and the rest of the app stays Material. The choice is the
+  `interface_style` preference (`LiquidGlass.style()`); anyone who had the old flag on is moved to
+  glass once. `ConversationsActivity` recreates itself on resume when the style changed.
 - **Jelly menus (beta.180)**: the menu morph has separate width/height progress (width springs first,
   height lags and overshoots, volume-trading squash), the open panel can be dragged (toward its button
   squeezes it back and closes on release; away stretches it and springs back), and pulling a closed

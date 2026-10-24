@@ -1505,8 +1505,6 @@
     <string name="liquid_tab_calls">Звонки</string>
     <string name="liquid_tab_contacts">Контакты</string>
     <string name="liquid_tab_settings">Настройки</string>
-    <string name="feature_flag_liquid_glass_title">Жидкое стекло</string>
-    <string name="feature_flag_liquid_glass_description">Ранний эксперимент: верхняя строка списка чатов и панель сообщения в чате рисуются как тянущиеся стеклянные пузыри. Нужен Android 13 или новее, внешний вид может быть сырым.</string>
     <string name="birthday_title">Наташа, с днём рождения! 🎉</string>
     <string name="birthday_line_1">Желаю тебе счастья, здоровья, достатка, добра и успехов во всём.</string>
     <string name="birthday_line_2">И чтобы Импульс сам обновлялся :)</string>
@@ -1766,4 +1764,14 @@
     <string name="download_duration_seconds">%1$d с</string>
     <string name="download_duration_minutes">%1$d мин</string>
     <string name="download_duration_hours_minutes">%1$d ч %2$d мин</string>
+    <string name="appearance_section_style">Стиль</string>
+    <string name="interface_style_title">Стиль интерфейса</string>
+    <string name="interface_style_material">Material 3 Expressive</string>
+    <string name="interface_style_material_summary">Обычный вид. Бережёт батарею.</string>
+    <string name="interface_style_material_info">Привычный вид Импульса: Material 3 Expressive с вашими цветами, мягкими формами и упругой анимацией. Меньше всего расходует батарею и работает на любой версии Android.</string>
+    <string name="interface_style_glass">Жидкое стекло</string>
+    <string name="interface_style_glass_summary">Матовое преломляющее стекло над чатом.</string>
+    <string name="interface_style_glass_info">Панели, меню и поле ввода — стеклянные: они размывают и преломляют то, что за ними, и растягиваются под пальцем. Выглядит богаче, но расходует больше батареи. Нужен Android 13 или новее.</string>
+    <string name="interface_style_glass_unsupported">Нужен Android 13 или новее</string>
+    <string name="interface_style_info">Об этом стиле</string>
 </resources>

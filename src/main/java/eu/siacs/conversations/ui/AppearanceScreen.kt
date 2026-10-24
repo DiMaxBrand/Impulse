@@ -10,6 +10,8 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -42,6 +44,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -70,6 +75,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.siacs.conversations.R
@@ -109,6 +115,7 @@ internal class AppearanceSettings(private val prefs: SharedPreferences, private 
     val backgroundDim = Num(AppearanceState.CHAT_BACKGROUND_DIM, 30)
     val backgroundImage = Str(AppearanceState.CHAT_BACKGROUND_IMAGE, "")
     val animations = Str(AppearanceState.ANIMATION_LEVEL, "full")
+    val interfaceStyle = Str(LiquidGlass.PREF_KEY, InterfaceStyle.MATERIAL.key)
     val haptics = Bool(AppearanceState.HAPTICS, true)
 
     val alignStart = Bool("align_start", b(R.bool.align_start))
@@ -347,6 +354,15 @@ private fun MainPage(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                // ── Style: Material 3 Expressive or liquid glass ──
+                SectionTitle(stringResource(R.string.appearance_section_style))
+                PickerSource(
+                    "style", openPicker == "style", GroupPosition.SINGLE,
+                    R.drawable.ic_touch_app_24dp,
+                    stringResource(R.string.interface_style_title),
+                    stringResource(InterfaceStyle.of(s.interfaceStyle.value).titleRes),
+                ) { openPicker = "style" }
+
                 // ── Colors ──
                 SectionTitle(stringResource(R.string.appearance_section_colors))
                 val dynamicOn = s.dynamicColors.value && dynamicAvailable
@@ -460,6 +476,12 @@ private fun MainPage(
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim)))
             }
 
+            PickerCard("style", openPicker == "style", { openPicker = null }) {
+                StylePickerContent(InterfaceStyle.of(s.interfaceStyle.value)) { picked ->
+                    s.interfaceStyle.set(picked.key)
+                    openPicker = null
+                }
+            }
             PickerCard("accent", openPicker == "accent", { openPicker = null }) {
                 AccentPickerContent(s.accentSeed.value) { seed ->
                     s.accentSeed.set(seed)
@@ -486,6 +508,172 @@ private fun MainPage(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+// ─── Style picker: the options with an info button each, and the info page ─────────────────
+
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun StylePickerContent(current: InterfaceStyle, onPick: (InterfaceStyle) -> Unit) {
+    var info by remember { mutableStateOf<InterfaceStyle?>(null) }
+    BackHandler(enabled = info != null) { info = null }
+    // Inner SharedTransitionLayout: the options list <-> an option's info page, as on the update
+    // channel picker.
+    SharedTransitionLayout {
+        AnimatedContent(
+            targetState = info,
+            transitionSpec = {
+                EnterTransition.None togetherWith ExitTransition.None using
+                    SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+            },
+            label = "style_picker_content",
+        ) { style ->
+            if (style == null) {
+                StyleList(current, onPick, onInfo = { info = it }, animatedContentScope = this)
+            } else {
+                StyleInfoPage(style, onBack = { info = null }, animatedContentScope = this)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SharedTransitionScope.StyleList(
+    current: InterfaceStyle,
+    onPick: (InterfaceStyle) -> Unit,
+    onInfo: (InterfaceStyle) -> Unit,
+    animatedContentScope: AnimatedContentScope,
+) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 20.dp, bottom = 4.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_touch_app_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.interface_style_title),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        val styles = InterfaceStyle.entries
+        styles.forEachIndexed { index, style ->
+            val available = style != InterfaceStyle.GLASS || LiquidGlass.supported
+            val rowShape = when {
+                styles.size == 1 -> RoundedCornerShape(28.dp)
+                index == 0 -> RoundedCornerShape(28.dp, 28.dp, 8.dp, 8.dp)
+                index == styles.lastIndex -> RoundedCornerShape(8.dp, 8.dp, 28.dp, 28.dp)
+                else -> RoundedCornerShape(8.dp)
+            }
+            // Each row's surface is the source of its own row -> info container transform.
+            Surface(
+                shape = rowShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .fillMaxWidth()
+                    .sharedBounds(
+                        rememberSharedContentState("style_info_${style.key}"),
+                        animatedVisibilityScope = animatedContentScope,
+                        enter = fadeIn(quickFade),
+                        exit = fadeOut(quickFade),
+                        boundsTransform = springBounds,
+                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    ),
+            ) {
+                ListItem(
+                    headlineContent = { Text(stringResource(style.titleRes)) },
+                    supportingContent = {
+                        Text(
+                            stringResource(
+                                if (available) style.summaryRes else R.string.interface_style_glass_unsupported
+                            )
+                        )
+                    },
+                    leadingContent = {
+                        RadioButton(selected = style == current, onClick = null, enabled = available)
+                    },
+                    trailingContent = {
+                        IconButton(onClick = { onInfo(style) }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_info_outline_24dp),
+                                contentDescription = stringResource(R.string.interface_style_info),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    modifier = Modifier.clickable(enabled = available) { onPick(style) },
+                    colors = rowColors(),
+                )
+            }
+            if (index < styles.lastIndex) Spacer(Modifier.height(2.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SharedTransitionScope.StyleInfoPage(
+    style: InterfaceStyle,
+    onBack: () -> Unit,
+    animatedContentScope: AnimatedContentScope,
+) {
+    // Matches the source row's surface, so the container transform morphs the row into this card.
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        modifier = Modifier
+            .fillMaxWidth()
+            .sharedBounds(
+                rememberSharedContentState("style_info_${style.key}"),
+                animatedVisibilityScope = animatedContentScope,
+                enter = fadeIn(quickFade),
+                exit = fadeOut(quickFade),
+                boundsTransform = springBounds,
+                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+            ),
+    ) {
+        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                painter = painterResource(R.drawable.ic_info_outline_24dp),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(style.titleRes),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(style.infoRes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(16.dp))
+            // A static shape, not the animated press-morph: this button first composes while its
+            // card is still mid transition (see the same note on the update channel picker).
+            FilledTonalButton(
+                onClick = onBack,
+                shape = ButtonDefaults.filledTonalShape,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(android.R.string.ok))
             }
         }
     }

@@ -123,6 +123,9 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     private static final @IdRes int[] FRAGMENT_ID_NOTIFICATION_ORDER = {
         R.id.secondary_fragment, R.id.main_fragment
     };
+
+    // The interface style this activity was started in (see LiquidGlass).
+    private InterfaceStyle appliedStyle;
     private final PendingItem<Intent> pendingViewIntent = new PendingItem<>();
     private final PendingItem<ActivityResult> postponedActivityResult = new PendingItem<>();
     private ActivityConversationsBinding binding;
@@ -429,6 +432,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         AvatarSegmenter.INSTANCE.clearAll();
         ConversationMenuConfigurator.reloadFeatures(this);
         OmemoSetting.load(this);
+        this.appliedStyle = LiquidGlass.INSTANCE.style(this);
         this.binding = DataBindingUtil.setContentView(this, R.layout.activity_conversations);
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
         ;
@@ -604,10 +608,14 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     public void onResume() {
         super.onResume();
         this.mActivityPaused = false;
-        // Liquid glass experiment: keep the status bar and gesture bar strips drawn every frame.
-        if (LiquidGlass.INSTANCE.getSupported()
-                && new eu.siacs.conversations.utils.FeatureFlagPreferences(this)
-                        .isEnabled(eu.siacs.conversations.FeatureFlag.LIQUID_GLASS)) {
+        // The style was changed in Settings while this screen waited behind it: start over, so every
+        // screen is drawn in the new one.
+        if (LiquidGlass.INSTANCE.style(this) != this.appliedStyle) {
+            recreate();
+            return;
+        }
+        // Glass style: the screens run under the system bars, whose strips are kept drawn.
+        if (LiquidGlass.INSTANCE.enabled(this)) {
             eu.siacs.conversations.ui.glass.SystemBarKeeper.INSTANCE.attach(this);
             eu.siacs.conversations.ui.glass.GlassEdgeToEdge.INSTANCE.apply(this, true);
         } else {

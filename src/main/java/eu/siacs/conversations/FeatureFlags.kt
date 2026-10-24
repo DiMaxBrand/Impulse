@@ -46,17 +46,6 @@ enum class FeatureFlag(
         audience = FlagAudience.Nobody,
     ),
 
-    /** Experiment: swaps some Material 3 Expressive pieces for "liquid glass" ones drawn with the
-     * Kyant0 backdrop library -- the chat list's top row (search, QR and your picture as separate
-     * stretchy bubbles) and the chat's message bar. Needs Android 13 or newer (the refraction is
-     * a runtime shader); below that the flag has no effect. Off by default, early, may look rough.
-     * See [eu.siacs.conversations.ui.LiquidGlass]. */
-    LIQUID_GLASS(
-        key = "liquid_glass",
-        titleRes = R.string.feature_flag_liquid_glass_title,
-        descriptionRes = R.string.feature_flag_liquid_glass_description,
-        audience = FlagAudience.Nobody,
-    ),
 }
 
 /**
