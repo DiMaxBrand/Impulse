@@ -206,6 +206,17 @@ object ConversationListHelper {
                 // Liquid glass experiment: the search row floats over the list, so the list starts
                 // below it instead of the (then absent) search bar pushing it down.
                 val glass = rememberLiquidGlassEnabled()
+                // The list runs under the gesture bar in glass mode; the button must clear it.
+                val navInset = if (glass) eu.siacs.conversations.ui.glass.rememberGlassNavInset() else 0.dp
+                if (glass) {
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    LaunchedEffect(navInset) {
+                        (fab.layoutParams as? android.view.ViewGroup.MarginLayoutParams)?.let {
+                            it.bottomMargin = with(density) { (16.dp + navInset).roundToPx() }
+                            fab.requestLayout()
+                        }
+                    }
+                }
                 Box(modifier = Modifier.fillMaxSize()) {
                     ConversationsSearchHost(host = searchHost, actions = searchActions) {
                         Column {
@@ -218,6 +229,7 @@ object ConversationListHelper {
                                 contentPadding = if (glass) PaddingValues(
                                     top = LiquidTopRowHeight +
                                         androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+                                    bottom = navInset,
                                 ) else PaddingValues(0.dp),
                                 onFirstVisibleIndexChanged = { index ->
                                     composeView.post { if (index > 0) fab.shrink() else fab.extend() }

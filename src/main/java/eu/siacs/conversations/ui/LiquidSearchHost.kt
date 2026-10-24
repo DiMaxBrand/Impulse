@@ -129,6 +129,7 @@ fun LiquidConversationsSearchHost(
 
         // The list runs up under the status bar, blurred there.
         eu.siacs.conversations.ui.glass.GlassStatusBarBlur(backdrop, Modifier.align(Alignment.TopCenter))
+        eu.siacs.conversations.ui.glass.GlassNavigationBarBlur(backdrop, Modifier.align(Alignment.BottomCenter))
         LiquidTopRow(
             glass = glass,
             host = host,

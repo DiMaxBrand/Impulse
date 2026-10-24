@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.ime
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -40,13 +42,43 @@ fun GlassStatusBarBlur(backdrop: Backdrop, modifier: Modifier = Modifier) {
     val inset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     if (inset <= 0.dp) return
     Box(modifier.fillMaxWidth().height(inset)) {
-        BlurBand(backdrop, radius = 22.dp, washAlpha = 0.55f, fadeStart = 0.35f)
-        BlurBand(backdrop, radius = 7.dp, washAlpha = 0.25f, fadeStart = 0.0f)
+        BlurBand(backdrop, inset, radius = 22.dp, washAlpha = 0.55f, fadeStart = 0.35f, fromBottom = false)
+        BlurBand(backdrop, inset, radius = 7.dp, washAlpha = 0.25f, fadeStart = 0.0f, fromBottom = false)
     }
 }
 
+/** The same at the bottom, over the gesture bar: strongest at the very bottom edge. */
 @Composable
-private fun BlurBand(backdrop: Backdrop, radius: androidx.compose.ui.unit.Dp, washAlpha: Float, fadeStart: Float) {
+fun GlassNavigationBarBlur(backdrop: Backdrop, modifier: Modifier = Modifier) {
+    val inset = rememberGlassNavInset()
+    if (inset <= 0.dp) return
+    Box(modifier.fillMaxWidth().height(inset)) {
+        BlurBand(backdrop, inset, radius = 22.dp, washAlpha = 0.55f, fadeStart = 0.35f, fromBottom = true)
+        BlurBand(backdrop, inset, radius = 7.dp, washAlpha = 0.25f, fadeStart = 0.0f, fromBottom = true)
+    }
+}
+
+/**
+ * The space the screens leave for the gesture bar now that the host runs under it. None while the
+ * keyboard is up: then the host frame itself keeps clear of the keyboard, gesture bar included.
+ */
+@Composable
+fun rememberGlassNavInset(): androidx.compose.ui.unit.Dp {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val nav = WindowInsets.navigationBars.getBottom(density)
+    val ime = WindowInsets.ime.getBottom(density)
+    return if (ime > nav) 0.dp else with(density) { nav.toDp() }
+}
+
+@Composable
+private fun BlurBand(
+    backdrop: Backdrop,
+    height: androidx.compose.ui.unit.Dp,
+    radius: androidx.compose.ui.unit.Dp,
+    washAlpha: Float,
+    fadeStart: Float,
+    fromBottom: Boolean,
+) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     // White, not a brighter picture: the wash is what makes it whiter. On dark themes it is the
     // theme's own surface, since white icons on white would vanish.
@@ -54,17 +86,26 @@ private fun BlurBand(backdrop: Backdrop, radius: androidx.compose.ui.unit.Dp, wa
     Box(
         Modifier
             .fillMaxWidth()
-            .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+            .height(height)
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawWithContent {
                 drawContent()
                 // Opaque down to [fadeStart] of the bar's height, then fading out to nothing.
-                drawRect(
-                    Brush.verticalGradient(
+                val stops = if (fromBottom) {
+                    arrayOf(
+                        0f to Color.Transparent,
+                        (1f - fadeStart.coerceIn(0f, 0.95f)) to Color.Black,
+                        1f to Color.Black,
+                    )
+                } else {
+                    arrayOf(
                         0f to Color.Black,
                         fadeStart.coerceIn(0f, 0.95f) to Color.Black,
                         1f to Color.Transparent,
-                    ),
+                    )
+                }
+                drawRect(
+                    Brush.verticalGradient(colorStops = stops),
                     blendMode = BlendMode.DstIn,
                 )
             }
@@ -78,9 +119,9 @@ private fun BlurBand(backdrop: Backdrop, radius: androidx.compose.ui.unit.Dp, wa
 }
 
 /**
- * Lets the chat list and the chat run up under the status bar while liquid glass is on: the host
- * frame keeps clear of the gesture bar and the keyboard as before, but no longer of the status bar.
- * (The screens then place their top bars below the bar themselves, from the same inset.) Leaves the
+ * Lets the chat list and the chat run up under the status bar and the gesture bar while liquid glass
+ * is on: the host frame keeps clear of the keyboard as before, but no longer of the system bars.
+ * (The screens then place their bars clear of them themselves, from the same insets.) Leaves the
  * frame untouched when glass is off, and on the tablet layout.
  */
 object GlassEdgeToEdge {
@@ -95,10 +136,12 @@ object GlassEdgeToEdge {
             frame.fitsSystemWindows = false
             ViewCompat.setOnApplyWindowInsetsListener(frame) { view, insets ->
                 val bars = insets.getInsets(
-                    WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout() or
-                        WindowInsetsCompat.Type.ime(),
+                    WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
                 )
-                view.setPadding(bars.left, 0, bars.right, bars.bottom)
+                val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                // Under the gesture bar too, unless the keyboard is up: then clear of the keyboard,
+                // as before. The screens leave room for the gesture bar themselves.
+                view.setPadding(bars.left, 0, bars.right, if (ime > bars.bottom) ime else 0)
                 // Not consumed: the screens read the status bar inset themselves.
                 insets
             }

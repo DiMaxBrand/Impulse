@@ -1039,6 +1039,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             )
             // The messages run up under the status bar, blurred there.
             eu.siacs.conversations.ui.glass.GlassStatusBarBlur(glassBackdrop, Modifier.align(Alignment.TopCenter))
+            eu.siacs.conversations.ui.glass.GlassNavigationBarBlur(glassBackdrop, Modifier.align(Alignment.BottomCenter))
             Column(
                 Modifier.align(Alignment.TopCenter).onSizeChanged { glassTopHeightPx = it.height }
                     .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars),

@@ -117,7 +117,8 @@ fun LiquidInputBar(
     Box(modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .onSizeChanged { onBarHeight(it.height) },
+                .onSizeChanged { onBarHeight(it.height) }
+                .padding(bottom = rememberGlassNavInset()),
         ) {
             if (readOnly) {
                 ReadOnlyBubble(backdrop)
