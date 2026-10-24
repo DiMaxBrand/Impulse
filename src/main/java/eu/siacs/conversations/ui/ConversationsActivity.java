@@ -609,6 +609,9 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                 && new eu.siacs.conversations.utils.FeatureFlagPreferences(this)
                         .isEnabled(eu.siacs.conversations.FeatureFlag.LIQUID_GLASS)) {
             eu.siacs.conversations.ui.glass.SystemBarKeeper.INSTANCE.attach(this);
+            eu.siacs.conversations.ui.glass.GlassEdgeToEdge.INSTANCE.apply(this, true);
+        } else {
+            eu.siacs.conversations.ui.glass.GlassEdgeToEdge.INSTANCE.apply(this, false);
         }
         // The immediate call below only ever reflects whatever a *previous* check already wrote
         // to prefs — checkOnLaunchIfEligible's own network fetch hasn't returned by the time it

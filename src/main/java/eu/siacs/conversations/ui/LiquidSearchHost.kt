@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.width
@@ -125,6 +127,8 @@ fun LiquidConversationsSearchHost(
         // The list is what shows through the glass.
         Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) { content() }
 
+        // The list runs up under the status bar, blurred there.
+        eu.siacs.conversations.ui.glass.GlassStatusBarBlur(backdrop, Modifier.align(Alignment.TopCenter))
         LiquidTopRow(
             glass = glass,
             host = host,
@@ -133,7 +137,8 @@ fun LiquidConversationsSearchHost(
             qrMenu = qrMenu,
             searchProgress = { searchProgress.value },
             onSearchBounds = { pillBounds = it },
-            modifier = Modifier.align(Alignment.TopCenter),
+            modifier = Modifier.align(Alignment.TopCenter)
+                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars),
         )
 
         // Derived, so this only changes when the container appears or is gone. Reading the animated

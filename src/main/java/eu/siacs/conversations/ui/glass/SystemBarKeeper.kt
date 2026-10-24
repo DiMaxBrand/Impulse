@@ -55,7 +55,9 @@ object SystemBarKeeper {
         }
 
         override fun onDraw(canvas: Canvas) {
-            canvas.drawColor(color)
+            // The top strip draws nothing now (the screen runs under the status bar, see
+            // GlassEdgeToEdge); it only keeps that area being redrawn on every frame.
+            if (!top) canvas.drawColor(color)
             val insets = ViewCompat.getRootWindowInsets(this)
                 ?.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
             val wanted = if (top) insets?.top ?: 0 else insets?.bottom ?: 0
