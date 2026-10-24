@@ -1270,13 +1270,25 @@ private fun GlassLabPage() {
 
 @Composable
 private fun LabSlider(position: GroupPosition, label: Int, value: Float, onChange: (Float) -> Unit) {
+    // The slider keeps its own position while a finger drags it. Feeding it the stored value back
+    // (which was rounded, and which changes the glass under the slider itself) made it jump to the
+    // rounded value on every frame, so a drag could never get anywhere; only a tap worked.
+    var live by remember { mutableFloatStateOf(value) }
+    LaunchedEffect(value) { if (kotlin.math.abs(value - live) > 0.051f) live = value }
     ExpressiveGroupRow(position) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(label), Modifier.weight(1f))
-                Text("${(value * 100).toInt()}%", color = MaterialTheme.colorScheme.primary)
+                Text("${(live * 100).toInt()}%", color = MaterialTheme.colorScheme.primary)
             }
-            SkinSlider(value = value, onValueChange = { onChange((Math.round(it * 20) / 20f)) }, valueRange = 0f..2f)
+            SkinSlider(
+                value = live,
+                onValueChange = {
+                    live = it
+                    onChange(Math.round(it * 20) / 20f)
+                },
+                valueRange = 0f..2f,
+            )
         }
     }
 }
