@@ -94,8 +94,8 @@ fun Modifier.glassSnapshot(): Modifier {
             val before = state.previous
             val blend = state.blend.value
             val offset = IntOffset(-margin.toInt(), -margin.toInt())
-            if (before != null && blend < 1f) drawImage(before, offset, layerSize)
-            drawImage(picture, offset, layerSize, alpha = if (before != null) blend else 1f)
+            if (before != null && blend < 1f) drawSnapshotPicture(before, offset, layerSize)
+            drawSnapshotPicture(picture, offset, layerSize, alpha = if (before != null) blend else 1f)
         } else {
             layer.record(layerSize) {
                 translate(margin, margin) { this@drawWithContent.drawContent() }
@@ -105,7 +105,9 @@ fun Modifier.glassSnapshot(): Modifier {
     }
 }
 
-private fun DrawScope.drawImage(image: ImageBitmap, offset: IntOffset, dstSize: IntSize, alpha: Float = 1f) {
+// A name of its own: as "drawImage" a call with three positional arguments was taken for the
+// library's (image, srcOffset, srcSize), which showed every picture moved by twice the margin.
+private fun DrawScope.drawSnapshotPicture(image: ImageBitmap, offset: IntOffset, dstSize: IntSize, alpha: Float = 1f) {
     drawImage(
         image = image,
         dstOffset = offset,
