@@ -2112,8 +2112,8 @@ public class XmppConnectionService extends Service {
     /**
      * Sends [caption] as the text of the photos that were attached since [knownUuids] was taken
      * (the messages that were in the chat before): it is created paused and let go by
-     * CaptionResolver when those photos have a verdict. Returns false when no photo was
-     * attached, so the caller can keep the text.
+     * CaptionResolver when those photos have a verdict. Returns false when no photo was attached,
+     * so the caller can keep the text.
      */
     public boolean sendCaption(
             final Conversation conversation,

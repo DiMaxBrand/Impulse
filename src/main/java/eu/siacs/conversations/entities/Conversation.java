@@ -716,6 +716,10 @@ public class Conversation extends AbstractEntity
     public @NonNull CharSequence getName() {
         if (getMode() == MODE_MULTI) {
             return getName(getMucOptions(), getBookmark());
+        } else if (eu.siacs.conversations.utils.SupportAccounts.isSupportAddress(contactJid)
+                && !this.getContact().isSelf()) {
+            // Also when support is not in the roster (a stranger would show the bare address).
+            return eu.siacs.conversations.utils.SupportAccounts.displayName();
         } else if ((QuickConversationsService.isConversations()
                         || !Config.QUICKSY_DOMAIN.equals(contactJid.getDomain()))
                 && isWithStranger()) {

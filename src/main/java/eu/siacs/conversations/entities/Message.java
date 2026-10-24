@@ -125,8 +125,8 @@ public class Message extends AbstractEntity
     public static final String ERROR_CAPTION_PHOTO = "eu.siacs.conversations.caption_photo";
 
     /**
-     * Uuids of the photos a paused caption belongs to. Not persisted: after a restart the
-     * photos are found again as the run of own media right above the caption.
+     * Uuids of the photos a paused caption belongs to. Not persisted: after a restart the photos
+     * are found again as the run of own media right above the caption.
      */
     public java.util.List<String> captionFor = null;
 

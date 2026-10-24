@@ -19,6 +19,15 @@ object SupportAccounts {
     fun isSupportAddress(jid: Jid?): Boolean =
         jid != null && jid.asBareJid().toString().lowercase() == SUPPORT
 
+    /**
+     * What people see instead of the support address's own name, in every chat, list and
+     * notification, in the phone's language: the name the server or the roster gives it (or just
+     * "support") says little about who it is.
+     */
+    @JvmStatic
+    fun displayName(): String =
+        if (java.util.Locale.getDefault().language == "ru") "Поддержка Импульса" else "Impulse support"
+
     /** Stores the addresses of the connected accounts (for [FlagAudience] targeting and for
      * [hasSupportAccount]). Call it whenever the account list is loaded or changes. */
     @JvmStatic

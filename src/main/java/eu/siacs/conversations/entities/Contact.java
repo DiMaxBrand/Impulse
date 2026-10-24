@@ -158,6 +158,9 @@ public class Contact implements ListItem, Blockable, MucOptions.IdentifiableUser
 
     @Override
     public String getDisplayName() {
+        if (eu.siacs.conversations.utils.SupportAccounts.isSupportAddress(jid) && !isSelf()) {
+            return eu.siacs.conversations.utils.SupportAccounts.displayName();
+        }
         if (isSelf()) {
             final String displayName = account.getDisplayName();
             if (!Strings.isNullOrEmpty(displayName)) {
@@ -183,6 +186,9 @@ public class Contact implements ListItem, Blockable, MucOptions.IdentifiableUser
     }
 
     public String getPublicDisplayName() {
+        if (eu.siacs.conversations.utils.SupportAccounts.isSupportAddress(jid) && !isSelf()) {
+            return eu.siacs.conversations.utils.SupportAccounts.displayName();
+        }
         if (!TextUtils.isEmpty(this.presenceName)) {
             return this.presenceName;
         } else if (jid.getLocal() != null) {
