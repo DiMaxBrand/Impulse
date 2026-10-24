@@ -109,6 +109,7 @@ private fun BlurBand(
                     blendMode = BlendMode.DstIn,
                 )
             }
+            .glassSnapshot()
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { RectangleShape },

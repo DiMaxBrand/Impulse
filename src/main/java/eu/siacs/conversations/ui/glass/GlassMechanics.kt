@@ -334,14 +334,12 @@ fun BackdropEffectScope.glassBlur(base: Float) {
     if (radius > 0.5f) blur(radius)
 }
 
-/** [glassLens] eased down while the keyboard moves ([GlassPerformance.keyboardEase]) and back after. */
+/**
+ * [glassLens] as it is. (The refraction used to ease off while the keyboard moved; the glass is
+ * now drawn from a picture taken a few times a second in that time instead, see glassSnapshot.)
+ */
 fun BackdropEffectScope.glassLensEased(
     refractionHeight: Float,
     refractionAmount: Float,
     chromaticAberration: Boolean = false,
-) {
-    val ease = GlassPerformance.keyboardEase
-    val keep = 1f - 0.85f * ease
-    if (keep <= 0.02f) return
-    glassLens(refractionHeight, refractionAmount * keep, chromaticAberration && ease < 0.5f)
-}
+) = glassLens(refractionHeight, refractionAmount, chromaticAberration)
