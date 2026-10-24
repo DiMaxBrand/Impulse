@@ -1,14 +1,20 @@
 package eu.siacs.conversations.ui.glass
 
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
@@ -26,21 +32,14 @@ import kotlin.math.min
 /*
  * Frosted glass that still refracts. A strong blur and a lens do not go together when the lens comes
  * after the blur: it bends a backdrop that has already lost everything sharp, so nothing is seen to
- * bend. So a frosted piece is two layers: the clear glass (light blur, the lens at the rim) over the
- * whole piece, and over it, inset by [LiquidGlassStyle.frostRim], the frosted layer (strong blur,
- * paler colours, lower contrast, a veil) for the middle. The rim band that is left is clear, and
- * bends what is behind it.
+ * bend. So a frosted piece is two layers over the same area: the clear glass (light blur, the lens at
+ * the rim) below, and the frosted layer (strong blur, paler colours, lower contrast, a veil) over it.
+ * The frosted layer is not a smaller rectangle: it covers the whole piece, and fades out towards the
+ * edge over [LiquidGlassStyle.frostRim], so there is no seam. At the very edge only the clear glass is
+ * left, and bends what is behind it; the further in, the more frosted it is.
  */
 
-/** The shape of the frosted layer: the piece's own corner, less the rim, so it follows the outline. */
-private class InnerShape(private val outerCorner: (Size, Density) -> Float, private val rim: Dp) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val rimPx = with(density) { rim.toPx() }
-        val outer = outerCorner(Size(size.width + 2 * rimPx, size.height + 2 * rimPx), density)
-        val corner = min(max(outer - rimPx, 0f), size.minDimension / 2f)
-        return RoundedCornerShape(CornerSize(corner)).createOutline(size, layoutDirection, density)
-    }
-}
+private const val RAMP_STEPS = 12
 
 @Composable
 internal fun BoxScope.FrostedInterior(
@@ -53,12 +52,38 @@ internal fun BoxScope.FrostedInterior(
     layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
 ) {
     val surface = MaterialTheme.colorScheme.surface
-    val shape = androidx.compose.runtime.remember(rim) { InnerShape(outerCorner, rim) }
+    val shape = androidx.compose.runtime.remember(outerCorner) { OuterShape(outerCorner) }
     Box(
         Modifier
             .matchParentSize()
-            .padding(rim)
-            .graphicsLayer { alpha = visible() }
+            .graphicsLayer {
+                alpha = visible()
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithContent {
+                drawContent()
+                // Fade the frost out towards the edge: rings, each taking away what it covers.
+                val rimPx = rim.toPx()
+                val corner = outerCorner(size, this)
+                val ring = rimPx / RAMP_STEPS
+                for (i in 0 until RAMP_STEPS) {
+                    val t = (i + 0.5f) / RAMP_STEPS
+                    val remaining = t * t * (3f - 2f * t) // smoothstep: 0 at the edge, 1 inside
+                    val inset = ring * i + ring / 2f
+                    val w = size.width - 2 * inset
+                    val h = size.height - 2 * inset
+                    if (w <= 0f || h <= 0f) break
+                    val r = max(corner - inset, 0f)
+                    drawRoundRect(
+                        color = Color.Black.copy(alpha = 1f - remaining),
+                        topLeft = Offset(inset, inset),
+                        size = Size(w, h),
+                        cornerRadius = CornerRadius(r, r),
+                        style = Stroke(width = ring + 0.5f),
+                        blendMode = BlendMode.DstOut,
+                    )
+                }
+            }
             .glassSnapshot()
             .drawBackdrop(
                 backdrop = backdrop,
@@ -74,4 +99,12 @@ internal fun BoxScope.FrostedInterior(
                 onDrawSurface = { drawRect(surface.copy(alpha = frost.surfaceAlpha)) },
             ),
     )
+}
+
+/** The piece's own outline, so the frosted layer fills exactly the same shape. */
+private class OuterShape(private val corner: (Size, Density) -> Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val c = min(corner(size, density), size.minDimension / 2f)
+        return RoundedCornerShape(CornerSize(c)).createOutline(size, layoutDirection, density)
+    }
 }

@@ -111,9 +111,9 @@ data class LiquidGlassStyle(
     val saturation: Float = 1f,
     /** 1 keeps the contrast of what is behind; less lets it fall back, so text behind stops competing. */
     val contrast: Float = 1f,
-    /** Frosted middle for a clear piece (see FrostedInterior): the rim stays clear glass and refracts. */
+    /** A frosted layer over a clear piece (see FrostedInterior), fading out over [frostRim] at the edge, so the rim stays clear glass and refracts. */
     val frost: LiquidGlassStyle? = null,
-    val frostRim: Dp = 12.dp,
+    val frostRim: Dp = 16.dp,
 ) {
     companion object {
         /** Buttons and bubbles: clear glass with a strong rim. */
@@ -140,7 +140,7 @@ data class LiquidGlassStyle(
         val Panel = LiquidGlassStyle(
             chromaticAberration = false,
             frost = Frosted.copy(blur = 14.dp, surfaceAlpha = 0.28f),
-            frostRim = 9.dp,
+            frostRim = 11.dp,
         )
 
         /** Menus: frosted in the middle (a clean blur with the colours pale and the contrast lowered,
