@@ -706,65 +706,52 @@ private fun ConversationAvatar(
     // Load at full resolution so the 3D zoom effect stays crisp at any overflow depth.
     val avatarLoadSizePx = 1440
 
-    val hasRealPhoto = remember(conversation) {
-        try {
-            if (isGroup) true
-            else {
-                val contact = conversation.getContact()
-                contact.getAvatar() != null || contact.profilePhoto != null
-            }
-        } catch (_: Exception) { false }
-    }
+    val hasRealPhoto = try {
+        if (isGroup) true
+        else {
+            val contact = conversation.getContact()
+            contact.getAvatar() != null || contact.profilePhoto != null
+        }
+    } catch (_: Exception) { false }
+    // What identifies the picture: a new avatar is a new key, so its cut-out is made again.
+    val cutoutKey = if (!isGroup && hasRealPhoto) {
+        try { AvatarSegmenter.key(conversation.getContact()) } catch (_: Exception) { null }
+    } else null
 
     val avatarState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
     val segmentedState = remember(conversation.getUuid()) { mutableStateOf<ImageBitmap?>(null) }
     val personBoundsState = remember(conversation.getUuid()) { mutableStateOf<PersonBounds?>(null) }
+    // False while the photo's cut-out is being found or made: a loading indicator is shown then.
+    val readyState = remember(conversation.getUuid()) { mutableStateOf(false) }
     val avatarBitmap by avatarState
     val segmentedBitmap by segmentedState
     val personBounds by personBoundsState
+    val ready by readyState
 
-    LaunchedEffect(conversation) {
+    LaunchedEffect(conversation, cutoutKey) {
         val activity = context as? XmppActivity ?: return@LaunchedEffect
+        if (cutoutKey != null && !AvatarSegmenter.isCached(context, cutoutKey)) {
+            // A new picture (or never seen): the old one must not stay on show.
+            avatarState.value = null
+            segmentedState.value = null
+            personBoundsState.value = null
+            readyState.value = false
+        }
         val bm = withContext(Dispatchers.IO) {
             activity.avatarService().get(conversation, avatarLoadSizePx, false)
         } ?: return@LaunchedEffect
+        if (cutoutKey == null) {
+            avatarState.value = bm.asImageBitmap()
+            segmentedState.value = null
+            personBoundsState.value = null
+            readyState.value = true
+            return@LaunchedEffect
+        }
+        val cut = AvatarSegmenter.cutout(context, cutoutKey, bm)
         avatarState.value = bm.asImageBitmap()
-        val key = conversation.getUuid()
-        AvatarSegmenter.segment(bm, key, shouldSegment = !isGroup && hasRealPhoto) { segBm ->
-            segmentedState.value = segBm?.asImageBitmap()
-        }
-    }
-
-    // Scan segmented bitmap to find the person's bounding box (off main thread)
-    LaunchedEffect(segmentedBitmap) {
-        val segBm = segmentedBitmap
-        if (segBm == null) { personBoundsState.value = null; return@LaunchedEffect }
-        val bounds = withContext(Dispatchers.Default) {
-            val bmp = segBm.asAndroidBitmap().let {
-                if (it.config == android.graphics.Bitmap.Config.HARDWARE)
-                    it.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
-                else it
-            }
-            var top = -1; var bottom = -1; var left = -1; var right = -1
-            for (row in 0 until bmp.height) {
-                for (col in 0 until bmp.width) {
-                    if (android.graphics.Color.alpha(bmp[col, row]) > 32) {
-                        if (top == -1) top = row
-                        bottom = row
-                        if (left == -1 || col < left) left = col
-                        if (right == -1 || col > right) right = col
-                    }
-                }
-            }
-            if (top in 0..bottom && right >= left) {
-                PersonBounds(
-                    top = top.toFloat() / bmp.height,
-                    bottom = bottom.toFloat() / bmp.height,
-                    centerX = (left + right) / 2f / bmp.width,
-                )
-            } else null
-        }
-        personBoundsState.value = bounds
+        segmentedState.value = cut?.bitmap?.asImageBitmap()
+        personBoundsState.value = cut?.let { PersonBounds(it.top, it.bottom, it.centerX) }
+        readyState.value = true
     }
 
     // Spring-animate overflow in once person bounds are known, reset when they're gone
@@ -832,8 +819,9 @@ private fun ConversationAvatar(
     // Canvas is expanded upward by headOverflowPx so the overflow zone sits at positive y.
     // The morph shape is translated down by headOverflowPx to stay at the original card position.
     // Reporting canvasSizePx as the layout height keeps sibling elements (card padding) stable.
+    Box(modifier = modifier.width(56.dp), contentAlignment = Alignment.Center) {
     androidx.compose.foundation.Canvas(
-        modifier = modifier
+        modifier = Modifier
             .width(56.dp)
             .layout { measurable, constraints ->
                 val totalH = (canvasSizePx + headOverflowPx).toInt().coerceAtLeast(canvasSizePx.toInt())
@@ -856,7 +844,7 @@ private fun ConversationAvatar(
         reusedPath.asAndroidPath().transform(reusedMatrix)
 
         val bm = avatarBitmap
-        if (bm == null) {
+        if (bm == null || !ready) {
             clipPath(reusedPath) { drawRect(fallbackColor) }
             return@Canvas
         }
@@ -906,6 +894,14 @@ private fun ConversationAvatar(
                 drawImage(segBm, srcOffset, srcSize, dstOffset, dstSize)
             }
         }
+    }
+    // The photo's cut-out is being found or made (it is kept after that): morphing shapes show it.
+    if (cutoutKey != null && !ready) {
+        androidx.compose.material3.LoadingIndicator(
+            modifier = Modifier.size(34.dp),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    }
     }
 }
 

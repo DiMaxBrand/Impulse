@@ -197,7 +197,7 @@ internal fun VideoCallContent(state: IncomingCallState) {
                 val big = min(min(w / density.density * 0.8f, 320f), h / density.density * 0.4f).dp
                 MorphingCallAvatar(
                     state.avatar, state.established, state.reconnecting, Modifier.size(big),
-                    popOut = state.avatarIsPhoto,
+                    popOutKey = state.avatarKey,
                 )
                 StatusLines(state, onVideo = false, centered = true)
             }

@@ -111,7 +111,7 @@ class IncomingCallState {
     private var visibleState by mutableStateOf(false)
     private var sliderState by mutableStateOf(true)
     private var avatarState by mutableStateOf<ImageBitmap?>(null)
-    private var avatarIsPhotoState by mutableStateOf(false)
+    private var avatarKeyState by mutableStateOf<String?>(null)
     private var hintState by mutableStateOf(false)
     private var micOnState by mutableStateOf(true)
     private var audioIconState by mutableIntStateOf(R.drawable.ic_volume_up_24dp)
@@ -217,9 +217,9 @@ class IncomingCallState {
         avatarState = bitmap?.asImageBitmap()
     }
 
-    /** True when the avatar is a real photo (not a letter tile), so a person can pop out of it. */
-    fun setAvatarIsPhoto(isPhoto: Boolean) {
-        avatarIsPhotoState = isPhoto
+    /** What identifies the avatar photo, or null when it is a letter tile (no person to pop out). */
+    fun setAvatarKey(key: String?) {
+        avatarKeyState = key
     }
 
     fun setMicOn(on: Boolean) {
@@ -256,7 +256,7 @@ class IncomingCallState {
     internal val visible get() = visibleState
     internal val sliderVisible get() = sliderState
     internal val avatar get() = avatarState
-    internal val avatarIsPhoto get() = avatarIsPhotoState
+    internal val avatarKey get() = avatarKeyState
     internal val hint get() = hintState
     internal val micOn get() = micOnState
     internal val audioIcon get() = audioIconState
@@ -369,7 +369,7 @@ internal fun IncomingCallContent(state: IncomingCallState) {
             Spacer(Modifier.weight(1f))
             MorphingCallAvatar(
                 state.avatar, state.established, state.reconnecting, Modifier.size(avatarSize),
-                popOut = state.avatarIsPhoto,
+                popOutKey = state.avatarKey,
             )
             // Status line, cross-fading as the call moves through its states.
             androidx.compose.animation.AnimatedContent(
@@ -553,7 +553,7 @@ internal fun MorphingCallAvatar(
     reconnecting: Boolean,
     modifier: Modifier = Modifier,
     scale: Float = 0.76f,
-    popOut: Boolean = false,
+    popOutKey: String? = null,
 ) {
     val shapes = CALL_AVATAR_SHAPES
     val fromShape = remember { mutableStateOf(shapes[0]) }
@@ -630,55 +630,48 @@ internal fun MorphingCallAvatar(
     val matrix = remember { android.graphics.Matrix() }
     val fallback = MaterialTheme.colorScheme.primaryContainer
 
-    // The 3D pop-out of the chat list: the person is cut out of the photo, and once that is done
-    // their head springs out over the top of the shape. Only for a real photo of a person.
-    val segmented = remember { mutableStateOf<ImageBitmap?>(null) }
-    val bounds = remember { mutableStateOf<FloatArray?>(null) } // top, bottom, centerX (0..1)
-    LaunchedEffect(avatar, popOut) {
-        segmented.value = null
-        bounds.value = null
+    // The 3D pop-out of the chat list: the person is cut out of the photo (kept on disk under the
+    // photo's own key, so only a new picture has to wait), and then their head springs out over the
+    // top of the shape. Only for a real photo of a person. Until the cut-out is known the avatar
+    // shows a loading indicator instead of the photo.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val cutout = remember { mutableStateOf<AvatarSegmenter.Cutout?>(null) }
+    val cutoutDone = remember { mutableStateOf(popOutKey == null) }
+    LaunchedEffect(avatar, popOutKey) {
         val source = avatar
-        if (!popOut || source == null) return@LaunchedEffect
+        if (popOutKey == null) {
+            cutout.value = null
+            cutoutDone.value = true
+            return@LaunchedEffect
+        }
+        if (!AvatarSegmenter.isCached(context, popOutKey)) {
+            cutout.value = null
+            cutoutDone.value = false
+        }
+        if (source == null) return@LaunchedEffect
         val androidBitmap = source.asAndroidBitmap().let {
             if (it.config == android.graphics.Bitmap.Config.HARDWARE) {
                 it.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
             } else it
         }
-        val key = "call-" + System.identityHashCode(source)
-        val seg = kotlinx.coroutines.suspendCancellableCoroutine<android.graphics.Bitmap?> { cont ->
-            AvatarSegmenter.segment(androidBitmap, key) { if (cont.isActive) cont.resumeWith(Result.success(it)) }
-        } ?: return@LaunchedEffect
-        val found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            var top = -1; var bottom = -1; var left = -1; var right = -1
-            val w = seg.width
-            val pixels = IntArray(w * seg.height)
-            seg.getPixels(pixels, 0, w, 0, 0, w, seg.height)
-            for (row in 0 until seg.height) {
-                for (col in 0 until w) {
-                    if (android.graphics.Color.alpha(pixels[row * w + col]) > 32) {
-                        if (top == -1) top = row
-                        bottom = row
-                        if (left == -1 || col < left) left = col
-                        if (right == -1 || col > right) right = col
-                    }
-                }
-            }
-            if (top in 0..bottom && right >= left) {
-                floatArrayOf(top.toFloat() / seg.height, bottom.toFloat() / seg.height, (left + right) / 2f / w)
-            } else null
-        }
-        segmented.value = seg.asImageBitmap()
-        bounds.value = found
+        cutout.value = AvatarSegmenter.cutout(context, popOutKey, androidBitmap)
+        cutoutDone.value = true
+    }
+    val loading = avatar == null || !cutoutDone.value
+    val segmented = remember(cutout.value) { cutout.value?.bitmap?.asImageBitmap() }
+    val bounds = remember(cutout.value) {
+        cutout.value?.let { floatArrayOf(it.top, it.bottom, it.centerX) }
     }
     val pop = remember { Animatable(0f) }
-    LaunchedEffect(bounds.value) {
+    LaunchedEffect(bounds) {
         pop.snapTo(0f)
-        if (bounds.value != null) {
+        if (bounds != null) {
             pop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
         }
     }
 
-    Canvas(modifier = modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
         // Margin so the bounciest mid-morph bulge and the rotation never touch the canvas edge.
         val margin = (1f - scale) / 2f
         matrix.reset()
@@ -690,14 +683,14 @@ internal fun MorphingCallAvatar(
 
         var pendingPop: Triple<IntOffset, Int, IntSize>? = null
         clipPath(path) {
-            if (avatar == null) {
+            if (avatar == null || loading) {
                 drawRect(fallback)
             } else {
                 val side = min(avatar.width, avatar.height)
                 var srcX = (avatar.width - side) / 2
                 var srcY = (avatar.height - side) / 2
                 var srcSide = side
-                val pb = bounds.value
+                val pb = bounds
                 val p = pop.value
                 if (pb != null && p > 0f) {
                     // Zoom to the person (head at the top of the picture), so the head sits in the
@@ -724,7 +717,7 @@ internal fun MorphingCallAvatar(
                 pendingPop = Triple(IntOffset(srcX, srcY), srcSide, dst)
             }
         }
-        val seg = segmented.value
+        val seg = segmented
         val drawn = pendingPop
         if (seg != null && drawn != null && pop.value > 0f) {
             // The cut-out person over the top of the shape: from above the canvas down to half way
@@ -741,6 +734,13 @@ internal fun MorphingCallAvatar(
                 )
             }
         }
+    }
+    if (loading) {
+        androidx.compose.material3.LoadingIndicator(
+            modifier = Modifier.fillMaxSize(0.3f),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    }
     }
 }
 

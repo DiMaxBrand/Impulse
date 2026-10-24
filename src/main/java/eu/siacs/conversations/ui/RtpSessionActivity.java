@@ -1198,12 +1198,11 @@ public class RtpSessionActivity extends XmppActivity
                                             avatarRequested = false;
                                             return;
                                         }
-                                        final boolean isPhoto =
-                                                avatarContact.getAvatar() != null
-                                                        || avatarContact.getProfilePhoto() != null;
+                                        final String avatarKey =
+                                                AvatarSegmenter.INSTANCE.key(avatarContact);
                                         runOnUiThread(
                                                 () -> {
-                                                    incomingCallState.setAvatarIsPhoto(isPhoto);
+                                                    incomingCallState.setAvatarKey(avatarKey);
                                                     incomingCallState.setAvatar(avatar);
                                                 });
                                     })
