@@ -1774,4 +1774,8 @@
     <string name="interface_style_glass_info">Панели, меню и поле ввода — стеклянные: они размывают и преломляют то, что за ними, и растягиваются под пальцем. Выглядит богаче, но расходует больше батареи. Нужен Android 13 или новее.</string>
     <string name="interface_style_glass_unsupported">Нужен Android 13 или новее</string>
     <string name="interface_style_info">Об этом стиле</string>
+    <string name="developer_options_updated_sheet">Показать окно «обновлено»</string>
+    <string name="developer_options_updated_sheet_summary">Окно после обновления с примером текста, сколько угодно раз. В стиле жидкого стекла оно открывается каплей стекла.</string>
+    <string name="updated_sheet_preview_title">Импульс 1.15.0: пример заголовка для предпросмотра</string>
+    <string name="updated_sheet_preview_notes">**EN**\nThis is sample text for the preview of the sheet that follows an update.\n\n**RU**\nЭто пример текста для предпросмотра окна после обновления.</string>
 </resources>

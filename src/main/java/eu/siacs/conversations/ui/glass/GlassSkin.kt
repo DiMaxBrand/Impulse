@@ -24,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -203,3 +206,87 @@ fun GlassGroupRow(
     }
 }
 
+
+/**
+ * The "Impulse was updated" sheet opens with a drop of glass: it falls from the top edge onto the
+ * sheet, and where it lands the sheet's content spreads out in a circle (a ring of light running
+ * ahead of the edge), wobbling into place like a jelly. [enabled] is the glass style; without it
+ * the content is simply there.
+ */
+@Composable
+fun GlassDropReveal(enabled: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val fall = remember { Animatable(if (enabled) 0f else 1f) }
+    val spread = remember { Animatable(if (enabled) 0f else 1f) }
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(enabled) {
+        if (!enabled) return@LaunchedEffect
+        fall.animateTo(1f, tween(420, easing = androidx.compose.animation.core.CubicBezierEasing(0.5f, 0f, 0.9f, 0.6f)))
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        spread.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 55f))
+    }
+    val tint = MaterialTheme.colorScheme.primary
+    Box(modifier) {
+        Box(
+            Modifier
+                .graphicsLayer {
+                    // A little squashed while the circle is still spreading, springing past full.
+                    val s = spread.value
+                    scaleY = 0.97f + 0.03f * s
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
+                }
+                .drawWithContent {
+                    val s = spread.value
+                    if (s >= 1f && fall.value >= 1f) {
+                        drawContent()
+                    } else {
+                        val landing = Offset(size.width / 2f, 56.dp.toPx())
+                        val far = kotlin.math.hypot(size.width, size.height)
+                        val path = androidx.compose.ui.graphics.Path().apply {
+                            addOval(
+                                androidx.compose.ui.geometry.Rect(
+                                    center = landing,
+                                    radius = (s * far).coerceAtLeast(0f),
+                                ),
+                            )
+                        }
+                        clipPath(path) { this@drawWithContent.drawContent() }
+                    }
+                },
+        ) { content() }
+        if (fall.value < 1f || spread.value < 0.9f) {
+            Canvas(Modifier.fillMaxSize()) {
+                val landingY = 56.dp.toPx()
+                val x = size.width / 2f
+                val y = -20.dp.toPx() + (landingY + 20.dp.toPx()) * fall.value
+                val s = spread.value
+                // The drop: a bead of glass, stretched along its fall, with a bright edge.
+                val r = (13.dp.toPx() * (1f + 0.35f * s)) * (1f - 0.6f * s.coerceIn(0f, 1f)).coerceAtLeast(0.2f)
+                val stretch = 1f + 0.5f * (1f - fall.value)
+                val alpha = (1f - s * 1.2f).coerceIn(0f, 1f)
+                withTransform({
+                    scale(1f, stretch, Offset(x, y))
+                }) {
+                    drawCircle(
+                        Brush.radialGradient(
+                            listOf(Color.White.copy(alpha = 0.9f * alpha), tint.copy(alpha = 0.45f * alpha), Color.Transparent),
+                            center = Offset(x - r * 0.25f, y - r * 0.3f),
+                            radius = r * 1.5f,
+                        ),
+                        radius = r * 1.4f, center = Offset(x, y),
+                    )
+                    drawCircle(Color.White.copy(alpha = 0.7f * alpha), radius = r * 0.28f, center = Offset(x - r * 0.35f, y - r * 0.4f))
+                }
+                // The ring of light at the edge of the spreading circle.
+                if (s > 0.01f && s < 1f) {
+                    val far = kotlin.math.hypot(size.width, size.height)
+                    drawCircle(
+                        Color.White.copy(alpha = 0.35f * (1f - s)),
+                        radius = s * far,
+                        center = Offset(x, landingY),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx()),
+                    )
+                }
+            }
+        }
+    }
+}

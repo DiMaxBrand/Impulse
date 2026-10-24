@@ -16,6 +16,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -79,6 +80,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -1021,33 +1023,31 @@ internal fun StatusSection(
 
         SharedTransitionLayout {
             AnimatedContent(
-                targetState = state.downloadPhase,
+                targetState = state.downloadPhase.visual(),
                 transitionSpec = {
-                    when {
-                        // instant swap between identical circles — no animation needed
-                        initialState == DownloadPhase.DOWNLOADING && targetState == DownloadPhase.PROCESSING ->
-                            EnterTransition.None togetherWith ExitTransition.None
-                        // sharedBounds drives these transitions
-                        (initialState == DownloadPhase.NO_WIFI_PENDING && targetState == DownloadPhase.DOWNLOADING) ||
-                        (initialState == DownloadPhase.PROCESSING && targetState == DownloadPhase.READY) ->
-                            EnterTransition.None togetherWith ExitTransition.None using
-                                SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
-                        else -> {
-                            val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
-                            val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
-                            (fadeIn(effects) + scaleIn(spatial, initialScale = 0.88f)) togetherWith
-                                (fadeOut(effects) + scaleOut(spatial, targetScale = 0.88f)) using
-                                SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
-                        }
+                    if (initialState == SheetVisual.NONE || targetState == SheetVisual.NONE) {
+                        // Nothing before or after: the piece comes in or goes away.
+                        val spatial = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
+                        val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
+                        (fadeIn(effects) + scaleIn(spatial, initialScale = 0.88f)) togetherWith
+                            (fadeOut(effects) + scaleOut(spatial, targetScale = 0.88f)) using
+                            SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
+                    } else {
+                        // Everything else is one piece changing shape: the container morphs (every
+                        // state shares the "sheet_action" bounds), and only what is inside it
+                        // changes, so nothing slides away and something else slides in.
+                        EnterTransition.None togetherWith ExitTransition.None using
+                            SizeTransform(clip = false) { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
                     }
                 },
                 label = "download_phase",
-            ) outerAC@{ phase ->
+            ) outerAC@{ visual ->
                 val sharedSpring = BoundsTransform { _, _ -> spring<androidx.compose.ui.geometry.Rect>(stiffness = 380f, dampingRatio = 0.8f) }
-                when (phase) {
-                    DownloadPhase.IDLE -> Box(Modifier.fillMaxWidth())
+                val fades = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
+                when (visual) {
+                    SheetVisual.NONE -> Box(Modifier.fillMaxWidth())
 
-                    DownloadPhase.NO_WIFI_PENDING -> {
+                    SheetVisual.DOWNLOAD -> {
                         Button(
                             onClick = onDownload,
                             shapes = ButtonDefaults.shapes(),
@@ -1055,8 +1055,10 @@ internal fun StatusSection(
                                 .fillMaxWidth()
                                 .height(64.dp)
                                 .sharedBounds(
-                                    rememberSharedContentState("download_circle"),
+                                    rememberSharedContentState("sheet_action"),
                                     animatedVisibilityScope = this@outerAC,
+                                    enter = fadeIn(fades),
+                                    exit = fadeOut(fades),
                                     boundsTransform = sharedSpring,
                                 ),
                             contentPadding = PaddingValues(horizontal = 24.dp),
@@ -1074,41 +1076,46 @@ internal fun StatusSection(
                         }
                     }
 
-                    DownloadPhase.DOWNLOADING -> {
+                    // Downloading and preparing are one circle: the ring that has just filled up
+                    // closes into an arc and starts to turn, in the same piece.
+                    SheetVisual.RING -> {
                         DownloadingCircle(
                             progress = state.downloadProgress,
+                            processing = state.downloadPhase == DownloadPhase.PROCESSING,
                             cancelConfirm = state.cancelConfirmVisible,
                             onTap = onDownloadCircleTapped,
                             onStop = onStop,
                             onContinue = onContinue,
                             modifier = Modifier.sharedBounds(
-                                rememberSharedContentState("download_circle"),
+                                rememberSharedContentState("sheet_action"),
                                 animatedVisibilityScope = this@outerAC,
+                                enter = fadeIn(fades),
+                                exit = fadeOut(fades),
                                 boundsTransform = sharedSpring,
                             ),
                         )
                     }
 
-                    DownloadPhase.PROCESSING -> {
-                        ProcessingCircle(
-                            modifier = Modifier.sharedBounds(
-                                rememberSharedContentState("ready_expand"),
-                                animatedVisibilityScope = this@outerAC,
-                                boundsTransform = sharedSpring,
-                            ),
-                        )
-                    }
+                    SheetVisual.CANCELING -> CancelingCircle(
+                        Modifier.sharedBounds(
+                            rememberSharedContentState("sheet_action"),
+                            animatedVisibilityScope = this@outerAC,
+                            enter = fadeIn(fades),
+                            exit = fadeOut(fades),
+                            boundsTransform = sharedSpring,
+                        ),
+                    )
 
-                    DownloadPhase.CANCELING -> CancelingCircle()
-
-                    DownloadPhase.READY -> {
+                    SheetVisual.READY -> {
                         val needsCard = !state.canInstallDirectly
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .sharedBounds(
-                                    rememberSharedContentState("ready_expand"),
+                                    rememberSharedContentState("sheet_action"),
                                     animatedVisibilityScope = this@outerAC,
+                                    enter = fadeIn(fades),
+                                    exit = fadeOut(fades),
                                     boundsTransform = sharedSpring,
                                 ),
                         ) {
@@ -1162,12 +1169,24 @@ internal fun StatusSection(
     }
 }
 
+/** What the action area of the update sheet shows: states that are the same shape of thing share one. */
+private enum class SheetVisual { NONE, DOWNLOAD, RING, CANCELING, READY }
+
+private fun DownloadPhase.visual(): SheetVisual = when (this) {
+    DownloadPhase.IDLE -> SheetVisual.NONE
+    DownloadPhase.NO_WIFI_PENDING -> SheetVisual.DOWNLOAD
+    DownloadPhase.DOWNLOADING, DownloadPhase.PROCESSING -> SheetVisual.RING
+    DownloadPhase.CANCELING -> SheetVisual.CANCELING
+    DownloadPhase.READY -> SheetVisual.READY
+}
+
 // ─── Download/processing/canceling circles ────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun DownloadingCircle(
     progress: Float,
+    processing: Boolean,
     cancelConfirm: Boolean,
     onTap: () -> Unit,
     onStop: () -> Unit,
@@ -1181,10 +1200,15 @@ private fun DownloadingCircle(
     val amplitudePx = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
 
     val animatedProgress by animateFloatAsState(
-        targetValue = progress,
+        // Once the download is done and the update is being prepared, the ring is full (it then
+        // closes into the turning arc, see SeamlessWavyRing).
+        targetValue = if (processing) 1f else progress,
         animationSpec = spring(stiffness = 80f, dampingRatio = 1.0f),
         label = "download_progress",
     )
+    var showAlmostDone by remember { mutableStateOf(false) }
+    // Stop/continue only while downloading: preparing cannot be cancelled.
+    val confirming = cancelConfirm && !processing
     val stopFraction by animateFloatAsState(
         targetValue = (-swipeDelta.value / 80f).coerceIn(0f, 1f),
         animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
@@ -1192,7 +1216,7 @@ private fun DownloadingCircle(
     )
     // Pill expansion is driven entirely by cancelConfirm — no expansion on drag alone
     val expansionFraction by animateFloatAsState(
-        targetValue = if (cancelConfirm) 1f else 0f,
+        targetValue = if (confirming) 1f else 0f,
         animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
         label = "pill_expansion",
     )
@@ -1210,6 +1234,7 @@ private fun DownloadingCircle(
     val effects = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
     val spatialSlide = spring<IntOffset>(stiffness = 380f, dampingRatio = 0.8f)
 
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val pillWidth = lerpDp(64.dp, maxWidth, expansionFraction)
 
@@ -1217,13 +1242,14 @@ private fun DownloadingCircle(
             Surface(
                 shape = RoundedCornerShape(32.dp),
                 color = circleColor,
-                onClick = onTap,
+                // Preparing: a tap says it is nearly done; downloading: it asks to stop.
+                onClick = if (processing) { { showAlmostDone = true } } else onTap,
                 modifier = modifier
                     .width(pillWidth)
                     .height(64.dp)
                     // Drag is only active after the pill is revealed (cancelConfirm = true)
-                    .pointerInput(cancelConfirm) {
-                        if (cancelConfirm) {
+                    .pointerInput(confirming) {
+                        if (confirming) {
                             detectHorizontalDragGestures(
                                 onDragEnd = {
                                     scope.launch {
@@ -1263,8 +1289,8 @@ private fun DownloadingCircle(
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     // Stop button — left; hidden while collapsing toward Continue
-                    AnimatedVisibility(
-                        visible = cancelConfirm && collapsingToward != SwipeAction.CONTINUE,
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = confirming && collapsingToward != SwipeAction.CONTINUE,
                         enter = fadeIn(effects) + slideInHorizontally(spatialSlide) { -it / 2 },
                         exit = fadeOut(effects) + slideOutHorizontally(spatialSlide) { -it / 2 },
                         modifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
@@ -1283,18 +1309,19 @@ private fun DownloadingCircle(
                             .offset { IntOffset(swipeDelta.value.toInt(), 0) },
                         contentAlignment = Alignment.Center,
                     ) {
-                        CircularWavyProgressIndicator(
-                            progress = { animatedProgress },
-                            modifier = Modifier.size(40.dp),
+                        SeamlessWavyRing(
+                            progress = animatedProgress,
+                            spinning = processing,
                             color = contentColor,
                             trackColor = contentColor.copy(alpha = 0.22f),
-                            amplitude = { amplitudePx },
+                            amplitudePx = amplitudePx,
+                            modifier = Modifier.size(40.dp),
                         )
                     }
 
                     // Continue button — right; hidden while collapsing toward Stop
-                    AnimatedVisibility(
-                        visible = cancelConfirm && collapsingToward != SwipeAction.STOP,
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = confirming && collapsingToward != SwipeAction.STOP,
                         enter = fadeIn(effects) + slideInHorizontally(spatialSlide) { it / 2 },
                         exit = fadeOut(effects) + slideOutHorizontally(spatialSlide) { it / 2 },
                         modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
@@ -1309,30 +1336,7 @@ private fun DownloadingCircle(
             }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
-@Composable
-private fun ProcessingCircle(modifier: Modifier = Modifier) {
-    var showAlmostDone by remember { mutableStateOf(false) }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            onClick = { showAlmostDone = true },
-            modifier = modifier.size(64.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                val amplitudePx = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
-                CircularWavyProgressIndicator(
-                    modifier = Modifier.size(40.dp),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.22f),
-                    amplitude = amplitudePx,
-                )
-            }
-        }
-        AnimatedVisibility(visible = showAlmostDone) {
+        AnimatedVisibility(visible = showAlmostDone && processing) {
             LaunchedEffect(Unit) {
                 kotlinx.coroutines.delay(2000)
                 showAlmostDone = false
@@ -1347,13 +1351,73 @@ private fun ProcessingCircle(modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * The ring of the download circle, drawn here (not the stock wavy indicator) so that the step from
+ * "downloading" to "preparing" is one continuous motion: the ring that has filled up closes into a
+ * short arc and starts turning, instead of one indicator being swapped for another. While
+ * downloading it is a determinate wavy ring; once [spinning] it eases from the full circle into a
+ * third of one that turns, the wave travelling along it all the while.
+ */
+@Composable
+private fun SeamlessWavyRing(
+    progress: Float,
+    spinning: Boolean,
+    color: Color,
+    trackColor: Color,
+    amplitudePx: Float,
+    modifier: Modifier = Modifier,
+) {
+    val sweep = remember { Animatable(progress.coerceIn(0f, 1f)) }
+    val turn = remember { Animatable(0f) }
+    val wave = remember { Animatable(0f) }
+    LaunchedEffect(spinning, progress) {
+        if (spinning) sweep.animateTo(0.3f, spring(dampingRatio = 0.75f, stiffness = 70f))
+        else sweep.snapTo(progress.coerceIn(0f, 1f))
+    }
+    LaunchedEffect(spinning) {
+        if (!spinning) {
+            turn.snapTo(0f)
+            return@LaunchedEffect
+        }
+        // Starts from rest and picks up speed over the first lap, then keeps a steady turn.
+        turn.animateTo(turn.value + 360f, tween(1700, easing = androidx.compose.animation.core.CubicBezierEasing(0.35f, 0f, 0.65f, 1f)))
+        while (true) turn.animateTo(turn.value + 360f, tween(1300, easing = androidx.compose.animation.core.LinearEasing))
+    }
+    LaunchedEffect(Unit) {
+        while (true) wave.animateTo(wave.value + 6.2831855f, tween(1600, easing = androidx.compose.animation.core.LinearEasing))
+    }
+    androidx.compose.foundation.Canvas(modifier) {
+        val stroke = 4.dp.toPx()
+        val amp = (amplitudePx * 0.4f).coerceAtLeast(1f)
+        val radius = size.minDimension / 2f - stroke / 2f - amp
+        val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+        fun wavy(startDeg: Float, sweepDeg: Float): androidx.compose.ui.graphics.Path {
+            val path = androidx.compose.ui.graphics.Path()
+            val steps = (kotlin.math.abs(sweepDeg) / 3f).toInt().coerceAtLeast(2)
+            for (i in 0..steps) {
+                val deg = startDeg + sweepDeg * i / steps
+                val rad = Math.toRadians(deg.toDouble())
+                val r = radius + amp * kotlin.math.sin(9.0 * rad + wave.value)
+                val x = center.x + (r * kotlin.math.cos(rad)).toFloat()
+                val y = center.y + (r * kotlin.math.sin(rad)).toFloat()
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            return path
+        }
+        val style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke, cap = StrokeCap.Round)
+        drawPath(wavy(-90f, 359.5f), trackColor, style = style)
+        val arc = sweep.value * 360f
+        if (arc > 1f) drawPath(wavy(-90f + turn.value, arc), color, style = style)
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun CancelingCircle() {
+private fun CancelingCircle(modifier: Modifier = Modifier) {
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.errorContainer,
-        modifier = Modifier.size(64.dp),
+        modifier = modifier.size(64.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
             CancelMorphIndicator(

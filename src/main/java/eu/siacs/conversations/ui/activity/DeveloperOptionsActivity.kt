@@ -436,6 +436,26 @@ class DeveloperOptionsActivity : ActionBarActivity() {
 
                                 Spacer(Modifier.height(6.dp))
 
+                                // The "Impulse was updated" sheet is hard to get on demand (it needs a
+                                // real update): this shows it with sample text, as often as wanted.
+                                ExpressiveGroupRow(GroupPosition.SINGLE) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_updated_sheet))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_updated_sheet_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            eu.siacs.conversations.ui.UpdatedSheetFragment.preview()
+                                                .show(supportFragmentManager, eu.siacs.conversations.ui.UpdatedSheetFragment.TAG)
+                                        },
+                                    )
+                                }
+
+                                Spacer(Modifier.height(6.dp))
+
                                 ExpressiveGroupRow(GroupPosition.SINGLE) {
                                     ListItem(
                                         headlineContent = {

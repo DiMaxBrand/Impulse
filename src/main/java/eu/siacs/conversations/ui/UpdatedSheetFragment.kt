@@ -43,12 +43,19 @@ class UpdatedSheetFragment : BottomSheetDialogFragment() {
         savedInstanceState: Bundle?,
     ): View {
         prefs = UpdatePreferences(requireContext())
-        val title = prefs.justUpdatedTitle
-        val notes = prefs.justUpdatedNotes
+        // The preview (Developer options) shows sample text and leaves the real "just updated"
+        // record alone.
+        val preview = arguments?.getBoolean(ARG_PREVIEW, false) == true
+        val title = if (preview) getString(R.string.updated_sheet_preview_title) else prefs.justUpdatedTitle
+        val notes = if (preview) getString(R.string.updated_sheet_preview_notes) else prefs.justUpdatedNotes
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 ImpulseExpressiveTheme {
+                    // Glass style: the sheet opens with a drop of glass that spreads into it.
+                    eu.siacs.conversations.ui.glass.GlassDropReveal(
+                        enabled = LiquidGlass.enabled(requireContext()),
+                    ) {
                     Column(
                         modifier =
                             Modifier.fillMaxWidth()
@@ -80,6 +87,7 @@ class UpdatedSheetFragment : BottomSheetDialogFragment() {
                         ReleaseNotesSection(notes)
                         androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 16.dp))
                     }
+                    }
                 }
             }
         }
@@ -87,12 +95,20 @@ class UpdatedSheetFragment : BottomSheetDialogFragment() {
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
-        // Shown once, however it was closed.
-        UpdatePreferences(requireContext()).clearJustUpdated()
+        // Shown once, however it was closed (not the preview).
+        if (arguments?.getBoolean(ARG_PREVIEW, false) != true) {
+            UpdatePreferences(requireContext()).clearJustUpdated()
+        }
     }
 
     companion object {
         const val TAG = "UpdatedSheetFragment"
+        private const val ARG_PREVIEW = "preview"
+
+        /** The sheet with sample text, for Developer options. */
+        @JvmStatic
+        fun preview(): UpdatedSheetFragment =
+            UpdatedSheetFragment().apply { arguments = Bundle().apply { putBoolean(ARG_PREVIEW, true) } }
 
         /** True when the running build is the one an update was just installed for. */
         @JvmStatic
