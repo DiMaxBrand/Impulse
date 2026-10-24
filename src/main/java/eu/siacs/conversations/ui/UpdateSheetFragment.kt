@@ -235,7 +235,10 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
                         prefs.downloadedApkPath = progress.localUri
                         prefs.activeDownloadId = -1L
                         prefs.clearPending()
-                        delay(800)
+                        // "Preparing" stays up for at least this long: the ring closing into a
+                        // turning arc and the circle opening into the Install button take about a
+                        // second between them, and cut short they cannot be seen.
+                        delay(1500)
                         uiState = uiState.copy(downloadPhase = DownloadPhase.READY)
                         break
                     }
