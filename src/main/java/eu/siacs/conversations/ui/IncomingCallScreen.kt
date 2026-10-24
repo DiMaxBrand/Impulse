@@ -617,7 +617,22 @@ internal fun MorphingCallAvatar(
     val matrix = remember { android.graphics.Matrix() }
     val fallback = MaterialTheme.colorScheme.primaryContainer
 
-    Canvas(modifier = modifier) {
+    // The avatar pops in when the call screen opens: it grows from a smaller size with a spring
+    // that overshoots a little, and fades in on the way (it used to simply be there).
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        appear.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessLow))
+    }
+
+    Canvas(
+        modifier =
+            modifier.graphicsLayer {
+                val s = 0.5f + 0.5f * appear.value
+                scaleX = s
+                scaleY = s
+                alpha = (appear.value * 2f).coerceIn(0f, 1f)
+            }
+    ) {
         // Margin so the bounciest mid-morph bulge and the rotation never touch the canvas edge.
         val margin = (1f - scale) / 2f
         matrix.reset()
