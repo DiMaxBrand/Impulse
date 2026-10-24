@@ -63,6 +63,7 @@ import androidx.compose.ui.util.lerp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.vibrancy
 import kotlin.math.max
 import kotlin.math.min
@@ -143,6 +144,9 @@ fun LiquidMorphContainer(
                         },
                         effects = {
                             if ((progressX() + progressY()) / 2f <= glassUntil) {
+                                if (style.saturation != 1f || style.contrast != 1f) {
+                                    colorControls(0f, style.contrast, style.saturation)
+                                }
                                 if (style.vibrancy) vibrancy()
                                 if (style.blur > 0.dp) blur(style.blur.toPx())
                                 glassLens(

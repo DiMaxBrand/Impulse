@@ -107,6 +107,10 @@ data class LiquidGlassStyle(
     val lensAmount: Dp = 24.dp,
     val chromaticAberration: Boolean = true,
     val vibrancy: Boolean = true,
+    /** 1 keeps the colours behind the glass as they are; less turns them paler (frosted glass). */
+    val saturation: Float = 1f,
+    /** 1 keeps the contrast of what is behind; less lets it fall back, so text behind stops competing. */
+    val contrast: Float = 1f,
 ) {
     companion object {
         /** Buttons and bubbles: clear glass with a strong rim. */
@@ -116,12 +120,25 @@ data class LiquidGlassStyle(
          * adjustment (see rememberGlassInk), not from smearing the backdrop with blur. */
         val Bar = LiquidGlassStyle()
 
-        /** Panels that hold content (a text field, a banner): the demo's glass without the colour
-         * fringes. */
-        val Panel = LiquidGlassStyle(chromaticAberration = false)
+        /** Frosted glass: a strong, clean blur of the backdrop with paler colours and less contrast,
+         * under a thin veil. The base of the panels and menus. */
+        val Frosted = LiquidGlassStyle(
+            blur = 18.dp,
+            // A veil of the theme's surface colour: what is behind loses opacity (and so its edges).
+            surfaceAlpha = 0.34f,
+            chromaticAberration = false,
+            vibrancy = false,
+            saturation = 0.68f,
+            contrast = 0.9f,
+        )
 
-        /** Menus: the demo's glass as well; the menu's size, not its blur, is what sets it apart. */
-        val Menu = LiquidGlassStyle(chromaticAberration = false)
+        /** Panels that hold content (a text field, a banner): frosted, so what lies behind cannot
+         * compete with the text on them. */
+        val Panel = Frosted.copy(blur = 14.dp, surfaceAlpha = 0.28f)
+
+        /** Menus: frosted glass. Not a smudge of the backdrop: a clean blur with the colours pale
+         * and the contrast lowered, under a veil, so lines of text behind do not show through. */
+        val Menu = Frosted
 
         /** Large surfaces that cover most of the screen: nearly solid, and cheap (a small blur and
          * the plain lens: both cost in proportion to the area). */

@@ -151,7 +151,7 @@ fun LiquidGlassButton(
                 effects = {
                     // The glass itself brightens over a bright backdrop and darkens over a dark one.
                     val level = ink.level.value
-                    colorControls(glassBrightness(level), glassContrast(level), 1f)
+                    colorControls(glassBrightness(level), glassContrast(level) * style.contrast, style.saturation)
                     if (style.vibrancy) vibrancy()
                     // Blurs out while the list flies past, refracts less while the keyboard moves
                     // (both eased, never off): see GlassPerformance.
@@ -271,7 +271,7 @@ fun LiquidGlassPanel(
                     shape = { shape },
                     effects = {
                         val level = ink.level.value
-                        colorControls(glassBrightness(level), glassContrast(level), 1f)
+                        colorControls(glassBrightness(level), glassContrast(level) * style.contrast, style.saturation)
                         if (style.vibrancy) vibrancy()
                         glassBlur(style.blur.toPx())
                         glassLensEased(style.lensHeight.toPx(), style.lensAmount.toPx(), style.chromaticAberration)
