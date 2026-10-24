@@ -1198,7 +1198,14 @@ public class RtpSessionActivity extends XmppActivity
                                             avatarRequested = false;
                                             return;
                                         }
-                                        runOnUiThread(() -> incomingCallState.setAvatar(avatar));
+                                        final boolean isPhoto =
+                                                avatarContact.getAvatar() != null
+                                                        || avatarContact.getProfilePhoto() != null;
+                                        runOnUiThread(
+                                                () -> {
+                                                    incomingCallState.setAvatarIsPhoto(isPhoto);
+                                                    incomingCallState.setAvatar(avatar);
+                                                });
                                     })
                             .start();
                 }

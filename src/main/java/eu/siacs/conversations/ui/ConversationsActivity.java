@@ -608,7 +608,8 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     public void onResume() {
         super.onResume();
         this.mActivityPaused = false;
-        // The style was changed in Settings while this screen waited behind it: start over, so every
+        // The style was changed in Settings while this screen waited behind it: start over, so
+        // every
         // screen is drawn in the new one.
         if (LiquidGlass.INSTANCE.style(this) != this.appliedStyle) {
             recreate();

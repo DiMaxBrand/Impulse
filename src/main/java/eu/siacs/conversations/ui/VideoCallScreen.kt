@@ -195,7 +195,10 @@ internal fun VideoCallContent(state: IncomingCallState) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val big = min(min(w / density.density * 0.8f, 320f), h / density.density * 0.4f).dp
-                MorphingCallAvatar(state.avatar, state.established, state.reconnecting, Modifier.size(big))
+                MorphingCallAvatar(
+                    state.avatar, state.established, state.reconnecting, Modifier.size(big),
+                    popOut = state.avatarIsPhoto,
+                )
                 StatusLines(state, onVideo = false, centered = true)
             }
         }
