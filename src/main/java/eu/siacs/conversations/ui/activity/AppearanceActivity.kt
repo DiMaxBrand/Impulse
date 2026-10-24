@@ -56,10 +56,21 @@ class AppearanceActivity : ActionBarActivity() {
         setContent {
             ImpulseExpressiveTheme {
                 var page by remember { mutableStateOf(AppearancePage.MAIN) }
+                // The screen follows the style that is chosen: glass when it is (and the phone can).
+                // [celebrate] counts the times glass was just picked: each is a sweep of light.
+                var celebrate by remember { mutableStateOf(0) }
+                val glassOn = eu.siacs.conversations.ui.LiquidGlass.supported &&
+                    settings.interfaceStyle.value == eu.siacs.conversations.ui.InterfaceStyle.GLASS.key
                 BackHandler(enabled = page == AppearancePage.BUBBLES) { page = AppearancePage.MAIN }
                 val pickImage = rememberLauncherForActivityResult(
                     ActivityResultContracts.GetContent()) { uri -> if (uri != null) importBackground(settings, uri) }
+                eu.siacs.conversations.ui.glass.GlassSkinHost(
+                    glass = glassOn,
+                    celebrate = celebrate,
+                    haptics = settings.haptics.value,
+                ) {
                 Scaffold(
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
                     topBar = {
                         TopAppBar(
                             title = {
@@ -74,6 +85,9 @@ class AppearanceActivity : ActionBarActivity() {
                                     Icon(painterResource(R.drawable.ic_arrow_back_24dp), contentDescription = null)
                                 }
                             },
+                            colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                                containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                            ),
                         )
                     },
                 ) { padding ->
@@ -94,8 +108,12 @@ class AppearanceActivity : ActionBarActivity() {
                             },
                             onScreenshotsChanged = { SettingsUtils.applyScreenshotSetting(this@AppearanceActivity) },
                             onOpenBubbles = { page = AppearancePage.BUBBLES },
+                            onStyleChosen = { picked ->
+                                if (picked == eu.siacs.conversations.ui.InterfaceStyle.GLASS) celebrate++
+                            },
                         )
                     }
+                }
                 }
             }
         }

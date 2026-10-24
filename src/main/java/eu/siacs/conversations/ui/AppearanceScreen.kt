@@ -79,6 +79,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.siacs.conversations.R
+import eu.siacs.conversations.ui.glass.LiquidSlider
+import eu.siacs.conversations.ui.glass.LiquidToggle
+import eu.siacs.conversations.ui.glass.LocalGlassSkin
 
 /** The preference store behind the Appearance screen: every key is the one the rest of the app
  * already reads (old Interface screen) or an [AppearanceState] key. */
@@ -163,6 +166,7 @@ internal fun AppearanceScreen(
     onOpenQuickReactions: () -> Unit,
     onScreenshotsChanged: () -> Unit,
     onOpenBubbles: () -> Unit,
+    onStyleChosen: (InterfaceStyle) -> Unit = {},
 ) {
     AnimatedContent(
         targetState = page,
@@ -181,6 +185,7 @@ internal fun AppearanceScreen(
             MainPage(
                 settings, dynamicAvailable, onThemeChosen, onDynamicChanged, onAccentChanged,
                 onPickBackgroundImage, onOpenQuickReactions, onScreenshotsChanged, onOpenBubbles,
+                onStyleChosen,
             )
         }
     }
@@ -206,6 +211,28 @@ private fun RowIcon(id: Int) {
     Icon(painterResource(id), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
+/** A slider that turns into the glass one (a thumb that becomes a lens when held) on a glass screen. */
+@Composable
+private fun SkinSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int = 0,
+) {
+    val skin = LocalGlassSkin.current
+    if (skin != null) {
+        LiquidSlider(
+            value = { value },
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            visibilityThreshold = (valueRange.endInclusive - valueRange.start) / 100f,
+            backdrop = skin.backdrop,
+        )
+    } else {
+        Slider(value = value, onValueChange = onValueChange, valueRange = valueRange, steps = steps)
+    }
+}
+
 @Composable
 private fun SwitchRow(
     position: GroupPosition,
@@ -221,7 +248,15 @@ private fun SwitchRow(
             leadingContent = { RowIcon(icon) },
             headlineContent = { Text(title) },
             supportingContent = summary?.let { { Text(it) } },
-            trailingContent = { Switch(checked = checked, onCheckedChange = if (enabled) onChange else null, enabled = enabled) },
+            trailingContent = {
+                val skin = LocalGlassSkin.current
+                if (skin != null && enabled) {
+                    // The glass toggle: a lens that swells when held.
+                    LiquidToggle(selected = { checked }, onSelect = onChange, backdrop = skin.backdrop)
+                } else {
+                    Switch(checked = checked, onCheckedChange = if (enabled) onChange else null, enabled = enabled)
+                }
+            },
             modifier = Modifier.clickable(enabled = enabled) { onChange(!checked) },
             colors = rowColors(),
         )
@@ -336,6 +371,7 @@ private fun MainPage(
     onOpenQuickReactions: () -> Unit,
     onScreenshotsChanged: () -> Unit,
     onOpenBubbles: () -> Unit,
+    onStyleChosen: (InterfaceStyle) -> Unit,
 ) {
     var openPicker by remember { mutableStateOf<String?>(null) }
     val scrim by animateFloatAsState(
@@ -480,6 +516,7 @@ private fun MainPage(
                 StylePickerContent(InterfaceStyle.of(s.interfaceStyle.value)) { picked ->
                     s.interfaceStyle.set(picked.key)
                     openPicker = null
+                    onStyleChosen(picked)
                 }
             }
             PickerCard("accent", openPicker == "accent", { openPicker = null }) {
@@ -792,7 +829,7 @@ private fun TextSizeCard(s: AppearanceSettings) {
                     fontWeight = FontWeight.Medium,
                 )
             }
-            Slider(
+            SkinSlider(
                 value = s.textScale.value,
                 onValueChange = { s.textScale.set((Math.round(it * 20) / 20f)) },
                 valueRange = 0.85f..1.6f,
@@ -848,7 +885,7 @@ private fun BackgroundCard(s: AppearanceSettings, onPickImage: () -> Unit) {
                         Text(stringResource(R.string.appearance_background_dim), Modifier.weight(1f))
                         Text("${s.backgroundDim.value}%", color = MaterialTheme.colorScheme.primary)
                     }
-                    Slider(
+                    SkinSlider(
                         value = s.backgroundDim.value.toFloat(),
                         onValueChange = { s.backgroundDim.set(it.toInt()) },
                         valueRange = 0f..80f,

@@ -147,6 +147,16 @@ data class LiquidGlassStyle(
          * under a veil, so lines of text behind do not show through) with a clear rim that refracts. */
         val Menu = LiquidGlassStyle(chromaticAberration = false, frost = Frosted)
 
+        /** Rows of a settings screen turned to glass: a light blur, the lens, a thin veil for the text. */
+        val Row = LiquidGlassStyle(
+            blur = 10.dp,
+            surfaceAlpha = 0.2f,
+            lensHeight = 10.dp,
+            lensAmount = 18.dp,
+            chromaticAberration = false,
+            vibrancy = false,
+        )
+
         /** Large surfaces that cover most of the screen: nearly solid, and cheap (a small blur and
          * the plain lens: both cost in proportion to the area). */
         val Sheet = LiquidGlassStyle(

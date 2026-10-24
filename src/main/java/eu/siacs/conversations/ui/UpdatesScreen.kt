@@ -1503,6 +1503,18 @@ fun ExpressiveGroupRow(
         GroupPosition.BOTTOM -> RoundedCornerShape(8.dp, 8.dp, 28.dp, 28.dp)
         GroupPosition.SINGLE -> RoundedCornerShape(28.dp)
     }
+    // On a screen that can be glass (Appearance), the row turns to glass when the style says so.
+    val skin = eu.siacs.conversations.ui.glass.LocalGlassSkin.current
+    if (skin != null) {
+        eu.siacs.conversations.ui.glass.GlassGroupRow(
+            skin = skin,
+            shape = shape,
+            materialColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            modifier = modifier,
+            content = content,
+        )
+        return
+    }
     Surface(
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
