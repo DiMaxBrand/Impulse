@@ -52,6 +52,7 @@ object SilentInstaller {
 
     /** Returns true if the session was committed (not that the install already succeeded). */
     fun install(context: Context, apk: File): Boolean {
+        UpdateTimingHistory.markInstallStart(context)
         return try {
             val installer = context.packageManager.packageInstaller
             val params =

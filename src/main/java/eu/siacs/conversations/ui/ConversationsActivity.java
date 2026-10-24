@@ -618,6 +618,9 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         // returns, so a version detected by *this* check wouldn't show until some later resume
         // without the onChecked callback re-running the same logic once that fetch completes.
         UpdateCheckHelper.checkOnLaunchIfEligible(this, this::maybeShowUpdateSheet);
+        // An install that was started before this launch has finished once the version differs: how
+        // long it took goes into the "done in about" part of the next download's estimate.
+        eu.siacs.conversations.update.UpdateTimingHistory.INSTANCE.markInstallDoneIfUpdated(this);
         if (!maybeShowUpdatedSheet()) {
             maybeShowUpdateSheet();
         }

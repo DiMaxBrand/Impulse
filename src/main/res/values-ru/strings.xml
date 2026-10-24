@@ -1757,4 +1757,13 @@
     <string name="device_prompt_done_body">%1$s больше не влияет на ваш статус. Это можно изменить в любой момент в разделе «Устройства» на экране аккаунтов.</string>
     <string name="device_prompt_pending_title">Ждём обновления</string>
     <string name="device_prompt_pending_body">%1$s нужна последняя версия Импульса, чтобы его можно было исключить. Обновите её, и это применится само. Мы пробуем 24 часа, потом запрос прекратится. Исключить устройство из статуса можно в любой момент в настройках Импульса.</string>
+    <string name="download_eta_calculating">Считаем время…</string>
+    <string name="download_eta_stalled">Ждём соединения</string>
+    <string name="download_eta_about_seconds">Осталось около %1$d с</string>
+    <string name="download_eta_about_minutes_seconds">Осталось около %1$d мин %2$d с</string>
+    <string name="download_eta_about_minutes">Осталось около %1$d мин</string>
+    <string name="download_eta_done_in">готово через %1$s</string>
+    <string name="download_duration_seconds">%1$d с</string>
+    <string name="download_duration_minutes">%1$d мин</string>
+    <string name="download_duration_hours_minutes">%1$d ч %2$d мин</string>
 </resources>

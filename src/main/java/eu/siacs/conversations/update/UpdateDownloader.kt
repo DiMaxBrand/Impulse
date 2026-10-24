@@ -112,6 +112,7 @@ object UpdateDownloader {
     }
 
     fun installApk(context: Context, filePath: String) {
+        UpdateTimingHistory.markInstallStart(context)
         val file = File(Uri.parse(filePath).path ?: filePath)
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
         val intent = Intent(Intent.ACTION_VIEW).apply {

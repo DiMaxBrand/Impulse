@@ -1691,4 +1691,13 @@
     <string name="device_prompt_done_body">%1$s no longer affects your status. You can change this at any time under Devices on the accounts screen.</string>
     <string name="device_prompt_pending_title">Waiting for it to update</string>
     <string name="device_prompt_pending_body">%1$s needs the latest Impulse before it can be left out. Update it and this will apply by itself. We keep trying for 24 hours, after that the request lapses. You can leave it out of your status at any time in Impulse settings.</string>
+    <string name="download_eta_calculating">calculating time…</string>
+    <string name="download_eta_stalled">waiting for the connection</string>
+    <string name="download_eta_about_seconds">about %1$ds left</string>
+    <string name="download_eta_about_minutes_seconds">about %1$dm %2$ds left</string>
+    <string name="download_eta_about_minutes">about %1$d min left</string>
+    <string name="download_eta_done_in">done in about %1$s</string>
+    <string name="download_duration_seconds">%1$d s</string>
+    <string name="download_duration_minutes">%1$d min</string>
+    <string name="download_duration_hours_minutes">%1$d h %2$d min</string>
 </resources>

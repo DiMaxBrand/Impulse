@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import eu.siacs.conversations.update.DownloadEtaTracker
+import eu.siacs.conversations.update.UpdateTimingHistory
 import eu.siacs.conversations.update.UpdateChecker
 import eu.siacs.conversations.update.UpdateDownloader
 import eu.siacs.conversations.update.UpdateInfo
@@ -178,7 +179,10 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
         val trackedVersion = prefs.pendingUpdateVersion
         pollJob?.cancel()
         pollJob = lifecycleScope.launch {
-            val etaTracker = DownloadEtaTracker()
+            // The first guess comes from what earlier downloads on this kind of network did.
+            val etaTracker = DownloadEtaTracker(UpdateTimingHistory.speedPrior(requireContext()))
+            val installSeconds = UpdateTimingHistory.installSeconds(requireContext())
+            var lastBytes = 0L
             while (true) {
                 // activeDownloadId no longer pointing at this id has two different causes, not
                 // one: a genuinely different download superseded this one (e.g. Check Now from
@@ -208,7 +212,8 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
                             totalBytes = progress.totalBytes,
                             activelyRunning = progress.statusText == null,
                         )
-                        val speedText = sampled?.let { (bps, eta) -> formatSpeedAndEta(requireContext(), bps, eta) }
+                        lastBytes = progress.downloadedBytes
+                        val speedText = sampled?.let { formatSpeedAndEta(requireContext(), it, installSeconds) }
                         uiState = uiState.copy(
                             downloadPhase = DownloadPhase.DOWNLOADING,
                             downloadProgress = progress.fraction,
@@ -217,6 +222,10 @@ class UpdateSheetFragment : BottomSheetDialogFragment() {
                         )
                     }
                     is UpdateDownloader.DownloadProgress.Complete -> {
+                        // What this download managed becomes the first guess for the next one.
+                        etaTracker.averageBps(SystemClock.elapsedRealtime(), lastBytes)?.let {
+                            UpdateTimingHistory.recordSpeed(requireContext(), it)
+                        }
                         uiState = uiState.copy(
                             downloadPhase = DownloadPhase.PROCESSING,
                             downloadStatusText = null,
