@@ -749,6 +749,8 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     @Override
     public void onRosterUpdate() {
         this.refreshUi();
+        // Another device of the account may just have shown up as set to silent.
+        DeviceSilentSheetFragment.maybeShow(this);
     }
 
     @Override

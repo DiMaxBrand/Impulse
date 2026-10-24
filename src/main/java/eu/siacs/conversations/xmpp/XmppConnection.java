@@ -2385,6 +2385,7 @@ public class XmppConnection implements Runnable {
         if (messageArchiveManager.hasFeature()) {
             messageArchiveManager.catchup();
         }
+        getManager(eu.siacs.conversations.xmpp.manager.DevicesManager.class).sync();
     }
 
     private void processStreamError(final StreamError streamError) throws IOException {

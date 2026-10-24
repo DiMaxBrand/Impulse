@@ -342,6 +342,11 @@ class PresenceManager(private val service: XmppConnectionService, connection: Xm
     }
 
     private fun getTargetPresence(): Presence.Availability {
+        // Left out of the account's status (see DevicesManager): never "on silent" or the like, and
+        // "extended away" never beats a device that is in use.
+        if (getManager(DevicesManager::class.java).isThisDeviceExcluded()) {
+            return Presence.Availability.XA
+        }
         val device = Device(context)
         val isAway =
             (appSettings.isAwayWhenScreenLocked() && device.isScreenLocked()) ||

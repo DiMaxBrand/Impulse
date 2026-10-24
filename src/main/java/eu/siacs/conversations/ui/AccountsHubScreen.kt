@@ -236,6 +236,7 @@ internal fun AccountsHubScreen(
                     actions = actions,
                 )
             }
+            item { DevicesCards(accounts, revision) }
             item { SettingsCard(settings) }
             item { Spacer(Modifier.height(24.dp)) }
         }

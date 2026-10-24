@@ -196,6 +196,10 @@ class PubSubManager(context: Context, connection: XmppConnection) :
             getManager(BirthdayManager::class.java).handleItems(from, items)
             return
         }
+        if (connection.fromAccount(message) && Namespace.DEVICES == node) {
+            getManager(DevicesManager::class.java).handleItems(items)
+            return
+        }
         if (isFromBare && Namespace.AXOLOTL_DEVICE_LIST == node) {
             getManager(AxolotlManager::class.java).handleItems(from, items)
         }

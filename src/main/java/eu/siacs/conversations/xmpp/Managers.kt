@@ -42,6 +42,7 @@ import eu.siacs.conversations.xmpp.manager.RegistrationManager
 import eu.siacs.conversations.xmpp.manager.RosterManager
 import eu.siacs.conversations.xmpp.manager.StanzaIdManager
 import eu.siacs.conversations.xmpp.manager.StreamHostManager
+import eu.siacs.conversations.xmpp.manager.DevicesManager
 import eu.siacs.conversations.xmpp.manager.SupportCommandManager
 import eu.siacs.conversations.xmpp.manager.UnifiedPushManager
 import eu.siacs.conversations.xmpp.manager.VCardManager
@@ -82,6 +83,7 @@ object Managers {
             .put(OfflineMessagesManager::class.java, OfflineMessagesManager(context, connection))
             .put(PepManager::class.java, PepManager(context, connection))
             .put(PingManager::class.java, PingManager(context, connection))
+            .put(DevicesManager::class.java, DevicesManager(context, connection))
             .put(PresenceManager::class.java, PresenceManager(context, connection))
             .put(PrivateStorageManager::class.java, PrivateStorageManager(context, connection))
             .put(PubSubManager::class.java, PubSubManager(context, connection))
