@@ -79,6 +79,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.siacs.conversations.R
+import androidx.compose.ui.input.pointer.pointerInput
+import eu.siacs.conversations.ui.glass.LocalGlassHost
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.combinedClickable
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.LiquidGlassButton
 import eu.siacs.conversations.ui.glass.LiquidBottomTabs
@@ -385,6 +391,12 @@ private fun MainPage(
     onOpenLab: () -> Unit,
 ) {
     var openPicker by remember { mutableStateOf<String?>(null) }
+    // The style picker's Easter egg (see StyleEgg): long-press "Liquid glass".
+    val egg = remember { StyleEgg() }
+    val glassHost = LocalGlassHost.current
+    val haptic = LocalHapticFeedback.current
+    var eggRun by remember { mutableIntStateOf(0) }
+    LaunchedEffect(eggRun) { if (eggRun > 0) egg.play(glassHost, haptic) }
     val scrim by animateFloatAsState(
         targetValue = if (openPicker != null) 0.32f else 0f,
         animationSpec = spring(stiffness = 1600f, dampingRatio = 1.0f),
@@ -538,12 +550,17 @@ private fun MainPage(
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim)))
             }
 
-            PickerCard("style", openPicker == "style", { openPicker = null }) {
-                StylePickerContent(InterfaceStyle.of(s.interfaceStyle.value)) { picked ->
+            StyleCard(egg, glassHost, openPicker == "style", { openPicker = null }) {
+              androidx.compose.runtime.CompositionLocalProvider(LocalEggFrac provides { egg.frac.value }) {
+                StylePickerContent(
+                    current = InterfaceStyle.of(s.interfaceStyle.value),
+                    onEgg = { eggRun++ },
+                ) { picked ->
                     s.interfaceStyle.set(picked.key)
                     openPicker = null
                     onStyleChosen(picked)
                 }
+              }
             }
             PickerCard("accent", openPicker == "accent", { openPicker = null }) {
                 AccentPickerContent(s.accentSeed.value) { seed ->
@@ -580,7 +597,7 @@ private fun MainPage(
 
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun StylePickerContent(current: InterfaceStyle, onPick: (InterfaceStyle) -> Unit) {
+private fun StylePickerContent(current: InterfaceStyle, onEgg: () -> Unit, onPick: (InterfaceStyle) -> Unit) {
     var info by remember { mutableStateOf<InterfaceStyle?>(null) }
     BackHandler(enabled = info != null) { info = null }
     // Inner SharedTransitionLayout: the options list <-> an option's info page, as on the update
@@ -595,7 +612,7 @@ private fun StylePickerContent(current: InterfaceStyle, onPick: (InterfaceStyle)
             label = "style_picker_content",
         ) { style ->
             if (style == null) {
-                StyleList(current, onPick, onInfo = { info = it }, animatedContentScope = this)
+                StyleList(current, onPick, onInfo = { info = it }, onEgg = onEgg, animatedContentScope = this)
             } else {
                 StyleInfoPage(style, onBack = { info = null }, animatedContentScope = this)
             }
@@ -609,6 +626,7 @@ private fun SharedTransitionScope.StyleList(
     current: InterfaceStyle,
     onPick: (InterfaceStyle) -> Unit,
     onInfo: (InterfaceStyle) -> Unit,
+    onEgg: () -> Unit,
     animatedContentScope: AnimatedContentScope,
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -642,7 +660,11 @@ private fun SharedTransitionScope.StyleList(
             // Each row's surface is the source of its own row -> info container transform.
             Surface(
                 shape = rowShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = androidx.compose.ui.graphics.lerp(
+                    MaterialTheme.colorScheme.surfaceContainerHighest,
+                    Color.Transparent,
+                    LocalEggFrac.current().coerceIn(0f, 1f),
+                ),
                 modifier = Modifier
                     .padding(horizontal = 12.dp)
                     .fillMaxWidth()
@@ -676,7 +698,12 @@ private fun SharedTransitionScope.StyleList(
                             )
                         }
                     },
-                    modifier = Modifier.clickable(enabled = available) { onPick(style) },
+                    // Long-press on "Liquid glass" is the Easter egg.
+                    modifier = Modifier.combinedClickable(
+                        enabled = available,
+                        onClick = { onPick(style) },
+                        onLongClick = if (style == InterfaceStyle.GLASS) onEgg else null,
+                    ),
                     colors = rowColors(),
                 )
             }
@@ -732,6 +759,10 @@ private fun SharedTransitionScope.StyleInfoPage(
                 Spacer(Modifier.height(16.dp))
                 // The real components, live: touch them.
                 GlassPreview()
+            } else if (style == InterfaceStyle.MATERIAL) {
+                Spacer(Modifier.height(16.dp))
+                // What makes it Expressive: shapes that morph under the finger, motion that springs.
+                ExpressivePreview()
             }
             Spacer(Modifier.height(16.dp))
             // A static shape, not the animated press-morph: this button first composes while its
@@ -1030,6 +1061,96 @@ private fun BubblesPage(s: AppearanceSettings) {
     }
 }
 
+
+/**
+ * The style picker's card: [PickerCard], but with the card drawn by [EggCard] so it can turn into
+ * glass; the overlay also follows the finger for the egg. While the egg runs, tapping outside does
+ * not close it.
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun SharedTransitionScope.StyleCard(
+    egg: StyleEgg,
+    host: eu.siacs.conversations.ui.glass.GlassHost?,
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    AnimatedVisibility(visible = visible, enter = EnterTransition.None, exit = ExitTransition.None) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                // Where the finger is, in coordinates that do not move with the card.
+                .pointerInput(egg) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                            egg.finger = event.changes.firstOrNull { it.pressed }?.position
+                        }
+                    }
+                }
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                    if (!egg.running) onDismiss()
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            EggCard(
+                egg = egg,
+                host = host,
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .fillMaxWidth()
+                    .sharedBounds(
+                        rememberSharedContentState("style"),
+                        animatedVisibilityScope = this@AnimatedVisibility,
+                        enter = fadeIn(quickFade),
+                        exit = fadeOut(quickFade),
+                        boundsTransform = springBounds,
+                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    )
+                    .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {},
+                content = content,
+            )
+        }
+    }
+}
+
+/** The Expressive parts of Material 3, live: shapes that change under the finger, a wavy bar, a loader. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ExpressivePreview() {
+    var presses by remember { mutableIntStateOf(0) }
+    val progress = remember { androidx.compose.animation.core.Animatable(0.2f) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            progress.animateTo(0.9f, androidx.compose.animation.core.tween(2400))
+            progress.animateTo(0.15f, androidx.compose.animation.core.tween(2400))
+        }
+    }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = { presses++ }, shapes = ButtonDefaults.shapes()) {
+                Text(stringResource(R.string.interface_style_try))
+            }
+            FilledTonalButton(onClick = { presses++ }, shapes = ButtonDefaults.shapes()) {
+                Text(presses.toString())
+            }
+            androidx.compose.material3.LoadingIndicator(Modifier.size(48.dp))
+        }
+        androidx.compose.material3.LinearWavyProgressIndicator(
+            progress = { progress.value },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
 
 // ─── Glass: the live preview in the info card, and the lab ───────────────────────────────
 

@@ -59,6 +59,19 @@ class GlassSkin internal constructor(
 
 val LocalGlassSkin = staticCompositionLocalOf<GlassSkin?> { null }
 
+/**
+ * The glass backdrop of a [GlassSkinHost] screen, there even while the screen is Material (a piece
+ * of glass can be brought out over it, as in the style picker's Easter egg). [boost] fades the
+ * colour blobs in without turning the screen to glass.
+ */
+@Stable
+class GlassHost internal constructor(
+    val stack: GlassStack,
+    val boost: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+)
+
+val LocalGlassHost = staticCompositionLocalOf<GlassHost?> { null }
+
 private val SweepEasing = CubicBezierEasing(0.2f, 0.0f, 0.1f, 1.0f)
 
 @Composable
@@ -74,6 +87,8 @@ fun GlassSkinHost(
     }
     val layer = rememberLayerBackdrop()
     val stack = rememberGlassStack(layer)
+    val boost = remember { Animatable(0f) }
+    val host = remember(stack) { GlassHost(stack, boost) }
     val surface = MaterialTheme.colorScheme.surface
     val a = MaterialTheme.colorScheme.primaryContainer
     val b = MaterialTheme.colorScheme.tertiaryContainer
@@ -82,7 +97,7 @@ fun GlassSkinHost(
         // What the glass shows: the screen's colour with soft colour blobs, which fade in as it turns.
         Canvas(Modifier.fillMaxSize().layerBackdrop(layer)) {
             drawRect(surface)
-            val r = reveal.value
+            val r = kotlin.math.max(reveal.value, boost.value)
             if (r > 0.001f) {
                 val w = size.width
                 val h = size.height
@@ -103,6 +118,7 @@ fun GlassSkinHost(
         val skinned = glass || reveal.value > 0.001f
         CompositionLocalProvider(
             LocalGlassSkin provides if (skinned) GlassSkin(stack, layer, reveal, celebrate) else null,
+            LocalGlassHost provides host,
         ) {
             content()
         }

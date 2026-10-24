@@ -1794,4 +1794,5 @@
     <string name="glass_lab_bar_blur">Размытие под системными панелями</string>
     <string name="glass_lab_bar_blur_summary">Размытые полосы под строкой состояния и полоской жестов</string>
     <string name="glass_lab_reset">Сбросить</string>
+    <string name="interface_style_try">Нажми</string>
 </resources>

@@ -1728,4 +1728,5 @@
     <string name="glass_lab_bar_blur">Blur under the system bars</string>
     <string name="glass_lab_bar_blur_summary">The blurred bands under the status bar and the gesture bar</string>
     <string name="glass_lab_reset">Reset</string>
+    <string name="interface_style_try">Press me</string>
 </resources>
