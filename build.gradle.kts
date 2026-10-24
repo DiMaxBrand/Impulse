@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42691
-val appVersion = "1.15.0-beta.228+2.20.0"
+val baseVersionCode = 42692
+val appVersion = "1.15.0-beta.229+2.20.0"
 
 base {
     archivesName.set("Impulse")

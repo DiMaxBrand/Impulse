@@ -111,6 +111,9 @@ data class LiquidGlassStyle(
     val saturation: Float = 1f,
     /** 1 keeps the contrast of what is behind; less lets it fall back, so text behind stops competing. */
     val contrast: Float = 1f,
+    /** Frosted middle for a clear piece (see FrostedInterior): the rim stays clear glass and refracts. */
+    val frost: LiquidGlassStyle? = null,
+    val frostRim: Dp = 12.dp,
 ) {
     companion object {
         /** Buttons and bubbles: clear glass with a strong rim. */
@@ -132,13 +135,17 @@ data class LiquidGlassStyle(
             contrast = 0.9f,
         )
 
-        /** Panels that hold content (a text field, a banner): frosted, so what lies behind cannot
-         * compete with the text on them. */
-        val Panel = Frosted.copy(blur = 14.dp, surfaceAlpha = 0.28f)
+        /** Panels that hold content (a text field, a banner): frosted in the middle, so what lies
+         * behind cannot compete with the text on them. */
+        val Panel = LiquidGlassStyle(
+            chromaticAberration = false,
+            frost = Frosted.copy(blur = 14.dp, surfaceAlpha = 0.28f),
+            frostRim = 9.dp,
+        )
 
-        /** Menus: frosted glass. Not a smudge of the backdrop: a clean blur with the colours pale
-         * and the contrast lowered, under a veil, so lines of text behind do not show through. */
-        val Menu = Frosted
+        /** Menus: frosted in the middle (a clean blur with the colours pale and the contrast lowered,
+         * under a veil, so lines of text behind do not show through) with a clear rim that refracts. */
+        val Menu = LiquidGlassStyle(chromaticAberration = false, frost = Frosted)
 
         /** Large surfaces that cover most of the screen: nearly solid, and cheap (a small blur and
          * the plain lens: both cost in proportion to the area). */

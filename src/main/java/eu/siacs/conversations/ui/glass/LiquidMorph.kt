@@ -162,7 +162,22 @@ fun LiquidMorphContainer(
                         },
                     ),
                 contentAlignment = Alignment.TopStart,
-                content = content,
+                content = {
+                    style.frost?.let { frost ->
+                        FrostedInterior(
+                            backdrop = slot.backdrop,
+                            frost = frost,
+                            rim = style.frostRim,
+                            outerCorner = { _, d ->
+                                val p = ((progressX() + progressY()) / 2f).coerceIn(0f, 1f)
+                                with(d) { lerp(cornerFrom.toPx(), cornerTo.toPx(), p) }
+                            },
+                            // A small bubble is still clear glass; the frost comes in as it opens.
+                            visible = { (((progressX() + progressY()) / 2f - 0.35f) / 0.5f).coerceIn(0f, 1f) },
+                        )
+                    }
+                    content()
+                },
             )
         },
         modifier = modifier.fillMaxSize(),

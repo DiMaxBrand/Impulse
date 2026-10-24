@@ -291,6 +291,15 @@ fun LiquidGlassPanel(
                     },
                 ),
         )
+        style.frost?.let { frost ->
+            FrostedInterior(
+                backdrop = slot.backdrop,
+                frost = frost,
+                rim = style.frostRim,
+                outerCorner = { size, density -> shape.topStart.toPx(size, density) },
+                layerBlock = layerBlock,
+            )
+        }
         GlassInkBox(
             if (clipContent) Modifier.matchParentSize().clip(shape) else Modifier.clip(shape),
             contentAlignment,
