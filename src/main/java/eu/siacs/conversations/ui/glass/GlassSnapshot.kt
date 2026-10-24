@@ -15,7 +15,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
@@ -38,6 +41,7 @@ private class SnapshotState {
     val blend = Animatable(1f)
 }
 
+private val SHADOW_MARGIN = 32.dp
 private const val CAPTURE_EVERY_MS = 330L
 private const val LIVE_BEFORE_CAPTURE_MS = 70L
 private const val BLEND_MS = 140
@@ -81,23 +85,30 @@ fun Modifier.glassSnapshot(): Modifier {
             drawContent()
             return@drawWithContent
         }
+        // Taken a little larger than the piece: its shadow and glow reach past the edge, and a
+        // picture cut off at the edge would show them as rectangles.
+        val margin = SHADOW_MARGIN.toPx()
+        val layerSize = IntSize((size.width + 2 * margin).toInt(), (size.height + 2 * margin).toInt())
         val picture = state.current
         if (picture != null && !state.capturing) {
-            val dst = IntSize(size.width.toInt(), size.height.toInt())
             val before = state.previous
             val blend = state.blend.value
-            if (before != null && blend < 1f) drawImage(before, dstSize = dst)
-            drawImage(picture, dstSize = dst, alpha = if (before != null) blend else 1f)
+            val offset = IntOffset(-margin.toInt(), -margin.toInt())
+            if (before != null && blend < 1f) drawImage(before, offset, layerSize)
+            drawImage(picture, offset, layerSize, alpha = if (before != null) blend else 1f)
         } else {
-            layer.record(IntSize(size.width.toInt(), size.height.toInt())) { this@drawWithContent.drawContent() }
-            drawLayer(layer)
+            layer.record(layerSize) {
+                translate(margin, margin) { this@drawWithContent.drawContent() }
+            }
+            translate(-margin, -margin) { drawLayer(layer) }
         }
     }
 }
 
-private fun DrawScope.drawImage(image: ImageBitmap, dstSize: IntSize, alpha: Float = 1f) {
+private fun DrawScope.drawImage(image: ImageBitmap, offset: IntOffset, dstSize: IntSize, alpha: Float = 1f) {
     drawImage(
         image = image,
+        dstOffset = offset,
         dstSize = dstSize,
         alpha = alpha,
     )

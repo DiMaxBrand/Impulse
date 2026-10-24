@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
@@ -113,6 +114,9 @@ private fun BlurBand(
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { RectangleShape },
+                highlight = null,
+                shadow = null,
+                innerShadow = null,
                 effects = { blur(radius.toPx()) },
                 onDrawSurface = { drawRect(wash.copy(alpha = washAlpha)) },
             ),
@@ -126,7 +130,45 @@ private fun BlurBand(
  * frame untouched when glass is off, and on the tablet layout.
  */
 object GlassEdgeToEdge {
-    private val APPLIED = R.id.main_fragment
+
+    private fun pad(view: View, insets: WindowInsetsCompat) {
+        val bars = insets.getInsets(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+        )
+        val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+        // Under the gesture bar too, unless the keyboard is up: then clear of the keyboard, as
+        // before. The screens leave room for the gesture bar themselves.
+        view.setPadding(bars.left, 0, bars.right, if (ime > bars.bottom) ime else 0)
+    }
+
+    /**
+     * The frame follows the keyboard frame by frame while it slides, so the screen glides up with
+     * it. (Without this the system hands over the keyboard's final height at once and the screen
+     * jumps there while the keyboard is still on its way.)
+     */
+    private class Glide(private val frame: View) :
+        WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+        var animating = false
+
+        override fun onPrepare(animation: WindowInsetsAnimationCompat) {
+            if (animation.typeMask and WindowInsetsCompat.Type.ime() != 0) animating = true
+        }
+
+        override fun onProgress(
+            insets: WindowInsetsCompat,
+            runningAnimations: MutableList<WindowInsetsAnimationCompat>,
+        ): WindowInsetsCompat {
+            if (animating) pad(frame, insets)
+            return insets
+        }
+
+        override fun onEnd(animation: WindowInsetsAnimationCompat) {
+            if (animation.typeMask and WindowInsetsCompat.Type.ime() != 0) {
+                animating = false
+                ViewCompat.getRootWindowInsets(frame)?.let { pad(frame, it) }
+            }
+        }
+    }
 
     fun apply(activity: Activity, on: Boolean) {
         val frame = activity.findViewById<View>(R.id.main_fragment) ?: return
@@ -135,14 +177,11 @@ object GlassEdgeToEdge {
         if (on && !tablet) {
             if (wasOn) return
             frame.fitsSystemWindows = false
+            val glide = Glide(frame)
+            ViewCompat.setWindowInsetsAnimationCallback(frame, glide)
             ViewCompat.setOnApplyWindowInsetsListener(frame) { view, insets ->
-                val bars = insets.getInsets(
-                    WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
-                )
-                val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-                // Under the gesture bar too, unless the keyboard is up: then clear of the keyboard,
-                // as before. The screens leave room for the gesture bar themselves.
-                view.setPadding(bars.left, 0, bars.right, if (ime > bars.bottom) ime else 0)
+                // While the keyboard slides, the animation callback sets the padding.
+                if (!glide.animating) pad(view, insets)
                 // Not consumed: the screens read the status bar inset themselves.
                 insets
             }
@@ -150,6 +189,7 @@ object GlassEdgeToEdge {
             ViewCompat.requestApplyInsets(frame)
         } else if (wasOn) {
             ViewCompat.setOnApplyWindowInsetsListener(frame, null)
+            ViewCompat.setWindowInsetsAnimationCallback(frame, null)
             frame.setPadding(0, 0, 0, 0)
             frame.fitsSystemWindows = true
             frame.setTag(R.id.main_fragment, null)
