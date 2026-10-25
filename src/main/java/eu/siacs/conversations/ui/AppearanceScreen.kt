@@ -25,6 +25,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -1305,54 +1306,91 @@ private fun FluidPrototype() {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
     )
-    ProtoSlider(GroupPosition.TOP, R.string.glass_lab_merge_connect, reach, 4f..80f, "dp") { reach = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_release, response, 300f..1500f, "ms") { response = it }
-    ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_soft, soft, 4f..48f, "dp") { soft = it }
+    // A setting that only matters when another is on is shown only then, right under its parent.
+    val mergeRows = buildList<SettingsRow> {
+        if (!mergeOff) {
+            add("glass_lab_merge_connect") { ProtoSlider(it, R.string.glass_lab_merge_connect, reach, 4f..80f, "dp") { v -> reach = v } }
+            add("glass_lab_merge_release") { ProtoSlider(it, R.string.glass_lab_merge_release, response, 300f..1500f, "ms") { v -> response = v } }
+            add("glass_lab_merge_soft") { ProtoSlider(it, R.string.glass_lab_merge_soft, soft, 4f..48f, "dp") { v -> soft = v } }
+        }
+    }
+    SettingsGroup(mergeRows)
+    val behaviour = buildList<SettingsRow> {
+        add("glass_lab_merge_nomerge") {
+            SwitchRow(
+                it, R.drawable.ic_palette_24dp,
+                stringResource(R.string.glass_lab_merge_nomerge), stringResource(R.string.glass_lab_merge_nomerge_summary),
+                mergeOff,
+            ) { v -> mergeOff = v }
+        }
+        add("glass_lab_merge_stack") {
+            SwitchRow(
+                it, R.drawable.ic_touch_app_24dp,
+                stringResource(R.string.glass_lab_merge_stack), stringResource(R.string.glass_lab_merge_stack_summary),
+                solidOn,
+            ) { v -> solidOn = v }
+        }
+        add("glass_lab_merge_walls") {
+            SwitchRow(
+                it, R.drawable.ic_touch_app_24dp,
+                stringResource(R.string.glass_lab_merge_walls), stringResource(R.string.glass_lab_merge_walls_summary),
+                walls,
+            ) { v -> walls = v }
+        }
+        add("glass_lab_merge_floor") {
+            SwitchRow(
+                it, R.drawable.ic_hourglass_top_24dp,
+                stringResource(R.string.glass_lab_merge_floor), stringResource(R.string.glass_lab_merge_floor_summary),
+                floor,
+            ) { v -> floor = v }
+        }
+        add("glass_lab_merge_gravity") {
+            SwitchRow(
+                it, R.drawable.ic_hourglass_top_24dp,
+                stringResource(R.string.glass_lab_merge_gravity), stringResource(R.string.glass_lab_merge_gravity_summary),
+                gravityOn,
+            ) { v -> gravityOn = v }
+        }
+        if (gravityOn) {
+            add("glass_lab_merge_gravity_strength") { ProtoSlider(it, R.string.glass_lab_merge_gravity_strength, gravity, 0f..4000f, "dp/s²") { v -> gravity = v } }
+            add("glass_lab_merge_tilt") {
+                SwitchRow(
+                    it, R.drawable.ic_touch_app_24dp,
+                    stringResource(R.string.glass_lab_merge_tilt), stringResource(R.string.glass_lab_merge_tilt_summary),
+                    tiltOn,
+                ) { v -> tiltOn = v }
+            }
+            if (!tiltOn) {
+                add("glass_lab_merge_gravity_angle") { ProtoSlider(it, R.string.glass_lab_merge_gravity_angle, gravityAngle, 0f..360f, "°") { v -> gravityAngle = v } }
+            }
+        }
+        // Friction and bounce act on anything that slides or falls: the floor or gravity.
+        if (floor || gravityOn) {
+            add("glass_lab_merge_friction") { ProtoSlider(it, R.string.glass_lab_merge_friction, friction, 0f..8f, "/s", decimals = 1) { v -> friction = v } }
+            add("glass_lab_merge_bounce") { ProtoSlider(it, R.string.glass_lab_merge_bounce, bounce, 0f..1.5f, "", decimals = 2) { v -> bounce = v } }
+        }
+        add("glass_lab_merge_laser") {
+            SwitchRow(
+                it, R.drawable.ic_palette_24dp,
+                stringResource(R.string.glass_lab_merge_laser), stringResource(R.string.glass_lab_merge_laser_summary),
+                laser,
+            ) { v -> laser = v }
+        }
+        if (laser) {
+            add("glass_lab_merge_laser_angle") { ProtoSlider(it, R.string.glass_lab_merge_laser_angle, laserAngle, 0f..360f, "°") { v -> laserAngle = v } }
+            add("glass_lab_merge_laser_spin") { ProtoSlider(it, R.string.glass_lab_merge_laser_spin, laserSpin, -90f..90f, "°/s") { v -> laserSpin = v } }
+            add("glass_lab_merge_index") { ProtoSlider(it, R.string.glass_lab_merge_index, glassIndex, 1f..2.5f, "", decimals = 2) { v -> glassIndex = v } }
+        }
+    }
     Spacer(Modifier.height(8.dp))
-    SwitchRow(
-        GroupPosition.TOP, R.drawable.ic_touch_app_24dp,
-        stringResource(R.string.glass_lab_merge_walls), stringResource(R.string.glass_lab_merge_walls_summary),
-        walls,
-    ) { walls = it }
-    SwitchRow(
-        GroupPosition.MIDDLE, R.drawable.ic_hourglass_top_24dp,
-        stringResource(R.string.glass_lab_merge_floor), stringResource(R.string.glass_lab_merge_floor_summary),
-        floor,
-    ) { floor = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_friction, friction, 0f..8f, "/s", decimals = 1) { friction = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_bounce, bounce, 0f..1.5f, "", decimals = 2) { bounce = it }
-    SwitchRow(
-        GroupPosition.MIDDLE, R.drawable.ic_touch_app_24dp,
-        stringResource(R.string.glass_lab_merge_stack), stringResource(R.string.glass_lab_merge_stack_summary),
-        solidOn,
-    ) { solidOn = it }
-    SwitchRow(
-        GroupPosition.MIDDLE, R.drawable.ic_palette_24dp,
-        stringResource(R.string.glass_lab_merge_nomerge), stringResource(R.string.glass_lab_merge_nomerge_summary),
-        mergeOff,
-    ) { mergeOff = it }
-    SwitchRow(
-        GroupPosition.MIDDLE, R.drawable.ic_hourglass_top_24dp,
-        stringResource(R.string.glass_lab_merge_gravity), stringResource(R.string.glass_lab_merge_gravity_summary),
-        gravityOn,
-    ) { gravityOn = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_gravity_strength, gravity, 0f..4000f, "dp/s²") { gravity = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_gravity_angle, gravityAngle, 0f..360f, "°") { gravityAngle = it }
-    SwitchRow(
-        GroupPosition.MIDDLE, R.drawable.ic_touch_app_24dp,
-        stringResource(R.string.glass_lab_merge_tilt), stringResource(R.string.glass_lab_merge_tilt_summary),
-        tiltOn,
-    ) { tiltOn = it }
-    SwitchRow(
-        GroupPosition.MIDDLE, R.drawable.ic_palette_24dp,
-        stringResource(R.string.glass_lab_merge_laser), stringResource(R.string.glass_lab_merge_laser_summary),
-        laser,
-    ) { laser = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_laser_angle, laserAngle, 0f..360f, "°") { laserAngle = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_laser_spin, laserSpin, -90f..90f, "°/s") { laserSpin = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_index, glassIndex, 1f..2.5f, "", decimals = 2) { glassIndex = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { fieldHeight = it }
-    ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { fieldWidth = it }
+    SettingsGroup(behaviour)
+    Spacer(Modifier.height(8.dp))
+    SettingsGroup(
+        listOf(
+            SettingsRow("height") { p -> ProtoSlider(p, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { v -> fieldHeight = v } },
+            SettingsRow("width") { p -> ProtoSlider(p, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { v -> fieldWidth = v } },
+        ),
+    )
     Spacer(Modifier.height(8.dp))
     Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FilledTonalButton(onClick = { fluid.add() }, enabled = fluid.pieces.size < 8, modifier = Modifier.fillMaxWidth()) {
@@ -1395,6 +1433,36 @@ private fun FluidPrototype() {
             1 -> Text("Merge", color = tint, style = MaterialTheme.typography.titleSmall)
             2 -> Icon(painterResource(R.drawable.ic_touch_app_24dp), null, tint = tint)
             else -> Icon(painterResource(R.drawable.ic_hourglass_top_24dp), null, tint = tint)
+        }
+    }
+}
+
+/** Rows that make up one rounded group: the corners follow whichever rows are showing now. */
+private class SettingsRow(val key: String, val content: @Composable (GroupPosition) -> Unit)
+
+private fun MutableList<SettingsRow>.add(key: String, content: @Composable (GroupPosition) -> Unit) {
+    add(SettingsRow(key, content))
+}
+
+@Composable
+private fun SettingsGroup(rows: List<SettingsRow>) {
+    if (rows.isEmpty()) return
+    Column(
+        modifier = Modifier.animateContentSize(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        rows.forEachIndexed { i, row ->
+            // Keyed: a row keeps its own state (a slider's value) when another appears above it.
+            androidx.compose.runtime.key(row.key) {
+            row.content(
+                when {
+                    rows.size == 1 -> GroupPosition.SINGLE
+                    i == 0 -> GroupPosition.TOP
+                    i == rows.lastIndex -> GroupPosition.BOTTOM
+                    else -> GroupPosition.MIDDLE
+                },
+            )
+            }
         }
     }
 }
