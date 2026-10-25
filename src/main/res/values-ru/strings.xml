@@ -1823,4 +1823,6 @@
     <string name="glass_lab_merge_gravity_angle">Направление гравитации (90° — вниз)</string>
     <string name="glass_lab_merge_tilt">Наклон телефона</string>
     <string name="glass_lab_merge_tilt_summary">Направление гравитации следует за тем, как вы держите телефон (нужна включённая гравитация).</string>
+    <string name="glass_lab_merge_stack">Складывать, не сливать</string>
+    <string name="glass_lab_merge_stack_summary">Фигуры твёрдые: они ложатся друг на друга, а не сливаются в одно стеклянное тело. Работает при включённой и выключенной гравитации.</string>
 </resources>

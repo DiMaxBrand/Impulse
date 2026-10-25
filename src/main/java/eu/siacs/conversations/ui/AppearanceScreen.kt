@@ -1285,6 +1285,7 @@ private fun FluidPrototype() {
     var floor by remember { mutableStateOf(false) }
     var friction by remember { mutableFloatStateOf(1.4f) }
     var bounce by remember { mutableFloatStateOf(0.45f) }
+    var stackOn by remember { mutableStateOf(false) }
     var gravityOn by remember { mutableStateOf(false) }
     var gravity by remember { mutableFloatStateOf(1200f) }
     var gravityAngle by remember { mutableFloatStateOf(90f) }
@@ -1320,6 +1321,11 @@ private fun FluidPrototype() {
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_friction, friction, 0f..8f, "/s", decimals = 1) { friction = it }
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_bounce, bounce, 0f..1.5f, "", decimals = 2) { bounce = it }
     SwitchRow(
+        GroupPosition.MIDDLE, R.drawable.ic_touch_app_24dp,
+        stringResource(R.string.glass_lab_merge_stack), stringResource(R.string.glass_lab_merge_stack_summary),
+        stackOn,
+    ) { stackOn = it }
+    SwitchRow(
         GroupPosition.MIDDLE, R.drawable.ic_hourglass_top_24dp,
         stringResource(R.string.glass_lab_merge_gravity), stringResource(R.string.glass_lab_merge_gravity_summary),
         gravityOn,
@@ -1342,15 +1348,17 @@ private fun FluidPrototype() {
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { fieldHeight = it }
     ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { fieldWidth = it }
     Spacer(Modifier.height(8.dp))
-    Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalButton(onClick = { fluid.add() }, enabled = fluid.pieces.size < 8) {
+    Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilledTonalButton(onClick = { fluid.add() }, enabled = fluid.pieces.size < 8, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.glass_lab_merge_add, fluid.pieces.size))
         }
-        OutlinedButton(onClick = { fluid.removeLast() }, enabled = fluid.pieces.size > 1) {
-            Text(stringResource(R.string.glass_lab_merge_remove))
-        }
-        OutlinedButton(onClick = { fluid.reset() }) {
-            Text(stringResource(R.string.glass_lab_reset))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { fluid.removeLast() }, enabled = fluid.pieces.size > 1, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.glass_lab_merge_remove), maxLines = 1)
+            }
+            OutlinedButton(onClick = { fluid.reset() }, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.glass_lab_reset), maxLines = 1)
+            }
         }
     }
     Spacer(Modifier.height(8.dp))
@@ -1363,6 +1371,7 @@ private fun FluidPrototype() {
         inertiaOn = floor,
         friction = friction,
         bounce = bounce,
+        stackOn = stackOn,
         gravityOn = gravityOn,
         gravity = gravity,
         gravityAngle = gravityAngle,

@@ -220,6 +220,9 @@ class GlassFluidState(private val density: Float) {
     /** How much speed is kept when a sliding piece hits an edge or a wall (1: all of it, above 1: more). */
     var bounce = 0.45f
 
+    /** Pieces are solid: they pile up on each other instead of joining into one body. */
+    var stackOn = false
+
     var gravityOn = false
     /** dp/s squared. */
     var gravity = 1200f
@@ -510,8 +513,17 @@ class GlassFluidState(private val density: Float) {
     fun step(dt: Float): Boolean {
         var moving = false
         val walls = walls()
-        if (walls.isNotEmpty()) for (p in pieces) if (!p.dragging) escape(p, walls)
-        for (p in pieces) if (advance(p, dt, walls)) moving = true
+        fun rect(q: FluidPiece) = Rect(q.pos.x, q.pos.y, q.pos.x + q.width, q.pos.y + q.height)
+        if (stackOn) {
+            // Solid pieces that start (or end up) inside one another: the later one steps out.
+            for (i in pieces.indices) if (!pieces[i].dragging) escape(pieces[i], walls + (0 until i).map { rect(pieces[it]) })
+        } else if (walls.isNotEmpty()) {
+            for (p in pieces) if (!p.dragging) escape(p, walls)
+        }
+        for (p in pieces) {
+            val obstacles = if (stackOn) walls + pieces.filter { it !== p }.map { rect(it) } else walls
+            if (advance(p, dt, obstacles)) moving = true
+        }
         if (laserOn && laserSpin != 0f) {
             laserPhase += laserSpin * dt
             moving = true
@@ -522,7 +534,7 @@ class GlassFluidState(private val density: Float) {
             val g = gap(pieces[i], pieces[j])
             gaps[pair] = g
             // The closer, the deeper: 0 at the reach, full when touching.
-            val target = 3f * softness * smooth(1f - g / reach.coerceAtLeast(1f))
+            val target = if (stackOn) 0f else 3f * softness * smooth(1f - g / reach.coerceAtLeast(1f))
             // Critically damped, the same going in and coming out: no overshoot, and it pours.
             val omega = slowOmega
             val stiffness = omega * omega
@@ -696,7 +708,7 @@ class GlassFluidState(private val density: Float) {
 
     /** How visible piece [i]'s own content is: it gives way while another piece's content is near. */
     fun contentAlpha(i: Int): Float {
-        if (i >= pieces.size) return 1f
+        if (i >= pieces.size || stackOn) return 1f
         var alpha = 1f
         for (j in 0 until min(i, pieces.size)) {
             val dist = hypot(pieces[i].centerX - pieces[j].centerX, pieces[i].centerY - pieces[j].centerY)
@@ -745,6 +757,7 @@ fun GlassFluidField(
     inertiaOn: Boolean,
     friction: Float,
     bounce: Float,
+    stackOn: Boolean,
     gravityOn: Boolean,
     gravity: Float,
     gravityAngle: Float,
@@ -766,6 +779,7 @@ fun GlassFluidField(
     state.inertiaOn = inertiaOn
     state.friction = friction
     state.bounce = bounce
+    state.stackOn = stackOn
     state.gravityOn = gravityOn
     state.gravity = gravity
     state.gravityAngle = gravityAngle
@@ -789,7 +803,7 @@ fun GlassFluidField(
             }
         }
     }
-    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, gravityOn, gravity, gravityAngle, tiltOn, laserOn, laserAngle, laserSpin, glassIndex, heightDp, widthFraction) { state.wake() }
+    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, stackOn, gravityOn, gravity, gravityAngle, tiltOn, laserOn, laserAngle, laserSpin, glassIndex, heightDp, widthFraction) { state.wake() }
 
     // The phone's tilt can be the direction of gravity.
     val context = androidx.compose.ui.platform.LocalContext.current
