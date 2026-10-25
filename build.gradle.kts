@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42725
-val appVersion = "1.15.0-beta.262+2.20.0"
+val baseVersionCode = 42726
+val appVersion = "1.15.0-beta.263+2.20.0"
 
 base {
     archivesName.set("Impulse")
@@ -198,6 +198,8 @@ dependencies {
     // Multiplatform and pulls in the JetBrains Compose runtime. Its minSdk is 21; the effects need
     // Android 12 (blur) / 13 (refraction), which the code checks at runtime.
     implementation("io.github.kyant0:backdrop:1.0.6")
+    // A real 2D physics engine for the Glass lab (rigid bodies: stacking, rotation, throwing).
+    implementation("org.jbox2d:jbox2d-library:2.2.1.1")
 
     annotationProcessor("org.immutables:value:2.12.1")
     implementation("org.immutables:value-annotations:2.12.1")

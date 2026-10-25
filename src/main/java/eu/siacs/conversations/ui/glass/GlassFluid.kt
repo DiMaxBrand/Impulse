@@ -42,7 +42,25 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import com.kyant.backdrop.backdrops.layerBackdrop
+import org.jbox2d.callbacks.ContactImpulse
+import org.jbox2d.callbacks.ContactListener
+import org.jbox2d.collision.Manifold
+import org.jbox2d.collision.WorldManifold
+import org.jbox2d.collision.shapes.CircleShape
+import org.jbox2d.collision.shapes.PolygonShape
+import org.jbox2d.common.Vec2
+import org.jbox2d.dynamics.Body
+import org.jbox2d.dynamics.BodyDef
+import org.jbox2d.dynamics.BodyType
+import org.jbox2d.dynamics.Filter
+import org.jbox2d.dynamics.FixtureDef
+import org.jbox2d.dynamics.World
+import org.jbox2d.dynamics.contacts.Contact
+import org.jbox2d.dynamics.joints.MouseJoint
+import org.jbox2d.dynamics.joints.MouseJointDef
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.effect
@@ -77,21 +95,26 @@ import kotlin.math.sqrt
  * damped spring, so it pours rather than snaps and a bridge never gets thicker while it is pulled apart.
  */
 
-private const val SHAPE_MAX = 8
+private const val SHAPE_MAX = 16
 
 private const val FLUID_SHADER = """
 uniform shader content;
 uniform float2 pad;
 uniform float count;
-uniform float4 box[8];
-uniform float rad[8];
-uniform float k[64];
+uniform float blendAny;
+uniform float4 box[16];
+uniform float rad[16];
+uniform float2 rot[16];
+uniform float k[256];
 uniform float refractionHeight;
 uniform float refractionAmount;
 uniform float rimWidth;
 
-float sdBox(float2 p, float4 b, float r) {
-    float2 q = abs(p - b.xy) - (b.zw - float2(r));
+float sdBox(float2 p, float4 b, float r, float2 cs) {
+    float2 d = p - b.xy;
+    // Into the piece's own, turned, frame.
+    float2 l = float2(cs.x * d.x + cs.y * d.y, -cs.y * d.x + cs.x * d.y);
+    float2 q = abs(l) - (b.zw - float2(r));
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
 
@@ -101,19 +124,22 @@ float smin(float a, float b, float kk) {
 }
 
 float field(float2 p) {
-    float d[8];
+    float d[16];
     float r = 1.0e6;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
         if (float(i) >= count) break;
-        d[i] = sdBox(p, box[i], rad[i]);
+        d[i] = sdBox(p, box[i], rad[i], rot[i]);
         r = min(r, d[i]);
     }
-    for (int i = 0; i < 8; i++) {
-        if (float(i) >= count) break;
-        for (int j = 0; j < 8; j++) {
-            if (j > i && float(j) < count) {
-                float kk = k[i * 8 + j];
-                if (kk > 0.001) r = min(r, smin(d[i], d[j], kk));
+    if (blendAny > 0.5) {
+        for (int i = 0; i < 16; i++) {
+            if (float(i) >= count) break;
+            for (int j = 0; j < 16; j++) {
+                if (float(j) >= count) break;
+                if (j > i) {
+                    float kk = k[i * 16 + j];
+                    if (kk > 0.001) r = min(r, smin(d[i], d[j], kk));
+                }
             }
         }
     }
@@ -164,12 +190,17 @@ class FluidPiece(val baseW: Float, val baseH: Float, val baseR: Float, x: Float,
 
     /** Where the finger wants the CENTRE of the body to be (it can be beyond a wall). */
     var target = Offset(x + baseW / 2f, y + baseH / 2f)
+    /** Turn of the body, radians (clockwise on screen); only the rigid-body engine turns pieces. */
+    var angle by mutableFloatStateOf(0f)
     var sqX by mutableFloatStateOf(0f)
     var sqY by mutableFloatStateOf(0f)
     var sqVX = 0f
     var sqVY = 0f
     var contactX = 0
     var contactY = 0
+
+    /** The body in the rigid-body world, while that engine is on. */
+    var body: Body? = null
 
     val width get() = baseW * (1f - sqX) * (1f + 0.3f * sqY)
     val height get() = baseH * (1f - sqY) * (1f + 0.3f * sqX)
@@ -178,6 +209,19 @@ class FluidPiece(val baseW: Float, val baseH: Float, val baseR: Float, x: Float,
     val top get() = pos.y
     val centerX get() = pos.x + width / 2f
     val centerY get() = pos.y + height / 2f
+}
+
+/** Signed distance from the point to the piece's body: negative inside. The body is turned by [FluidPiece.angle]. */
+internal fun pieceSd(p: FluidPiece, x: Float, y: Float): Float {
+    val dx = x - p.centerX
+    val dy = y - p.centerY
+    val c = kotlin.math.cos(p.angle)
+    val s = kotlin.math.sin(p.angle)
+    val lx = c * dx + s * dy
+    val ly = -s * dx + c * dy
+    val qx = abs(lx) - (p.width / 2f - p.radius)
+    val qy = abs(ly) - (p.height / 2f - p.radius)
+    return hypot(max(qx, 0f), max(qy, 0f)) + min(max(qx, qy), 0f) - p.radius
 }
 
 /**
@@ -267,6 +311,8 @@ class GlassFluidState(private val density: Float) {
     private fun walls(): List<Rect> = if (wallsOn) wallRects(fieldW, fieldH) else emptyList()
 
     fun reset() {
+        letGo()
+        for (p in pieces) p.body?.let { world?.destroyBody(it) }
         pieces.clear()
         nextTemplate = 0
         clearPairs()
@@ -310,9 +356,19 @@ class GlassFluidState(private val density: Float) {
             if (vsPieces && pieces.any { Rect(it.pos.x, it.pos.y, it.pos.x + it.baseW, it.pos.y + it.baseH).overlaps(r) }) return false
             return true
         }
+        // Beyond the first few anchors: a grid over the field.
+        val grid = ArrayList<Pair<Float, Float>>(anchors)
+        run {
+            var gy = 0.1f
+            while (gy <= 0.9f) {
+                var gx = 0.1f
+                while (gx <= 0.9f) { grid.add(gx to gy); gx += 0.16f }
+                gy += 0.16f
+            }
+        }
         var spot: Offset? = null
         for (strict in listOf(true, false)) {
-            for ((ax, ay) in anchors) {
+            for ((ax, ay) in grid) {
                 val x = (fw * ax - w / 2f).coerceIn(0f, max(fw - w, 0f))
                 val y = (fh * ay - h / 2f).coerceIn(0f, max(fh - h, 0f))
                 if (free(x, y, strict)) { spot = Offset(x, y); break }
@@ -329,6 +385,9 @@ class GlassFluidState(private val density: Float) {
     fun removeLast() {
         if (pieces.size <= 1) return
         clearPairsOf(pieces.size - 1)
+        val last = pieces[pieces.lastIndex]
+        if (grabbed === last) letGo()
+        last.body?.let { world?.destroyBody(it) }
         pieces.removeAt(pieces.lastIndex)
         wake()
     }
@@ -349,11 +408,7 @@ class GlassFluidState(private val density: Float) {
     private fun pairIndex(i: Int, j: Int): Int = if (i < j) i * SHAPE_MAX + j else j * SHAPE_MAX + i
 
     private fun gap(a: FluidPiece, b: FluidPiece): Float {
-        fun sd(p: FluidPiece, x: Float, y: Float): Float {
-            val qx = abs(x - p.centerX) - (p.width / 2f - p.radius)
-            val qy = abs(y - p.centerY) - (p.height / 2f - p.radius)
-            return hypot(max(qx, 0f), max(qy, 0f)) + min(max(qx, qy), 0f) - p.radius
-        }
+        fun sd(p: FluidPiece, x: Float, y: Float): Float = pieceSd(p, x, y)
         val inA = min(a.width, a.height) / 2f
         val inB = min(b.width, b.height) / 2f
         return (sd(b, a.centerX, a.centerY) - inA + sd(a, b.centerX, b.centerY) - inB) / 2f
@@ -512,7 +567,7 @@ class GlassFluidState(private val density: Float) {
     }
 
     /** One physics step; true while anything is still moving. */
-    fun step(dt: Float): Boolean {
+    private fun stepSoft(dt: Float): Boolean {
         var moving = false
         val walls = walls()
         fun rect(q: FluidPiece) = Rect(q.pos.x, q.pos.y, q.pos.x + q.width, q.pos.y + q.height)
@@ -525,6 +580,18 @@ class GlassFluidState(private val density: Float) {
         for (p in pieces) {
             val obstacles = if (solidOn) walls + pieces.filter { it !== p }.map { rect(it) } else walls
             if (advance(p, dt, obstacles)) moving = true
+        }
+        return moving
+    }
+
+    fun step(dt: Float): Boolean {
+        var moving: Boolean
+        if (rigidOn) {
+            if (!rigidWasOn) enterRigid()
+            moving = stepRigid(dt)
+        } else {
+            if (rigidWasOn) leaveRigid()
+            moving = stepSoft(dt)
         }
         if (laserOn && laserSpin != 0f) {
             laserPhase += laserSpin * dt
@@ -566,11 +633,7 @@ class GlassFluidState(private val density: Float) {
 
     class LaserSeg(val x0: Float, val y0: Float, val x1: Float, val y1: Float, val alpha: Float)
 
-    private fun sdPiece(p: FluidPiece, x: Float, y: Float): Float {
-        val qx = abs(x - p.centerX) - (p.width / 2f - p.radius)
-        val qy = abs(y - p.centerY) - (p.height / 2f - p.radius)
-        return hypot(max(qx, 0f), max(qy, 0f)) + min(max(qx, qy), 0f) - p.radius
-    }
+    private fun sdPiece(p: FluidPiece, x: Float, y: Float): Float = pieceSd(p, x, y)
 
     private val dBuf = FloatArray(SHAPE_MAX)
 
@@ -699,6 +762,328 @@ class GlassFluidState(private val density: Float) {
         return segs
     }
 
+    // ---- the rigid-body engine ---------------------------------------------------------------
+    //
+    // Real 2D physics (JBox2D): each piece is a rigid body shaped like what is drawn (a circle, or a
+    // rounded rectangle made of two boxes and four circles), so pieces knock, stack, topple, slide off
+    // each other where their curves say they should, and turn. The finger holds a piece with a spring
+    // (a mouse joint), at the touch point when the piece may turn, so a pull off-centre spins it.
+    // Squashing is only for show here: a hard hit flattens the picture a little, then it rings out.
+
+    /** Use the rigid-body engine instead of the simple one. */
+    var rigidOn = false
+    /** 0: pieces never turn; 1: stiff (round and square ones turn only when knocked); 2: free. */
+    var rotationLevel = 1
+
+    private var rigidWasOn = false
+    private var world: World? = null
+    private var ground: Body? = null
+    private val statics = ArrayList<Body>()
+    private var staticsKey = ""
+    private var settingsKey = ""
+    private var lastGravity = Offset.Zero
+    private var restDamping = 20f
+    private var accum = 0f
+    private var mouse: MouseJoint? = null
+    private var grabbed: FluidPiece? = null
+    private var anchorStart = Offset.Zero
+    private var fingerStart = Offset.Zero
+
+    private val scale get() = 100f * density
+
+    private val contactListener = object : ContactListener {
+        override fun beginContact(contact: Contact) {}
+        override fun endContact(contact: Contact) {}
+        override fun preSolve(contact: Contact, oldManifold: Manifold) {}
+        override fun postSolve(contact: Contact, impulse: ContactImpulse) {
+            var total = 0f
+            for (i in 0 until impulse.count) total += impulse.normalImpulses[i]
+            if (total <= 0f) return
+            val wm = WorldManifold()
+            contact.getWorldManifold(wm)
+            val n = wm.normal
+            for (body in arrayOf(contact.fixtureA.body, contact.fixtureB.body)) {
+                val piece = body.userData as? FluidPiece ?: continue
+                val mass = body.mass
+                if (mass <= 0f) continue
+                val hit = total / mass // m/s: how hard it was stopped
+                if (hit < HIT_MIN) continue
+                // Flatten along the body's own axis that the hit came along.
+                val local = body.getLocalVector(Vec2(n.x, n.y))
+                val kick = (hit * 100f * IMPACT).coerceAtMost(MAX_KICK)
+                if (abs(local.x) > abs(local.y)) piece.sqVX += kick else piece.sqVY += kick
+            }
+        }
+    }
+
+    private fun worldOrNull(): World? {
+        world?.let { return it }
+        return try {
+            val w = World(Vec2(0f, 0f))
+            w.setContactListener(contactListener)
+            ground = w.createBody(BodyDef())
+            world = w
+            w
+        } catch (t: Throwable) {
+            android.util.Log.e("GlassFluid", "no physics world", t)
+            null
+        }
+    }
+
+    private fun enterRigid() {
+        rigidWasOn = true
+        staticsKey = ""
+        settingsKey = ""
+        accum = 0f
+        for (p in pieces) { p.body = null; p.angle = 0f; p.vel = Offset.Zero }
+    }
+
+    private fun leaveRigid() {
+        rigidWasOn = false
+        letGo()
+        val w = world
+        if (w != null) {
+            for (p in pieces) p.body?.let { w.destroyBody(it) }
+            for (b in statics) w.destroyBody(b)
+        }
+        statics.clear()
+        staticsKey = ""
+        for (p in pieces) { p.body = null; p.angle = 0f }
+    }
+
+    private fun frictionFor(): Float = if (inertiaOn) 0.05f else 0.6f
+
+    private fun pieceFilter(f: Filter) {
+        f.categoryBits = 2
+        // Pieces always meet the field; each other only when they are solid.
+        f.maskBits = 1 or (if (solidOn) 2 else 0)
+    }
+
+    private fun addShapes(body: Body, p: FluidPiece) {
+        val hw = p.baseW / 2f / scale
+        val hh = p.baseH / 2f / scale
+        val r = min(p.baseR / scale, min(hw, hh))
+        fun fix(shape: org.jbox2d.collision.shapes.Shape) {
+            val fd = FixtureDef()
+            fd.shape = shape
+            fd.density = 1f
+            fd.friction = frictionFor()
+            fd.restitution = bounce.coerceIn(0f, 1.3f)
+            pieceFilter(fd.filter)
+            body.createFixture(fd)
+        }
+        fun circle(cx: Float, cy: Float, radius: Float) {
+            val c = CircleShape()
+            c.m_radius = radius
+            c.m_p.set(cx, cy)
+            fix(c)
+        }
+        if (abs(hw - hh) < 0.002f && r >= min(hw, hh) - 0.002f) {
+            circle(0f, 0f, hw)
+            return
+        }
+        if (hh - r > 0.003f) { val b = PolygonShape(); b.setAsBox(hw, hh - r); fix(b) }
+        if (hw - r > 0.003f) { val b = PolygonShape(); b.setAsBox(hw - r, hh); fix(b) }
+        for (sx in intArrayOf(-1, 1)) for (sy in intArrayOf(-1, 1)) circle(sx * (hw - r), sy * (hh - r), r)
+    }
+
+    private fun createBody(w: World, p: FluidPiece): Body {
+        val def = BodyDef()
+        def.type = BodyType.DYNAMIC
+        def.position.set(p.centerX / scale, p.centerY / scale)
+        def.angle = p.angle
+        def.userData = p
+        def.fixedRotation = rotationLevel == 0
+        val body = w.createBody(def)
+        addShapes(body, p)
+        return body
+    }
+
+    private fun rebuildStatics(w: World) {
+        for (b in statics) w.destroyBody(b)
+        statics.clear()
+        val fw = fieldW / scale
+        val fh = fieldH / scale
+        fun box(cx: Float, cy: Float, hx: Float, hy: Float) {
+            val def = BodyDef()
+            def.position.set(cx, cy)
+            val b = w.createBody(def)
+            val shape = PolygonShape()
+            shape.setAsBox(hx, hy)
+            val fd = FixtureDef()
+            fd.shape = shape
+            fd.friction = frictionFor()
+            fd.restitution = bounce.coerceIn(0f, 1.3f)
+            fd.filter.categoryBits = 1
+            b.createFixture(fd)
+            statics.add(b)
+        }
+        // The edges of the field: thick boxes just outside it.
+        box(-0.5f, fh / 2f, 0.5f, fh / 2f + 1f)
+        box(fw + 0.5f, fh / 2f, 0.5f, fh / 2f + 1f)
+        box(fw / 2f, -0.5f, fw / 2f + 1f, 0.5f)
+        box(fw / 2f, fh + 0.5f, fw / 2f + 1f, 0.5f)
+        if (wallsOn) {
+            for (r in wallRects(fieldW, fieldH)) {
+                box(r.center.x / scale, r.center.y / scale, r.width / 2f / scale, r.height / 2f / scale)
+            }
+        }
+    }
+
+    private fun wakeAll() {
+        for (p in pieces) p.body?.isAwake = true
+    }
+
+    private fun syncRigid(w: World) {
+        val key = "$fieldW,$fieldH,$wallsOn"
+        if (key != staticsKey) {
+            rebuildStatics(w)
+            staticsKey = key
+            // A field that got smaller: pieces outside it are put back in.
+            for (p in pieces) p.body?.let { b ->
+                val pos = b.position
+                val nx = pos.x.coerceIn(p.baseW / 2f / scale, max(fieldW - p.baseW / 2f, p.baseW / 2f) / scale)
+                val ny = pos.y.coerceIn(p.baseH / 2f / scale, max(fieldH - p.baseH / 2f, p.baseH / 2f) / scale)
+                if (nx != pos.x || ny != pos.y) b.setTransform(Vec2(nx, ny), b.angle)
+            }
+            wakeAll()
+        }
+        for (p in pieces) if (p.body == null) p.body = createBody(w, p)
+        val set = "$solidOn|$bounce|$inertiaOn|$rotationLevel|$friction|$gravityOn"
+        if (set != settingsKey) {
+            settingsKey = set
+            val damp = if (inertiaOn || gravityOn) friction.coerceAtLeast(0f) else 20f
+            restDamping = damp
+            val angDamp = when (rotationLevel) { 1 -> 6f; else -> 0.8f }
+            for (p in pieces) p.body?.let { b ->
+                // Held by the finger a piece is not slowed: only once it is let go.
+                b.linearDamping = if (p === grabbed) min(damp, 3f) else damp
+                b.angularDamping = angDamp
+                if (b.isFixedRotation != (rotationLevel == 0)) {
+                    b.isFixedRotation = rotationLevel == 0
+                    if (rotationLevel == 0) {
+                        b.setTransform(b.position, 0f)
+                        b.angularVelocity = 0f
+                        p.angle = 0f
+                    }
+                }
+                var f = b.fixtureList
+                while (f != null) {
+                    f.friction = frictionFor()
+                    f.restitution = bounce.coerceIn(0f, 1.3f)
+                    val fl = Filter()
+                    fl.set(f.filterData)
+                    pieceFilter(fl)
+                    f.filterData = fl
+                    f = f.next
+                }
+            }
+            // The field's own edges and walls follow friction and bounce too.
+            staticsKey = ""
+            wakeAll()
+        }
+        val g = gravityVec()
+        if (g != lastGravity) {
+            lastGravity = g
+            w.gravity = Vec2(g.x / scale, g.y / scale)
+            wakeAll()
+        }
+    }
+
+    private fun springSquash(p: FluidPiece, dt: Float): Boolean {
+        var left = dt
+        while (left > 0f) {
+            val h = min(left, 1f / 240f)
+            p.sqVX += (SQ_STIFFNESS * (0f - p.sqX) - SQ_DAMPING * p.sqVX) * h
+            p.sqVY += (SQ_STIFFNESS * (0f - p.sqY) - SQ_DAMPING * p.sqVY) * h
+            p.sqX = (p.sqX + p.sqVX * h).coerceIn(-0.1f, 0.7f)
+            p.sqY = (p.sqY + p.sqVY * h).coerceIn(-0.1f, 0.7f)
+            left -= h
+        }
+        val ringing = abs(p.sqX) > 0.004f || abs(p.sqY) > 0.004f || abs(p.sqVX) > 0.05f || abs(p.sqVY) > 0.05f
+        if (!ringing) { p.sqX = 0f; p.sqY = 0f; p.sqVX = 0f; p.sqVY = 0f }
+        return ringing
+    }
+
+    private fun stepRigid(dt: Float): Boolean {
+        if (fieldW <= 0f || fieldH <= 0f) return false
+        val w = worldOrNull() ?: return false
+        syncRigid(w)
+        accum += dt
+        var n = 0
+        while (accum >= FIXED_STEP && n < 6) {
+            w.step(FIXED_STEP, 10, 6)
+            accum -= FIXED_STEP
+            n++
+        }
+        if (accum > FIXED_STEP) accum = 0f
+        var busy = grabbed != null
+        for (p in pieces) {
+            val b = p.body ?: continue
+            val pos = b.position
+            if (springSquash(p, dt)) busy = true
+            p.pos = Offset(pos.x * scale - p.width / 2f, pos.y * scale - p.height / 2f)
+            if (rotationLevel != 0 && p.angle != b.angle) p.angle = b.angle
+            if (b.isAwake) busy = true
+        }
+        return busy
+    }
+
+    /** The piece under a point (the top-most), or null. */
+    fun pieceAt(p: Offset): FluidPiece? {
+        for (i in pieces.indices.reversed()) if (pieceSd(pieces[i], p.x, p.y) < 0f) return pieces[i]
+        return null
+    }
+
+    /** The finger goes down on [piece] at [at] (field pixels). */
+    fun grab(piece: FluidPiece, at: Offset) {
+        val w = world ?: return
+        val body = piece.body ?: return
+        letGo()
+        val longSide = max(piece.baseW, piece.baseH)
+        val shortSide = min(piece.baseW, piece.baseH)
+        val elongated = longSide / shortSide > 1.15f
+        // Held off-centre a piece turns; round and square ones are held by the middle when stiff.
+        val atTouch = rotationLevel == 2 || (rotationLevel == 1 && elongated)
+        val anchor = if (atTouch) at else Offset(piece.centerX, piece.centerY)
+        anchorStart = anchor
+        fingerStart = at
+        val def = MouseJointDef()
+        def.bodyA = ground
+        def.bodyB = body
+        def.target.set(anchor.x / scale, anchor.y / scale)
+        def.maxForce = body.mass * 160f
+        def.frequencyHz = 7f
+        def.dampingRatio = 0.85f
+        mouse = w.createJoint(def) as? MouseJoint
+        body.isBullet = true
+        body.isAwake = true
+        body.linearDamping = min(restDamping, 3f)
+        grabbed = piece
+        piece.dragging = true
+        wake()
+    }
+
+    fun dragTo(at: Offset) {
+        val m = mouse ?: return
+        val t = anchorStart + (at - fingerStart)
+        m.setTarget(Vec2(t.x / scale, t.y / scale))
+        grabbed?.body?.isAwake = true
+        wake()
+    }
+
+    fun letGo() {
+        mouse?.let { world?.destroyJoint(it) }
+        mouse = null
+        grabbed?.let {
+            it.dragging = false
+            it.body?.isBullet = false
+            it.body?.linearDamping = restDamping
+        }
+        grabbed = null
+        wake()
+    }
+
     /** The finger let go: it carries on sliding if the floor is slippery. */
     fun release(p: FluidPiece, velocity: Offset) {
         p.dragging = false
@@ -727,6 +1112,9 @@ class GlassFluidState(private val density: Float) {
 
     private companion object {
         const val MAX_LASER_HITS = 28
+        const val FIXED_STEP = 1f / 120f
+        const val HIT_MIN = 0.7f       // m/s: a hit softer than this (a piece resting) does not flatten anything
+        const val MAX_KICK = 14f
         const val REST_SPEED = 40f     // dp/s: a piece falling slower than this onto the floor lies there
         const val MIN_SPEED = 12f      // dp/s: slower than this a sliding piece stops
         const val MAX_SPEED = 5000f    // dp/s
@@ -759,6 +1147,8 @@ fun GlassFluidField(
     inertiaOn: Boolean,
     friction: Float,
     bounce: Float,
+    rigidOn: Boolean,
+    rotationLevel: Int,
     solidOn: Boolean,
     mergeOff: Boolean,
     gravityOn: Boolean,
@@ -782,6 +1172,8 @@ fun GlassFluidField(
     state.inertiaOn = inertiaOn
     state.friction = friction
     state.bounce = bounce
+    state.rigidOn = rigidOn
+    state.rotationLevel = rotationLevel
     state.solidOn = solidOn
     state.mergeOff = mergeOff
     state.gravityOn = gravityOn
@@ -807,7 +1199,7 @@ fun GlassFluidField(
             }
         }
     }
-    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, solidOn, mergeOff, gravityOn, gravity, gravityAngle, tiltOn, laserOn, laserAngle, laserSpin, glassIndex, heightDp, widthFraction) { state.wake() }
+    LaunchedEffect(rigidOn, rotationLevel, reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, rigidOn, rotationLevel, solidOn, mergeOff, gravityOn, gravity, gravityAngle, tiltOn, laserOn, laserAngle, laserSpin, glassIndex, heightDp, widthFraction) { state.wake() }
 
     // The phone's tilt can be the direction of gravity.
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -901,6 +1293,8 @@ fun GlassFluidField(
                                     val shader: RuntimeShader = obtainRuntimeShader("GlassFluid", FLUID_SHADER)
                                     val boxes = FloatArray(SHAPE_MAX * 4)
                                     val radii = FloatArray(SHAPE_MAX)
+                                    val turns = FloatArray(SHAPE_MAX * 2)
+                                    var anyBlend = 0f
                                     val blends = FloatArray(SHAPE_MAX * SHAPE_MAX)
                                     val n = min(state.pieces.size, SHAPE_MAX)
                                     for (i in 0 until n) {
@@ -910,10 +1304,18 @@ fun GlassFluidField(
                                         boxes[i * 4 + 2] = p.width / 2f
                                         boxes[i * 4 + 3] = p.height / 2f
                                         radii[i] = p.radius
-                                        for (j in i + 1 until n) blends[i * SHAPE_MAX + j] = state.blendFor(i, j)
+                                        turns[i * 2] = kotlin.math.cos(p.angle)
+                                        turns[i * 2 + 1] = kotlin.math.sin(p.angle)
+                                        for (j in i + 1 until n) {
+                                            val bl = state.blendFor(i, j)
+                                            blends[i * SHAPE_MAX + j] = bl
+                                            if (bl > 0.001f) anyBlend = 1f
+                                        }
                                     }
                                     shader.setFloatUniform("pad", padding, padding)
                                     shader.setFloatUniform("count", n.toFloat())
+                                    shader.setFloatUniform("blendAny", anyBlend)
+                                    shader.setFloatUniform("rot", turns)
                                     shader.setFloatUniform("box", boxes)
                                     shader.setFloatUniform("rad", radii)
                                     shader.setFloatUniform("k", blends)
@@ -953,7 +1355,7 @@ fun GlassFluidField(
                                     with(density) { piece.width.toDp() },
                                     with(density) { piece.height.toDp() },
                                 )
-                                .pointerInput(piece, state) {
+                                .then(if (rigidOn) Modifier else Modifier.pointerInput(piece, state) {
                                     val tracker = VelocityTracker()
                                     detectDragGestures(
                                         onDragStart = {
@@ -975,13 +1377,38 @@ fun GlassFluidField(
                                             state.wake()
                                         },
                                     )
-                                }
-                                .graphicsLayer { alpha = state.contentAlpha(index) },
+                                })
+                                .graphicsLayer {
+                                    alpha = state.contentAlpha(index)
+                                    rotationZ = Math.toDegrees(piece.angle.toDouble()).toFloat()
+                                },
                             contentAlignment = Alignment.Center,
                         ) {
                             content(index, tint)
                         }
                     }
+                }
+                // Rigid bodies: one gesture over the whole field (the pieces turn, so a gesture
+                // inside a piece would turn with it). A touch that misses every piece is left alone.
+                if (rigidOn) {
+                    Box(
+                        Modifier.fillMaxSize().pointerInput(state) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val hit = state.pieceAt(down.position) ?: return@awaitEachGesture
+                                down.consume()
+                                state.grab(hit, down.position)
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                    change.consume()
+                                    if (!change.pressed) break
+                                    state.dragTo(change.position)
+                                }
+                                state.letGo()
+                            }
+                        },
+                    )
                 }
             }
         }

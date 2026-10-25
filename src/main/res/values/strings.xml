@@ -1743,7 +1743,7 @@
     <string name="glass_lab_merge_friction">Friction</string>
     <string name="glass_lab_merge_height">Field height</string>
     <string name="glass_lab_merge_width">Field width (of the screen)</string>
-    <string name="glass_lab_merge_add">Add object (%1$d of 8)</string>
+    <string name="glass_lab_merge_add">Add object (%1$d of 16)</string>
     <string name="glass_lab_merge_remove">Remove one</string>
     <string name="glass_lab_merge_bounce">Bounce (speed kept)</string>
     <string name="glass_lab_merge_laser">Laser</string>
@@ -1761,4 +1761,11 @@
     <string name="glass_lab_merge_stack_summary">Pieces cannot pass through each other: they pile up and lie on each other, with gravity on or off.</string>
     <string name="glass_lab_merge_nomerge">Do not merge</string>
     <string name="glass_lab_merge_nomerge_summary">No bridges: pieces never join into one glass body (turn it on with solid pieces to stack them like blocks).</string>
+    <string name="glass_lab_merge_rigid">Rigid bodies</string>
+    <string name="glass_lab_merge_rigid_summary">Real physics: pieces knock, stack, topple and can turn, shaped like what you see. Throw one at a tower. (Squashing through slots is only in the simple mode.)</string>
+    <string name="glass_lab_merge_rotation">Rotation</string>
+    <string name="glass_lab_merge_rotation_summary">Stiff: round and square pieces turn only when knocked; long ones turn when held off-centre. Free: every piece turns.</string>
+    <string name="glass_lab_merge_rotation_off">Off</string>
+    <string name="glass_lab_merge_rotation_stiff">Stiff</string>
+    <string name="glass_lab_merge_rotation_free">Free</string>
 </resources>

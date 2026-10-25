@@ -1286,6 +1286,8 @@ private fun FluidPrototype() {
     var floor by remember { mutableStateOf(false) }
     var friction by remember { mutableFloatStateOf(1.4f) }
     var bounce by remember { mutableFloatStateOf(0.7f) }
+    var rigidOn by remember { mutableStateOf(false) }
+    var rotation by remember { mutableIntStateOf(1) }
     var solidOn by remember { mutableStateOf(false) }
     var mergeOff by remember { mutableStateOf(false) }
     var gravityOn by remember { mutableStateOf(false) }
@@ -1316,6 +1318,30 @@ private fun FluidPrototype() {
     }
     SettingsGroup(mergeRows)
     val behaviour = buildList<SettingsRow> {
+        add("glass_lab_merge_rigid") {
+            SwitchRow(
+                it, R.drawable.ic_touch_app_24dp,
+                stringResource(R.string.glass_lab_merge_rigid), stringResource(R.string.glass_lab_merge_rigid_summary),
+                rigidOn,
+            ) { v ->
+                rigidOn = v
+                // Real physics is about pieces meeting each other: they become solid with it.
+                if (v) solidOn = true
+            }
+        }
+        if (rigidOn) {
+            add("glass_lab_merge_rotation") {
+                ChoiceRow(
+                    it, stringResource(R.string.glass_lab_merge_rotation), stringResource(R.string.glass_lab_merge_rotation_summary),
+                    listOf(
+                        stringResource(R.string.glass_lab_merge_rotation_off),
+                        stringResource(R.string.glass_lab_merge_rotation_stiff),
+                        stringResource(R.string.glass_lab_merge_rotation_free),
+                    ),
+                    rotation,
+                ) { v -> rotation = v }
+            }
+        }
         add("glass_lab_merge_nomerge") {
             SwitchRow(
                 it, R.drawable.ic_palette_24dp,
@@ -1393,7 +1419,7 @@ private fun FluidPrototype() {
     )
     Spacer(Modifier.height(8.dp))
     Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalButton(onClick = { fluid.add() }, enabled = fluid.pieces.size < 8, modifier = Modifier.fillMaxWidth()) {
+        FilledTonalButton(onClick = { fluid.add() }, enabled = fluid.pieces.size < 16, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.glass_lab_merge_add, fluid.pieces.size))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1415,6 +1441,8 @@ private fun FluidPrototype() {
         inertiaOn = floor,
         friction = friction,
         bounce = bounce,
+        rigidOn = rigidOn,
+        rotationLevel = rotation,
         solidOn = solidOn,
         mergeOff = mergeOff,
         gravityOn = gravityOn,
@@ -1433,6 +1461,26 @@ private fun FluidPrototype() {
             1 -> Text("Merge", color = tint, style = MaterialTheme.typography.titleSmall)
             2 -> Icon(painterResource(R.drawable.ic_touch_app_24dp), null, tint = tint)
             else -> Icon(painterResource(R.drawable.ic_hourglass_top_24dp), null, tint = tint)
+        }
+    }
+}
+
+/** A row with a few choices as chips. */
+@Composable
+private fun ChoiceRow(position: GroupPosition, title: String, summary: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    ExpressiveGroupRow(position) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title)
+            Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                options.forEachIndexed { i, label ->
+                    androidx.compose.material3.FilterChip(
+                        selected = i == selected,
+                        onClick = { onSelect(i) },
+                        label = { Text(label) },
+                    )
+                }
+            }
         }
     }
 }

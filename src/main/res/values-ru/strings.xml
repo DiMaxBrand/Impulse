@@ -1809,7 +1809,7 @@
     <string name="glass_lab_merge_friction">Трение</string>
     <string name="glass_lab_merge_height">Высота поля</string>
     <string name="glass_lab_merge_width">Ширина поля (от экрана)</string>
-    <string name="glass_lab_merge_add">Добавить объект (%1$d из 8)</string>
+    <string name="glass_lab_merge_add">Добавить объект (%1$d из 16)</string>
     <string name="glass_lab_merge_remove">Убрать один</string>
     <string name="glass_lab_merge_bounce">Отскок (сохраняемая скорость)</string>
     <string name="glass_lab_merge_laser">Лазер</string>
@@ -1827,4 +1827,11 @@
     <string name="glass_lab_merge_stack_summary">Фигуры не могут проходить друг через друга: они складываются и лежат друг на друге, с гравитацией и без неё.</string>
     <string name="glass_lab_merge_nomerge">Не сливать</string>
     <string name="glass_lab_merge_nomerge_summary">Без мостиков: фигуры никогда не сливаются в одно стеклянное тело (включите вместе с твёрдыми, чтобы складывать как кубики).</string>
+    <string name="glass_lab_merge_rigid">Твёрдые тела</string>
+    <string name="glass_lab_merge_rigid_summary">Настоящая физика: фигуры сталкиваются, складываются, падают и могут вращаться, формой как на экране. Бросьте одну в башню. (Протискивание сплющенной фигуры в щели есть только в простом режиме.)</string>
+    <string name="glass_lab_merge_rotation">Вращение</string>
+    <string name="glass_lab_merge_rotation_summary">Жёсткое: круглые и квадратные фигуры вращаются только от ударов, длинные ещё и когда их держат не за центр. Свободное: вращается каждая.</string>
+    <string name="glass_lab_merge_rotation_off">Выкл</string>
+    <string name="glass_lab_merge_rotation_stiff">Жёсткое</string>
+    <string name="glass_lab_merge_rotation_free">Свободное</string>
 </resources>
