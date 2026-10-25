@@ -1751,4 +1751,10 @@
     <string name="glass_lab_merge_laser_angle">Laser direction</string>
     <string name="glass_lab_merge_laser_spin">Laser turning speed</string>
     <string name="glass_lab_merge_index">Glass index (how much it bends)</string>
+    <string name="glass_lab_merge_gravity">Gravity</string>
+    <string name="glass_lab_merge_gravity_summary">Pieces fall and lie where they land. Works with the floor, walls and bounce.</string>
+    <string name="glass_lab_merge_gravity_strength">Gravity strength</string>
+    <string name="glass_lab_merge_gravity_angle">Gravity direction (90° is down)</string>
+    <string name="glass_lab_merge_tilt">Tilt the phone</string>
+    <string name="glass_lab_merge_tilt_summary">The direction of gravity follows how you hold the phone (needs gravity on).</string>
 </resources>

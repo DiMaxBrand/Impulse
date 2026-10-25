@@ -1817,4 +1817,10 @@
     <string name="glass_lab_merge_laser_angle">Направление лазера</string>
     <string name="glass_lab_merge_laser_spin">Скорость поворота лазера</string>
     <string name="glass_lab_merge_index">Показатель стекла (как сильно преломляет)</string>
+    <string name="glass_lab_merge_gravity">Гравитация</string>
+    <string name="glass_lab_merge_gravity_summary">Фигуры падают и лежат там, куда упали. Работает вместе с полом, стенами и отскоком.</string>
+    <string name="glass_lab_merge_gravity_strength">Сила гравитации</string>
+    <string name="glass_lab_merge_gravity_angle">Направление гравитации (90° — вниз)</string>
+    <string name="glass_lab_merge_tilt">Наклон телефона</string>
+    <string name="glass_lab_merge_tilt_summary">Направление гравитации следует за тем, как вы держите телефон (нужна включённая гравитация).</string>
 </resources>

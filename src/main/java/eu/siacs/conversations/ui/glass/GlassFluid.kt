@@ -220,6 +220,22 @@ class GlassFluidState(private val density: Float) {
     /** How much speed is kept when a sliding piece hits an edge or a wall (1: all of it, above 1: more). */
     var bounce = 0.45f
 
+    var gravityOn = false
+    /** dp/s squared. */
+    var gravity = 1200f
+    /** Degrees: 90 is down. */
+    var gravityAngle = 90f
+    /** The phone's own tilt (a fraction of g, screen axes), when it sets the direction. */
+    var tilt: Offset? = null
+
+    private fun gravityVec(): Offset {
+        if (!gravityOn) return Offset.Zero
+        val t = tilt
+        if (t != null) return t * (gravity * density)
+        val a = Math.toRadians(gravityAngle.toDouble())
+        return Offset(kotlin.math.cos(a).toFloat(), kotlin.math.sin(a).toFloat()) * (gravity * density)
+    }
+
     var fieldW by mutableFloatStateOf(0f)
     var fieldH by mutableFloatStateOf(0f)
 
@@ -421,25 +437,38 @@ class GlassFluidState(private val density: Float) {
             if (res.hy != 0) p.contactY = res.hy
             p.vel = Offset.Zero
             moving = true
-        } else if (inertiaOn && p.vel.getDistance() > (if (friction > 0f) MIN_SPEED * density else 0.01f)) {
-            val res = slide(p, p.pos + p.vel * dt, walls)
+        } else if (inertiaOn || gravityOn) {
+            val g = gravityVec()
+            var v = p.vel + g * dt
+            val res = slide(p, p.pos + v * dt, walls)
             if (res.pos != p.pos) p.pos = res.pos
-            var v = p.vel
             // With no friction at all nothing is lost, not even in a bounce: the piece never stops.
             val rest = if (friction <= 0f) 1f else bounce
+            val still = REST_SPEED * density
             if (res.hx != 0) {
-                if (wallsOn) { p.sqVX += abs(v.x) / density * IMPACT; p.contactX = res.hx }
-                v = Offset(-v.x * rest, v.y)
+                if (g.x * res.hx > 0f && abs(v.x) < still) v = Offset(0f, v.y) // lying against it under gravity
+                else {
+                    if (wallsOn) { p.sqVX += abs(v.x) / density * IMPACT; p.contactX = res.hx }
+                    v = Offset(-v.x * rest, v.y)
+                }
             }
             if (res.hy != 0) {
-                if (wallsOn) { p.sqVY += abs(v.y) / density * IMPACT; p.contactY = res.hy }
-                v = Offset(v.x, -v.y * rest)
+                if (g.y * res.hy > 0f && abs(v.y) < still) v = Offset(v.x, 0f)
+                else {
+                    if (wallsOn) { p.sqVY += abs(v.y) / density * IMPACT; p.contactY = res.hy }
+                    v = Offset(v.x, -v.y * rest)
+                }
             }
             v = v * exp(-friction * dt)
             val top = MAX_SPEED * density
             val sp = v.getDistance()
-            p.vel = if (sp > top) v * (top / sp) else v
-            moving = true
+            v = if (sp > top) v * (top / sp) else v
+            // Slower than this without gravity pushing it: it has stopped (a piece lying on the floor too).
+            val lying = (res.hx != 0 && g.x * res.hx > 0f) || (res.hy != 0 && g.y * res.hy > 0f)
+            val slow = if (friction > 0f) MIN_SPEED * density else 0.01f
+            if (v.getDistance() <= slow && (g == Offset.Zero || lying)) v = Offset.Zero
+            p.vel = v
+            moving = v != Offset.Zero
         } else {
             p.vel = Offset.Zero
         }
@@ -684,6 +713,7 @@ class GlassFluidState(private val density: Float) {
 
     private companion object {
         const val MAX_LASER_HITS = 28
+        const val REST_SPEED = 40f     // dp/s: a piece falling slower than this onto the floor lies there
         const val MIN_SPEED = 12f      // dp/s: slower than this a sliding piece stops
         const val MAX_SPEED = 5000f    // dp/s
         const val IMPACT = 0.0011f     // squash speed per dp/s of impact
@@ -715,6 +745,10 @@ fun GlassFluidField(
     inertiaOn: Boolean,
     friction: Float,
     bounce: Float,
+    gravityOn: Boolean,
+    gravity: Float,
+    gravityAngle: Float,
+    tiltOn: Boolean,
     laserOn: Boolean,
     laserAngle: Float,
     laserSpin: Float,
@@ -732,6 +766,9 @@ fun GlassFluidField(
     state.inertiaOn = inertiaOn
     state.friction = friction
     state.bounce = bounce
+    state.gravityOn = gravityOn
+    state.gravity = gravity
+    state.gravityAngle = gravityAngle
     state.laserOn = laserOn
     state.laserAngle = laserAngle
     state.laserSpin = laserSpin
@@ -752,8 +789,36 @@ fun GlassFluidField(
             }
         }
     }
-    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, laserOn, laserAngle, laserSpin, glassIndex, heightDp, widthFraction) { state.wake() }
+    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, gravityOn, gravity, gravityAngle, tiltOn, laserOn, laserAngle, laserSpin, glassIndex, heightDp, widthFraction) { state.wake() }
 
+    // The phone's tilt can be the direction of gravity.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.DisposableEffect(state, gravityOn, tiltOn) {
+        val manager = context.getSystemService(android.content.Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+        val sensor = manager?.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
+        if (!(gravityOn && tiltOn) || manager == null || sensor == null) {
+            state.tilt = null
+            onDispose { }
+        } else {
+            val listener = object : android.hardware.SensorEventListener {
+                override fun onSensorChanged(e: android.hardware.SensorEvent) {
+                    // Gravity in screen axes (x right, y down) from the accelerometer's reading, which is its opposite.
+                    val next = Offset(-e.values[0] / 9.81f, e.values[1] / 9.81f)
+                    val old = state.tilt
+                    if (old == null || (next - old).getDistance() > 0.02f) {
+                        state.tilt = next
+                        state.wake()
+                    }
+                }
+                override fun onAccuracyChanged(s: android.hardware.Sensor?, accuracy: Int) {}
+            }
+            manager.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_GAME)
+            onDispose {
+                manager.unregisterListener(listener)
+                state.tilt = null
+            }
+        }
+    }
     val tint = MaterialTheme.colorScheme.onSurface
     // What the glass looks through: the pattern below, recorded here (the page's own backdrop does not
     // contain it, so the glass used to show nothing but the plain page).

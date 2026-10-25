@@ -1285,6 +1285,10 @@ private fun FluidPrototype() {
     var floor by remember { mutableStateOf(false) }
     var friction by remember { mutableFloatStateOf(1.4f) }
     var bounce by remember { mutableFloatStateOf(0.45f) }
+    var gravityOn by remember { mutableStateOf(false) }
+    var gravity by remember { mutableFloatStateOf(1200f) }
+    var gravityAngle by remember { mutableFloatStateOf(90f) }
+    var tiltOn by remember { mutableStateOf(false) }
     var laser by remember { mutableStateOf(false) }
     var laserAngle by remember { mutableFloatStateOf(35f) }
     var laserSpin by remember { mutableFloatStateOf(0f) }
@@ -1315,6 +1319,18 @@ private fun FluidPrototype() {
     ) { floor = it }
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_friction, friction, 0f..8f, "/s", decimals = 1) { friction = it }
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_bounce, bounce, 0f..1.5f, "", decimals = 2) { bounce = it }
+    SwitchRow(
+        GroupPosition.MIDDLE, R.drawable.ic_hourglass_top_24dp,
+        stringResource(R.string.glass_lab_merge_gravity), stringResource(R.string.glass_lab_merge_gravity_summary),
+        gravityOn,
+    ) { gravityOn = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_gravity_strength, gravity, 0f..4000f, "dp/s²") { gravity = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_gravity_angle, gravityAngle, 0f..360f, "°") { gravityAngle = it }
+    SwitchRow(
+        GroupPosition.MIDDLE, R.drawable.ic_touch_app_24dp,
+        stringResource(R.string.glass_lab_merge_tilt), stringResource(R.string.glass_lab_merge_tilt_summary),
+        tiltOn,
+    ) { tiltOn = it }
     SwitchRow(
         GroupPosition.MIDDLE, R.drawable.ic_palette_24dp,
         stringResource(R.string.glass_lab_merge_laser), stringResource(R.string.glass_lab_merge_laser_summary),
@@ -1347,6 +1363,10 @@ private fun FluidPrototype() {
         inertiaOn = floor,
         friction = friction,
         bounce = bounce,
+        gravityOn = gravityOn,
+        gravity = gravity,
+        gravityAngle = gravityAngle,
+        tiltOn = tiltOn,
         laserOn = laser,
         laserAngle = laserAngle,
         laserSpin = laserSpin,
