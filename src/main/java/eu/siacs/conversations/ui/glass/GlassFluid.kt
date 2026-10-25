@@ -90,7 +90,7 @@ float sdBox(float2 p, float4 b, float r) {
 float smin(float a, float b, float kk) {
     if (kk <= 0.001) return min(a, b);
     float h = max(kk - abs(a - b), 0.0) / kk;
-    return min(a, b) - h * h * kk * 0.25;
+    return min(a, b) - h * h * h * kk / 6.0;
 }
 
 float field(float2 p) {
@@ -169,9 +169,10 @@ class GlassFluidState(val pieces: List<FluidPiece>) {
     /** The smoothing radius of the pair in the shader (0: none, the pieces are separate). */
     fun blendFor(pair: Int): Float {
         val c = depth[pair]
-        if (c < 0.3f) return 0f
-        // A radius of twice the gap is where the surfaces just touch; the depth is on top of that.
-        return 2f * max(gaps[pair], 0f) + c
+        if (c < 4f) return 0f
+        // A radius of three times the gap is where the surfaces just touch (cubic blend: the
+        // middle sinks by a sixth of the radius); the depth is on top of that.
+        return 3f * max(gaps[pair], 0f) + c
     }
 
     fun positionsKey(): List<Offset> = pieces.map { it.pos }
@@ -204,7 +205,7 @@ class GlassFluidState(val pieces: List<FluidPiece>) {
             val g = gap(pieces[i], pieces[j])
             gaps[pair] = g
             // The closer, the deeper: 0 at the reach, full when touching.
-            val target = 2f * softness * smooth(1f - g / reach.coerceAtLeast(1f))
+            val target = 3f * softness * smooth(1f - g / reach.coerceAtLeast(1f))
             var left = dt
             while (left > 0f) {
                 val h = min(left, 1f / 120f)
@@ -223,8 +224,8 @@ class GlassFluidState(val pieces: List<FluidPiece>) {
         var alpha = 1f
         for (j in 0 until i) {
             val dist = hypot(pieces[i].centerX - pieces[j].centerX, pieces[i].centerY - pieces[j].centerY)
-            val r = (min(pieces[i].width, pieces[i].height) + min(pieces[j].width, pieces[j].height)) * 0.5f * 0.55f
-            alpha = min(alpha, ((dist - r) / (r * 0.8f)).coerceIn(0f, 1f))
+            val r = (min(pieces[i].width, pieces[i].height) + min(pieces[j].width, pieces[j].height)) * 0.5f * 0.8f
+            alpha = min(alpha, ((dist - r) / (r * 0.6f)).coerceIn(0f, 1f))
         }
         return alpha
     }
