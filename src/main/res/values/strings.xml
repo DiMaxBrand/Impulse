@@ -1736,4 +1736,13 @@
     <string name="glass_lab_merge_soft">Roundness of the join</string>
     <string name="glass_lab_value_title">Enter a value</string>
     <string name="glass_lab_value_hint">Any number, even beyond the slider\'s range.</string>
+    <string name="glass_lab_merge_walls">Walls</string>
+    <string name="glass_lab_merge_walls_summary">A cross of walls in the middle. Push a piece against one and keep pulling: it squashes.</string>
+    <string name="glass_lab_merge_floor">Slippery floor</string>
+    <string name="glass_lab_merge_floor_summary">Let go of a piece you pulled fast and it keeps sliding, bounces off the walls and slows down.</string>
+    <string name="glass_lab_merge_friction">Friction</string>
+    <string name="glass_lab_merge_height">Field height</string>
+    <string name="glass_lab_merge_width">Field width (of the screen)</string>
+    <string name="glass_lab_merge_add">Add object (%1$d of 8)</string>
+    <string name="glass_lab_merge_remove">Remove one</string>
 </resources>

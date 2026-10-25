@@ -1802,4 +1802,13 @@
     <string name="glass_lab_merge_soft">Скругление соединения</string>
     <string name="glass_lab_value_title">Введите значение</string>
     <string name="glass_lab_value_hint">Любое число, даже больше предела ползунка.</string>
+    <string name="glass_lab_merge_walls">Стены</string>
+    <string name="glass_lab_merge_walls_summary">Крест из стен посередине. Упритесь фигурой в стену и тяните дальше: она расплющится.</string>
+    <string name="glass_lab_merge_floor">Скользкий пол</string>
+    <string name="glass_lab_merge_floor_summary">Отпустите резко потянутую фигуру: она продолжит ехать, отскочит от стен и постепенно остановится.</string>
+    <string name="glass_lab_merge_friction">Трение</string>
+    <string name="glass_lab_merge_height">Высота поля</string>
+    <string name="glass_lab_merge_width">Ширина поля (от экрана)</string>
+    <string name="glass_lab_merge_add">Добавить объект (%1$d из 8)</string>
+    <string name="glass_lab_merge_remove">Убрать один</string>
 </resources>

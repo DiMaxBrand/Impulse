@@ -1281,6 +1281,12 @@ private fun FluidPrototype() {
     var reach by remember { mutableFloatStateOf(28f) }
     var response by remember { mutableFloatStateOf(650f) }
     var soft by remember { mutableFloatStateOf(16f) }
+    var walls by remember { mutableStateOf(false) }
+    var floor by remember { mutableStateOf(false) }
+    var friction by remember { mutableFloatStateOf(1.4f) }
+    var fieldHeight by remember { mutableFloatStateOf(300f) }
+    var fieldWidth by remember { mutableFloatStateOf(100f) }
+    val fluid = eu.siacs.conversations.ui.glass.rememberGlassFluidState()
     SectionTitle(stringResource(R.string.glass_lab_section_merge))
     Text(
         stringResource(R.string.glass_lab_merge_hint),
@@ -1292,15 +1298,48 @@ private fun FluidPrototype() {
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_release, response, 300f..1500f, "ms") { response = it }
     ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_soft, soft, 4f..48f, "dp") { soft = it }
     Spacer(Modifier.height(8.dp))
+    SwitchRow(
+        GroupPosition.TOP, R.drawable.ic_touch_app_24dp,
+        stringResource(R.string.glass_lab_merge_walls), stringResource(R.string.glass_lab_merge_walls_summary),
+        walls,
+    ) { walls = it }
+    SwitchRow(
+        GroupPosition.MIDDLE, R.drawable.ic_hourglass_top_24dp,
+        stringResource(R.string.glass_lab_merge_floor), stringResource(R.string.glass_lab_merge_floor_summary),
+        floor,
+    ) { floor = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_friction, friction, 0.1f..8f, "/s", decimals = 1) { friction = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { fieldHeight = it }
+    ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { fieldWidth = it }
+    Spacer(Modifier.height(8.dp))
+    Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilledTonalButton(onClick = { fluid.add() }, enabled = fluid.pieces.size < 8) {
+            Text(stringResource(R.string.glass_lab_merge_add, fluid.pieces.size))
+        }
+        OutlinedButton(onClick = { fluid.removeLast() }, enabled = fluid.pieces.size > 1) {
+            Text(stringResource(R.string.glass_lab_merge_remove))
+        }
+        OutlinedButton(onClick = { fluid.reset() }) {
+            Text(stringResource(R.string.glass_lab_reset))
+        }
+    }
+    Spacer(Modifier.height(8.dp))
     eu.siacs.conversations.ui.glass.GlassFluidField(
+        state = fluid,
         reach = reach,
         responseMs = response,
         softness = soft,
+        wallsOn = walls,
+        inertiaOn = floor,
+        friction = friction,
+        heightDp = fieldHeight,
+        widthFraction = fieldWidth,
     ) { index, tint ->
-        when (index) {
+        when (index % 4) {
             0 -> Icon(painterResource(R.drawable.ic_palette_24dp), null, tint = tint)
             1 -> Text("Merge", color = tint, style = MaterialTheme.typography.titleSmall)
-            else -> Icon(painterResource(R.drawable.ic_touch_app_24dp), null, tint = tint)
+            2 -> Icon(painterResource(R.drawable.ic_touch_app_24dp), null, tint = tint)
+            else -> Icon(painterResource(R.drawable.ic_hourglass_top_24dp), null, tint = tint)
         }
     }
 }
@@ -1360,14 +1399,15 @@ private fun EditableValue(shown: String, initial: String, onCommit: (Float) -> U
 }
 
 @Composable
-private fun ProtoSlider(position: GroupPosition, label: Int, value: Float, range: ClosedFloatingPointRange<Float>, unit: String, onChange: (Float) -> Unit) {
+private fun ProtoSlider(position: GroupPosition, label: Int, value: Float, range: ClosedFloatingPointRange<Float>, unit: String, decimals: Int = 0, onChange: (Float) -> Unit) {
     var live by remember { mutableFloatStateOf(value) }
-    LaunchedEffect(value) { if (kotlin.math.abs(value - live) > 0.5f) live = value }
+    LaunchedEffect(value) { if (kotlin.math.abs(value - live) > (range.endInclusive - range.start) * 0.002f) live = value }
+    val shown = if (decimals > 0) String.format(java.util.Locale.US, "%.${decimals}f", live) else live.toInt().toString()
     ExpressiveGroupRow(position) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(label), Modifier.weight(1f))
-                EditableValue("${live.toInt()} $unit", live.toInt().toString()) { typed ->
+                EditableValue("$shown $unit", shown) { typed ->
                     live = typed
                     onChange(typed)
                 }
