@@ -21,11 +21,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -38,7 +38,6 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.effect
-import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max
@@ -163,6 +162,13 @@ class GlassFluidState(val pieces: List<FluidPiece>) {
     var tick by mutableIntStateOf(0)
         private set
 
+    /** Something moved (a piece, a setting): the springs have to run. */
+    val wakeups = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
+
+    fun wake() {
+        wakeups.trySend(Unit)
+    }
+
     /** Pieces start reaching for each other from this gap (px). */
     var reach = 28f
     /** How deep a full merge is: the roundness of the join (px). */
@@ -273,18 +279,22 @@ fun GlassFluidField(
     state.softness = with(density) { softness.dp.toPx() }
     var fieldSize by remember { androidx.compose.runtime.mutableStateOf(IntSize.Zero) }
 
-    // The springs run while anything moves (and restart when a piece does, or a setting changes).
+    // The springs run while anything moves. One loop that is woken by a move (not restarted by it),
+    // and that keeps going a few frames past the point where everything has settled, so the last
+    // state is always drawn and nothing waits for some other redraw to show it.
     LaunchedEffect(state) {
-        snapshotFlow { state.positionsKey() }.collectLatest {
+        for (signal in state.wakeups) {
             var last = 0L
-            do {
+            var calm = 0
+            while (calm < 4) {
                 val frame = withFrameNanos { it }
                 val dt = if (last == 0L) 1f / 60f else ((frame - last) / 1_000_000_000f).coerceAtMost(1f / 30f)
                 last = frame
-            } while (state.step(dt))
+                calm = if (state.step(dt)) 0 else calm + 1
+            }
         }
     }
-    LaunchedEffect(reach, responseMs, softness) { state.step(1f / 60f) }
+    LaunchedEffect(reach, responseMs, softness) { state.wake() }
 
     val tint = MaterialTheme.colorScheme.onSurface
     // What the glass looks through: the pattern below, recorded here (the page's own backdrop does not
@@ -320,6 +330,9 @@ fun GlassFluidField(
         Box(
             Modifier
                 .fillMaxSize()
+                // Reading the springs here as well makes every step redraw the glass, whether or not
+                // the backdrop noticed the read inside its own effect block.
+                .drawBehind { state.tick }
                 .drawPlainBackdrop(
                     backdrop = behind,
                     shape = { RectangleShape },
@@ -365,6 +378,7 @@ fun GlassFluidField(
                     .pointerInput(index, fieldSize) {
                         detectDragGestures { change, drag ->
                             change.consume()
+                            state.wake()
                             piece.pos = Offset(
                                 (piece.pos.x + drag.x).coerceIn(0f, max(fieldSize.width - piece.width, 0f)),
                                 (piece.pos.y + drag.y).coerceIn(0f, max(fieldSize.height - piece.height, 0f)),
