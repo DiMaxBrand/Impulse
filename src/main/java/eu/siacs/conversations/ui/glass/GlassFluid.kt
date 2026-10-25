@@ -34,7 +34,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.effect
 import kotlinx.coroutines.flow.collectLatest
@@ -237,7 +238,6 @@ class GlassFluidState(val pieces: List<FluidPiece>) {
  */
 @Composable
 fun GlassFluidField(
-    backdrop: Backdrop,
     reach: Float,
     responseMs: Float,
     softness: Float,
@@ -276,6 +276,9 @@ fun GlassFluidField(
     LaunchedEffect(reach, responseMs, softness) { state.step(1f / 60f) }
 
     val tint = MaterialTheme.colorScheme.onSurface
+    // What the glass looks through: the pattern below, recorded here (the page's own backdrop does not
+    // contain it, so the glass used to show nothing but the plain page).
+    val behind = rememberLayerBackdrop()
     Box(
         modifier
             .fillMaxWidth()
@@ -286,7 +289,7 @@ fun GlassFluidField(
         val bandA = MaterialTheme.colorScheme.primaryContainer
         val bandB = MaterialTheme.colorScheme.tertiaryContainer
         val line = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
-        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize().layerBackdrop(behind)) {
             val step = 28.dp.toPx()
             var x = -size.height
             var n = 0
@@ -307,7 +310,7 @@ fun GlassFluidField(
             Modifier
                 .fillMaxSize()
                 .drawPlainBackdrop(
-                    backdrop = backdrop,
+                    backdrop = behind,
                     shape = { RectangleShape },
                     effects = {
                         state.tick // follow the springs

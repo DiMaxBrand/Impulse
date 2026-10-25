@@ -1289,7 +1289,6 @@ private fun FluidPrototype() {
     ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_soft, soft, 4f..48f, "dp") { soft = it }
     Spacer(Modifier.height(8.dp))
     eu.siacs.conversations.ui.glass.GlassFluidField(
-        backdrop = skin.backdrop,
         reach = reach,
         responseMs = response,
         softness = soft,
