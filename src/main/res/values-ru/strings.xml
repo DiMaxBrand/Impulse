@@ -1796,8 +1796,8 @@
     <string name="glass_lab_reset">Сбросить</string>
     <string name="interface_style_try">Нажми</string>
     <string name="glass_lab_section_merge">Сливающееся стекло (прототип)</string>
-    <string name="glass_lab_merge_hint">Перетаскивайте фигуры друг на друга: они сливаются в одно стеклянное тело и снова расходятся, с какой бы скоростью вы ни тянули.</string>
-    <string name="glass_lab_merge_connect">Соединять ближе, чем</string>
-    <string name="glass_lab_merge_release">Разъединять дальше, чем</string>
+    <string name="glass_lab_merge_hint">Тяните фигуры друг к другу: они тянутся ещё до касания, соединение следует за пальцем и перетекает плавно.</string>
+    <string name="glass_lab_merge_connect">Начинают тянуться с расстояния</string>
+    <string name="glass_lab_merge_release">Время затухания</string>
     <string name="glass_lab_merge_soft">Скругление соединения</string>
 </resources>

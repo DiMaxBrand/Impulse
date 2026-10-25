@@ -1274,8 +1274,8 @@ private fun GlassLabPage() {
 @Composable
 private fun FluidPrototype() {
     val skin = LocalGlassSkin.current ?: return
-    var connect by remember { mutableFloatStateOf(12f) }
-    var release by remember { mutableFloatStateOf(30f) }
+    var reach by remember { mutableFloatStateOf(28f) }
+    var response by remember { mutableFloatStateOf(650f) }
     var soft by remember { mutableFloatStateOf(16f) }
     SectionTitle(stringResource(R.string.glass_lab_section_merge))
     Text(
@@ -1284,14 +1284,14 @@ private fun FluidPrototype() {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
     )
-    ProtoSlider(GroupPosition.TOP, R.string.glass_lab_merge_connect, connect, 0f..60f) { connect = it; if (release < it + 4f) release = it + 4f }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_release, release, 0f..80f) { release = kotlin.math.max(it, connect + 4f) }
-    ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_soft, soft, 4f..48f) { soft = it }
+    ProtoSlider(GroupPosition.TOP, R.string.glass_lab_merge_connect, reach, 4f..80f, "dp") { reach = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_release, response, 300f..1500f, "ms") { response = it }
+    ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_soft, soft, 4f..48f, "dp") { soft = it }
     Spacer(Modifier.height(8.dp))
     eu.siacs.conversations.ui.glass.GlassFluidField(
         backdrop = skin.backdrop,
-        connectAt = connect,
-        releaseAt = release,
+        reach = reach,
+        responseMs = response,
         softness = soft,
     ) { index, tint ->
         when (index) {
@@ -1303,14 +1303,14 @@ private fun FluidPrototype() {
 }
 
 @Composable
-private fun ProtoSlider(position: GroupPosition, label: Int, value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit) {
+private fun ProtoSlider(position: GroupPosition, label: Int, value: Float, range: ClosedFloatingPointRange<Float>, unit: String, onChange: (Float) -> Unit) {
     var live by remember { mutableFloatStateOf(value) }
     LaunchedEffect(value) { if (kotlin.math.abs(value - live) > 0.5f) live = value }
     ExpressiveGroupRow(position) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(label), Modifier.weight(1f))
-                Text("${live.toInt()} dp", color = MaterialTheme.colorScheme.primary)
+                Text("${live.toInt()} $unit", color = MaterialTheme.colorScheme.primary)
             }
             SkinSlider(value = live, onValueChange = { live = it; onChange(it) }, valueRange = range)
         }
