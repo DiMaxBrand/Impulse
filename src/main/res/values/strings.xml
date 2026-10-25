@@ -1757,6 +1757,8 @@
     <string name="glass_lab_merge_gravity_angle">Gravity direction (90° is down)</string>
     <string name="glass_lab_merge_tilt">Tilt the phone</string>
     <string name="glass_lab_merge_tilt_summary">The direction of gravity follows how you hold the phone (needs gravity on).</string>
-    <string name="glass_lab_merge_stack">Stack, do not merge</string>
-    <string name="glass_lab_merge_stack_summary">Pieces are solid: they pile up on each other instead of joining into one glass body. Works with gravity on or off.</string>
+    <string name="glass_lab_merge_stack">Solid pieces</string>
+    <string name="glass_lab_merge_stack_summary">Pieces cannot pass through each other: they pile up and lie on each other, with gravity on or off.</string>
+    <string name="glass_lab_merge_nomerge">Do not merge</string>
+    <string name="glass_lab_merge_nomerge_summary">No bridges: pieces never join into one glass body (turn it on with solid pieces to stack them like blocks).</string>
 </resources>

@@ -1823,6 +1823,8 @@
     <string name="glass_lab_merge_gravity_angle">Направление гравитации (90° — вниз)</string>
     <string name="glass_lab_merge_tilt">Наклон телефона</string>
     <string name="glass_lab_merge_tilt_summary">Направление гравитации следует за тем, как вы держите телефон (нужна включённая гравитация).</string>
-    <string name="glass_lab_merge_stack">Складывать, не сливать</string>
-    <string name="glass_lab_merge_stack_summary">Фигуры твёрдые: они ложатся друг на друга, а не сливаются в одно стеклянное тело. Работает при включённой и выключенной гравитации.</string>
+    <string name="glass_lab_merge_stack">Твёрдые фигуры</string>
+    <string name="glass_lab_merge_stack_summary">Фигуры не могут проходить друг через друга: они складываются и лежат друг на друге, с гравитацией и без неё.</string>
+    <string name="glass_lab_merge_nomerge">Не сливать</string>
+    <string name="glass_lab_merge_nomerge_summary">Без мостиков: фигуры никогда не сливаются в одно стеклянное тело (включите вместе с твёрдыми, чтобы складывать как кубики).</string>
 </resources>

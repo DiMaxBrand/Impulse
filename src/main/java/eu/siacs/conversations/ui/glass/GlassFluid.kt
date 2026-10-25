@@ -218,10 +218,12 @@ class GlassFluidState(private val density: Float) {
     /** Slowing of a sliding piece, per second. */
     var friction = 1.4f
     /** How much speed is kept when a sliding piece hits an edge or a wall (1: all of it, above 1: more). */
-    var bounce = 0.45f
+    var bounce = 0.7f
 
-    /** Pieces are solid: they pile up on each other instead of joining into one body. */
-    var stackOn = false
+    /** Pieces are solid: they cannot pass through each other, they pile up. */
+    var solidOn = false
+    /** No bridges: pieces never join into one body. */
+    var mergeOff = false
 
     var gravityOn = false
     /** dp/s squared. */
@@ -451,14 +453,14 @@ class GlassFluidState(private val density: Float) {
             if (res.hx != 0) {
                 if (g.x * res.hx > 0f && abs(v.x) < still) v = Offset(0f, v.y) // lying against it under gravity
                 else {
-                    if (wallsOn) { p.sqVX += abs(v.x) / density * IMPACT; p.contactX = res.hx }
+                    p.sqVX += abs(v.x) / density * IMPACT; p.contactX = res.hx
                     v = Offset(-v.x * rest, v.y)
                 }
             }
             if (res.hy != 0) {
                 if (g.y * res.hy > 0f && abs(v.y) < still) v = Offset(v.x, 0f)
                 else {
-                    if (wallsOn) { p.sqVY += abs(v.y) / density * IMPACT; p.contactY = res.hy }
+                    p.sqVY += abs(v.y) / density * IMPACT; p.contactY = res.hy
                     v = Offset(v.x, -v.y * rest)
                 }
             }
@@ -514,14 +516,14 @@ class GlassFluidState(private val density: Float) {
         var moving = false
         val walls = walls()
         fun rect(q: FluidPiece) = Rect(q.pos.x, q.pos.y, q.pos.x + q.width, q.pos.y + q.height)
-        if (stackOn) {
+        if (solidOn) {
             // Solid pieces that start (or end up) inside one another: the later one steps out.
             for (i in pieces.indices) if (!pieces[i].dragging) escape(pieces[i], walls + (0 until i).map { rect(pieces[it]) })
         } else if (walls.isNotEmpty()) {
             for (p in pieces) if (!p.dragging) escape(p, walls)
         }
         for (p in pieces) {
-            val obstacles = if (stackOn) walls + pieces.filter { it !== p }.map { rect(it) } else walls
+            val obstacles = if (solidOn) walls + pieces.filter { it !== p }.map { rect(it) } else walls
             if (advance(p, dt, obstacles)) moving = true
         }
         if (laserOn && laserSpin != 0f) {
@@ -534,7 +536,7 @@ class GlassFluidState(private val density: Float) {
             val g = gap(pieces[i], pieces[j])
             gaps[pair] = g
             // The closer, the deeper: 0 at the reach, full when touching.
-            val target = if (stackOn) 0f else 3f * softness * smooth(1f - g / reach.coerceAtLeast(1f))
+            val target = if (mergeOff) 0f else 3f * softness * smooth(1f - g / reach.coerceAtLeast(1f))
             // Critically damped, the same going in and coming out: no overshoot, and it pours.
             val omega = slowOmega
             val stiffness = omega * omega
@@ -708,7 +710,7 @@ class GlassFluidState(private val density: Float) {
 
     /** How visible piece [i]'s own content is: it gives way while another piece's content is near. */
     fun contentAlpha(i: Int): Float {
-        if (i >= pieces.size || stackOn) return 1f
+        if (i >= pieces.size || solidOn || mergeOff) return 1f
         var alpha = 1f
         for (j in 0 until min(i, pieces.size)) {
             val dist = hypot(pieces[i].centerX - pieces[j].centerX, pieces[i].centerY - pieces[j].centerY)
@@ -728,7 +730,7 @@ class GlassFluidState(private val density: Float) {
         const val REST_SPEED = 40f     // dp/s: a piece falling slower than this onto the floor lies there
         const val MIN_SPEED = 12f      // dp/s: slower than this a sliding piece stops
         const val MAX_SPEED = 5000f    // dp/s
-        const val IMPACT = 0.0011f     // squash speed per dp/s of impact
+        const val IMPACT = 0.0075f     // squash speed per dp/s of impact: about half the body flattens at 1500 dp/s
         const val MAX_SQUASH = 0.55f
         const val SQ_STIFFNESS = 520f
         const val SQ_DAMPING = 20f     // ratio ~0.44: bouncy
@@ -757,7 +759,8 @@ fun GlassFluidField(
     inertiaOn: Boolean,
     friction: Float,
     bounce: Float,
-    stackOn: Boolean,
+    solidOn: Boolean,
+    mergeOff: Boolean,
     gravityOn: Boolean,
     gravity: Float,
     gravityAngle: Float,
@@ -779,7 +782,8 @@ fun GlassFluidField(
     state.inertiaOn = inertiaOn
     state.friction = friction
     state.bounce = bounce
-    state.stackOn = stackOn
+    state.solidOn = solidOn
+    state.mergeOff = mergeOff
     state.gravityOn = gravityOn
     state.gravity = gravity
     state.gravityAngle = gravityAngle
@@ -803,7 +807,7 @@ fun GlassFluidField(
             }
         }
     }
-    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, stackOn, gravityOn, gravity, gravityAngle, tiltOn, laserOn, laserAngle, laserSpin, glassIndex, heightDp, widthFraction) { state.wake() }
+    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, solidOn, mergeOff, gravityOn, gravity, gravityAngle, tiltOn, laserOn, laserAngle, laserSpin, glassIndex, heightDp, widthFraction) { state.wake() }
 
     // The phone's tilt can be the direction of gravity.
     val context = androidx.compose.ui.platform.LocalContext.current

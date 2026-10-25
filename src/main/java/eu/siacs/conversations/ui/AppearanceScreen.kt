@@ -1284,8 +1284,9 @@ private fun FluidPrototype() {
     var walls by remember { mutableStateOf(false) }
     var floor by remember { mutableStateOf(false) }
     var friction by remember { mutableFloatStateOf(1.4f) }
-    var bounce by remember { mutableFloatStateOf(0.45f) }
-    var stackOn by remember { mutableStateOf(false) }
+    var bounce by remember { mutableFloatStateOf(0.7f) }
+    var solidOn by remember { mutableStateOf(false) }
+    var mergeOff by remember { mutableStateOf(false) }
     var gravityOn by remember { mutableStateOf(false) }
     var gravity by remember { mutableFloatStateOf(1200f) }
     var gravityAngle by remember { mutableFloatStateOf(90f) }
@@ -1323,8 +1324,13 @@ private fun FluidPrototype() {
     SwitchRow(
         GroupPosition.MIDDLE, R.drawable.ic_touch_app_24dp,
         stringResource(R.string.glass_lab_merge_stack), stringResource(R.string.glass_lab_merge_stack_summary),
-        stackOn,
-    ) { stackOn = it }
+        solidOn,
+    ) { solidOn = it }
+    SwitchRow(
+        GroupPosition.MIDDLE, R.drawable.ic_palette_24dp,
+        stringResource(R.string.glass_lab_merge_nomerge), stringResource(R.string.glass_lab_merge_nomerge_summary),
+        mergeOff,
+    ) { mergeOff = it }
     SwitchRow(
         GroupPosition.MIDDLE, R.drawable.ic_hourglass_top_24dp,
         stringResource(R.string.glass_lab_merge_gravity), stringResource(R.string.glass_lab_merge_gravity_summary),
@@ -1371,7 +1377,8 @@ private fun FluidPrototype() {
         inertiaOn = floor,
         friction = friction,
         bounce = bounce,
-        stackOn = stackOn,
+        solidOn = solidOn,
+        mergeOff = mergeOff,
         gravityOn = gravityOn,
         gravity = gravity,
         gravityAngle = gravityAngle,
