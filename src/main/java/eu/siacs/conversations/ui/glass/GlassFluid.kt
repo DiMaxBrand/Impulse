@@ -217,9 +217,8 @@ class GlassFluidState(val pieces: List<FluidPiece>) {
             gaps[pair] = g
             // The closer, the deeper: 0 at the reach, full when touching.
             val target = 3f * softness * smooth(1f - g / reach.coerceAtLeast(1f))
-            // Coming together pours slowly; letting go is quicker (a bridge that lingers after the
-            // finger has gone looks stuck), but still critically damped: no overshoot.
-            val omega = if (target < depth[pair]) slowOmega * 2.2f else slowOmega
+            // Critically damped, the same going in and coming out: no overshoot, and it pours.
+            val omega = slowOmega
             val stiffness = omega * omega
             val damping = 2f * omega
             var left = dt
