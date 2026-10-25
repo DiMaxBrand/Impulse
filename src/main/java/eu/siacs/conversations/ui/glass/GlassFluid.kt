@@ -227,10 +227,6 @@ class GlassFluidState(private val density: Float) {
     var fieldW by mutableFloatStateOf(0f)
     var fieldH by mutableFloatStateOf(0f)
 
-    init {
-        reset()
-    }
-
     private val templates = listOf(
         floatArrayOf(64f, 64f, 32f),
         floatArrayOf(116f, 64f, 32f),
@@ -508,6 +504,11 @@ class GlassFluidState(private val density: Float) {
             alpha = min(alpha, ((dist - r) / (r * 0.6f)).coerceIn(0f, 1f))
         }
         return alpha
+    }
+
+    // Last of the properties: it uses all of them (it used to run before `templates` existed, and crashed).
+    init {
+        reset()
     }
 
     private companion object {
