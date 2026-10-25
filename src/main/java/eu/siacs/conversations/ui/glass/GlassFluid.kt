@@ -468,6 +468,10 @@ class GlassFluidState(private val density: Float) {
         val walls = walls()
         if (walls.isNotEmpty()) for (p in pieces) if (!p.dragging) escape(p, walls)
         for (p in pieces) if (advance(p, dt, walls)) moving = true
+        if (laserOn && laserSpin != 0f) {
+            laserPhase += laserSpin * dt
+            moving = true
+        }
         val slowOmega = 5.8f / response.coerceAtLeast(0.2f)
         for (i in pieces.indices) for (j in i + 1 until pieces.size) {
             val pair = pairIndex(i, j)
@@ -490,6 +494,151 @@ class GlassFluidState(private val density: Float) {
         }
         tick++
         return moving
+    }
+
+    // ---- the laser ---------------------------------------------------------------------------
+
+    var laserOn = false
+    /** Direction of the beam in degrees (0: right, 90: down), plus [laserSpin] degrees per second. */
+    var laserAngle = 35f
+    var laserSpin = 0f
+    private var laserPhase = 0f
+    /** Refractive index of the glass: the beam bends towards the normal on the way in. */
+    var glassIndex = 1.5f
+
+    class LaserSeg(val x0: Float, val y0: Float, val x1: Float, val y1: Float, val alpha: Float)
+
+    private fun sdPiece(p: FluidPiece, x: Float, y: Float): Float {
+        val qx = abs(x - p.centerX) - (p.width / 2f - p.radius)
+        val qy = abs(y - p.centerY) - (p.height / 2f - p.radius)
+        return hypot(max(qx, 0f), max(qy, 0f)) + min(max(qx, qy), 0f) - p.radius
+    }
+
+    private val dBuf = FloatArray(SHAPE_MAX)
+
+    /** The same field as the shader draws: the pieces joined by their bridges. */
+    private fun fieldSd(x: Float, y: Float, n: Int, k: FloatArray): Float {
+        var r = 1e9f
+        for (i in 0 until n) {
+            dBuf[i] = sdPiece(pieces[i], x, y)
+            r = min(r, dBuf[i])
+        }
+        for (i in 0 until n) for (j in i + 1 until n) {
+            val kk = k[i * SHAPE_MAX + j]
+            if (kk > 0.001f) {
+                val h = max(kk - abs(dBuf[i] - dBuf[j]), 0f) / kk
+                r = min(r, min(dBuf[i], dBuf[j]) - h * h * h * kk / 6f)
+            }
+        }
+        return r
+    }
+
+    /**
+     * The beam: it starts at the middle of the field, leaves the wall it sits in, reflects off the
+     * walls and the edges, and bends into and out of the glass (the drops and their bridges are
+     * traced as one shape, like the shader draws them), with total reflection where the angle is too
+     * flat to get out.
+     */
+    fun laserPath(): List<LaserSeg> {
+        if (!laserOn || fieldW <= 0f || fieldH <= 0f) return emptyList()
+        val n = min(pieces.size, SHAPE_MAX)
+        val k = FloatArray(SHAPE_MAX * SHAPE_MAX)
+        for (i in 0 until n) for (j in i + 1 until n) k[i * SHAPE_MAX + j] = blendFor(i, j)
+        val walls = walls()
+        val a = Math.toRadians((laserAngle + laserPhase).toDouble())
+        var dx = kotlin.math.cos(a).toFloat()
+        var dy = kotlin.math.sin(a).toFloat()
+        var x = fieldW / 2f
+        var y = fieldH / 2f
+        var guard = 0
+        while (guard++ < 4000 && walls.any { x >= it.left && x <= it.right && y >= it.top && y <= it.bottom }) {
+            x += dx * 2f
+            y += dy * 2f
+        }
+        var inside = fieldSd(x, y, n, k) < 0f
+        val segs = ArrayList<LaserSeg>()
+        var alpha = 1f
+        var total = 0f
+        val limit = 8f * (fieldW + fieldH)
+        val index = glassIndex.coerceAtLeast(0.2f)
+        for (hit in 0 until MAX_LASER_HITS) {
+            // What flat things are in the way: the edges of the field first, then the walls.
+            val tx = if (dx > 0f) (fieldW - x) / dx else if (dx < 0f) -x / dx else Float.MAX_VALUE
+            val ty = if (dy > 0f) (fieldH - y) / dy else if (dy < 0f) -y / dy else Float.MAX_VALUE
+            var tA = min(tx, ty)
+            var nax = if (tx <= ty) -sign(dx) else 0f
+            var nay = if (tx <= ty) 0f else -sign(dy)
+            for (w in walls) {
+                val inf = Float.MAX_VALUE
+                val x1 = if (dx != 0f) (w.left - x) / dx else if (x in w.left..w.right) -inf else inf
+                val x2 = if (dx != 0f) (w.right - x) / dx else if (x in w.left..w.right) inf else -inf
+                val y1 = if (dy != 0f) (w.top - y) / dy else if (y in w.top..w.bottom) -inf else inf
+                val y2 = if (dy != 0f) (w.bottom - y) / dy else if (y in w.top..w.bottom) inf else -inf
+                val enterX = min(x1, x2)
+                val enterY = min(y1, y2)
+                val enter = max(enterX, enterY)
+                val exit = min(max(x1, x2), max(y1, y2))
+                if (enter <= exit && enter > 0.001f && enter < tA) {
+                    tA = enter
+                    if (enterX > enterY) { nax = -sign(dx); nay = 0f } else { nax = 0f; nay = -sign(dy) }
+                }
+            }
+            // The glass: sphere tracing along the beam, up to the flat obstacle.
+            var t = 0f
+            var hitGlass = false
+            var steps = 0
+            while (t < tA && steps++ < 160) {
+                val ad = abs(fieldSd(x + dx * t, y + dy * t, n, k))
+                if (ad < 0.6f && t > 1.5f) { hitGlass = true; break }
+                // Still on the surface it just came through: step off it instead of hitting it again.
+                t += if (ad < 0.6f) 1.5f else ad * 0.85f
+            }
+            val te = if (hitGlass) t else tA
+            segs.add(LaserSeg(x, y, x + dx * te, y + dy * te, alpha))
+            x += dx * te
+            y += dy * te
+            total += te
+            if (total > limit) break
+            if (hitGlass) {
+                val e = 1.5f
+                var nx = fieldSd(x + e, y, n, k) - fieldSd(x - e, y, n, k)
+                var ny = fieldSd(x, y + e, n, k) - fieldSd(x, y - e, n, k)
+                val len = hypot(nx, ny)
+                if (len < 1e-4f) break
+                nx /= len; ny /= len
+                // The normal that faces the incoming beam.
+                val facing = if (dx * nx + dy * ny < 0f) 1f else -1f
+                val fx = nx * facing
+                val fy = ny * facing
+                val cosI = -(dx * fx + dy * fy)
+                val eta = if (!inside) 1f / index else index
+                val kk = 1f - eta * eta * (1f - cosI * cosI)
+                if (kk < 0f) {
+                    val d2 = dx * fx + dy * fy
+                    dx -= 2f * d2 * fx
+                    dy -= 2f * d2 * fy
+                } else {
+                    val c = eta * cosI - sqrt(kk)
+                    dx = eta * dx + c * fx
+                    dy = eta * dy + c * fy
+                    inside = !inside
+                }
+                alpha *= 0.97f
+                val l = hypot(dx, dy)
+                dx /= l; dy /= l
+                x += dx * 0.8f
+                y += dy * 0.8f
+            } else {
+                val d2 = dx * nax + dy * nay
+                dx -= 2f * d2 * nax
+                dy -= 2f * d2 * nay
+                alpha *= 0.92f
+                x += nax * 0.6f
+                y += nay * 0.6f
+            }
+            if (alpha < 0.05f) break
+        }
+        return segs
     }
 
     /** The finger let go: it carries on sliding if the floor is slippery. */
@@ -519,6 +668,7 @@ class GlassFluidState(private val density: Float) {
     }
 
     private companion object {
+        const val MAX_LASER_HITS = 28
         const val MIN_SPEED = 12f      // dp/s: slower than this a sliding piece stops
         const val MAX_SPEED = 5000f    // dp/s
         const val IMPACT = 0.0011f     // squash speed per dp/s of impact
@@ -550,6 +700,10 @@ fun GlassFluidField(
     inertiaOn: Boolean,
     friction: Float,
     bounce: Float,
+    laserOn: Boolean,
+    laserAngle: Float,
+    laserSpin: Float,
+    glassIndex: Float,
     heightDp: Float,
     widthFraction: Float,
     modifier: Modifier = Modifier,
@@ -563,6 +717,10 @@ fun GlassFluidField(
     state.inertiaOn = inertiaOn
     state.friction = friction
     state.bounce = bounce
+    state.laserOn = laserOn
+    state.laserAngle = laserAngle
+    state.laserSpin = laserSpin
+    state.glassIndex = glassIndex
 
     // The springs run while anything moves. One loop that is woken by a move (not restarted by it),
     // and that keeps going a few frames past the point where everything has settled, so the last
@@ -579,7 +737,7 @@ fun GlassFluidField(
             }
         }
     }
-    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, heightDp, widthFraction) { state.wake() }
+    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, laserOn, laserAngle, laserSpin, glassIndex, heightDp, widthFraction) { state.wake() }
 
     val tint = MaterialTheme.colorScheme.onSurface
     // What the glass looks through: the pattern below, recorded here (the page's own backdrop does not
@@ -672,6 +830,22 @@ fun GlassFluidField(
                             },
                         ),
                 )
+                // The laser, over the glass and under the pieces' own content.
+                if (laserOn) {
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                        state.tick
+                        val beam = androidx.compose.ui.graphics.Color(0xFFFF3B30)
+                        val segs = state.laserPath()
+                        for (s in segs) {
+                            val a = Offset(s.x0, s.y0)
+                            val b = Offset(s.x1, s.y1)
+                            drawLine(beam.copy(alpha = 0.16f * s.alpha), a, b, 11.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                            drawLine(beam.copy(alpha = 0.4f * s.alpha), a, b, 5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                            drawLine(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f * s.alpha), a, b, 1.6.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                        }
+                        segs.firstOrNull()?.let { drawCircle(beam, 5.dp.toPx(), Offset(it.x0, it.y0)) }
+                    }
+                }
                 state.pieces.forEachIndexed { index, piece ->
                     androidx.compose.runtime.key(piece) {
                         Box(

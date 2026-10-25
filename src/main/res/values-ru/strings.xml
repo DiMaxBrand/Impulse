@@ -1812,4 +1812,9 @@
     <string name="glass_lab_merge_add">Добавить объект (%1$d из 8)</string>
     <string name="glass_lab_merge_remove">Убрать один</string>
     <string name="glass_lab_merge_bounce">Отскок (сохраняемая скорость)</string>
+    <string name="glass_lab_merge_laser">Лазер</string>
+    <string name="glass_lab_merge_laser_summary">Луч выходит из стены посередине, отражается от стен и краёв и преломляется в стекле (а внутри него отражается, если угол слишком пологий).</string>
+    <string name="glass_lab_merge_laser_angle">Направление лазера</string>
+    <string name="glass_lab_merge_laser_spin">Скорость поворота лазера</string>
+    <string name="glass_lab_merge_index">Показатель стекла (как сильно преломляет)</string>
 </resources>

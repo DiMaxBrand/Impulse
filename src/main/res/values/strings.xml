@@ -1746,4 +1746,9 @@
     <string name="glass_lab_merge_add">Add object (%1$d of 8)</string>
     <string name="glass_lab_merge_remove">Remove one</string>
     <string name="glass_lab_merge_bounce">Bounce (speed kept)</string>
+    <string name="glass_lab_merge_laser">Laser</string>
+    <string name="glass_lab_merge_laser_summary">A beam leaves the wall in the middle, bounces off the walls and edges and bends through the glass (and reflects inside it when the angle is too flat).</string>
+    <string name="glass_lab_merge_laser_angle">Laser direction</string>
+    <string name="glass_lab_merge_laser_spin">Laser turning speed</string>
+    <string name="glass_lab_merge_index">Glass index (how much it bends)</string>
 </resources>

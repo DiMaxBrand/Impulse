@@ -1285,6 +1285,10 @@ private fun FluidPrototype() {
     var floor by remember { mutableStateOf(false) }
     var friction by remember { mutableFloatStateOf(1.4f) }
     var bounce by remember { mutableFloatStateOf(0.45f) }
+    var laser by remember { mutableStateOf(false) }
+    var laserAngle by remember { mutableFloatStateOf(35f) }
+    var laserSpin by remember { mutableFloatStateOf(0f) }
+    var glassIndex by remember { mutableFloatStateOf(1.5f) }
     var fieldHeight by remember { mutableFloatStateOf(300f) }
     var fieldWidth by remember { mutableFloatStateOf(100f) }
     val fluid = eu.siacs.conversations.ui.glass.rememberGlassFluidState()
@@ -1311,6 +1315,14 @@ private fun FluidPrototype() {
     ) { floor = it }
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_friction, friction, 0f..8f, "/s", decimals = 1) { friction = it }
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_bounce, bounce, 0f..1.5f, "", decimals = 2) { bounce = it }
+    SwitchRow(
+        GroupPosition.MIDDLE, R.drawable.ic_palette_24dp,
+        stringResource(R.string.glass_lab_merge_laser), stringResource(R.string.glass_lab_merge_laser_summary),
+        laser,
+    ) { laser = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_laser_angle, laserAngle, 0f..360f, "°") { laserAngle = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_laser_spin, laserSpin, -90f..90f, "°/s") { laserSpin = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_index, glassIndex, 1f..2.5f, "", decimals = 2) { glassIndex = it }
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { fieldHeight = it }
     ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { fieldWidth = it }
     Spacer(Modifier.height(8.dp))
@@ -1335,6 +1347,10 @@ private fun FluidPrototype() {
         inertiaOn = floor,
         friction = friction,
         bounce = bounce,
+        laserOn = laser,
+        laserAngle = laserAngle,
+        laserSpin = laserSpin,
+        glassIndex = glassIndex,
         heightDp = fieldHeight,
         widthFraction = fieldWidth,
     ) { index, tint ->
