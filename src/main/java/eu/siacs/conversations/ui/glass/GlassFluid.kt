@@ -151,8 +151,10 @@ half4 main(float2 coord) {
 """
 
 /**
- * One member of a fluid field. [pos] is the top-left of its resting body (px); while it is pressed
- * against something the body is squashed ([sqX], [sqY]) with the side that touches staying put.
+ * One member of a fluid field. [pos] is the top-left of its body AS IT IS NOW: pressed against
+ * something, the body is squashed ([sqX], [sqY]), and the physics (the walls, the gaps between them)
+ * always works with that current size, so a piece pressed flat can slip through a slot it would not
+ * fit in at rest. The side that touches stays put while it squashes.
  */
 @Stable
 class FluidPiece(val baseW: Float, val baseH: Float, val baseR: Float, x: Float, y: Float) {
@@ -160,8 +162,8 @@ class FluidPiece(val baseW: Float, val baseH: Float, val baseR: Float, x: Float,
     var vel = Offset.Zero
     var dragging = false
 
-    /** Where the finger wants the body to be (it can be beyond a wall). */
-    var target = Offset(x, y)
+    /** Where the finger wants the CENTRE of the body to be (it can be beyond a wall). */
+    var target = Offset(x + baseW / 2f, y + baseH / 2f)
     var sqX by mutableFloatStateOf(0f)
     var sqY by mutableFloatStateOf(0f)
     var sqVX = 0f
@@ -172,18 +174,10 @@ class FluidPiece(val baseW: Float, val baseH: Float, val baseR: Float, x: Float,
     val width get() = baseW * (1f - sqX) * (1f + 0.3f * sqY)
     val height get() = baseH * (1f - sqY) * (1f + 0.3f * sqX)
     val radius get() = min(baseR, min(width, height) / 2f)
-    val left get() = when {
-        contactX > 0 -> pos.x + baseW - width
-        contactX < 0 -> pos.x
-        else -> pos.x + (baseW - width) / 2f
-    }
-    val top get() = when {
-        contactY > 0 -> pos.y + baseH - height
-        contactY < 0 -> pos.y
-        else -> pos.y + (baseH - height) / 2f
-    }
-    val centerX get() = left + width / 2f
-    val centerY get() = top + height / 2f
+    val left get() = pos.x
+    val top get() = pos.y
+    val centerX get() = pos.x + width / 2f
+    val centerY get() = pos.y + height / 2f
 }
 
 /**
@@ -349,45 +343,50 @@ class GlassFluidState(private val density: Float) {
         return c * c * (3f - 2f * c)
     }
 
-    private class Slide(val pos: Offset, val hx: Int, val hy: Int)
+    private class Slide(val pos: Offset, val hx: Int, val hy: Int, val bx: Float, val by: Float)
 
-    /** Moves a piece towards [to] without going through the field's edges or a wall; says which side stopped it. */
+    /**
+     * Moves a piece's CURRENT body (its squashed size) towards the top-left [to] without going through
+     * the field's edges or a wall; says which side stopped it and where that surface is.
+     */
     private fun slide(p: FluidPiece, to: Offset, walls: List<Rect>): Slide {
-        val bw = p.baseW
-        val bh = p.baseH
+        val w = p.width
+        val h = p.height
         val x = p.pos.x
         val y = p.pos.y
         var hx = 0
         var hy = 0
+        var bx = 0f
+        var by = 0f
         var nx = to.x
         if (fieldW > 0f) {
-            if (nx < 0f) { nx = 0f; hx = -1 }
-            if (nx + bw > fieldW) { nx = max(fieldW - bw, 0f); hx = 1 }
+            if (nx < 0f) { nx = 0f; hx = -1; bx = 0f }
+            if (nx + w > fieldW) { nx = max(fieldW - w, 0f); hx = 1; bx = fieldW }
         }
-        for (w in walls) {
-            if (y < w.bottom && y + bh > w.top) {
-                if (x + bw <= w.left + 0.5f && nx + bw > w.left) { nx = w.left - bw; hx = 1 }
-                else if (x >= w.right - 0.5f && nx < w.right) { nx = w.right; hx = -1 }
+        for (wl in walls) {
+            if (y < wl.bottom && y + h > wl.top) {
+                if (x + w <= wl.left + 0.5f && nx + w > wl.left) { nx = wl.left - w; hx = 1; bx = wl.left }
+                else if (x >= wl.right - 0.5f && nx < wl.right) { nx = wl.right; hx = -1; bx = wl.right }
             }
         }
         var ny = to.y
         if (fieldH > 0f) {
-            if (ny < 0f) { ny = 0f; hy = -1 }
-            if (ny + bh > fieldH) { ny = max(fieldH - bh, 0f); hy = 1 }
+            if (ny < 0f) { ny = 0f; hy = -1; by = 0f }
+            if (ny + h > fieldH) { ny = max(fieldH - h, 0f); hy = 1; by = fieldH }
         }
-        for (w in walls) {
-            if (nx < w.right && nx + bw > w.left) {
-                if (y + bh <= w.top + 0.5f && ny + bh > w.top) { ny = w.top - bh; hy = 1 }
-                else if (y >= w.bottom - 0.5f && ny < w.bottom) { ny = w.bottom; hy = -1 }
+        for (wl in walls) {
+            if (nx < wl.right && nx + w > wl.left) {
+                if (y + h <= wl.top + 0.5f && ny + h > wl.top) { ny = wl.top - h; hy = 1; by = wl.top }
+                else if (y >= wl.bottom - 0.5f && ny < wl.bottom) { ny = wl.bottom; hy = -1; by = wl.bottom }
             }
         }
-        return Slide(Offset(nx, ny), hx, hy)
+        return Slide(Offset(nx, ny), hx, hy, bx, by)
     }
 
-    /** A piece that ended up inside a wall (the walls were just switched on, or the field changed) steps out the shortest way. */
+    /** A piece that ended up inside a wall (the walls were just switched on, or it grew back) steps out the shortest way. */
     private fun escape(p: FluidPiece, walls: List<Rect>) {
         for (w in walls) {
-            val r = Rect(p.pos.x, p.pos.y, p.pos.x + p.baseW, p.pos.y + p.baseH)
+            val r = Rect(p.pos.x, p.pos.y, p.pos.x + p.width, p.pos.y + p.height)
             if (!w.overlaps(r)) continue
             val left = r.right - w.left
             val right = w.right - r.left
@@ -395,9 +394,9 @@ class GlassFluidState(private val density: Float) {
             val down = w.bottom - r.top
             val m = min(min(left, right), min(up, down))
             p.pos = when (m) {
-                left -> Offset(w.left - p.baseW, p.pos.y)
+                left -> Offset(w.left - p.width, p.pos.y)
                 right -> Offset(w.right, p.pos.y)
-                up -> Offset(p.pos.x, w.top - p.baseH)
+                up -> Offset(p.pos.x, w.top - p.height)
                 else -> Offset(p.pos.x, w.bottom)
             }
             p.vel = Offset.Zero
@@ -410,11 +409,16 @@ class GlassFluidState(private val density: Float) {
         var penX = 0f
         var penY = 0f
         if (p.dragging) {
-            val res = slide(p, p.target, walls)
+            val res = slide(p, Offset(p.target.x - p.width / 2f, p.target.y - p.height / 2f), walls)
             if (res.pos != p.pos) p.pos = res.pos
-            // The finger can go on past a wall: the difference is how hard the piece is pressed.
-            if (res.hx != 0) penX = p.target.x - res.pos.x
-            if (res.hy != 0) penY = p.target.y - res.pos.y
+            // The finger can go on past a wall: how far its centre is beyond where an unsquashed
+            // body would rest against that surface is how hard the piece is pressed.
+            if (res.hx > 0) penX = p.target.x - (res.bx - p.baseW / 2f)
+            if (res.hx < 0) penX = (res.bx + p.baseW / 2f) - p.target.x
+            if (res.hy > 0) penY = p.target.y - (res.by - p.baseH / 2f)
+            if (res.hy < 0) penY = (res.by + p.baseH / 2f) - p.target.y
+            if (res.hx != 0) p.contactX = res.hx
+            if (res.hy != 0) p.contactY = res.hy
             p.vel = Offset.Zero
             moving = true
         } else if (inertiaOn && p.vel.getDistance() > (if (friction > 0f) MIN_SPEED * density else 0.01f)) {
@@ -440,10 +444,10 @@ class GlassFluidState(private val density: Float) {
             p.vel = Offset.Zero
         }
         // The squash is a bouncy spring: pressed, it follows the pressure; free, it rings out.
-        val tx = if (wallsOn) (abs(penX) / p.baseW).coerceAtMost(MAX_SQUASH) else 0f
-        val ty = if (wallsOn) (abs(penY) / p.baseH).coerceAtMost(MAX_SQUASH) else 0f
-        if (penX != 0f) p.contactX = sign(penX).toInt()
-        if (penY != 0f) p.contactY = sign(penY).toInt()
+        val tx = if (wallsOn) (max(penX, 0f) / p.baseW).coerceAtMost(MAX_SQUASH) else 0f
+        val ty = if (wallsOn) (max(penY, 0f) / p.baseH).coerceAtMost(MAX_SQUASH) else 0f
+        val oldW = p.width
+        val oldH = p.height
         var left = dt
         while (left > 0f) {
             val h = min(left, 1f / 240f)
@@ -454,11 +458,22 @@ class GlassFluidState(private val density: Float) {
             left -= h
         }
         val ringing = abs(p.sqX) > 0.004f || abs(p.sqY) > 0.004f || abs(p.sqVX) > 0.05f || abs(p.sqVY) > 0.05f
-        if (ringing) moving = true
-        else {
+        if (!ringing) {
             p.sqX = 0f; p.sqY = 0f; p.sqVX = 0f; p.sqVY = 0f
-            if (!p.dragging) { p.contactX = 0; p.contactY = 0 }
+        } else {
+            moving = true
         }
+        // The side that touches stays where it is while the body changes size.
+        val dw = oldW - p.width
+        val dh = oldH - p.height
+        if (dw != 0f || dh != 0f) {
+            var nx = p.pos.x + when { p.contactX > 0 -> dw; p.contactX < 0 -> 0f; else -> dw / 2f }
+            var ny = p.pos.y + when { p.contactY > 0 -> dh; p.contactY < 0 -> 0f; else -> dh / 2f }
+            if (fieldW > 0f) nx = nx.coerceIn(0f, max(fieldW - p.width, 0f))
+            if (fieldH > 0f) ny = ny.coerceIn(0f, max(fieldH - p.height, 0f))
+            p.pos = Offset(nx, ny)
+        }
+        if (!ringing && !p.dragging) { p.contactX = 0; p.contactY = 0 }
         return moving
     }
 
@@ -862,7 +877,7 @@ fun GlassFluidField(
                                             tracker.resetTracking()
                                             piece.dragging = true
                                             piece.vel = Offset.Zero
-                                            piece.target = piece.pos
+                                            piece.target = Offset(piece.centerX, piece.centerY)
                                             state.wake()
                                         },
                                         onDragEnd = {
