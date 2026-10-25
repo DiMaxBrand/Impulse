@@ -113,11 +113,15 @@ half4 main(float2 coord) {
     float sd = field(p);
     if (sd > 1.0) return half4(0.0);
     float cover = clamp(0.5 - sd, 0.0, 1.0);
-    float2 g = float2(
-        field(p + float2(1.0, 0.0)) - field(p - float2(1.0, 0.0)),
-        field(p + float2(0.0, 1.0)) - field(p - float2(0.0, 1.0)));
-    float gl = length(g);
-    float2 n = gl > 0.0001 ? g / gl : float2(0.0);
+    // The direction the surface faces, from a wide difference and NOT normalised: along the middle
+    // ridge of a thin body the direction flips, and a unit vector there tears the picture (the grid
+    // lines hooked and broke); this way it fades to nothing at the ridge instead.
+    float e = 7.0;
+    float2 n = float2(
+        field(p + float2(e, 0.0)) - field(p - float2(e, 0.0)),
+        field(p + float2(0.0, e)) - field(p - float2(0.0, e))) / (2.0 * e);
+    float nl = length(n);
+    if (nl > 1.0) n = n / nl;
     float inner = min(sd, 0.0);
     float2 at = coord;
     if (-inner < refractionHeight) {
@@ -172,7 +176,10 @@ class GlassFluidState(val pieces: List<FluidPiece>) {
         if (c < 4f) return 0f
         // A radius of three times the gap is where the surfaces just touch (cubic blend: the
         // middle sinks by a sixth of the radius); the depth is on top of that.
-        return 3f * max(gaps[pair], 0f) + c
+        // Never longer than what tears at the reach: however far the pieces were pulled in one go,
+        // a bridge cannot outlive that (it used to hang on as a long thread while the depth settled).
+        val cap = max(3f * reach * 0.98f, c)
+        return min(3f * max(gaps[pair], 0f) + c, cap)
     }
 
     fun positionsKey(): List<Offset> = pieces.map { it.pos }
@@ -337,7 +344,7 @@ fun GlassFluidField(
                             shader.setFloatUniform("rad", radii)
                             shader.setFloatUniform("k", FloatArray(6) { state.blendFor(it) })
                             shader.setFloatUniform("refractionHeight", 14.dp.toPx())
-                            shader.setFloatUniform("refractionAmount", -26.dp.toPx())
+                            shader.setFloatUniform("refractionAmount", -20.dp.toPx())
                             shader.setFloatUniform("rimWidth", 2.5.dp.toPx())
                             effect(RenderEffect.createRuntimeShaderEffect(shader, "content"))
                         }
