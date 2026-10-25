@@ -237,8 +237,12 @@ private fun SkinSlider(
 ) {
     val skin = LocalGlassSkin.current
     if (skin != null) {
+        // The slider watches this lambda for changes (a snapshot flow), so it has to read state: a
+        // plain `{ value }` captured the first value for good, the slider never heard of the new
+        // ones, and every drag started again from where it began, so it could only be tapped.
+        val current by androidx.compose.runtime.rememberUpdatedState(value)
         LiquidSlider(
-            value = { value },
+            value = { current },
             onValueChange = onValueChange,
             valueRange = valueRange,
             visibilityThreshold = (valueRange.endInclusive - valueRange.start) / 100f,
