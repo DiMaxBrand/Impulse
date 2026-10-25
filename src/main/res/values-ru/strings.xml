@@ -1811,4 +1811,5 @@
     <string name="glass_lab_merge_width">Ширина поля (от экрана)</string>
     <string name="glass_lab_merge_add">Добавить объект (%1$d из 8)</string>
     <string name="glass_lab_merge_remove">Убрать один</string>
+    <string name="glass_lab_merge_bounce">Отскок (сохраняемая скорость)</string>
 </resources>

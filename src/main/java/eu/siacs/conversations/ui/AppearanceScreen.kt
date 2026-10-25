@@ -1284,6 +1284,7 @@ private fun FluidPrototype() {
     var walls by remember { mutableStateOf(false) }
     var floor by remember { mutableStateOf(false) }
     var friction by remember { mutableFloatStateOf(1.4f) }
+    var bounce by remember { mutableFloatStateOf(0.45f) }
     var fieldHeight by remember { mutableFloatStateOf(300f) }
     var fieldWidth by remember { mutableFloatStateOf(100f) }
     val fluid = eu.siacs.conversations.ui.glass.rememberGlassFluidState()
@@ -1308,7 +1309,8 @@ private fun FluidPrototype() {
         stringResource(R.string.glass_lab_merge_floor), stringResource(R.string.glass_lab_merge_floor_summary),
         floor,
     ) { floor = it }
-    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_friction, friction, 0.1f..8f, "/s", decimals = 1) { friction = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_friction, friction, 0f..8f, "/s", decimals = 1) { friction = it }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_bounce, bounce, 0f..1.5f, "", decimals = 2) { bounce = it }
     ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { fieldHeight = it }
     ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { fieldWidth = it }
     Spacer(Modifier.height(8.dp))
@@ -1332,6 +1334,7 @@ private fun FluidPrototype() {
         wallsOn = walls,
         inertiaOn = floor,
         friction = friction,
+        bounce = bounce,
         heightDp = fieldHeight,
         widthFraction = fieldWidth,
     ) { index, tint ->
@@ -1384,7 +1387,7 @@ private fun EditableValue(shown: String, initial: String, onCommit: (Float) -> U
             confirmButton = {
                 androidx.compose.material3.TextButton(
                     onClick = {
-                        field.replace(',', '.').toFloatOrNull()?.takeIf { it.isFinite() }?.let { onCommit(it.coerceAtLeast(0f)) }
+                        field.replace(',', '.').toFloatOrNull()?.takeIf { it.isFinite() }?.let { onCommit(it) }
                         open = false
                     },
                 ) { Text(stringResource(android.R.string.ok)) }

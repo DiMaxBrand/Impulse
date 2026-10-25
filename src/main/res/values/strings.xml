@@ -1745,4 +1745,5 @@
     <string name="glass_lab_merge_width">Field width (of the screen)</string>
     <string name="glass_lab_merge_add">Add object (%1$d of 8)</string>
     <string name="glass_lab_merge_remove">Remove one</string>
+    <string name="glass_lab_merge_bounce">Bounce (speed kept)</string>
 </resources>

@@ -186,7 +186,7 @@ fun GlassGroupRow(
         delay(delayMs)
         wobble.snapTo(0f)
         // Less jelly is also more damped.
-        wobble.animateTo(1f, spring(dampingRatio = (0.34f + 0.3f * (1f - GlassTuning.jelly)).coerceIn(0.2f, 0.95f), stiffness = 190f))
+        wobble.animateTo(1f, spring(dampingRatio = (0.34f + 0.3f * (1f - GlassTuning.jelly.coerceAtLeast(0f))).coerceIn(0.2f, 0.95f), stiffness = 190f))
     }
     // Glass is drawn only for the rows on (or just next to) the screen: a screen of a few dozen
     // pieces of glass was too much for a phone, and nobody sees the ones that are scrolled away.
@@ -222,14 +222,14 @@ fun GlassGroupRow(
                 .graphicsLayer {
                     alpha = skin.reveal.value.coerceIn(0f, 1f)
                     val w = wobble.value
-                    val j = GlassTuning.jelly
+                    val j = GlassTuning.jelly.coerceAtLeast(0f)
                     scaleX = 1f - 0.06f * j * (1f - w)
                     scaleY = 1f - 0.06f * j * (1f - w)
                 },
             // The glass alone stretches (the content keeps its shape), wide and flat first.
             layerBlock = {
                 val w = wobble.value
-                val j = GlassTuning.jelly
+                val j = GlassTuning.jelly.coerceAtLeast(0f)
                 scaleX = 1f + 0.06f * j * (1f - w)
                 scaleY = 1f - 0.16f * j * (1f - w)
             },

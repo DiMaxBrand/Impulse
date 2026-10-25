@@ -330,7 +330,7 @@ fun BackdropEffectScope.glassLens(
  */
 fun BackdropEffectScope.glassBlur(base: Float, useLabScale: Boolean = true) {
     val boost = GlassPerformance.scrollBlur
-    val tuned = if (useLabScale) base * GlassTuning.blur else base
+    val tuned = if (useLabScale) base * GlassTuning.blur.coerceAtLeast(0f) else base
     val radius = tuned + (GlassPerformance.FAST_SCROLL_BLUR.toPx() - tuned).coerceAtLeast(0f) * boost
     if (radius > 0.5f) blur(radius)
 }
@@ -345,6 +345,6 @@ fun BackdropEffectScope.glassLensEased(
     chromaticAberration: Boolean = false,
 ) = glassLens(
     refractionHeight,
-    refractionAmount * GlassTuning.refraction,
+    refractionAmount * GlassTuning.refraction.coerceAtLeast(0f),
     chromaticAberration && GlassTuning.fringes,
 )

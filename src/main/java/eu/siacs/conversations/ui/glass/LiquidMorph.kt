@@ -148,10 +148,10 @@ fun LiquidMorphContainer(
                                     colorControls(0f, style.contrast, style.saturation)
                                 }
                                 if (style.vibrancy) vibrancy()
-                                if (style.blur > 0.dp) blur(style.blur.toPx() * GlassTuning.blur)
+                                if (style.blur > 0.dp) blur(style.blur.toPx() * GlassTuning.blur.coerceAtLeast(0f))
                                 glassLens(
                                     style.lensHeight.toPx(),
-                                    style.lensAmount.toPx() * GlassTuning.refraction,
+                                    style.lensAmount.toPx() * GlassTuning.refraction.coerceAtLeast(0f),
                                     style.chromaticAberration && GlassTuning.fringes,
                                 )
                             }

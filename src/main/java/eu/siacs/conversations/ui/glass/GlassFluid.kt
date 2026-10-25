@@ -223,6 +223,8 @@ class GlassFluidState(private val density: Float) {
     var inertiaOn = false
     /** Slowing of a sliding piece, per second. */
     var friction = 1.4f
+    /** How much speed is kept when a sliding piece hits an edge or a wall (1: all of it, above 1: more). */
+    var bounce = 0.45f
 
     var fieldW by mutableFloatStateOf(0f)
     var fieldH by mutableFloatStateOf(0f)
@@ -415,19 +417,24 @@ class GlassFluidState(private val density: Float) {
             if (res.hy != 0) penY = p.target.y - res.pos.y
             p.vel = Offset.Zero
             moving = true
-        } else if (inertiaOn && p.vel.getDistance() > MIN_SPEED * density) {
+        } else if (inertiaOn && p.vel.getDistance() > (if (friction > 0f) MIN_SPEED * density else 0.01f)) {
             val res = slide(p, p.pos + p.vel * dt, walls)
             if (res.pos != p.pos) p.pos = res.pos
             var v = p.vel
+            // With no friction at all nothing is lost, not even in a bounce: the piece never stops.
+            val rest = if (friction <= 0f) 1f else bounce
             if (res.hx != 0) {
                 if (wallsOn) { p.sqVX += abs(v.x) / density * IMPACT; p.contactX = res.hx }
-                v = Offset(-v.x * RESTITUTION, v.y)
+                v = Offset(-v.x * rest, v.y)
             }
             if (res.hy != 0) {
                 if (wallsOn) { p.sqVY += abs(v.y) / density * IMPACT; p.contactY = res.hy }
-                v = Offset(v.x, -v.y * RESTITUTION)
+                v = Offset(v.x, -v.y * rest)
             }
-            p.vel = v * exp(-friction * dt)
+            v = v * exp(-friction * dt)
+            val top = MAX_SPEED * density
+            val sp = v.getDistance()
+            p.vel = if (sp > top) v * (top / sp) else v
             moving = true
         } else {
             p.vel = Offset.Zero
@@ -514,7 +521,6 @@ class GlassFluidState(private val density: Float) {
     private companion object {
         const val MIN_SPEED = 12f      // dp/s: slower than this a sliding piece stops
         const val MAX_SPEED = 5000f    // dp/s
-        const val RESTITUTION = 0.45f
         const val IMPACT = 0.0011f     // squash speed per dp/s of impact
         const val MAX_SQUASH = 0.55f
         const val SQ_STIFFNESS = 520f
@@ -543,6 +549,7 @@ fun GlassFluidField(
     wallsOn: Boolean,
     inertiaOn: Boolean,
     friction: Float,
+    bounce: Float,
     heightDp: Float,
     widthFraction: Float,
     modifier: Modifier = Modifier,
@@ -555,6 +562,7 @@ fun GlassFluidField(
     state.wallsOn = wallsOn
     state.inertiaOn = inertiaOn
     state.friction = friction
+    state.bounce = bounce
 
     // The springs run while anything moves. One loop that is woken by a move (not restarted by it),
     // and that keeps going a few frames past the point where everything has settled, so the last
@@ -571,19 +579,19 @@ fun GlassFluidField(
             }
         }
     }
-    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, heightDp, widthFraction) { state.wake() }
+    LaunchedEffect(reach, responseMs, softness, wallsOn, inertiaOn, friction, bounce, heightDp, widthFraction) { state.wake() }
 
     val tint = MaterialTheme.colorScheme.onSurface
     // What the glass looks through: the pattern below, recorded here (the page's own backdrop does not
     // contain it, so the glass used to show nothing but the plain page).
     val behind = rememberLayerBackdrop()
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        val fieldWidth = maxWidth * (widthFraction / 100f).coerceAtLeast(0.1f)
+        val fieldWidth = maxWidth * (widthFraction / 100f).coerceAtLeast(0.05f)
         Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
             Box(
                 Modifier
                     .width(fieldWidth)
-                    .height(heightDp.dp)
+                    .height(heightDp.coerceAtLeast(20f).dp)
                     .onSizeChanged {
                         state.fieldW = it.width.toFloat()
                         state.fieldH = it.height.toFloat()
