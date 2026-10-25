@@ -1305,6 +1305,60 @@ private fun FluidPrototype() {
     }
 }
 
+/**
+ * A value that can be typed in: tap it and enter any number, even one the slider cannot reach
+ * (the slider just sits at its end then).
+ */
+@Composable
+private fun EditableValue(shown: String, initial: String, onCommit: (Float) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Text(
+        shown,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { open = true }
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    )
+    if (open) {
+        var field by remember { mutableStateOf(initial) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(stringResource(R.string.glass_lab_value_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        stringResource(R.string.glass_lab_value_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    androidx.compose.material3.OutlinedTextField(
+                        value = field,
+                        onValueChange = { field = it },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
+                        ),
+                    )
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        field.replace(',', '.').toFloatOrNull()?.takeIf { it.isFinite() }?.let { onCommit(it.coerceAtLeast(0f)) }
+                        open = false
+                    },
+                ) { Text(stringResource(android.R.string.ok)) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { open = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
+}
+
 @Composable
 private fun ProtoSlider(position: GroupPosition, label: Int, value: Float, range: ClosedFloatingPointRange<Float>, unit: String, onChange: (Float) -> Unit) {
     var live by remember { mutableFloatStateOf(value) }
@@ -1313,9 +1367,12 @@ private fun ProtoSlider(position: GroupPosition, label: Int, value: Float, range
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(label), Modifier.weight(1f))
-                Text("${live.toInt()} $unit", color = MaterialTheme.colorScheme.primary)
+                EditableValue("${live.toInt()} $unit", live.toInt().toString()) { typed ->
+                    live = typed
+                    onChange(typed)
+                }
             }
-            SkinSlider(value = live, onValueChange = { live = it; onChange(it) }, valueRange = range)
+            SkinSlider(value = live.coerceIn(range), onValueChange = { live = it; onChange(it) }, valueRange = range)
         }
     }
 }
@@ -1331,10 +1388,13 @@ private fun LabSlider(position: GroupPosition, label: Int, value: Float, onChang
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(label), Modifier.weight(1f))
-                Text("${(live * 100).toInt()}%", color = MaterialTheme.colorScheme.primary)
+                EditableValue("${(live * 100).toInt()}%", (live * 100).toInt().toString()) { typed ->
+                    live = typed / 100f
+                    onChange(live)
+                }
             }
             SkinSlider(
-                value = live,
+                value = live.coerceIn(0f, 2f),
                 onValueChange = {
                     live = it
                     onChange(Math.round(it * 20) / 20f)

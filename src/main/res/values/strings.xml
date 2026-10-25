@@ -1734,4 +1734,6 @@
     <string name="glass_lab_merge_connect">Starts reaching at a gap of</string>
     <string name="glass_lab_merge_release">Time to settle</string>
     <string name="glass_lab_merge_soft">Roundness of the join</string>
+    <string name="glass_lab_value_title">Enter a value</string>
+    <string name="glass_lab_value_hint">Any number, even beyond the slider\'s range.</string>
 </resources>

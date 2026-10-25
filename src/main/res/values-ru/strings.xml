@@ -1800,4 +1800,6 @@
     <string name="glass_lab_merge_connect">Начинают тянуться с расстояния</string>
     <string name="glass_lab_merge_release">Время затухания</string>
     <string name="glass_lab_merge_soft">Скругление соединения</string>
+    <string name="glass_lab_value_title">Введите значение</string>
+    <string name="glass_lab_value_hint">Любое число, даже больше предела ползунка.</string>
 </resources>
