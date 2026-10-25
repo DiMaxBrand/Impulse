@@ -1260,11 +1260,60 @@ private fun GlassLabPage() {
             stringResource(R.string.glass_lab_bar_blur), stringResource(R.string.glass_lab_bar_blur_summary),
             GlassTuning.barBlur,
         ) { GlassTuning.putBarBlur(it) }
+        Spacer(Modifier.height(6.dp))
+        FluidPrototype()
         Spacer(Modifier.height(10.dp))
         OutlinedButton(onClick = { GlassTuning.reset() }, modifier = Modifier.padding(horizontal = 12.dp)) {
             Text(stringResource(R.string.glass_lab_reset))
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** The merging-glass prototype: three pieces to drag around, and the numbers that shape the bridge. */
+@Composable
+private fun FluidPrototype() {
+    val skin = LocalGlassSkin.current ?: return
+    var connect by remember { mutableFloatStateOf(12f) }
+    var release by remember { mutableFloatStateOf(30f) }
+    var soft by remember { mutableFloatStateOf(16f) }
+    SectionTitle(stringResource(R.string.glass_lab_section_merge))
+    Text(
+        stringResource(R.string.glass_lab_merge_hint),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+    )
+    ProtoSlider(GroupPosition.TOP, R.string.glass_lab_merge_connect, connect, 0f..60f) { connect = it; if (release < it + 4f) release = it + 4f }
+    ProtoSlider(GroupPosition.MIDDLE, R.string.glass_lab_merge_release, release, 0f..80f) { release = kotlin.math.max(it, connect + 4f) }
+    ProtoSlider(GroupPosition.BOTTOM, R.string.glass_lab_merge_soft, soft, 4f..48f) { soft = it }
+    Spacer(Modifier.height(8.dp))
+    eu.siacs.conversations.ui.glass.GlassFluidField(
+        backdrop = skin.backdrop,
+        connectAt = connect,
+        releaseAt = release,
+        softness = soft,
+    ) { index, tint ->
+        when (index) {
+            0 -> Icon(painterResource(R.drawable.ic_palette_24dp), null, tint = tint)
+            1 -> Text("Merge", color = tint, style = MaterialTheme.typography.titleSmall)
+            else -> Icon(painterResource(R.drawable.ic_touch_app_24dp), null, tint = tint)
+        }
+    }
+}
+
+@Composable
+private fun ProtoSlider(position: GroupPosition, label: Int, value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit) {
+    var live by remember { mutableFloatStateOf(value) }
+    LaunchedEffect(value) { if (kotlin.math.abs(value - live) > 0.5f) live = value }
+    ExpressiveGroupRow(position) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(label), Modifier.weight(1f))
+                Text("${live.toInt()} dp", color = MaterialTheme.colorScheme.primary)
+            }
+            SkinSlider(value = live, onValueChange = { live = it; onChange(it) }, valueRange = range)
+        }
     }
 }
 

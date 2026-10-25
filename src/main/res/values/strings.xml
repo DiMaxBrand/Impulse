@@ -1729,4 +1729,9 @@
     <string name="glass_lab_bar_blur_summary">The blurred bands under the status bar and the gesture bar</string>
     <string name="glass_lab_reset">Reset</string>
     <string name="interface_style_try">Press me</string>
+    <string name="glass_lab_section_merge">Merging glass (prototype)</string>
+    <string name="glass_lab_merge_hint">Drag the pieces onto each other. They join into one glass body and let go again, whatever speed you drag at.</string>
+    <string name="glass_lab_merge_connect">Join closer than</string>
+    <string name="glass_lab_merge_release">Let go farther than</string>
+    <string name="glass_lab_merge_soft">Roundness of the join</string>
 </resources>
