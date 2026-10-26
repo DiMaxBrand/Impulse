@@ -175,6 +175,28 @@ class FluidGlassHost(
 
     override fun bridgeBlend(a: FluidShape, b: FluidShape): Float = bridges.blend(a, b)
 
+    /**
+     * How much of an element's own content (icon, text) shows. Where two elements overlap, the glass flows into one
+     * body, so nothing but the content has a front and a back: the one that is pressed (else the later one) keeps its
+     * content, the other's fades out as the overlap grows, instead of being covered by the other's.
+     */
+    fun contentAlpha(e: FluidElement): Float {
+        tick // follow the bridges' steps
+        val mine = shapesById[e.id] ?: return 1f
+        var alpha = 1f
+        for (o in elements) {
+            if (o === e || !o.visible) continue
+            val other = shapesById[o.id] ?: continue
+            val wins = if (other.press != mine.press) other.press > mine.press else o.id > e.id
+            if (!wins) continue
+            val overlap = -bridges.gapBetween(mine, other)
+            if (overlap <= 0f) continue
+            val t = (overlap / (0.55f * min(mine.hw, mine.hh))).coerceIn(0f, 1f)
+            alpha = min(alpha, 1f - t * t * (3f - 2f * t))
+        }
+        return alpha
+    }
+
     override fun bounds(): Rect? {
         val all = shapes()
         if (all.isEmpty()) return Rect.Zero
@@ -394,6 +416,7 @@ internal fun FluidButton(
                 fluid.place(element, c, shape.topStart.toPx(size, density))
             }
             .graphicsLayer {
+                alpha = fluid.contentAlpha(element)
                 if (isInteractive) {
                     val g = pressGeometry(size.width, size.height, this.density, interactiveHighlight.pressProgress, interactiveHighlight.offset, FLUID_LEAN)
                     scaleX = g[0]
@@ -485,7 +508,8 @@ internal fun FluidPanel(
         contentAlignment = contentAlignment,
     ) {
         GlassInkBox(
-            if (clipContent) Modifier.matchParentSize().clip(shape) else Modifier.clip(shape),
+            (if (clipContent) Modifier.matchParentSize().clip(shape) else Modifier.clip(shape))
+                .graphicsLayer { alpha = fluid.contentAlpha(element) },
             contentAlignment,
             ink,
             content,

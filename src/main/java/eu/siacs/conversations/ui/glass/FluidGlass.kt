@@ -188,6 +188,9 @@ class FluidBridges {
         return if (intoB < 0f || intoA < 0f) min(intoB, intoA) else hypot(ax - bx, ay - by)
     }
 
+    /** The gap between two shapes (negative when they overlap). */
+    fun gapBetween(a: FluidShape, b: FluidShape): Float = gapOf(a, b)
+
     fun forget(id: Int) {
         pairs.keys.removeAll { (it shr 32).toInt() == id || (it and 0xffffffffL).toInt() == id }
     }
@@ -262,6 +265,8 @@ class FluidLook(
     val veil: Color = Color.Transparent,
     val frostSaturation: Float = 0.68f,
     val frostContrast: Float = 0.9f,
+    /** How softly colour, frost and light flow from one element into its neighbour. */
+    val blendEdge: Dp = 9.dp,
 )
 
 internal const val FLUID_MAX = 16
@@ -325,6 +330,7 @@ uniform float4 look[16];  // frost, frost rim, brightness, press
 uniform float2 touch[16];
 uniform float4 tint[16];  // colour laid over the glass inside a shape: rgb and strength
 uniform float frostPass;  // 0: the sharp glass, 1: the frosted copy (its input is already blurred)
+uniform float tau;        // how softly the shapes' attributes blend into each other (px)
 uniform float refractionHeight;
 uniform float refractionAmount;
 uniform float rimWidth;
@@ -340,34 +346,42 @@ half4 main(float2 coord) {
     if (sd > 1.0) return half4(0.0);
     float cover = clamp(0.5 - sd, 0.0, 1.0);
 
-    // What each shape near here asks of the glass: how frosted, how bright, how pressed.
-    float frostW = 0.0;
+    // What the shapes near here ask of the glass: how frosted, how bright, what colour, how pressed. Each is
+    // a soft average over the shapes, weighted by how close this pixel is to each (not a mask cut at
+    // every shape's own outline): where two bubbles are bridged their colour, frost and light flow into
+    // each other, and no bubble keeps a circle of its own over the other.
+    float frostAcc = 0.0;
+    float rimAcc = 0.0;
     float bright = 0.0;
     float wsum = 0.0;
-    float lightUp = 0.0;
-    float tintA = 0.0;
-    float3 tintRGB = float3(0.0);
+    float lightAcc = 0.0;
+    float tintAccA = 0.0;
+    float3 tintAccRGB = float3(0.0);
     for (int i = 0; i < 16; i++) {
         if (float(i) >= count) break;
         float dc = length(p - box[i].xy);
-        if (dc > info[i].y + 40.0) continue;
+        if (dc > info[i].y + 5.0 * tau) continue;
         float si = sdBoxI(p, box[i], info[i]);
-        float w = exp(-max(si, 0.0) / 6.0);
-        bright += w * look[i].z;
+        float w = exp(-clamp(si, -2.0 * tau, 5.0 * tau) / tau);
         wsum += w;
-        frostW = max(frostW, look[i].x * smoothstep(0.0, max(look[i].y, 1.0), -si));
-        if (tint[i].w > 0.0) {
-            float a = smoothstep(0.5, -0.5, si) * tint[i].w;
-            if (a > tintA) { tintA = a; tintRGB = tint[i].rgb; }
-        }
+        bright += w * look[i].z;
+        frostAcc += w * look[i].x;
+        rimAcc += w * look[i].y;
+        tintAccA += w * tint[i].w;
+        tintAccRGB += w * tint[i].w * tint[i].rgb;
         if (look[i].w > 0.0) {
-            float inside = smoothstep(0.5, -0.5, si);
             float reachR = min(box[i].z, box[i].w) * 3.0;
             float closeBy = smoothstep(reachR, reachR * 0.5, distance(p, touch[i]));
-            lightUp += inside * look[i].w * (0.08 + 0.15 * closeBy);
+            lightAcc += w * look[i].w * (0.08 + 0.15 * closeBy);
         }
     }
-    bright = wsum > 0.0 ? bright / wsum : 0.0;
+    float inv = wsum > 0.0 ? 1.0 / wsum : 0.0;
+    bright *= inv;
+    float lightUp = lightAcc * inv;
+    float tintA = tintAccA * inv;
+    float3 tintRGB = tintAccA > 0.0001 ? tintAccRGB / tintAccA : float3(0.0);
+    // Frost follows the union's outline (its clear rim is the body's rim), not each shape's.
+    float frostW = frostAcc * inv * smoothstep(0.0, max(rimAcc * inv, 1.0), -sd);
     if (frostPass > 0.5 && frostW < 0.002) return half4(0.0);
 
     // The direction the surface faces, from a wide difference and NOT normalised: along the middle
@@ -630,6 +644,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
         shader.setFloatUniform("refractionHeight", look.refractionHeight.toPx())
         shader.setFloatUniform("refractionAmount", -look.refractionAmount.toPx() * GlassTuning.refraction.coerceAtLeast(0f))
         shader.setFloatUniform("rimWidth", look.rim.toPx())
+        shader.setFloatUniform("tau", look.blendEdge.toPx())
         shader.setFloatUniform("chroma", if (look.fringes && GlassTuning.fringes) 1f else 0f)
         shader.setFloatUniform("sat", look.saturation)
         val v = look.veil
