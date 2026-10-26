@@ -81,7 +81,7 @@ fun LiquidViewerTopBar(
         return
     }
     val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 8f, softnessDp = 10f, responseSeconds = 0.45f) }
+    val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 10f, responseSeconds = 0.45f) }
     val stack = remember(glass, host) { glass.withFluid(host) }
     FluidGlassHost(glass.base, host, modifier.fillMaxWidth()) {
         LiquidViewerTopBarBody(conversation, revision, dateText, stack, menu, enter, onBack, onShare, downloadBubble, Modifier)

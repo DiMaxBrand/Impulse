@@ -801,7 +801,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val barDensity = LocalDensity.current.density
     val barHost = remember(mergingGlass, glass) {
         if (mergingGlass && glass) {
-            eu.siacs.conversations.ui.glass.FluidGlassHost(barDensity, LiquidGlassStyle.Bar, reachDp = 8f, softnessDp = 10f, responseSeconds = 0.45f)
+            eu.siacs.conversations.ui.glass.FluidGlassHost(barDensity, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 10f, responseSeconds = 0.45f)
         } else null
     }
     val barStack = remember(glassStack, barHost) { barHost?.let { glassStack.withFluid(it) } ?: glassStack }

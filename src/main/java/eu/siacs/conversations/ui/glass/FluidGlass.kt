@@ -383,7 +383,10 @@ uniform float shadowAlpha;
 """ + FIELD_SRC + """
 half4 main(float2 coord) {
     float sd = field(coord - shadowOffset);
-    float a = shadowAlpha * (1.0 - smoothstep(-shadowSigma * 0.3, shadowSigma, sd));
+    // A Gaussian fall-off (a smoothstep that ends at some distance left a visible ring around every bubble).
+    float dd = max(sd, 0.0);
+    float s2 = shadowSigma * 0.5;
+    float a = shadowAlpha * exp(-(dd * dd) / (2.0 * s2 * s2));
     // Only outside the glass: where the backdrop is empty the glass is see-through, and a shadow under it would show as a grey patch.
     a *= smoothstep(-0.5, 1.5, field(coord));
     return half4(0.0, 0.0, 0.0, a);
