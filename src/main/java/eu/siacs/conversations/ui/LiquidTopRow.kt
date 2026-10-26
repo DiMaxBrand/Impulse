@@ -33,6 +33,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eu.siacs.conversations.R
 import eu.siacs.conversations.ui.glass.GlassStack
+import androidx.compose.runtime.remember
+import eu.siacs.conversations.ui.glass.LiquidGlassStyle
 import eu.siacs.conversations.ui.glass.LiquidGlassButton
 import eu.siacs.conversations.ui.glass.LiquidMenuState
 import eu.siacs.conversations.ui.glass.liquidMenuAnchor
@@ -58,6 +60,31 @@ fun LiquidTopRow(
     searchProgress: () -> Float,
     onSearchBounds: (Rect) -> Unit,
     modifier: Modifier = Modifier,
+    /** Draw the bubbles as one body of fluid glass (see FluidGlass.kt) instead of one glass node each. */
+    merging: Boolean = false,
+) {
+    if (!merging) {
+        LiquidTopRowBody(glass, host, actions, onSearch, qrMenu, searchProgress, onSearchBounds, modifier)
+        return
+    }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val fluid = remember { eu.siacs.conversations.ui.glass.FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 10f, softnessDp = 10f, responseSeconds = 0.45f) }
+    val stack = remember(glass, fluid) { glass.withFluid(fluid) }
+    eu.siacs.conversations.ui.glass.FluidGlassHost(glass.base, fluid, modifier.fillMaxWidth()) {
+        LiquidTopRowBody(stack, host, actions, onSearch, qrMenu, searchProgress, onSearchBounds, Modifier)
+    }
+}
+
+@Composable
+private fun LiquidTopRowBody(
+    glass: GlassStack,
+    host: SearchHostState,
+    actions: SearchHostActions,
+    onSearch: () -> Unit,
+    qrMenu: LiquidMenuState,
+    searchProgress: () -> Float,
+    onSearchBounds: (Rect) -> Unit,
+    modifier: Modifier,
 ) {
     host.menuRevision.intValue // re-read when the fragment refreshes the menu state
     val anyQr = host.showScanQr || host.showShowQr || host.showEasyInvite
@@ -75,6 +102,7 @@ fun LiquidTopRow(
             modifier = Modifier.weight(1f).height(52.dp)
                 .onGloballyPositioned { onSearchBounds(it.boundsInWindow()) }
                 .graphicsLayer { alpha = 1f - (searchProgress() * 8f).coerceIn(0f, 1f) },
+            fluidPresence = { 1f - (searchProgress() * 8f).coerceIn(0f, 1f) },
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
@@ -115,6 +143,7 @@ fun LiquidTopRow(
                     .liquidMenuAnchor(qrMenu, qrIcon)
                     .liquidMenuPull(qrMenu)
                     .graphicsLayer { alpha = qrMenu.anchorAlpha * (1f - searchProgress()) },
+                fluidPresence = { qrMenu.anchorAlpha * (1f - searchProgress()) },
                 content = qrIcon,
             )
         }
@@ -123,6 +152,7 @@ fun LiquidTopRow(
             onClick = actions.onManageAccount,
             glass = glass,
             modifier = Modifier.size(52.dp).graphicsLayer { alpha = 1f - searchProgress() },
+            fluidPresence = { 1f - searchProgress() },
         ) {
             // Smaller than the bubble: the glass rim around the picture stays visible.
             val avatar = host.avatar

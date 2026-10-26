@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -66,6 +67,18 @@ class FluidElement(val id: Int) {
     var frostRim by mutableFloatStateOf(0f)
     var interactive: InteractiveHighlight? = null
     var ink: GlassInk? = null
+
+    /** A colour over the glass (Unspecified: none). */
+    var tint by mutableStateOf(androidx.compose.ui.graphics.Color.Unspecified)
+
+    /** 0..1: how much of itself the element is now (it grows out of nothing). Null: all of it. */
+    var presence: (() -> Float)? = null
+
+    /** How far the element is moved by something that does not change its layout (a pull, a press): px. */
+    var shift: (() -> Offset)? = null
+
+    /** Px the glass reaches out to the right of the element (the message field pressing on the send button). */
+    var stretch: (() -> Float)? = null
 
     /** The element's own layout, kept so it can be placed again once the host's layout is known. */
     var coords: LayoutCoordinates? = null
@@ -152,6 +165,10 @@ class FluidGlassHost(
             if (!e.visible) continue
             val r = e.rect
             if (r.width <= 0f || r.height <= 0f) continue
+            val presence = (e.presence?.invoke() ?: 1f).coerceIn(0f, 1.2f)
+            if (presence < 0.02f) continue
+            val stretch = e.stretch?.invoke() ?: 0f
+            val shift = e.shift?.invoke() ?: Offset.Zero
             val sh = shapesById.getOrPut(e.id) { FluidShape(e.id) }
             val ia = e.interactive
             var sx = 1f
@@ -162,12 +179,18 @@ class FluidGlassHost(
                 val g = pressGeometry(r.width, r.height, density, ia.pressProgress, ia.offset)
                 sx = g[0]; sy = g[1]; tx = g[2]; ty = g[3]
             }
-            sh.cx = r.center.x + tx
-            sh.cy = r.center.y + ty
-            sh.hw = r.width / 2f * sx
-            sh.hh = r.height / 2f * sy
+            sh.cx = r.center.x + tx + stretch / 2f + shift.x
+            sh.cy = r.center.y + ty + shift.y
+            sh.hw = r.width / 2f * sx * presence + stretch / 2f
+            sh.hh = r.height / 2f * sy * presence
             sh.radius = min(e.corner * min(sx, sy), min(sh.hw, sh.hh))
             sh.angle = 0f
+            val tc = e.tint
+            if (tc.isSpecified && tc.alpha > 0f) {
+                sh.tintR = tc.red; sh.tintG = tc.green; sh.tintB = tc.blue; sh.tintA = tc.alpha
+            } else {
+                sh.tintA = 0f
+            }
             sh.frost = e.frost
             sh.frostRim = e.frostRim
             sh.brightness = e.ink?.let { glassBrightness(it.level.value) } ?: 0f
@@ -255,6 +278,15 @@ internal fun pressGeometry(width: Float, height: Float, density: Float, progress
     return floatArrayOf(sx, sy, tx, ty)
 }
 
+/** Whether the developer flag for merging glass is on (read once per screen). */
+@Composable
+fun rememberMergingGlass(): Boolean {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    return remember {
+        eu.siacs.conversations.utils.FeatureFlagPreferences(context).isEnabled(eu.siacs.conversations.FeatureFlag.MERGING_GLASS)
+    }
+}
+
 /** The area whose glass elements are drawn as one body: the glass behind [content], the elements in it. */
 @Composable
 fun FluidGlassHost(
@@ -302,6 +334,9 @@ internal fun FluidButton(
     recording: Boolean,
     interactiveHighlight: InteractiveHighlight,
     extraLayerBlock: (GraphicsLayerScope.() -> Unit)?,
+    tint: androidx.compose.ui.graphics.Color,
+    presence: (() -> Float)?,
+    shift: (() -> Offset)?,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -313,6 +348,9 @@ internal fun FluidButton(
         element.visible = recording
         element.interactive = if (isInteractive) interactiveHighlight else null
         element.frost = 0f
+        element.tint = tint
+        element.presence = presence
+        element.shift = shift
         fluid.wake()
     }
     Box(
@@ -349,6 +387,10 @@ internal fun FluidPanel(
     contentAlignment: Alignment,
     clipContent: Boolean,
     visible: Boolean,
+    tint: androidx.compose.ui.graphics.Color,
+    stretch: (() -> Float)?,
+    presence: (() -> Float)?,
+    shift: (() -> Offset)?,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -359,6 +401,10 @@ internal fun FluidPanel(
         element.ink = ink
         element.visible = visible
         element.interactive = null
+        element.tint = tint
+        element.stretch = stretch
+        element.presence = presence
+        element.shift = shift
         element.frost = if (style.frost != null) 1f else 0f
         element.frostRim = with(density) { style.frostRim.toPx() }
         if (style.frost != null && fluid.frostStyle == null) fluid.frostStyle = style.frost

@@ -140,6 +140,7 @@ fun LiquidConversationsSearchHost(
             onSearchBounds = { pillBounds = it },
             modifier = Modifier.align(Alignment.TopCenter)
                 .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars),
+            merging = eu.siacs.conversations.ui.glass.rememberMergingGlass(),
         )
 
         // Derived, so this only changes when the container appears or is gone. Reading the animated

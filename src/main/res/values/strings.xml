@@ -1768,6 +1768,6 @@
     <string name="glass_lab_merge_rotation_off">Off</string>
     <string name="glass_lab_merge_rotation_stiff">Stiff</string>
     <string name="glass_lab_merge_rotation_free">Free</string>
-    <string name="feature_flag_merging_glass_title">Merging glass in the chat bar</string>
-    <string name="feature_flag_merging_glass_description">The chat\'s top bar bubbles flow into each other as they get close, as one body of glass. Early and unfinished: only the top bar so far.</string>
+    <string name="feature_flag_merging_glass_title">Merging glass</string>
+    <string name="feature_flag_merging_glass_description">The glass bars and bubbles (chat top bar and banners, message bar, chat list top row, media viewer bar) are drawn as one body of glass and flow into each other as they get close. Early: may look rough.</string>
 </resources>

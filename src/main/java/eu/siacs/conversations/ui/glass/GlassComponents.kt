@@ -134,12 +134,21 @@ fun LiquidGlassButton(
     // Applied after the button's own press/drag transform: lets whatever holds the button push or
     // squeeze it (the message field pressing on the send button).
     extraLayerBlock: (GraphicsLayerScope.() -> Unit)? = null,
+    // In a fluid host only: how much of itself the button is now (it grows out of nothing); null: all of it.
+    fluidPresence: (() -> Float)? = null,
+    // In a fluid host only: how far the button is moved by something outside its layout (px).
+    fluidShift: (() -> androidx.compose.ui.geometry.Offset)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     // In a fluid host the glass is drawn by the host, for all its elements at once.
     val fluid = glass.fluid
     if (fluid != null) {
-        FluidButton(fluid, glass.adaptive, onClick, modifier, shape, isInteractive, recording, interactiveHighlight, extraLayerBlock, content)
+        val wash = when {
+            tint.isSpecified -> tint
+            surfaceColor.isSpecified -> surfaceColor
+            else -> style.surfaceColor()
+        }
+        FluidButton(fluid, glass.adaptive, onClick, modifier, shape, isInteractive, recording, interactiveHighlight, extraLayerBlock, wash, fluidPresence, fluidShift, content)
         return
     }
     // This button's place in the stack: it records itself for the glass above it, and looks
@@ -246,11 +255,20 @@ fun LiquidGlassPanel(
     standalone: Boolean = false,
     // False while the piece is off screen: the glass is not drawn at all, only what is on it.
     visible: Boolean = true,
+    // In a fluid host only: how far (px) the glass reaches out to the right of the panel, and how much of itself it is now.
+    fluidStretch: (() -> Float)? = null,
+    fluidPresence: (() -> Float)? = null,
+    fluidShift: (() -> androidx.compose.ui.geometry.Offset)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val fluid = glass.fluid
     if (fluid != null) {
-        FluidPanel(fluid, glass.adaptive, modifier, shape, style, contentAlignment, clipContent, visible, content)
+        val wash = when {
+            tint.isSpecified -> tint
+            surfaceColor.isSpecified -> surfaceColor
+            else -> style.surfaceColor()
+        }
+        FluidPanel(fluid, glass.adaptive, modifier, shape, style, contentAlignment, clipContent, visible, wash, fluidStretch, fluidPresence, fluidShift, content)
         return
     }
     val slot = if (standalone) glass.rememberStandaloneSlot() else glass.rememberSlot()

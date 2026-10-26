@@ -788,9 +788,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // background and the list are each recorded as a backdrop for the glass to show through.
     // With the flag off none of this is used and the layout is exactly the Material one.
     val glass = rememberLiquidGlassEnabled()
-    val chatContext = androidx.compose.ui.platform.LocalContext.current
-    // Developer flag: the top bar bubbles as one body of fluid glass (first slice).
-    val mergingGlass = remember { eu.siacs.conversations.utils.FeatureFlagPreferences(chatContext).isEnabled(eu.siacs.conversations.FeatureFlag.MERGING_GLASS) }
+    // Developer flag: the bars' bubbles as one body of fluid glass.
+    val mergingGlass = eu.siacs.conversations.ui.glass.rememberMergingGlass()
     val backgroundBackdrop = rememberLayerBackdrop()
     val listBackdrop = rememberLayerBackdrop()
     val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
@@ -798,6 +797,14 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // Each glass piece adapts its glass and text to what is behind it.
     val glassStack = rememberGlassStack(glassBackdrop, adaptive = true)
     val topMenu = rememberLiquidMenuState()
+    // With merging glass on, the top bar and the banners under it are one body of glass (one host).
+    val barDensity = LocalDensity.current.density
+    val barHost = remember(mergingGlass, glass) {
+        if (mergingGlass && glass) {
+            eu.siacs.conversations.ui.glass.FluidGlassHost(barDensity, LiquidGlassStyle.Bar, reachDp = 8f, softnessDp = 10f, responseSeconds = 0.45f)
+        } else null
+    }
+    val barStack = remember(glassStack, barHost) { barHost?.let { glassStack.withFluid(it) } ?: glassStack }
 
     // What the top bar's selection actions do; both top bars use these.
     val selectionCopyEnabled = state.messages.value.any {
@@ -943,7 +950,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 if (glass) {
                     // The same card colour, but as a tint on glass instead of an opaque slab.
                     LiquidGlassPanel(
-                        glass = glassStack,
+                        glass = barStack,
                         tint = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
                         contentAlignment = Alignment.CenterStart,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
@@ -980,7 +987,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 if (glass) {
                     LiquidPinnedBanner(
                         pinnedMessages = pinned,
-                        glass = glassStack,
+                        glass = barStack,
                         onDismiss = { state.pinnedBannerVisible.value = false },
                         onUnpin = { listener.onUnpinMessage(it) },
                         onScrollTo = { listener.onScrollToMessage(it) },
@@ -1043,15 +1050,14 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             // The messages run up under the status bar, blurred there.
             eu.siacs.conversations.ui.glass.GlassStatusBarBlur(glassBackdrop, Modifier.align(Alignment.TopCenter))
             eu.siacs.conversations.ui.glass.GlassNavigationBarBlur(glassBackdrop, Modifier.align(Alignment.BottomCenter))
-            Column(
-                Modifier.align(Alignment.TopCenter).onSizeChanged { glassTopHeightPx = it.height }
-                    .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars),
-            ) {
+            val topModifier = Modifier.align(Alignment.TopCenter).onSizeChanged { glassTopHeightPx = it.height }
+                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
+            val topContent: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = {
                 LiquidTopBar(
                     conversation = conversation,
                     revision = state.revision.intValue,
                     listener = listener,
-                    backdrop = glassStack,
+                    backdrop = barStack,
                     menu = topMenu,
                     selectedCount = selectedUuids.size,
                     copyEnabled = selectionCopyEnabled,
@@ -1059,15 +1065,23 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     onForwardSelected = forwardSelected,
                     onCopySelected = copySelected,
                     onDeleteSelected = deleteSelected,
-                    merging = mergingGlass,
                 )
                 banners()
+            }
+            if (barHost != null) {
+                // The bar and the banners under it: one host, so one body of glass.
+                eu.siacs.conversations.ui.glass.FluidGlassHost(glassStack.base, barHost, topModifier) {
+                    Column { topContent() }
+                }
+            } else {
+                Column(topModifier) { topContent() }
             }
             LiquidInputBar(
                 state = state,
                 listener = listener,
                 backdrop = glassStack,
                 onBarHeight = { glassBarHeightPx = it },
+                merging = mergingGlass,
             )
             // The three dots grow into this menu; drawn over the whole screen area.
             LiquidChatMenuOverlay(topMenu, glassStack, conversation, state.revision.intValue, listener)
@@ -1471,6 +1485,7 @@ private fun LiquidPinnedBanner(
         LiquidGlassPanel(
             glass = glass,
             shape = RoundedCornerShape(24.dp),
+            fluidShift = { androidx.compose.ui.geometry.Offset(0f, pull.value) },
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { translationY = pull.value }

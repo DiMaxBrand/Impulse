@@ -101,6 +101,7 @@ import eu.siacs.conversations.ui.glass.LiquidViewerTopBar
 import eu.siacs.conversations.ui.glass.LiquidGlassStyle
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
+import eu.siacs.conversations.ui.glass.rememberMergingGlass
 import eu.siacs.conversations.ui.util.ShareUtil
 import eu.siacs.conversations.ui.util.ViewUtil
 import kotlinx.coroutines.Dispatchers
@@ -639,7 +640,8 @@ private fun MediaViewerScreen(
                     enter = { barEnter.value },
                     onBack = onClose,
                     onShare = { onShare(currentMessage) },
-                    downloadBubble = { icon ->
+                    merging = rememberMergingGlass(),
+                    downloadBubble = { bubbleGlass, icon ->
                         // Its own AnimatedVisibility, as the Material bar's save button has:
                         // the real scope to hand to sharedBounds, the source half of the
                         // transform into the save card.
@@ -650,7 +652,7 @@ private fun MediaViewerScreen(
                         ) {
                             LiquidGlassButton(
                                 onClick = { saveCardExpanded = true },
-                                glass = glassStack,
+                                glass = bubbleGlass,
                                 style = LiquidGlassStyle.Bar,
                                 modifier = Modifier.size(48.dp).sharedBounds(
                                     rememberSharedContentState("save_card"),

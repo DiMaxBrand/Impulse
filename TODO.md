@@ -598,10 +598,11 @@ host/element glue in `ui/glass/FluidGlassHost.kt`. A `GlassStack` with a fluid h
 Behind the developer flag `MERGING_GLASS` (off by default).
 
 - [x] Slice 1: chat top bar (bubbles side by side), clear glass only.
-- [ ] Slice 2: message bar (attach, field, pause, send) — the field is frosted, so this is the first real use of
-      the frosted copy; the field's bulge (`layerBlock`) has no fluid equivalent yet.
-- [ ] Slice 3: chat list top row (avatar, search pill, QR) and the pill that grows into the search.
-- [ ] Slice 4: media viewer top bar and bottom buttons.
+- [x] Slice 2: message bar (attach, field, pause, send) — the field is frosted (first use of the frosted copy);
+      its bulge is `fluidStretch`, the send bubble's give is `fluidShift`/`fluidPresence`.
+- [x] Slice 3: chat list top row (avatar, search pill, QR); the pill that grows into the search is still slot-based.
+- [x] Slice 4: media viewer top bar (the centred play button is a lone element and stays as it was).
+- [x] The banners under the chat top bar (birthday, pinned) are in the top bar's host.
 - [ ] Menus (`LiquidMorph`) grow out of a bubble: they stay slot-based until the fluid layer can grow an element.
 - Known gaps vs the old nodes: no `tint`/`surfaceColor` per element, no `extraLayerBlock` on the glass (it still
   moves the content), per-element brightness is weighted by closeness, the library's own rim highlight and

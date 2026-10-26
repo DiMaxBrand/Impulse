@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,7 +71,36 @@ fun LiquidViewerTopBar(
     onShare: () -> Unit,
     // The download bubble is built by the caller: it is the source of the save card's
     // shared-bounds transform, which needs the viewer's own transition scope.
-    downloadBubble: @Composable (icon: @Composable BoxScope.() -> Unit) -> Unit,
+    downloadBubble: @Composable (glass: GlassStack, icon: @Composable BoxScope.() -> Unit) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Draw the bubbles as one body of fluid glass (see FluidGlass.kt) instead of one glass node each. */
+    merging: Boolean = false,
+) {
+    if (!merging) {
+        LiquidViewerTopBarBody(conversation, revision, dateText, glass, menu, enter, onBack, onShare, downloadBubble, modifier)
+        return
+    }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 8f, softnessDp = 10f, responseSeconds = 0.45f) }
+    val stack = remember(glass, host) { glass.withFluid(host) }
+    FluidGlassHost(glass.base, host, modifier.fillMaxWidth()) {
+        LiquidViewerTopBarBody(conversation, revision, dateText, stack, menu, enter, onBack, onShare, downloadBubble, Modifier)
+    }
+}
+
+@Composable
+private fun LiquidViewerTopBarBody(
+    conversation: Conversation,
+    revision: Int,
+    dateText: String,
+    glass: GlassStack,
+    menu: LiquidMenuState,
+    enter: () -> Float,
+    onBack: () -> Unit,
+    onShare: () -> Unit,
+    // The download bubble is built by the caller: it is the source of the save card's
+    // shared-bounds transform, which needs the viewer's own transition scope.
+    downloadBubble: @Composable (glass: GlassStack, icon: @Composable BoxScope.() -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val header = rememberChatHeaderState(conversation, revision)
@@ -165,7 +195,7 @@ fun LiquidViewerTopBar(
             SwapIcon(R.drawable.ic_call_24dp, R.drawable.ic_share_24dp, enter)
         }
         // ...and video becomes download.
-        downloadBubble { SwapIcon(R.drawable.ic_videocam_24dp, R.drawable.ic_download_24dp, enter) }
+        downloadBubble(glass) { SwapIcon(R.drawable.ic_videocam_24dp, R.drawable.ic_download_24dp, enter) }
 
         // The three dots stay; they open the viewer's own menu.
         val dots: @Composable BoxScope.() -> Unit = {

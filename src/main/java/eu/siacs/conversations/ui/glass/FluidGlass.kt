@@ -65,6 +65,12 @@ class FluidShape(val id: Int) {
     var touchX = 0f
     var touchY = 0f
 
+    /** A colour laid over the glass inside this shape: red, green, blue and how strongly (0: none). */
+    var tintR = 0f
+    var tintG = 0f
+    var tintB = 0f
+    var tintA = 0f
+
     /** Radius of a circle that holds the shape. */
     val bound get() = hypot(hw, hh) + 2f
 }
@@ -271,6 +277,7 @@ private const val GLASS_SRC = """
 uniform shader content;
 uniform float4 look[16];  // frost, frost rim, brightness, press
 uniform float2 touch[16];
+uniform float4 tint[16];  // colour laid over the glass inside a shape: rgb and strength
 uniform float frostPass;  // 0: the sharp glass, 1: the frosted copy (its input is already blurred)
 uniform float refractionHeight;
 uniform float refractionAmount;
@@ -292,6 +299,8 @@ half4 main(float2 coord) {
     float bright = 0.0;
     float wsum = 0.0;
     float lightUp = 0.0;
+    float tintA = 0.0;
+    float3 tintRGB = float3(0.0);
     for (int i = 0; i < 16; i++) {
         if (float(i) >= count) break;
         float dc = length(p - box[i].xy);
@@ -301,6 +310,10 @@ half4 main(float2 coord) {
         bright += w * look[i].z;
         wsum += w;
         frostW = max(frostW, look[i].x * smoothstep(0.0, max(look[i].y, 1.0), -si));
+        if (tint[i].w > 0.0) {
+            float a = smoothstep(0.5, -0.5, si) * tint[i].w;
+            if (a > tintA) { tintA = a; tintRGB = tint[i].rgb; }
+        }
         if (look[i].w > 0.0) {
             float inside = smoothstep(0.5, -0.5, si);
             float reachR = min(box[i].z, box[i].w) * 3.0;
@@ -344,6 +357,11 @@ half4 main(float2 coord) {
         c.rgb = mix(half3(luma), c.rgb, half(sat));
     }
     c.rgb += half3(bright) * c.a;
+    if (tintA > 0.0) {
+        // The colour over the glass, as 'over': it also shows where the backdrop is empty.
+        c.rgb = c.rgb * half(1.0 - tintA) + half3(tintRGB) * half(tintA);
+        c.a = c.a * half(1.0 - tintA) + half(tintA);
+    }
 
     float rim = smoothstep(rimWidth, 0.0, -inner);
     float light = dot(n, normalize(float2(-0.55, -0.8)));
@@ -379,6 +397,7 @@ internal class FluidSnapshot(shapes: List<FluidShape>, scene: FluidScene) {
     val infos = FloatArray(FLUID_MAX * 4)
     val looks = FloatArray(FLUID_MAX * 4)
     val touches = FloatArray(FLUID_MAX * 2)
+    val tints = FloatArray(FLUID_MAX * 4)
     val pa = FloatArray(FLUID_MAX_PAIRS * 4)
     val pb = FloatArray(FLUID_MAX_PAIRS * 4)
     val pai = FloatArray(FLUID_MAX_PAIRS * 4)
@@ -404,6 +423,10 @@ internal class FluidSnapshot(shapes: List<FluidShape>, scene: FluidScene) {
             looks[i * 4 + 3] = s.press
             touches[i * 2] = s.touchX
             touches[i * 2 + 1] = s.touchY
+            tints[i * 4] = s.tintR
+            tints[i * 4 + 1] = s.tintG
+            tints[i * 4 + 2] = s.tintB
+            tints[i * 4 + 3] = s.tintA
         }
         // Only the bridges that exist now, strongest first.
         val live = ArrayList<Triple<Int, Int, Float>>()
@@ -543,6 +566,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
         snap.applyField(shader, padding)
         shader.setFloatUniform("look", snap.looks)
         shader.setFloatUniform("touch", snap.touches)
+        shader.setFloatUniform("tint", snap.tints)
         shader.setFloatUniform("frostPass", if (frost) 1f else 0f)
         shader.setFloatUniform("refractionHeight", look.refractionHeight.toPx())
         shader.setFloatUniform("refractionAmount", -look.refractionAmount.toPx() * GlassTuning.refraction.coerceAtLeast(0f))

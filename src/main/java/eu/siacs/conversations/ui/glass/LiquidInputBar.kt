@@ -95,6 +95,8 @@ fun LiquidInputBar(
     backdrop: GlassStack,
     onBarHeight: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** Draw the bubbles as one body of fluid glass (see FluidGlass.kt) instead of one glass node each. */
+    merging: Boolean = false,
 ) {
     val conversation = state.conversation.value
     val revision = state.revision.intValue
@@ -111,21 +113,31 @@ fun LiquidInputBar(
         }
     }
     val attachMenu = rememberLiquidMenuState()
+    val density = LocalDensity.current.density
+    val host = remember(merging) {
+        if (merging) FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 8f, softnessDp = 10f, responseSeconds = 0.45f) else null
+    }
+    // The bar's own bubbles; the menu overlay keeps the plain stack (it grows out of a bubble).
+    val bar = remember(backdrop, host) { if (host != null) backdrop.withFluid(host) else backdrop }
 
     // A box over the whole list area, so the menu can grow upward over the list; the bar is at its
     // bottom. It handles no touches of its own, the list underneath still scrolls.
     Box(modifier.fillMaxSize()) {
-        Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .onSizeChanged { onBarHeight(it.height) }
-                .padding(bottom = rememberGlassNavInset()),
-        ) {
+        val barModifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .onSizeChanged { onBarHeight(it.height) }
+            .padding(bottom = rememberGlassNavInset())
+        val barContent: @Composable () -> Unit = {
             if (readOnly) {
-                ReadOnlyBubble(backdrop)
+                ReadOnlyBubble(bar)
             } else {
-                BarPanels(state, listener, backdrop, conversation)
-                ComposerRow(state, listener, backdrop, attachMenu, conversation)
+                BarPanels(state, listener, bar, conversation)
+                ComposerRow(state, listener, bar, attachMenu, conversation)
             }
+        }
+        if (host != null) {
+            FluidGlassHost(backdrop.base, host, barModifier) { Column(Modifier.fillMaxWidth()) { barContent() } }
+        } else {
+            Column(barModifier) { barContent() }
         }
         if (!readOnly) {
             // The paperclip grows into the menu: the panel lines up with the button's left edge
@@ -426,6 +438,7 @@ private fun RowScope.FieldBubble(
                 layout(constraints.maxWidth, h) { placeable.place(0, 0) }
             },
             clipContent = true,
+            fluidStretch = { push() * with(density) { 10.dp.toPx() } },
             // Only the glass reaches toward the send bubble (wider by up to 10dp, pinned on the
             // left); the letters are not touched, they do not stretch with it.
             layerBlock = {
@@ -527,7 +540,12 @@ private fun PauseBubble(
                 scaleY = s
             },
     ) {
-        LiquidGlassButton(onClick = onClick, glass = backdrop, modifier = Modifier.size(BubbleSize)) {
+        LiquidGlassButton(
+            onClick = onClick,
+            glass = backdrop,
+            modifier = Modifier.size(BubbleSize),
+            fluidPresence = { rec.value.coerceIn(0f, 1f) * (0.6f + 0.4f * rec.value.coerceIn(0f, 1f)) },
+        ) {
             Icon(
                 painter = painterResource(if (paused) R.drawable.ic_play_arrow_24dp else R.drawable.ic_pause_24dp),
                 contentDescription = null,
@@ -552,6 +570,7 @@ private fun SendBubble(
     onClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val density = LocalDensity.current.density
     val sendProgress by animateFloatAsState(
         targetValue = if (isSend) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
@@ -562,6 +581,9 @@ private fun SendBubble(
         glass = backdrop,
         modifier = Modifier.size(BubbleSize).graphicsLayer { alpha = if (enabled) 1f else 0.5f },
         tint = colors.primary.copy(alpha = 0.78f * sendProgress.coerceIn(0f, 1f)),
+        // The field presses on it: it gives way a little (the same numbers as extraLayerBlock below).
+        fluidShift = { androidx.compose.ui.geometry.Offset(push() * 6.dp.value * density, 0f) },
+        fluidPresence = { 1f - 0.08f * push() },
         extraLayerBlock = {
             val p = push()
             translationX += p * 6.dp.toPx()
