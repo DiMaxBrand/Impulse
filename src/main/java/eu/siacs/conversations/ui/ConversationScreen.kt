@@ -788,6 +788,9 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     // background and the list are each recorded as a backdrop for the glass to show through.
     // With the flag off none of this is used and the layout is exactly the Material one.
     val glass = rememberLiquidGlassEnabled()
+    val chatContext = androidx.compose.ui.platform.LocalContext.current
+    // Developer flag: the top bar bubbles as one body of fluid glass (first slice).
+    val mergingGlass = remember { eu.siacs.conversations.utils.FeatureFlagPreferences(chatContext).isEnabled(eu.siacs.conversations.FeatureFlag.MERGING_GLASS) }
     val backgroundBackdrop = rememberLayerBackdrop()
     val listBackdrop = rememberLayerBackdrop()
     val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
@@ -1056,6 +1059,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     onForwardSelected = forwardSelected,
                     onCopySelected = copySelected,
                     onDeleteSelected = deleteSelected,
+                    merging = mergingGlass,
                 )
                 banners()
             }

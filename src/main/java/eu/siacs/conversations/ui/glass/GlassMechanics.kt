@@ -116,6 +116,12 @@ class InteractiveHighlight(
     /** Finger position relative to where it first landed. */
     val offset: Offset get() = positionAnimation.value - startPosition
 
+    /** Where the light is, inside an element of this size. */
+    fun touchAt(size: Size): Offset {
+        val at = position(size, positionAnimation.value)
+        return Offset(at.x.coerceIn(0f, size.width), at.y.coerceIn(0f, size.height))
+    }
+
     // AGSL, so Android 13+. Below that the surface just brightens evenly.
     private val shader: android.graphics.RuntimeShader? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

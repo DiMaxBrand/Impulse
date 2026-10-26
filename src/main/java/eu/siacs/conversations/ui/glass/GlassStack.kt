@@ -39,6 +39,16 @@ class GlassStack internal constructor(
 ) {
     private val layers = mutableStateListOf<LayerBackdrop?>()
 
+    /**
+     * When set, the buttons and panels that take this stack are elements of that fluid host (one body of glass
+     * for the whole area, with bridges between elements that are close) instead of glass nodes of their own.
+     */
+    var fluid: FluidGlassHost? = null
+        private set
+
+    /** The same screen as this stack, whose elements are drawn by [host]. */
+    fun withFluid(host: FluidGlassHost): GlassStack = GlassStack(base, adaptive).also { it.fluid = host }
+
     internal fun allocate(layer: LayerBackdrop): Int {
         layers.add(layer)
         return layers.lastIndex

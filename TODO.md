@@ -588,3 +588,21 @@ Not yet in the Compose chat (old `ConversationFragment` had them):
 - [ ] **Attachment overhaul** (user asked to think about it, after beta.149): a Compose attach sheet
   with all six choices as large tiles (container-transform from the paperclip), recent photos strip,
   and the shared media picker from `allow-sending-videos`.
+
+## Merging glass (fluid layer) — move every glass element onto it
+
+Prototype in the Glass lab (`ui/glass/GlassFluid.kt`), reusable layer in `ui/glass/FluidGlass.kt`
+(shapes, bridges, one shader for the sharp glass and a blurred+veiled copy for frosted elements),
+host/element glue in `ui/glass/FluidGlassHost.kt`. A `GlassStack` with a fluid host (`withFluid`) makes
+`LiquidGlassButton` / `LiquidGlassPanel` register as elements instead of drawing their own node.
+Behind the developer flag `MERGING_GLASS` (off by default).
+
+- [x] Slice 1: chat top bar (bubbles side by side), clear glass only.
+- [ ] Slice 2: message bar (attach, field, pause, send) — the field is frosted, so this is the first real use of
+      the frosted copy; the field's bulge (`layerBlock`) has no fluid equivalent yet.
+- [ ] Slice 3: chat list top row (avatar, search pill, QR) and the pill that grows into the search.
+- [ ] Slice 4: media viewer top bar and bottom buttons.
+- [ ] Menus (`LiquidMorph`) grow out of a bubble: they stay slot-based until the fluid layer can grow an element.
+- Known gaps vs the old nodes: no `tint`/`surfaceColor` per element, no `extraLayerBlock` on the glass (it still
+  moves the content), per-element brightness is weighted by closeness, the library's own rim highlight and
+  shadow are replaced by the shader's.

@@ -136,6 +136,12 @@ fun LiquidGlassButton(
     extraLayerBlock: (GraphicsLayerScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    // In a fluid host the glass is drawn by the host, for all its elements at once.
+    val fluid = glass.fluid
+    if (fluid != null) {
+        FluidButton(fluid, glass.adaptive, onClick, modifier, shape, isInteractive, recording, interactiveHighlight, extraLayerBlock, content)
+        return
+    }
     // This button's place in the stack: it records itself for the glass above it, and looks
     // through the screen and the glass below it.
     val slot = glass.rememberSlot()
@@ -202,28 +208,11 @@ fun LiquidGlassButton(
  * of only ~5% of the finger's travel squeezed through `tanh`, and a stretch along the drag.
  */
 private fun GraphicsLayerScope.buttonLayer(interactiveHighlight: InteractiveHighlight) {
-    val width = size.width
-    val height = size.height
-
-    val progress = interactiveHighlight.pressProgress
-    val scale = lerp(1f, 1f + 4f.dp.toPx() / size.height, progress)
-
-    val maxOffset = size.minDimension
-    val initialDerivative = 0.05f
-    val offset = interactiveHighlight.offset
-    translationX = maxOffset * tanh(initialDerivative * offset.x / maxOffset)
-    translationY = maxOffset * tanh(initialDerivative * offset.y / maxOffset)
-
-    val maxDragScale = 4f.dp.toPx() / size.height
-    val offsetAngle = atan2(offset.y, offset.x)
-    scaleX =
-        scale +
-            maxDragScale * abs(cos(offsetAngle) * offset.x / size.maxDimension) *
-            (width / height).fastCoerceAtMost(1f)
-    scaleY =
-        scale +
-            maxDragScale * abs(sin(offsetAngle) * offset.y / size.maxDimension) *
-            (height / width).fastCoerceAtMost(1f)
+    val g = pressGeometry(size.width, size.height, density, interactiveHighlight.pressProgress, interactiveHighlight.offset)
+    scaleX = g[0]
+    scaleY = g[1]
+    translationX = g[2]
+    translationY = g[3]
 }
 
 /**
@@ -259,6 +248,11 @@ fun LiquidGlassPanel(
     visible: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val fluid = glass.fluid
+    if (fluid != null) {
+        FluidPanel(fluid, glass.adaptive, modifier, shape, style, contentAlignment, clipContent, visible, content)
+        return
+    }
     val slot = if (standalone) glass.rememberStandaloneSlot() else glass.rememberSlot()
     val body = if (surfaceColor.isSpecified) surfaceColor else style.surfaceColor()
     val ink = rememberGlassInk(glass.adaptive)

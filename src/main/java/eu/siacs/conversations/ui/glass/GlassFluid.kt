@@ -97,91 +97,6 @@ import kotlin.math.sqrt
 
 private const val SHAPE_MAX = 16
 
-private const val MAX_PAIRS = 24
-
-private const val FLUID_SHADER = """
-uniform shader content;
-uniform float2 pad;
-uniform float count;
-uniform float pairCount;
-uniform float cullMargin;
-uniform float4 box[16];   // centre xy, half size zw
-uniform float4 info[16];  // corner radius, bounding radius, cos, sin of the turn
-uniform float4 pA[24];    // the two pieces of each bridge, repeated here so no lookup by index is needed
-uniform float4 pB[24];
-uniform float4 pAi[24];
-uniform float4 pBi[24];
-uniform float pk[24];     // blend radius of the bridge
-uniform float refractionHeight;
-uniform float refractionAmount;
-uniform float rimWidth;
-
-float sdBoxI(float2 p, float4 b, float4 inf) {
-    float2 d = p - b.xy;
-    // Into the piece's own, turned, frame.
-    float2 l = float2(inf.z * d.x + inf.w * d.y, -inf.w * d.x + inf.z * d.y);
-    float2 q = abs(l) - (b.zw - float2(inf.x));
-    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - inf.x;
-}
-
-float smin(float a, float b, float kk) {
-    float h = max(kk - abs(a - b), 0.0) / kk;
-    return min(a, b) - h * h * h * kk / 6.0;
-}
-
-// The field: every piece's distance, and only for the pairs that really are bridged the smooth union.
-// A piece far from this pixel is not measured exactly (its distance is at least the distance to its
-// bounding circle, which is all that matters when it is not the nearest), and a bridge only counts
-// near its two pieces: so a piece with no neighbour costs the same as if the others were not there.
-float field(float2 p) {
-    float r = 1.0e6;
-    for (int i = 0; i < 16; i++) {
-        if (float(i) >= count) break;
-        float dc = length(p - box[i].xy);
-        float di = (dc > info[i].y + cullMargin) ? (dc - info[i].y) : sdBoxI(p, box[i], info[i]);
-        r = min(r, di);
-    }
-    for (int n = 0; n < 24; n++) {
-        if (float(n) >= pairCount) break;
-        float kk = pk[n];
-        float da = length(p - pA[n].xy);
-        float db = length(p - pB[n].xy);
-        if (da < pAi[n].y + kk && db < pBi[n].y + kk) {
-            r = min(r, smin(sdBoxI(p, pA[n], pAi[n]), sdBoxI(p, pB[n], pBi[n]), kk));
-        }
-    }
-    return r;
-}
-
-half4 main(float2 coord) {
-    float2 p = coord - pad;
-    float sd = field(p);
-    if (sd > 1.0) return half4(0.0);
-    float cover = clamp(0.5 - sd, 0.0, 1.0);
-    // The direction the surface faces, from a wide difference and NOT normalised: along the middle
-    // ridge of a thin body the direction flips, and a unit vector there tears the picture (the grid
-    // lines hooked and broke); this way it fades to nothing at the ridge instead.
-    float e = 7.0;
-    float2 n = float2(
-        field(p + float2(e, 0.0)) - field(p - float2(e, 0.0)),
-        field(p + float2(0.0, e)) - field(p - float2(0.0, e))) / (2.0 * e);
-    float nl = length(n);
-    if (nl > 1.0) n = n / nl;
-    float inner = min(sd, 0.0);
-    float2 at = coord;
-    if (-inner < refractionHeight) {
-        float t = 1.0 - (-inner) / refractionHeight;
-        float d = (1.0 - sqrt(1.0 - t * t)) * refractionAmount;
-        at = coord + d * n;
-    }
-    half4 c = content.eval(at);
-    float rim = smoothstep(rimWidth, 0.0, -inner);
-    float light = dot(n, normalize(float2(-0.55, -0.8)));
-    float spec = rim * (max(light, 0.0) * 0.8 + max(-light, 0.0) * 0.3);
-    c.rgb += half3(spec * 0.55) * c.a;
-    return c * cover;
-}
-"""
 
 /**
  * One member of a fluid field. [pos] is the top-left of its body AS IT IS NOW: pressed against
@@ -240,15 +155,36 @@ internal fun pieceSd(p: FluidPiece, x: Float, y: Float): Float {
  * rather than snapped.
  */
 @Stable
-class GlassFluidState(private val density: Float) {
+class GlassFluidState(private val density: Float) : FluidScene {
     val pieces = mutableStateListOf<FluidPiece>()
 
-    /** Depth of the bridge of each pair (px), indexed low * 8 + high. */
-    private val depth = FloatArray(SHAPE_MAX * SHAPE_MAX)
-    private val depthVelocity = FloatArray(SHAPE_MAX * SHAPE_MAX)
-    private val gaps = FloatArray(SHAPE_MAX * SHAPE_MAX) { 1e6f }
-    var tick by mutableIntStateOf(0)
+    /** The bridges between the pieces (a piece's id is its place in the list). */
+    private val bridges = FluidBridges()
+    override var tick by mutableIntStateOf(0)
         private set
+    override val frostActive: Boolean get() = false
+
+    private val shapeList = ArrayList<FluidShape>()
+
+    /** The pieces as shapes for the glass layer, right now. */
+    override fun shapes(): List<FluidShape> {
+        val n = pieces.size
+        while (shapeList.size < n) shapeList.add(FluidShape(shapeList.size))
+        while (shapeList.size > n) shapeList.removeAt(shapeList.lastIndex)
+        for (i in 0 until n) {
+            val p = pieces[i]
+            val sh = shapeList[i]
+            sh.cx = p.centerX
+            sh.cy = p.centerY
+            sh.hw = p.width / 2f
+            sh.hh = p.height / 2f
+            sh.radius = p.radius
+            sh.angle = p.angle
+        }
+        return shapeList
+    }
+
+    override fun bridgeBlend(a: FluidShape, b: FluidShape): Float = bridges.blend(a, b)
 
     /** Something moved (a piece, a setting): the springs have to run. */
     val wakeups = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
@@ -327,19 +263,11 @@ class GlassFluidState(private val density: Float) {
     }
 
     private fun clearPairs() {
-        depth.fill(0f)
-        depthVelocity.fill(0f)
-        gaps.fill(1e6f)
+        bridges.clear()
     }
 
     private fun clearPairsOf(index: Int) {
-        for (o in 0 until SHAPE_MAX) {
-            for (idx in intArrayOf(pairIndex(index, o), pairIndex(o, index))) {
-                depth[idx] = 0f
-                depthVelocity[idx] = 0f
-                gaps[idx] = 1e6f
-            }
-        }
+        bridges.forget(index)
     }
 
     /** Adds a piece of the next shape in a free place; false when the field is full. */
@@ -397,36 +325,6 @@ class GlassFluidState(private val density: Float) {
         last.body?.let { world?.destroyBody(it) }
         pieces.removeAt(pieces.lastIndex)
         wake()
-    }
-
-    /** The smoothing radius of the pair in the shader (0: none, the pieces are separate). */
-    fun blendFor(i: Int, j: Int): Float {
-        val pair = pairIndex(i, j)
-        val c = depth[pair]
-        // Fades in and out with the depth instead of switching at some depth: a bridge that is
-        // nearly gone is nearly not there, so it never snaps off.
-        val fade = smooth((c - 0.5f) / 7.5f)
-        if (fade <= 0f) return 0f
-        // A radius of three times the gap is where the surfaces just touch (cubic blend: the
-        // middle sinks by a sixth of the radius); the depth is on top of that.
-        // Never longer than what tears at the reach: however far the pieces were pulled in one go,
-        // a bridge cannot outlive that (it used to hang on as a long thread while the depth settled).
-        val cap = max(3f * reach * 0.98f, c)
-        return min(3f * max(gaps[pair], 0f) + c, cap) * fade
-    }
-
-    private fun pairIndex(i: Int, j: Int): Int = if (i < j) i * SHAPE_MAX + j else j * SHAPE_MAX + i
-
-    private fun gap(a: FluidPiece, b: FluidPiece): Float {
-        fun sd(p: FluidPiece, x: Float, y: Float): Float = pieceSd(p, x, y)
-        val inA = min(a.width, a.height) / 2f
-        val inB = min(b.width, b.height) / 2f
-        return (sd(b, a.centerX, a.centerY) - inA + sd(a, b.centerX, b.centerY) - inB) / 2f
-    }
-
-    private fun smooth(t: Float): Float {
-        val c = t.coerceIn(0f, 1f)
-        return c * c * (3f - 2f * c)
     }
 
     private class Slide(val pos: Offset, val hx: Int, val hy: Int, val bx: Float, val by: Float)
@@ -607,26 +505,10 @@ class GlassFluidState(private val density: Float) {
             laserPhase += laserSpin * dt
             moving = true
         }
-        val slowOmega = 5.8f / response.coerceAtLeast(0.2f)
-        for (i in pieces.indices) for (j in i + 1 until pieces.size) {
-            val pair = pairIndex(i, j)
-            val g = gap(pieces[i], pieces[j])
-            gaps[pair] = g
-            // The closer, the deeper: 0 at the reach, full when touching.
-            val target = if (mergeOff) 0f else 3f * softness * smooth(1f - g / reach.coerceAtLeast(1f))
-            // Critically damped, the same going in and coming out: no overshoot, and it pours.
-            val omega = slowOmega
-            val stiffness = omega * omega
-            val damping = 2f * omega
-            var left = dt
-            while (left > 0f) {
-                val h = min(left, 1f / 120f)
-                depthVelocity[pair] += (stiffness * (target - depth[pair]) - damping * depthVelocity[pair]) * h
-                depth[pair] = max(depth[pair] + depthVelocity[pair] * h, 0f)
-                left -= h
-            }
-            if (abs(depth[pair] - target) > 0.05f || abs(depthVelocity[pair]) > 0.5f) moving = true
-        }
+        bridges.reach = reach
+        bridges.softness = softness
+        bridges.response = response
+        if (bridges.step(dt, shapes(), mergeOff)) moving = true
         tick++
         return moving
     }
@@ -655,7 +537,8 @@ class GlassFluidState(private val density: Float) {
         if (!laserOn || fieldW <= 0f || fieldH <= 0f) return emptyList()
         val n = min(pieces.size, SHAPE_MAX)
         val k = FloatArray(SHAPE_MAX * SHAPE_MAX)
-        for (i in 0 until n) for (j in i + 1 until n) k[i * SHAPE_MAX + j] = blendFor(i, j)
+        val fluidShapes = shapes()
+        for (i in 0 until n) for (j in i + 1 until n) k[i * SHAPE_MAX + j] = bridges.blend(fluidShapes[i], fluidShapes[j])
         // The field as the shader draws it, from numbers worked out once for the whole beam: the turn of
         // each piece, and only the bridges that exist now.
         val pcx = FloatArray(n) { pieces[it].centerX }
@@ -1307,79 +1190,12 @@ fun GlassFluidField(
                         }
                     }
                 }
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        // Reading the springs here as well makes every step redraw the glass, whether or not
-                        // the backdrop noticed the read inside its own effect block.
-                        .drawBehind { state.tick }
-                        .drawPlainBackdrop(
-                            backdrop = behind,
-                            shape = { RectangleShape },
-                            effects = {
-                                state.tick // follow the springs
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) try {
-                                    val shader: RuntimeShader = obtainRuntimeShader("GlassFluid", FLUID_SHADER)
-                                    val n = min(state.pieces.size, SHAPE_MAX)
-                                    val boxes = FloatArray(SHAPE_MAX * 4)
-                                    val infos = FloatArray(SHAPE_MAX * 4)
-                                    for (i in 0 until n) {
-                                        val p = state.pieces[i]
-                                        boxes[i * 4] = p.centerX
-                                        boxes[i * 4 + 1] = p.centerY
-                                        boxes[i * 4 + 2] = p.width / 2f
-                                        boxes[i * 4 + 3] = p.height / 2f
-                                        infos[i * 4] = p.radius
-                                        // Bounding circle (plus a little: the body can swell while it is squashed).
-                                        infos[i * 4 + 1] = kotlin.math.hypot(p.width / 2f, p.height / 2f) + 2f
-                                        infos[i * 4 + 2] = kotlin.math.cos(p.angle)
-                                        infos[i * 4 + 3] = kotlin.math.sin(p.angle)
-                                    }
-                                    // Only the bridges that exist now, strongest first.
-                                    val pa = FloatArray(MAX_PAIRS * 4)
-                                    val pb = FloatArray(MAX_PAIRS * 4)
-                                    val pai = FloatArray(MAX_PAIRS * 4)
-                                    val pbi = FloatArray(MAX_PAIRS * 4)
-                                    val pk = FloatArray(MAX_PAIRS)
-                                    var pairs = 0
-                                    var widest = 0f
-                                    val live = ArrayList<Triple<Int, Int, Float>>()
-                                    for (i in 0 until n) for (j in i + 1 until n) {
-                                        val bl = state.blendFor(i, j)
-                                        if (bl > 0.001f) live.add(Triple(i, j, bl))
-                                    }
-                                    live.sortByDescending { it.third }
-                                    for ((i, j, bl) in live) {
-                                        if (pairs >= MAX_PAIRS) break
-                                        System.arraycopy(boxes, i * 4, pa, pairs * 4, 4)
-                                        System.arraycopy(boxes, j * 4, pb, pairs * 4, 4)
-                                        System.arraycopy(infos, i * 4, pai, pairs * 4, 4)
-                                        System.arraycopy(infos, j * 4, pbi, pairs * 4, 4)
-                                        pk[pairs] = bl
-                                        if (bl > widest) widest = bl
-                                        pairs++
-                                    }
-                                    shader.setFloatUniform("pad", padding, padding)
-                                    shader.setFloatUniform("count", n.toFloat())
-                                    shader.setFloatUniform("pairCount", pairs.toFloat())
-                                    shader.setFloatUniform("cullMargin", widest + 4f)
-                                    shader.setFloatUniform("box", boxes)
-                                    shader.setFloatUniform("info", infos)
-                                    shader.setFloatUniform("pA", pa)
-                                    shader.setFloatUniform("pB", pb)
-                                    shader.setFloatUniform("pAi", pai)
-                                    shader.setFloatUniform("pBi", pbi)
-                                    shader.setFloatUniform("pk", pk)
-                                    shader.setFloatUniform("refractionHeight", 14.dp.toPx())
-                                    shader.setFloatUniform("refractionAmount", -20.dp.toPx())
-                                    shader.setFloatUniform("rimWidth", 2.5.dp.toPx())
-                                    effect(RenderEffect.createRuntimeShaderEffect(shader, "content"))
-                                } catch (e: Throwable) {
-                                    // A shader the device refuses must not take the app down: the field is just not drawn.
-                                    android.util.Log.e("GlassFluid", "shader failed", e)
-                                }
-                            },
-                        ),
+                // All the pieces are one glass body: see FluidGlass.kt.
+                FluidGlassLayer(
+                    backdrop = behind,
+                    scene = state,
+                    look = remember { FluidLook(refractionHeight = 14.dp, refractionAmount = 20.dp) },
+                    modifier = Modifier.fillMaxSize(),
                 )
                 // The laser, over the glass and under the pieces' own content.
                 if (laserOn) {

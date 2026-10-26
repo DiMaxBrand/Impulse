@@ -1,0 +1,361 @@
+package eu.siacs.conversations.ui.glass
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.Backdrop
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sin
+import kotlin.math.tanh
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+
+/*
+ * The real glass of the app on the fluid layer (FluidGlass.kt): a [FluidGlassHost] is the area (a bar,
+ * a row of buttons) whose glass elements are drawn as one body, and each LiquidGlassButton or
+ * LiquidGlassPanel whose GlassStack has a host registers itself there instead of drawing a glass node
+ * of its own. The element keeps its content, its press and its click; the host draws the glass behind
+ * it, bridging elements that are close.
+ */
+
+/** One glass element registered in a host. */
+@Stable
+class FluidElement(val id: Int) {
+    /** The element's place and size in the host (layout: not including its press swell). */
+    var rect by mutableStateOf(Rect.Zero)
+    var corner by mutableFloatStateOf(0f)
+    var visible by mutableStateOf(true)
+    var frost by mutableFloatStateOf(0f)
+    var frostRim by mutableFloatStateOf(0f)
+    var interactive: InteractiveHighlight? = null
+    var ink: GlassInk? = null
+
+    /** The element's own layout, kept so it can be placed again once the host's layout is known. */
+    var coords: LayoutCoordinates? = null
+    var cornerPx = 0f
+}
+
+@Stable
+class FluidGlassHost(
+    private val density: Float,
+    val style: LiquidGlassStyle = LiquidGlassStyle.Bar,
+    reachDp: Float = 8f,
+    softnessDp: Float = 10f,
+    responseSeconds: Float = 0.45f,
+) : FluidScene {
+    private var nextId = 0
+    private val elements = mutableStateListOf<FluidElement>()
+    private val shapesById = HashMap<Int, FluidShape>()
+    private val bridges = FluidBridges().also {
+        it.reach = reachDp * density
+        it.softness = softnessDp * density
+        it.response = responseSeconds
+    }
+
+    /** The host's own layout, which element places are measured against. */
+    var hostCoords: LayoutCoordinates? = null
+
+    override var tick by mutableIntStateOf(0)
+        private set
+    override var frostActive by mutableStateOf(false)
+        private set
+
+    /** How the frosted elements look (the first one that says). */
+    var frostStyle by mutableStateOf<LiquidGlassStyle?>(null)
+
+    private val wakeups = Channel<Unit>(Channel.CONFLATED)
+
+    fun wake() {
+        wakeups.trySend(Unit)
+    }
+
+    fun newElement(): FluidElement {
+        val e = FluidElement(nextId++)
+        elements.add(e)
+        wake()
+        return e
+    }
+
+    fun remove(e: FluidElement) {
+        elements.remove(e)
+        shapesById.remove(e.id)
+        bridges.forget(e.id)
+        wake()
+    }
+
+    /** An element was laid out: where it is in the host now. */
+    fun place(e: FluidElement, coords: LayoutCoordinates, corner: Float) {
+        e.coords = coords
+        e.cornerPx = corner
+        placeElement(e)
+    }
+
+    private fun placeElement(e: FluidElement) {
+        val host = hostCoords ?: return
+        val coords = e.coords ?: return
+        if (!host.isAttached || !coords.isAttached) return
+        val at = host.localPositionOf(coords, Offset.Zero)
+        val r = Rect(at, Size(coords.size.width.toFloat(), coords.size.height.toFloat()))
+        if (r != e.rect) e.rect = r
+        if (e.cornerPx != e.corner) e.corner = e.cornerPx
+    }
+
+    /** The host was laid out (or moved): every element is placed against it again. */
+    fun hostPlaced(coords: LayoutCoordinates) {
+        hostCoords = coords
+        for (e in elements) placeElement(e)
+        wake()
+    }
+
+    override fun bridgeBlend(a: FluidShape, b: FluidShape): Float = bridges.blend(a, b)
+
+    override fun shapes(): List<FluidShape> {
+        val out = ArrayList<FluidShape>(elements.size)
+        for (e in elements) {
+            if (!e.visible) continue
+            val r = e.rect
+            if (r.width <= 0f || r.height <= 0f) continue
+            val sh = shapesById.getOrPut(e.id) { FluidShape(e.id) }
+            val ia = e.interactive
+            var sx = 1f
+            var sy = 1f
+            var tx = 0f
+            var ty = 0f
+            if (ia != null) {
+                val g = pressGeometry(r.width, r.height, density, ia.pressProgress, ia.offset)
+                sx = g[0]; sy = g[1]; tx = g[2]; ty = g[3]
+            }
+            sh.cx = r.center.x + tx
+            sh.cy = r.center.y + ty
+            sh.hw = r.width / 2f * sx
+            sh.hh = r.height / 2f * sy
+            sh.radius = min(e.corner * min(sx, sy), min(sh.hw, sh.hh))
+            sh.angle = 0f
+            sh.frost = e.frost
+            sh.frostRim = e.frostRim
+            sh.brightness = e.ink?.let { glassBrightness(it.level.value) } ?: 0f
+            sh.press = ia?.pressProgress ?: 0f
+            if (ia != null) {
+                val t = ia.touchAt(Size(r.width, r.height))
+                sh.touchX = r.left + t.x
+                sh.touchY = r.top + t.y
+            }
+            out.add(sh)
+        }
+        return out
+    }
+
+    private fun signature(): Long {
+        var h = 17L
+        for (s in shapes()) {
+            h = h * 31 + s.cx.toBits()
+            h = h * 31 + s.cy.toBits()
+            h = h * 31 + s.hw.toBits()
+            h = h * 31 + s.hh.toBits()
+            h = h * 31 + s.id
+        }
+        return h
+    }
+
+    private fun step(dt: Float): Boolean {
+        val moving = bridges.step(dt, shapes(), false)
+        val frosted = elements.any { it.visible && it.frost > 0f }
+        if (frosted != frostActive) frostActive = frosted
+        tick++
+        return moving
+    }
+
+    /** Runs the bridges while anything moves; start it once per host. */
+    suspend fun run() = coroutineScope {
+        launch { snapshotFlow { signature() }.collect { wake() } }
+        for (signal in wakeups) {
+            var last = 0L
+            var calm = 0
+            while (calm < 4) {
+                val frame = withFrameNanos { it }
+                val dt = if (last == 0L) 1f / 60f else ((frame - last) / 1_000_000_000f).coerceAtMost(1f / 30f)
+                last = frame
+                calm = if (step(dt)) 0 else calm + 1
+            }
+        }
+    }
+}
+
+/**
+ * The press and drag transform of a glass button, as numbers: scale x, scale y, move x, move y (px).
+ * The button's own layer and the fluid layer's shape both take it from here, so they cannot differ.
+ */
+internal fun pressGeometry(width: Float, height: Float, density: Float, progress: Float, offset: Offset): FloatArray {
+    val scale = 1f + (4f * density / height) * progress
+    val maxOffset = min(width, height)
+    val initialDerivative = 0.05f
+    val tx = maxOffset * tanh(initialDerivative * offset.x / maxOffset)
+    val ty = maxOffset * tanh(initialDerivative * offset.y / maxOffset)
+    val maxDragScale = 4f * density / height
+    val offsetAngle = atan2(offset.y, offset.x)
+    val maxDim = max(width, height)
+    val sx = scale + maxDragScale * abs(cos(offsetAngle) * offset.x / maxDim) * (width / height).coerceAtMost(1f)
+    val sy = scale + maxDragScale * abs(sin(offsetAngle) * offset.y / maxDim) * (height / width).coerceAtMost(1f)
+    return floatArrayOf(sx, sy, tx, ty)
+}
+
+/** The area whose glass elements are drawn as one body: the glass behind [content], the elements in it. */
+@Composable
+fun FluidGlassHost(
+    base: Backdrop,
+    host: FluidGlassHost,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    LaunchedEffect(host) { host.run() }
+    val density = LocalDensity.current
+    val style = host.style
+    val frost = host.frostStyle
+    val surface = MaterialTheme.colorScheme.surface
+    val look = remember(style, frost, surface) {
+        with(density) {
+            FluidLook(
+                refractionHeight = style.lensHeight,
+                refractionAmount = style.lensAmount,
+                fringes = style.chromaticAberration,
+                blur = style.blur,
+                saturation = if (style.vibrancy) 1.25f else style.saturation,
+                shadow = true,
+                frostBlur = frost?.blur ?: 18.dp,
+                veil = surface.copy(alpha = frost?.surfaceAlpha ?: 0f),
+                frostSaturation = frost?.saturation ?: 0.68f,
+                frostContrast = frost?.contrast ?: 0.9f,
+            )
+        }
+    }
+    Box(modifier.onGloballyPositioned { host.hostPlaced(it) }) {
+        FluidGlassLayer(base, host, look, Modifier.matchParentSize())
+        content()
+    }
+}
+
+/** A glass button that is an element of a fluid host: its content, press and click, and no glass of its own. */
+@Composable
+internal fun FluidButton(
+    fluid: FluidGlassHost,
+    adaptive: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    shape: CornerBasedShape,
+    isInteractive: Boolean,
+    recording: Boolean,
+    interactiveHighlight: InteractiveHighlight,
+    extraLayerBlock: (GraphicsLayerScope.() -> Unit)?,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val density = LocalDensity.current
+    val element = remember(fluid) { fluid.newElement() }
+    DisposableEffect(element) { onDispose { fluid.remove(element) } }
+    val ink = rememberGlassInk(adaptive)
+    SideEffect {
+        element.ink = ink
+        element.visible = recording
+        element.interactive = if (isInteractive) interactiveHighlight else null
+        element.frost = 0f
+        fluid.wake()
+    }
+    Box(
+        modifier
+            .onGloballyPositioned { c ->
+                val size = Size(c.size.width.toFloat(), c.size.height.toFloat())
+                fluid.place(element, c, shape.topStart.toPx(size, density))
+            }
+            .graphicsLayer {
+                if (isInteractive) {
+                    val g = pressGeometry(size.width, size.height, this.density, interactiveHighlight.pressProgress, interactiveHighlight.offset)
+                    scaleX = g[0]
+                    scaleY = g[1]
+                    translationX = g[2]
+                    translationY = g[3]
+                }
+                extraLayerBlock?.invoke(this)
+            }
+            .clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onClick)
+            .then(if (isInteractive) Modifier.then(interactiveHighlight.gestureModifier) else Modifier),
+        contentAlignment = Alignment.Center,
+        content = { GlassInkBox(Modifier.matchParentSize(), Alignment.Center, ink, content) },
+    )
+}
+
+/** A glass panel that is an element of a fluid host. */
+@Composable
+internal fun FluidPanel(
+    fluid: FluidGlassHost,
+    adaptive: Boolean,
+    modifier: Modifier,
+    shape: CornerBasedShape,
+    style: LiquidGlassStyle,
+    contentAlignment: Alignment,
+    clipContent: Boolean,
+    visible: Boolean,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val density = LocalDensity.current
+    val element = remember(fluid) { fluid.newElement() }
+    DisposableEffect(element) { onDispose { fluid.remove(element) } }
+    val ink = rememberGlassInk(adaptive)
+    SideEffect {
+        element.ink = ink
+        element.visible = visible
+        element.interactive = null
+        element.frost = if (style.frost != null) 1f else 0f
+        element.frostRim = with(density) { style.frostRim.toPx() }
+        if (style.frost != null && fluid.frostStyle == null) fluid.frostStyle = style.frost
+        fluid.wake()
+    }
+    Box(
+        modifier.onGloballyPositioned { c ->
+            val size = Size(c.size.width.toFloat(), c.size.height.toFloat())
+            fluid.place(element, c, shape.topStart.toPx(size, density))
+        },
+        contentAlignment = contentAlignment,
+    ) {
+        GlassInkBox(
+            if (clipContent) Modifier.matchParentSize().clip(shape) else Modifier.clip(shape),
+            contentAlignment,
+            ink,
+            content,
+        )
+    }
+}

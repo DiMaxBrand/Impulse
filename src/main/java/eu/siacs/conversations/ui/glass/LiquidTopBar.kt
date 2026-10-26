@@ -77,6 +77,35 @@ fun LiquidTopBar(
     onCopySelected: () -> Unit,
     onDeleteSelected: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Draw the bubbles as one body of fluid glass (see FluidGlass.kt) instead of one glass node each. */
+    merging: Boolean = false,
+) {
+    if (!merging) {
+        LiquidTopBarBody(conversation, revision, listener, backdrop, menu, selectedCount, copyEnabled, onExitSelection, onForwardSelected, onCopySelected, onDeleteSelected, modifier)
+        return
+    }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 8f, softnessDp = 10f, responseSeconds = 0.45f) }
+    val stack = remember(backdrop, host) { backdrop.withFluid(host) }
+    FluidGlassHost(backdrop.base, host, modifier.fillMaxWidth()) {
+        LiquidTopBarBody(conversation, revision, listener, stack, menu, selectedCount, copyEnabled, onExitSelection, onForwardSelected, onCopySelected, onDeleteSelected, Modifier)
+    }
+}
+
+@Composable
+private fun LiquidTopBarBody(
+    conversation: Conversation?,
+    revision: Int,
+    listener: ConversationScreenListener,
+    backdrop: GlassStack,
+    menu: LiquidMenuState,
+    selectedCount: Int,
+    copyEnabled: Boolean,
+    onExitSelection: () -> Unit,
+    onForwardSelected: () -> Unit,
+    onCopySelected: () -> Unit,
+    onDeleteSelected: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val header = rememberChatHeaderState(conversation, revision)
     val inSelection = selectedCount > 0
