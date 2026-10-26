@@ -801,7 +801,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val barDensity = LocalDensity.current.density
     val barHost = remember(mergingGlass, glass) {
         if (mergingGlass && glass) {
-            eu.siacs.conversations.ui.glass.FluidGlassHost(barDensity, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 14f, responseSeconds = 0.3f)
+            eu.siacs.conversations.ui.glass.FluidGlassHost(barDensity, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 10f, responseSeconds = 0.3f)
         } else null
     }
     val barStack = remember(glassStack, barHost) { barHost?.let { glassStack.withFluid(it) } ?: glassStack }
@@ -1084,7 +1084,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 merging = mergingGlass,
             )
             // The three dots grow into this menu; drawn over the whole screen area.
-            LiquidChatMenuOverlay(topMenu, glassStack, conversation, state.revision.intValue, listener)
+            LiquidChatMenuOverlay(topMenu, glassStack, conversation, state.revision.intValue, listener, fluid = barHost)
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
                 banners()

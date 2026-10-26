@@ -73,17 +73,15 @@ fun LiquidViewerTopBar(
     // shared-bounds transform, which needs the viewer's own transition scope.
     downloadBubble: @Composable (glass: GlassStack, icon: @Composable BoxScope.() -> Unit) -> Unit,
     modifier: Modifier = Modifier,
-    /** Draw the bubbles as one body of fluid glass (see FluidGlass.kt) instead of one glass node each. */
-    merging: Boolean = false,
+    /** The bar's fluid host (merging glass on): its bubbles are drawn as one body of glass; null: one glass node each. */
+    fluidHost: FluidGlassHost? = null,
 ) {
-    if (!merging) {
+    if (fluidHost == null) {
         LiquidViewerTopBarBody(conversation, revision, dateText, glass, menu, enter, onBack, onShare, downloadBubble, modifier)
         return
     }
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 14f, responseSeconds = 0.3f) }
-    val stack = remember(glass, host) { glass.withFluid(host) }
-    FluidGlassHost(glass.base, host, modifier.fillMaxWidth()) {
+    val stack = remember(glass, fluidHost) { glass.withFluid(fluidHost) }
+    FluidGlassHost(glass.base, fluidHost, modifier.fillMaxWidth()) {
         LiquidViewerTopBarBody(conversation, revision, dateText, stack, menu, enter, onBack, onShare, downloadBubble, Modifier)
     }
 }
@@ -252,8 +250,10 @@ fun LiquidViewerMenuOverlay(
     deleteLabel: String,
     onShowInChat: () -> Unit,
     onDelete: () -> Unit,
+    /** The viewer bar's fluid host, when merging glass is on. */
+    fluid: FluidGlassHost? = null,
 ) {
-    LiquidMenuOverlay(menu, glass, menuWidth = 252.dp) {
+    LiquidMenuOverlay(menu, glass, menuWidth = 252.dp, fluid = fluid) {
         LiquidMenuItem(R.drawable.ic_visibility_24dp, stringResource(R.string.show_in_chat)) {
             menu.open = false
             onShowInChat()

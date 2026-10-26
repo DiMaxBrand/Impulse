@@ -92,6 +92,12 @@ interface FluidScene {
     fun bridgeBlend(a: FluidShape, b: FluidShape): Float
 
     /**
+     * The area the shapes fill (the layer is laid out to just cover it, plus a margin, so a menu can grow far beyond the
+     * bar it came from). Null: the layer fills the area it is given.
+     */
+    fun bounds(): androidx.compose.ui.geometry.Rect? = null
+
+    /**
      * Called while the sharp glass draws: a chance to record what is behind each element (for the glass and the
      * text on it to adapt to a bright or a dark backdrop). [draw] draws the backdrop of the whole layer.
      */
@@ -138,10 +144,48 @@ class FluidBridges {
         return c * c * (3f - 2f * c)
     }
 
+    private val near = FloatArray(2)
+
+    /** The point of the shape's outline nearest to (x, y), in the layer's frame. */
+    private fun closest(s: FluidShape, x: Float, y: Float) {
+        val dx = x - s.cx
+        val dy = y - s.cy
+        val c = kotlin.math.cos(s.angle)
+        val sn = kotlin.math.sin(s.angle)
+        val lx = c * dx + sn * dy
+        val ly = -sn * dx + c * dy
+        val ix = max(s.hw - s.radius, 0f)
+        val iy = max(s.hh - s.radius, 0f)
+        val qx = lx.coerceIn(-ix, ix)
+        val qy = ly.coerceIn(-iy, iy)
+        val ex = lx - qx
+        val ey = ly - qy
+        val len = hypot(ex, ey)
+        val px = if (len > 1e-4f) qx + ex / len * s.radius else qx
+        val py = if (len > 1e-4f) qy + ey / len * s.radius else qy
+        near[0] = s.cx + c * px - sn * py
+        near[1] = s.cy + sn * px + c * py
+    }
+
+    /**
+     * The gap between two shapes: the distance between their nearest points (negative when they overlap).
+     * Found by bouncing between them a few times, so it is right for a wide pill beside a round button too
+     * (measuring from the centres made every wide shape look far away until it was on top of its neighbour).
+     */
     private fun gapOf(a: FluidShape, b: FluidShape): Float {
-        val inA = min(a.hw, a.hh)
-        val inB = min(b.hw, b.hh)
-        return (shapeSd(b, a.cx, a.cy) - inA + shapeSd(a, b.cx, b.cy) - inB) / 2f
+        var ax = a.cx
+        var ay = a.cy
+        var bx = b.cx
+        var by = b.cy
+        repeat(3) {
+            closest(b, ax, ay)
+            bx = near[0]; by = near[1]
+            closest(a, bx, by)
+            ax = near[0]; ay = near[1]
+        }
+        val intoB = shapeSd(b, ax, ay)
+        val intoA = shapeSd(a, bx, by)
+        return if (intoB < 0f || intoA < 0f) min(intoB, intoA) else hypot(ax - bx, ay - by)
     }
 
     fun forget(id: Int) {
@@ -372,7 +416,8 @@ half4 main(float2 coord) {
     // glass has no body to show, but its edge must still be seen.
     float add = spec * 0.55 + lightUp;
     c.rgb += half3(add);
-    c.a = max(c.a, half(clamp(add * 1.5, 0.0, 1.0)));
+    // White at its own alpha: lighter over a dark backdrop, unchanged over a white one (it used to darken a white page).
+    c.a = max(c.a, half(clamp(add, 0.0, 1.0)));
     float k = frostPass > 0.5 ? cover * frostW : cover;
     return c * k;
 }
@@ -454,8 +499,8 @@ internal class FluidSnapshot(shapes: List<FluidShape>, scene: FluidScene) {
         cullMargin = widest + 4f
     }
 
-    fun applyField(shader: RuntimeShader, pad: Float, exact: Boolean = false) {
-        shader.setFloatUniform("pad", pad, pad)
+    fun applyField(shader: RuntimeShader, padX: Float, padY: Float, exact: Boolean = false) {
+        shader.setFloatUniform("pad", padX, padY)
         shader.setFloatUniform("exactDist", if (exact) 1f else 0f)
         shader.setFloatUniform("count", n.toFloat())
         shader.setFloatUniform("pairCount", pairs.toFloat())
@@ -504,11 +549,12 @@ fun FluidGlassLayer(
     Box(modifier) {
         if (look.shadow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val shadowShader = remember { RuntimeShader(SHADOW_SRC) }
-            Canvas(Modifier.matchParentSize().expandBy(marginPx)) {
+            Canvas(Modifier.matchParentSize().layerBounds(scene, marginPx)) {
                 scene.tick
                 try {
                     val snap = cache.get(scene)
-                    snap.applyField(shadowShader, marginPx.toFloat(), exact = true)
+                    val o = layerOrigin(scene, marginPx)
+                    snap.applyField(shadowShader, -o.x.toFloat(), -o.y.toFloat(), exact = true)
                     shadowShader.setFloatUniform("shadowSigma", 9.dp.toPx())
                     shadowShader.setFloatUniform("shadowOffset", 0f, 3.dp.toPx())
                     shadowShader.setFloatUniform("shadowAlpha", 0.16f)
@@ -522,7 +568,7 @@ fun FluidGlassLayer(
         Box(
             Modifier
                 .matchParentSize()
-                .expandBy(marginPx)
+                .layerBounds(scene, marginPx)
                 .glassSnapshot()
                 // Reading the scene here as well makes every step redraw the glass, whether or not
                 // the backdrop noticed the read inside its own effect block.
@@ -545,7 +591,7 @@ fun FluidGlassLayer(
             Box(
                 Modifier
                     .matchParentSize()
-                    .expandBy(marginPx)
+                    .layerBounds(scene, marginPx)
                     .glassSnapshot()
                     .drawBehind { scene.tick }
                     .drawPlainBackdrop(
@@ -575,7 +621,8 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
         // plain one (clear glass).
         if (frost) glassBlur(look.frostBlur.toPx(), useLabScale = false) else glassBlur(look.blur.toPx())
         val shader: RuntimeShader = obtainRuntimeShader(if (frost) "FluidGlassFrost" else "FluidGlass", GLASS_SRC)
-        snap.applyField(shader, padding + marginPx)
+        val o = layerOrigin(scene, marginPx)
+        snap.applyField(shader, padding - o.x, padding - o.y)
         shader.setFloatUniform("look", snap.looks)
         shader.setFloatUniform("touch", snap.touches)
         shader.setFloatUniform("tint", snap.tints)
@@ -596,10 +643,20 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
     }
 }
 
-/** Lays the node out [marginPx] bigger on every side, without changing the size its parent sees. */
-private fun Modifier.expandBy(marginPx: Int): Modifier = this.layout { measurable, constraints ->
+/** Where the layer's top-left is, in the area's own coordinates: just covering the shapes (plus the margin), or the area grown by the margin. */
+internal fun layerOrigin(scene: FluidScene, marginPx: Int): androidx.compose.ui.unit.IntOffset {
+    val b = scene.bounds() ?: return androidx.compose.ui.unit.IntOffset(-marginPx, -marginPx)
+    return androidx.compose.ui.unit.IntOffset(kotlin.math.floor(b.left - marginPx).toInt(), kotlin.math.floor(b.top - marginPx).toInt())
+}
+
+/** Lays the node out to cover the scene's shapes (see [FluidScene.bounds]), without changing the size its parent sees. */
+private fun Modifier.layerBounds(scene: FluidScene, marginPx: Int): Modifier = this.layout { measurable, constraints ->
     val w = constraints.maxWidth
     val h = constraints.maxHeight
-    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(w + 2 * marginPx, h + 2 * marginPx))
-    layout(w, h) { placeable.place(-marginPx, -marginPx) }
+    val b = scene.bounds()
+    val o = layerOrigin(scene, marginPx)
+    val lw = if (b == null) w + 2 * marginPx else (kotlin.math.ceil(b.right + marginPx).toInt() - o.x).coerceAtLeast(1)
+    val lh = if (b == null) h + 2 * marginPx else (kotlin.math.ceil(b.bottom + marginPx).toInt() - o.y).coerceAtLeast(1)
+    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(lw, lh))
+    layout(w, h) { placeable.place(o.x, o.y) }
 }

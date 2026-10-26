@@ -124,18 +124,36 @@ fun LiquidMorphContainer(
     glassUntil: Float = Float.POSITIVE_INFINITY,
     // A rubber-banded nudge of the whole container toward a finger that pulls it (px).
     shift: () -> Offset = { Offset.Zero },
+    // The glass is an element of this fluid host's body (a menu: it can bridge to the bar around its button) instead of a node of its own.
+    fluid: FluidGlassHost? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
     val surface = MaterialTheme.colorScheme.surface
-    val slot = glass.rememberSlot()
+    val slot = if (fluid == null) glass.rememberSlot() else null
     Layout(
         content = {
+          if (fluid != null) {
+            FluidMenuBox(
+                fluid = fluid,
+                style = style,
+                corner = {
+                    val p = ((progressX() + progressY()) / 2f).coerceIn(0f, 1f)
+                    with(density) { lerp(cornerFrom.toPx(), cornerTo.toPx(), p) }
+                },
+                frostAmount = { (((progressX() + progressY()) / 2f - 0.35f) / 0.5f).coerceIn(0f, 1f) },
+                tint = {
+                    val p = ((progressX() + progressY()) / 2f).coerceIn(0f, 1f)
+                    surface.copy(alpha = lerp(surfaceAlphaFrom, style.surfaceAlpha, p))
+                },
+                content = { content() },
+            )
+          } else {
             Box(
                 Modifier
-                    .layerBackdrop(slot.record)
+                    .layerBackdrop(slot!!.record)
                     .drawBackdrop(
-                        backdrop = slot.backdrop,
+                        backdrop = slot!!.backdrop,
                         shape = {
                             val p = ((progressX() + progressY()) / 2f).coerceIn(0f, 1f)
                             RoundedCornerShape(
@@ -165,7 +183,7 @@ fun LiquidMorphContainer(
                 content = {
                     style.frost?.let { frost ->
                         FrostedInterior(
-                            backdrop = slot.backdrop,
+                            backdrop = slot!!.backdrop,
                             frost = frost,
                             rim = style.frostRim,
                             outerCorner = { _, d ->
@@ -179,6 +197,7 @@ fun LiquidMorphContainer(
                     content()
                 },
             )
+          }
         },
         modifier = modifier.fillMaxSize(),
     ) { measurables, constraints ->
@@ -366,6 +385,8 @@ fun LiquidMenuOverlay(
     // opens up and to the right.
     alignEnd: Boolean = true,
     opensUp: Boolean = false,
+    // The menu's glass joins this fluid host's body (see FluidGlassHost.kt) instead of drawing its own.
+    fluid: FluidGlassHost? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     SideEffect {
@@ -415,6 +436,7 @@ fun LiquidMenuOverlay(
             glass = glass,
             style = style,
             shift = { Offset(state.shiftX.value, state.shiftY.value) },
+            fluid = fluid,
         ) {
             val reach = with(density) { 120.dp.toPx() }
             val menuWidthPx = with(density) { menuWidth.toPx() }

@@ -85,7 +85,7 @@ fun LiquidTopBar(
         return
     }
     val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 14f, responseSeconds = 0.3f) }
+    val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 10f, responseSeconds = 0.3f) }
     val stack = remember(backdrop, host) { backdrop.withFluid(host) }
     FluidGlassHost(backdrop.base, host, modifier.fillMaxWidth()) {
         LiquidTopBarBody(conversation, revision, listener, stack, menu, selectedCount, copyEnabled, onExitSelection, onForwardSelected, onCopySelected, onDeleteSelected, Modifier)
@@ -265,10 +265,12 @@ fun LiquidChatMenuOverlay(
     conversation: Conversation?,
     revision: Int,
     listener: ConversationScreenListener,
+    /** The top bar's fluid host, when merging glass is on: the menu's glass is part of its body. */
+    fluid: FluidGlassHost? = null,
 ) {
     val isSingle = conversation?.getMode() == Conversational.MODE_SINGLE
     val flags = rememberChatMenuFlags(conversation, revision, isSingle)
-    LiquidMenuOverlay(menu, backdrop, menuWidth = 264.dp) {
+    LiquidMenuOverlay(menu, backdrop, menuWidth = 264.dp, fluid = fluid) {
         @Composable
         fun entry(iconRes: Int, label: Int, action: () -> Unit) {
             LiquidMenuItem(iconRes, stringResource(label)) {

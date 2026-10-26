@@ -447,6 +447,7 @@ private fun MediaViewerScreen(
     // Each glass piece adapts its glass and text to the photo behind it.
     val glassStack = rememberGlassStack(viewerBackdrop, adaptive = true)
     val topMenu = rememberLiquidMenuState()
+    val viewerHost = eu.siacs.conversations.ui.glass.rememberFluidHost(rememberMergingGlass())
     // 0: the top bar still looks like the chat's; 1: it is the viewer's. Starts done unless the
     // viewer came from the chat's glass bar.
     val barEnter = remember { Animatable(if (glass && carryOver) 0f else 1f) }
@@ -640,7 +641,7 @@ private fun MediaViewerScreen(
                     enter = { barEnter.value },
                     onBack = onClose,
                     onShare = { onShare(currentMessage) },
-                    merging = rememberMergingGlass(),
+                    fluidHost = viewerHost,
                     downloadBubble = { bubbleGlass, icon ->
                         // Its own AnimatedVisibility, as the Material bar's save button has:
                         // the real scope to hand to sharedBounds, the source half of the
@@ -740,6 +741,7 @@ private fun MediaViewerScreen(
                 ),
                 onShowInChat = { onShowInChat(currentMessage) },
                 onDelete = { deleteTarget = currentMessage },
+                fluid = viewerHost,
             )
         }
         androidx.compose.animation.AnimatedVisibility(

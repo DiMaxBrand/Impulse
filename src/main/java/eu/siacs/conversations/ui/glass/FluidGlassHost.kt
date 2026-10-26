@@ -87,6 +87,15 @@ class FluidElement(val id: Int) {
     /** Px the glass reaches out to the right of the element (the message field pressing on the send button). */
     var stretch: (() -> Float)? = null
 
+    /** Where the corner radius comes from while it changes (a menu growing out of a button): px. */
+    var cornerProvider: (() -> Float)? = null
+
+    /** How frosted the element is while that changes (a menu opening: clear as a button, frosted as a panel). */
+    var frostProvider: (() -> Float)? = null
+
+    /** Where the colour over the glass comes from while it changes. */
+    var tintProvider: (() -> androidx.compose.ui.graphics.Color)? = null
+
     /** The element's own layout, kept so it can be placed again once the host's layout is known. */
     var coords: LayoutCoordinates? = null
     var cornerPx = 0f
@@ -97,7 +106,7 @@ class FluidGlassHost(
     private val density: Float,
     val style: LiquidGlassStyle = LiquidGlassStyle.Bar,
     reachDp: Float = 5f,
-    softnessDp: Float = 14f,
+    softnessDp: Float = 10f,
     responseSeconds: Float = 0.3f,
 ) : FluidScene {
     private var nextId = 0
@@ -166,6 +175,17 @@ class FluidGlassHost(
 
     override fun bridgeBlend(a: FluidShape, b: FluidShape): Float = bridges.blend(a, b)
 
+    override fun bounds(): Rect? {
+        val all = shapes()
+        if (all.isEmpty()) return Rect.Zero
+        var l = Float.MAX_VALUE; var t = Float.MAX_VALUE; var r = -Float.MAX_VALUE; var b = -Float.MAX_VALUE
+        for (s in all) {
+            l = min(l, s.cx - s.bound); t = min(t, s.cy - s.bound)
+            r = max(r, s.cx + s.bound); b = max(b, s.cy + s.bound)
+        }
+        return Rect(l, t, r, b)
+    }
+
     override fun shapes(): List<FluidShape> {
         val out = ArrayList<FluidShape>(elements.size)
         for (e in elements) {
@@ -190,15 +210,15 @@ class FluidGlassHost(
             sh.cy = r.center.y + ty + shift.y
             sh.hw = r.width / 2f * sx * presence + stretch / 2f
             sh.hh = r.height / 2f * sy * presence
-            sh.radius = min(e.corner * min(sx, sy), min(sh.hw, sh.hh))
+            sh.radius = min((e.cornerProvider?.invoke() ?: e.corner) * min(sx, sy), min(sh.hw, sh.hh))
             sh.angle = 0f
-            val tc = e.tint
+            val tc = e.tintProvider?.invoke() ?: e.tint
             if (tc.isSpecified && tc.alpha > 0f) {
                 sh.tintR = tc.red; sh.tintG = tc.green; sh.tintB = tc.blue; sh.tintA = tc.alpha
             } else {
                 sh.tintA = 0f
             }
-            sh.frost = e.frost
+            sh.frost = e.frostProvider?.invoke() ?: e.frost
             sh.frostRim = e.frostRim
             sh.brightness = e.ink?.let { glassBrightness(it.level.value) } ?: 0f
             sh.press = ia?.pressProgress ?: 0f
@@ -245,7 +265,7 @@ class FluidGlassHost(
 
     private fun step(dt: Float): Boolean {
         val moving = bridges.step(dt, shapes(), false)
-        val frosted = elements.any { it.visible && it.frost > 0f }
+        val frosted = elements.any { it.visible && (it.frostProvider?.invoke() ?: it.frost) > 0.002f }
         if (frosted != frostActive) frostActive = frosted
         tick++
         return moving
@@ -283,6 +303,13 @@ internal fun pressGeometry(width: Float, height: Float, density: Float, progress
     val sx = scale + maxDragScale * abs(cos(offsetAngle) * offset.x / maxDim) * (width / height).coerceAtMost(1f)
     val sy = scale + maxDragScale * abs(sin(offsetAngle) * offset.y / maxDim) * (height / width).coerceAtMost(1f)
     return floatArrayOf(sx, sy, tx, ty)
+}
+
+/** A host for one screen's glass bars, or null when merging glass is off (the old glass is used then). */
+@Composable
+fun rememberFluidHost(enabled: Boolean, reachDp: Float = 5f): FluidGlassHost? {
+    val density = LocalDensity.current.density
+    return remember(enabled) { if (enabled) FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = reachDp) else null }
 }
 
 /** Whether the developer flag for merging glass is on (read once per screen). */
@@ -380,6 +407,39 @@ internal fun FluidButton(
             .then(if (isInteractive) Modifier.then(interactiveHighlight.gestureModifier) else Modifier),
         contentAlignment = Alignment.Center,
         content = { GlassInkBox(Modifier.matchParentSize(), Alignment.Center, ink, content) },
+    )
+}
+
+/**
+ * The glass of a menu growing out of a button, as an element of the host's body (the button's neighbours
+ * can bridge to it): the box has the menu's size and place at every moment, and the glass is the host's.
+ */
+@Composable
+internal fun FluidMenuBox(
+    fluid: FluidGlassHost,
+    style: LiquidGlassStyle,
+    corner: () -> Float,
+    frostAmount: () -> Float,
+    tint: () -> androidx.compose.ui.graphics.Color,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val density = LocalDensity.current
+    val element = remember(fluid) { fluid.newElement() }
+    DisposableEffect(element) { onDispose { fluid.remove(element) } }
+    SideEffect {
+        element.visible = true
+        element.interactive = null
+        element.frostRim = with(density) { style.frostRim.toPx() }
+        element.cornerProvider = corner
+        element.tintProvider = tint
+        element.frostProvider = if (style.frost != null) frostAmount else null
+        if (style.frost != null && fluid.frostStyle == null) fluid.frostStyle = style.frost
+        fluid.wake()
+    }
+    Box(
+        Modifier.onGloballyPositioned { c -> fluid.place(element, c, 0f) },
+        contentAlignment = Alignment.TopStart,
+        content = content,
     )
 }
 

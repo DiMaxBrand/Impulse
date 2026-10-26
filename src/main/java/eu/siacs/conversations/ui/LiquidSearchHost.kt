@@ -84,6 +84,7 @@ fun LiquidConversationsSearchHost(
     // The glass pieces of this screen look through the list and through each other.
     val glass = rememberGlassStack(backdrop)
     val qrMenu = rememberLiquidMenuState()
+    val fluidHost = eu.siacs.conversations.ui.glass.rememberFluidHost(eu.siacs.conversations.ui.glass.rememberMergingGlass(), reachDp = 6f)
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
@@ -140,7 +141,7 @@ fun LiquidConversationsSearchHost(
             onSearchBounds = { pillBounds = it },
             modifier = Modifier.align(Alignment.TopCenter)
                 .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars),
-            merging = eu.siacs.conversations.ui.glass.rememberMergingGlass(),
+            fluidHost = fluidHost,
         )
 
         // Derived, so this only changes when the container appears or is gone. Reading the animated
@@ -218,7 +219,7 @@ fun LiquidConversationsSearchHost(
             }
         }
 
-        LiquidMenuOverlay(qrMenu, glass) {
+        LiquidMenuOverlay(qrMenu, glass, fluid = fluidHost) {
             if (host.showScanQr) LiquidMenuItem(
                 R.drawable.ic_qr_code_scanner_24dp, stringResource(R.string.scan_qr_code),
             ) { qrMenu.open = false; actions.onScanQr() }

@@ -60,17 +60,15 @@ fun LiquidTopRow(
     searchProgress: () -> Float,
     onSearchBounds: (Rect) -> Unit,
     modifier: Modifier = Modifier,
-    /** Draw the bubbles as one body of fluid glass (see FluidGlass.kt) instead of one glass node each. */
-    merging: Boolean = false,
+    /** The row's fluid host (merging glass on): its bubbles are drawn as one body of glass; null: one glass node each. */
+    fluidHost: eu.siacs.conversations.ui.glass.FluidGlassHost? = null,
 ) {
-    if (!merging) {
+    if (fluidHost == null) {
         LiquidTopRowBody(glass, host, actions, onSearch, qrMenu, searchProgress, onSearchBounds, modifier)
         return
     }
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val fluid = remember { eu.siacs.conversations.ui.glass.FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 6f, softnessDp = 14f, responseSeconds = 0.3f) }
-    val stack = remember(glass, fluid) { glass.withFluid(fluid) }
-    eu.siacs.conversations.ui.glass.FluidGlassHost(glass.base, fluid, modifier.fillMaxWidth()) {
+    val stack = remember(glass, fluidHost) { glass.withFluid(fluidHost) }
+    eu.siacs.conversations.ui.glass.FluidGlassHost(glass.base, fluidHost, modifier.fillMaxWidth()) {
         LiquidTopRowBody(stack, host, actions, onSearch, qrMenu, searchProgress, onSearchBounds, Modifier)
     }
 }
