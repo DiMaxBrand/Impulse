@@ -68,7 +68,7 @@ fun LiquidTopRow(
         return
     }
     val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val fluid = remember { eu.siacs.conversations.ui.glass.FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 6f, softnessDp = 10f, responseSeconds = 0.45f) }
+    val fluid = remember { eu.siacs.conversations.ui.glass.FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 6f, softnessDp = 14f, responseSeconds = 0.3f) }
     val stack = remember(glass, fluid) { glass.withFluid(fluid) }
     eu.siacs.conversations.ui.glass.FluidGlassHost(glass.base, fluid, modifier.fillMaxWidth()) {
         LiquidTopRowBody(stack, host, actions, onSearch, qrMenu, searchProgress, onSearchBounds, Modifier)

@@ -115,7 +115,7 @@ fun LiquidInputBar(
     val attachMenu = rememberLiquidMenuState()
     val density = LocalDensity.current.density
     val host = remember(merging) {
-        if (merging) FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 10f, responseSeconds = 0.45f) else null
+        if (merging) FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 14f, responseSeconds = 0.3f) else null
     }
     // The bar's own bubbles; the menu overlay keeps the plain stack (it grows out of a bubble).
     val bar = remember(backdrop, host) { if (host != null) backdrop.withFluid(host) else backdrop }

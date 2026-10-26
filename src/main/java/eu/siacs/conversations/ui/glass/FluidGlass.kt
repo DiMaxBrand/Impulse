@@ -10,6 +10,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.ShaderBrush
@@ -227,6 +228,7 @@ uniform float2 pad;
 uniform float count;
 uniform float pairCount;
 uniform float cullMargin;
+uniform float exactDist;  // 1: every distance exact (the shadow needs them), 0: far shapes only bounded
 uniform float4 box[16];   // centre xy, half size zw
 uniform float4 info[16];  // corner radius, bounding radius, cos, sin of the turn
 uniform float4 pA[24];    // the two shapes of each bridge, repeated here so no lookup by index is needed
@@ -257,7 +259,7 @@ float field(float2 p) {
     for (int i = 0; i < 16; i++) {
         if (float(i) >= count) break;
         float dc = length(p - box[i].xy);
-        float di = (dc > info[i].y + cullMargin) ? (dc - info[i].y) : sdBoxI(p, box[i], info[i]);
+        float di = (exactDist < 0.5 && dc > info[i].y + cullMargin) ? (dc - info[i].y) : sdBoxI(p, box[i], info[i]);
         r = min(r, di);
     }
     for (int n = 0; n < 24; n++) {
@@ -382,13 +384,13 @@ uniform float2 shadowOffset;
 uniform float shadowAlpha;
 """ + FIELD_SRC + """
 half4 main(float2 coord) {
-    float sd = field(coord - shadowOffset);
+    float sd = field(coord - pad - shadowOffset);
     // A Gaussian fall-off (a smoothstep that ends at some distance left a visible ring around every bubble).
     float dd = max(sd, 0.0);
     float s2 = shadowSigma * 0.5;
     float a = shadowAlpha * exp(-(dd * dd) / (2.0 * s2 * s2));
     // Only outside the glass: where the backdrop is empty the glass is see-through, and a shadow under it would show as a grey patch.
-    a *= smoothstep(-0.5, 1.5, field(coord));
+    a *= smoothstep(-0.5, 1.5, field(coord - pad));
     return half4(0.0, 0.0, 0.0, a);
 }
 """
@@ -452,8 +454,9 @@ internal class FluidSnapshot(shapes: List<FluidShape>, scene: FluidScene) {
         cullMargin = widest + 4f
     }
 
-    fun applyField(shader: RuntimeShader, pad: Float) {
+    fun applyField(shader: RuntimeShader, pad: Float, exact: Boolean = false) {
         shader.setFloatUniform("pad", pad, pad)
+        shader.setFloatUniform("exactDist", if (exact) 1f else 0f)
         shader.setFloatUniform("count", n.toFloat())
         shader.setFloatUniform("pairCount", pairs.toFloat())
         shader.setFloatUniform("cullMargin", cullMargin)
@@ -493,16 +496,19 @@ fun FluidGlassLayer(
     scene: FluidScene,
     look: FluidLook,
     modifier: Modifier = Modifier,
+    /** How far the glass may reach beyond the area it fills (a bubble pulled out of its bar, a shadow). */
+    margin: Dp = 72.dp,
 ) {
     val cache = remember(scene) { FluidSnapshotCache() }
+    val marginPx = with(androidx.compose.ui.platform.LocalDensity.current) { margin.roundToPx() }
     Box(modifier) {
         if (look.shadow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val shadowShader = remember { RuntimeShader(SHADOW_SRC) }
-            Canvas(Modifier.matchParentSize()) {
+            Canvas(Modifier.matchParentSize().expandBy(marginPx)) {
                 scene.tick
                 try {
                     val snap = cache.get(scene)
-                    snap.applyField(shadowShader, 0f)
+                    snap.applyField(shadowShader, marginPx.toFloat(), exact = true)
                     shadowShader.setFloatUniform("shadowSigma", 9.dp.toPx())
                     shadowShader.setFloatUniform("shadowOffset", 0f, 3.dp.toPx())
                     shadowShader.setFloatUniform("shadowAlpha", 0.16f)
@@ -516,6 +522,7 @@ fun FluidGlassLayer(
         Box(
             Modifier
                 .matchParentSize()
+                .expandBy(marginPx)
                 .glassSnapshot()
                 // Reading the scene here as well makes every step redraw the glass, whether or not
                 // the backdrop noticed the read inside its own effect block.
@@ -525,7 +532,7 @@ fun FluidGlassLayer(
                     shape = { RectangleShape },
                     effects = {
                         scene.tick
-                        fluidPass(cache, scene, look, frost = false)
+                        fluidPass(cache, scene, look, marginPx, frost = false)
                     },
                     onDrawBackdrop = { drawBackdrop ->
                         drawBackdrop()
@@ -538,6 +545,7 @@ fun FluidGlassLayer(
             Box(
                 Modifier
                     .matchParentSize()
+                    .expandBy(marginPx)
                     .glassSnapshot()
                     .drawBehind { scene.tick }
                     .drawPlainBackdrop(
@@ -545,7 +553,7 @@ fun FluidGlassLayer(
                         shape = { RectangleShape },
                         effects = {
                             scene.tick
-                            fluidPass(cache, scene, look, frost = true)
+                            fluidPass(cache, scene, look, marginPx, frost = true)
                         },
                     ),
             )
@@ -557,6 +565,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
     cache: FluidSnapshotCache,
     scene: FluidScene,
     look: FluidLook,
+    marginPx: Int,
     frost: Boolean,
 ) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
@@ -566,7 +575,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
         // plain one (clear glass).
         if (frost) glassBlur(look.frostBlur.toPx(), useLabScale = false) else glassBlur(look.blur.toPx())
         val shader: RuntimeShader = obtainRuntimeShader(if (frost) "FluidGlassFrost" else "FluidGlass", GLASS_SRC)
-        snap.applyField(shader, padding)
+        snap.applyField(shader, padding + marginPx)
         shader.setFloatUniform("look", snap.looks)
         shader.setFloatUniform("touch", snap.touches)
         shader.setFloatUniform("tint", snap.tints)
@@ -585,4 +594,12 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
         // A shader the device refuses must not take the app down: the glass is just not drawn.
         android.util.Log.e("FluidGlass", "shader failed", e)
     }
+}
+
+/** Lays the node out [marginPx] bigger on every side, without changing the size its parent sees. */
+private fun Modifier.expandBy(marginPx: Int): Modifier = this.layout { measurable, constraints ->
+    val w = constraints.maxWidth
+    val h = constraints.maxHeight
+    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(w + 2 * marginPx, h + 2 * marginPx))
+    layout(w, h) { placeable.place(-marginPx, -marginPx) }
 }

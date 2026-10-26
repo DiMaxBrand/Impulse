@@ -56,6 +56,13 @@ import kotlinx.coroutines.launch
  * it, bridging elements that are close.
  */
 
+/**
+ * How far a pressed element follows a dragging finger in fluid glass: the old buttons moved ~5% of the
+ * finger's travel, so little that two bubbles never got close enough to join. Three times that (still squeezed
+ * through tanh, so a long drag does not carry it far).
+ */
+internal const val FLUID_LEAN = 0.15f
+
 /** One glass element registered in a host. */
 @Stable
 class FluidElement(val id: Int) {
@@ -89,9 +96,9 @@ class FluidElement(val id: Int) {
 class FluidGlassHost(
     private val density: Float,
     val style: LiquidGlassStyle = LiquidGlassStyle.Bar,
-    reachDp: Float = 8f,
-    softnessDp: Float = 10f,
-    responseSeconds: Float = 0.45f,
+    reachDp: Float = 5f,
+    softnessDp: Float = 14f,
+    responseSeconds: Float = 0.3f,
 ) : FluidScene {
     private var nextId = 0
     private val elements = mutableStateListOf<FluidElement>()
@@ -176,7 +183,7 @@ class FluidGlassHost(
             var tx = 0f
             var ty = 0f
             if (ia != null) {
-                val g = pressGeometry(r.width, r.height, density, ia.pressProgress, ia.offset)
+                val g = pressGeometry(r.width, r.height, density, ia.pressProgress, ia.offset, FLUID_LEAN)
                 sx = g[0]; sy = g[1]; tx = g[2]; ty = g[3]
             }
             sh.cx = r.center.x + tx + stretch / 2f + shift.x
@@ -264,10 +271,10 @@ class FluidGlassHost(
  * The press and drag transform of a glass button, as numbers: scale x, scale y, move x, move y (px).
  * The button's own layer and the fluid layer's shape both take it from here, so they cannot differ.
  */
-internal fun pressGeometry(width: Float, height: Float, density: Float, progress: Float, offset: Offset): FloatArray {
+internal fun pressGeometry(width: Float, height: Float, density: Float, progress: Float, offset: Offset, derivative: Float = 0.05f): FloatArray {
     val scale = 1f + (4f * density / height) * progress
     val maxOffset = min(width, height)
-    val initialDerivative = 0.05f
+    val initialDerivative = derivative
     val tx = maxOffset * tanh(initialDerivative * offset.x / maxOffset)
     val ty = maxOffset * tanh(initialDerivative * offset.y / maxOffset)
     val maxDragScale = 4f * density / height
@@ -361,7 +368,7 @@ internal fun FluidButton(
             }
             .graphicsLayer {
                 if (isInteractive) {
-                    val g = pressGeometry(size.width, size.height, this.density, interactiveHighlight.pressProgress, interactiveHighlight.offset)
+                    val g = pressGeometry(size.width, size.height, this.density, interactiveHighlight.pressProgress, interactiveHighlight.offset, FLUID_LEAN)
                     scaleX = g[0]
                     scaleY = g[1]
                     translationX = g[2]

@@ -85,7 +85,7 @@ fun LiquidTopBar(
         return
     }
     val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 10f, responseSeconds = 0.45f) }
+    val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 14f, responseSeconds = 0.3f) }
     val stack = remember(backdrop, host) { backdrop.withFluid(host) }
     FluidGlassHost(backdrop.base, host, modifier.fillMaxWidth()) {
         LiquidTopBarBody(conversation, revision, listener, stack, menu, selectedCount, copyEnabled, onExitSelection, onForwardSelected, onCopySelected, onDeleteSelected, Modifier)
