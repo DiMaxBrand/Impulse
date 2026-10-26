@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -179,6 +180,25 @@ class FluidGlassHost(
             out.add(sh)
         }
         return out
+    }
+
+    /** What is behind each element, recorded for its ink about three times a second (see rememberGlassInk). */
+    override fun sampleInks(
+        scope: androidx.compose.ui.graphics.drawscope.DrawScope,
+        draw: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit,
+    ) {
+        for (e in elements) {
+            val ink = e.ink ?: continue
+            if (!ink.adaptive || !e.visible) continue
+            val r = e.rect
+            if (r.width < 1f || r.height < 1f) continue
+            if (!ink.request.take()) continue
+            with(scope) {
+                ink.layer.record(androidx.compose.ui.unit.IntSize(r.width.toInt(), r.height.toInt())) {
+                    translate(-r.left, -r.top) { draw() }
+                }
+            }
+        }
     }
 
     private fun signature(): Long {

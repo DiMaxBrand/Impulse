@@ -83,6 +83,12 @@ interface FluidScene {
 
     /** The blend radius of the bridge between two shapes (0: separate). */
     fun bridgeBlend(a: FluidShape, b: FluidShape): Float
+
+    /**
+     * Called while the sharp glass draws: a chance to record what is behind each element (for the glass and the
+     * text on it to adapt to a bright or a dark backdrop). [draw] draws the backdrop of the whole layer.
+     */
+    fun sampleInks(scope: androidx.compose.ui.graphics.drawscope.DrawScope, draw: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit) {}
 }
 
 /** Signed distance from a point to the shape's body: negative inside. */
@@ -338,12 +344,15 @@ half4 main(float2 coord) {
         c.rgb = mix(half3(luma), c.rgb, half(sat));
     }
     c.rgb += half3(bright) * c.a;
-    c.rgb += half3(lightUp) * c.a;
 
     float rim = smoothstep(rimWidth, 0.0, -inner);
     float light = dot(n, normalize(float2(-0.55, -0.8)));
     float spec = rim * (max(light, 0.0) * 0.8 + max(-light, 0.0) * 0.3);
-    c.rgb += half3(spec * 0.55) * c.a;
+    // The edge light and the press light do not depend on what is behind: over an empty backdrop the
+    // glass has no body to show, but its edge must still be seen.
+    float add = spec * 0.55 + lightUp;
+    c.rgb += half3(add);
+    c.a = max(c.a, half(clamp(add * 1.5, 0.0, 1.0)));
     float k = frostPass > 0.5 ? cover * frostW : cover;
     return c * k;
 }
@@ -357,6 +366,8 @@ uniform float shadowAlpha;
 half4 main(float2 coord) {
     float sd = field(coord - shadowOffset);
     float a = shadowAlpha * (1.0 - smoothstep(-shadowSigma * 0.3, shadowSigma, sd));
+    // Only outside the glass: where the backdrop is empty the glass is see-through, and a shadow under it would show as a grey patch.
+    a *= smoothstep(-0.5, 1.5, field(coord));
     return half4(0.0, 0.0, 0.0, a);
 }
 """
@@ -489,6 +500,10 @@ fun FluidGlassLayer(
                     effects = {
                         scene.tick
                         fluidPass(cache, scene, look, frost = false)
+                    },
+                    onDrawBackdrop = { drawBackdrop ->
+                        drawBackdrop()
+                        scene.sampleInks(this, drawBackdrop)
                     },
                 ),
         )
