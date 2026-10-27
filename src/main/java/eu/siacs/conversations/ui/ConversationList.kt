@@ -221,28 +221,29 @@ object ConversationListHelper {
                     ConversationsSearchHost(host = searchHost, actions = searchActions) {
                         Column {
                             ConnectingStrip(isConnecting = state.isConnecting.value)
-                            ConversationList(
-                                conversations = state.list,
-                                revision = state.revision.intValue,
-                                onConversationClick = { onConversationClick.onClick(it) },
-                                actions = listActions,
-                                contentPadding = if (glass) PaddingValues(
-                                    top = LiquidTopRowHeight +
-                                        androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
-                                    bottom = navInset,
-                                ) else PaddingValues(0.dp),
-                                onFirstVisibleIndexChanged = { index ->
-                                    composeView.post { if (index > 0) fab.shrink() else fab.extend() }
-                                },
-                            )
+                            // The glass top row floats over the list, so the list's first row (and the
+                            // emergency banner) start below it; the banner takes room from the list
+                            // instead of covering its first chats.
+                            val base = if (glass) LiquidTopRowHeight +
+                                androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                            else 0.dp
+                            var bannerPx by remember { mutableIntStateOf(0) }
+                            val bannerDp = with(LocalDensity.current) { bannerPx.toDp() }
+                            Box(Modifier.weight(1f).fillMaxWidth()) {
+                                ConversationList(
+                                    conversations = state.list,
+                                    revision = state.revision.intValue,
+                                    onConversationClick = { onConversationClick.onClick(it) },
+                                    actions = listActions,
+                                    contentPadding = PaddingValues(top = base + bannerDp, bottom = if (glass) navInset else 0.dp),
+                                    onFirstVisibleIndexChanged = { index ->
+                                        composeView.post { if (index > 0) fab.shrink() else fab.extend() }
+                                    },
+                                )
+                                EmergencyBanner(Modifier.padding(top = base).onSizeChanged { bannerPx = it.height })
+                            }
                         }
                     }
-                    EmergencyBanner(
-                        Modifier.align(Alignment.TopCenter).padding(
-                            top = androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
-                                if (glass) LiquidTopRowHeight else 64.dp,
-                        ),
-                    )
                     DownloadProgressBar(
                         onComplete = onDownloadComplete,
                         modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
