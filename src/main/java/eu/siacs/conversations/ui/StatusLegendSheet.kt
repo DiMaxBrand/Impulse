@@ -67,6 +67,9 @@ fun legendKeyFor(viewState: ViewStatusManager.State?, phase: CheckmarkPhase?): S
 object StatusLegendSheetState {
     val visible = mutableStateOf(false)
     val current = mutableStateOf<StatusLegendKey?>(null)
+
+    /** The message whose icon was tapped: the legend shows when each of its steps was reached. */
+    val message = mutableStateOf<eu.siacs.conversations.entities.Message?>(null)
 }
 
 private val VIEWED_GREEN = Color(0xFF2E7D32)
@@ -76,6 +79,7 @@ private val VIEW_UNKNOWN_AMBER = Color(0xFFF9A825)
 @Composable
 fun StatusLegendSheet(onDismiss: () -> Unit) {
     val current = StatusLegendSheetState.current.value
+    val message = StatusLegendSheetState.message.value
     androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -94,9 +98,9 @@ fun StatusLegendSheet(onDismiss: () -> Unit) {
 
             LegendSection(stringResource(R.string.status_legend_section_all)) {
                 LegendItem(R.drawable.ic_more_horiz_24dp, null, R.string.status_legend_dots, current == StatusLegendKey.DOTS)
-                LegendItem(R.drawable.ic_done_24dp, null, R.string.status_legend_sent, current == StatusLegendKey.SENT)
-                LegendItem(R.drawable.ic_done_all_24dp, null, R.string.status_legend_delivered, current == StatusLegendKey.DELIVERED)
-                LegendItem(R.drawable.ic_done_all_bold_24dp, VIEWED_GREEN, R.string.status_legend_read, current == StatusLegendKey.READ)
+                LegendItem(R.drawable.ic_done_24dp, null, R.string.status_legend_sent, current == StatusLegendKey.SENT, stepTime(message?.sentAt))
+                LegendItem(R.drawable.ic_done_all_24dp, null, R.string.status_legend_delivered, current == StatusLegendKey.DELIVERED, stepTime(message?.deliveredAt))
+                LegendItem(R.drawable.ic_done_all_bold_24dp, VIEWED_GREEN, R.string.status_legend_read, current == StatusLegendKey.READ, stepTime(message?.displayedAt))
                 LegendItem(R.drawable.ic_error_24dp, null, R.string.status_legend_error, current == StatusLegendKey.ERROR)
             }
 
@@ -147,7 +151,7 @@ private fun LegendSection(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun LegendItem(iconRes: Int, tint: Color?, textRes: Int, highlighted: Boolean) {
+private fun LegendItem(iconRes: Int, tint: Color?, textRes: Int, highlighted: Boolean, time: String? = null) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
@@ -161,9 +165,24 @@ private fun LegendItem(iconRes: Int, tint: Color?, textRes: Int, highlighted: Bo
         Spacer(Modifier.width(14.dp))
         // Bold marks "this is the state the icon you tapped is in right now."
         Text(
-            text = stringResource(textRes),
+            // The time this step was reached, in brackets, when it is known.
+            text = stringResource(textRes) + (time?.let { " ($it)" } ?: ""),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (highlighted) androidx.compose.ui.text.font.FontWeight.Bold else null,
         )
     }
+}
+
+/** "10:12" for today, "12 Oct, 10:12" for another day; null when the step's time is not known. */
+@Composable
+private fun stepTime(millis: Long?): String? {
+    if (millis == null || millis <= 0L) return null
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val flags = if (android.text.format.DateUtils.isToday(millis)) {
+        android.text.format.DateUtils.FORMAT_SHOW_TIME
+    } else {
+        android.text.format.DateUtils.FORMAT_SHOW_TIME or android.text.format.DateUtils.FORMAT_SHOW_DATE or
+            android.text.format.DateUtils.FORMAT_ABBREV_MONTH
+    }
+    return android.text.format.DateUtils.formatDateTime(context, millis, flags)
 }

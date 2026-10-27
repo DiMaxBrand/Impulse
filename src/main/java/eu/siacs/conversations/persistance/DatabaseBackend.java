@@ -74,7 +74,7 @@ import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 public class DatabaseBackend extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "history";
-    private static final int DATABASE_VERSION = 63;
+    private static final int DATABASE_VERSION = 64;
 
     private static boolean requiresMessageIndexRebuild = false;
     private static DatabaseBackend instance = null;
@@ -507,7 +507,13 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                         + Message.LISTEN_STATUS
                         + " TEXT,"
                         + Message.VIEW_STATUS
-                        + " TEXT, FOREIGN KEY("
+                        + " TEXT,"
+                        + Message.SENT_AT
+                        + " NUMBER DEFAULT 0,"
+                        + Message.DELIVERED_AT
+                        + " NUMBER DEFAULT 0,"
+                        + Message.DISPLAYED_AT
+                        + " NUMBER DEFAULT 0, FOREIGN KEY("
                         + Message.CONVERSATION
                         + ") REFERENCES "
                         + Conversation.TABLENAME
@@ -1208,6 +1214,21 @@ public class DatabaseBackend extends SQLiteOpenHelper {
                                 + " TEXT");
             } catch (final Exception e) {
                 // column already exists
+            }
+        }
+        if (oldVersion < 64 && newVersion >= 64) {
+            for (final String column :
+                    new String[] {Message.SENT_AT, Message.DELIVERED_AT, Message.DISPLAYED_AT}) {
+                try {
+                    db.execSQL(
+                            "ALTER TABLE "
+                                    + Message.TABLENAME
+                                    + " ADD COLUMN "
+                                    + column
+                                    + " NUMBER DEFAULT 0");
+                } catch (final Exception e) {
+                    // column already exists
+                }
             }
         }
     }

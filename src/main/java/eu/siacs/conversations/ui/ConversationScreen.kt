@@ -5886,6 +5886,8 @@ internal class StatusSummary(
     val phase: CheckmarkPhase?,
     val viewedCount: Int,
     val viewableCount: Int,
+    /** The message the icon stands for (the batch's least-progressed one): the legend shows when each step was reached. */
+    val representative: Message? = null,
 ) {
     val isEmpty: Boolean get() = error == null && eye == null && phase == null
 }
@@ -5941,7 +5943,7 @@ internal fun summarizeStatus(
             }
         else -> null
     }
-    return StatusSummary(failed, eye, if (eye == null) basePhase else null, seen, viewable.size)
+    return StatusSummary(failed, eye, if (eye == null) basePhase else null, seen, viewable.size, representative)
 }
 
 /**
@@ -5962,6 +5964,7 @@ internal fun OutgoingStatusIcons(
         if (!tappable) Modifier.size(size)
         else Modifier.size(size).clickable(indication = null, interactionSource = interaction) {
             StatusLegendSheetState.current.value = key
+            StatusLegendSheetState.message.value = summary.representative
             StatusLegendSheetState.visible.value = true
         }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {

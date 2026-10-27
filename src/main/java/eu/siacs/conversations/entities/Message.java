@@ -101,6 +101,11 @@ public class Message extends AbstractEntity
     public static final String REMOTE_EDITING = "remoteEditing";
     public static final String LISTEN_STATUS = "listenStatus";
     public static final String VIEW_STATUS = "viewStatus";
+
+    /** When an outgoing message reached the server, the other side, and was read (epoch ms; 0: not known). */
+    public static final String SENT_AT = "sentAt";
+    public static final String DELIVERED_AT = "deliveredAt";
+    public static final String DISPLAYED_AT = "displayedAt";
     public static final String ME_COMMAND = "/me ";
 
     /**
@@ -174,6 +179,9 @@ public class Message extends AbstractEntity
     private boolean remoteEditing = false;
     private String listenStatus = null;
     private String viewStatus = null;
+    private long sentAt = 0;
+    private long deliveredAt = 0;
+    private long displayedAt = 0;
 
     private Boolean isGeoUri = null;
     private Boolean isEmojisOnly = null;
@@ -352,6 +360,18 @@ public class Message extends AbstractEntity
         if (listenStatusIndex >= 0) {
             message.listenStatus = cursor.getString(listenStatusIndex);
         }
+        final int sentAtIndex = cursor.getColumnIndex(SENT_AT);
+        if (sentAtIndex >= 0) {
+            message.sentAt = cursor.getLong(sentAtIndex);
+        }
+        final int deliveredAtIndex = cursor.getColumnIndex(DELIVERED_AT);
+        if (deliveredAtIndex >= 0) {
+            message.deliveredAt = cursor.getLong(deliveredAtIndex);
+        }
+        final int displayedAtIndex = cursor.getColumnIndex(DISPLAYED_AT);
+        if (displayedAtIndex >= 0) {
+            message.displayedAt = cursor.getLong(displayedAtIndex);
+        }
         final int viewStatusIndex = cursor.getColumnIndex(VIEW_STATUS);
         if (viewStatusIndex >= 0) {
             message.viewStatus = cursor.getString(viewStatusIndex);
@@ -452,6 +472,9 @@ public class Message extends AbstractEntity
         values.put(REMOTE_EDITING, remoteEditing ? 1 : 0);
         values.put(LISTEN_STATUS, listenStatus);
         values.put(VIEW_STATUS, viewStatus);
+        values.put(SENT_AT, sentAt);
+        values.put(DELIVERED_AT, deliveredAt);
+        values.put(DISPLAYED_AT, displayedAt);
         return values;
     }
 
@@ -552,7 +575,33 @@ public class Message extends AbstractEntity
                 throw new AssertionError("A sent message can not be converted to received");
             }
         }
+        if (current != status) {
+            // The time each step of an outgoing message was reached, for the status legend (first time only).
+            final long now = System.currentTimeMillis();
+            if (status == Message.STATUS_SEND && sentAt == 0) {
+                sentAt = now;
+            } else if (status == Message.STATUS_SEND_RECEIVED && deliveredAt == 0) {
+                deliveredAt = now;
+            } else if (status == Message.STATUS_SEND_DISPLAYED && displayedAt == 0) {
+                displayedAt = now;
+            }
+        }
         this.status = status;
+    }
+
+    /** When the message reached the server (epoch ms), or 0 when not known. */
+    public long getSentAt() {
+        return sentAt;
+    }
+
+    /** When the receipt of delivery came (epoch ms), or 0 when not known. */
+    public long getDeliveredAt() {
+        return deliveredAt;
+    }
+
+    /** When the other side showed it as read (epoch ms), or 0 when not known. */
+    public long getDisplayedAt() {
+        return displayedAt;
     }
 
     public StorageLocation getRelativeFilePath() {
