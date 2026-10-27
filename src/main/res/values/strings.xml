@@ -1436,6 +1436,9 @@
     <string name="birthday_line_2">И чтобы Импульс сам обновлялся :)</string>
     <string name="birthday_signature">С любовью, Дима ❤</string>
     <string name="birthday_close">Закрыть</string>
+    <string name="emergency_mode_banner_title">Weak connection mode</string>
+    <string name="emergency_mode_banner_text">The connection is poor, so the app waits longer to connect and skips avatars and automatic downloads. It turns off by itself once the connection is stable.</string>
+    <string name="emergency_mode_turn_off">Turn off</string>
     <string name="feature_flag_emergency_mode_title">Emergency mode</string>
     <string name="feature_flag_emergency_mode_description">On a bad connection (server not found / connection timeout), automatically stops fetching new avatars and auto-downloading media — text messages keep working</string>
     <string name="invite_title">Invite</string>

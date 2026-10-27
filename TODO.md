@@ -368,8 +368,11 @@ same spirit as the app's other spring-based status transitions (see
 - [ ] **Emergency mode, part 2** — `FeatureFlag.EMERGENCY_MODE` (see `XmppConnectionService.refreshEmergencyMode()`/`isEmergencyModeActive()`) currently only reuses the `isDataSaverDisabled()` gate (the name is historical) to hold back optional traffic -- new avatar fetches and media auto-download -- while any account is `SERVER_NOT_FOUND`/`CONNECTION_TIMEOUT`. Confirmed-but-not-yet-built for a second pass:
   - [ ] Limit/skip MAM catch-up history sync while active
   - [ ] Disable message carbons (XEP-0280) while active — less XML per message
-  - [ ] Longer connection/read timeouts while active, so a slow-but-working link doesn't get treated as dead and retried repeatedly
-  - [ ] Some visible indicator that it's active (a banner? — nothing currently surfaces this to the user beyond the behavior itself)
+  - [x] Longer connection/read timeouts while active (x3 for socket, connect, disco and ping; retries at most every minute) -- beta.277
+  - [x] Visible indicator with a "Turn off" button (`EmergencyBanner`, chat list); turns itself off after all accounts were online for 45 s -- beta.277
+  - [ ] Priority order on a weak link: send first, receive second, MAM catch-up last (defer/limit catch-up)
+  - [ ] Carbons: instead of switching them off, either keep them but only when nothing is being sent/received, or off as a last resort
+  - [ ] Look at what the connect handshake does after bind (disco, bookmarks, etc.) -- a link that carries a login may still not carry all of it
 - [ ] **Container transform on the rest of Start Chat's + menu items** — "Invite" now grows into
   its destination via a shared-bounds transform inline in `StartConversationScreen.kt` (see
   `inviteExpanded` there). The user wants every item in that FAB menu doing the same, including

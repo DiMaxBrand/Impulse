@@ -61,6 +61,7 @@ import de.gultsch.common.MiniUri;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.Conversations;
+import eu.siacs.conversations.EmergencyMode;
 import eu.siacs.conversations.FeatureFlag;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.android.Device;
@@ -926,7 +927,7 @@ public class XmppConnectionService extends Service {
                                 "%s: send ping (action=%s,lowTimeout=%s,interval=%s)",
                                 account.getJid().asBareJid(), action, lowTimeout, delta));
                 scheduleWakeUpCall(
-                        lowTimeout ? Config.LOW_PING_TIMEOUT : Config.PING_TIMEOUT,
+                        (lowTimeout ? Config.LOW_PING_TIMEOUT : Config.PING_TIMEOUT) * timeoutFactor(),
                         account.getUuid().hashCode());
             }
         }
@@ -965,8 +966,8 @@ public class XmppConnectionService extends Service {
                                 - SystemClock.elapsedRealtime();
                 int pingTimeout =
                         mLowPingTimeoutMode.contains(account.getJid().asBareJid())
-                                ? Config.LOW_PING_TIMEOUT * 1000
-                                : Config.PING_TIMEOUT * 1000;
+                                ? Config.LOW_PING_TIMEOUT * 1000 * timeoutFactor()
+                                : Config.PING_TIMEOUT * 1000 * timeoutFactor();
                 long pingTimeoutIn = (lastSent + pingTimeout) - SystemClock.elapsedRealtime();
                 if (lastSent > lastReceived) {
                     if (pingTimeoutIn < 0) {
@@ -1003,8 +1004,8 @@ public class XmppConnectionService extends Service {
         } else if (account.getStatus() == Account.State.CONNECTING) {
             final var connectionDuration = connection.getConnectionDuration();
             final var discoDuration = connection.getDiscoDuration();
-            final var connectionTimeout = Config.CONNECT_TIMEOUT * 1000L - connectionDuration;
-            final var discoTimeout = Config.CONNECT_DISCO_TIMEOUT * 1000L - discoDuration;
+            final var connectionTimeout = Config.CONNECT_TIMEOUT * 1000L * timeoutFactor() - connectionDuration;
+            final var discoTimeout = Config.CONNECT_DISCO_TIMEOUT * 1000L * timeoutFactor() - discoDuration;
             if (connectionTimeout < 0) {
                 connection.triggerConnectionTimeout();
             } else if (discoTimeout < 0) {
@@ -1102,30 +1103,96 @@ public class XmppConnectionService extends Service {
     // limiting, disabling carbons, longer timeouts — see TODO.md).
     private volatile boolean emergencyModeActive = false;
 
+    // How long every account must be online, without a failing state in between, before emergency
+    // mode turns itself off. Between two retries an account is "connecting", not failing, so
+    // without this the mode would drop out at every retry and the longer timeouts would never apply.
+    private static final long EMERGENCY_STABLE_MS = 45_000L;
+    private long emergencyHealthySince = 0;
+
+    {
+        EmergencyMode.setOnDismiss(
+                () -> {
+                    emergencyModeActive = false;
+                    EmergencyMode.publish(false);
+                });
+    }
+
     public boolean isEmergencyModeActive() {
         return emergencyModeActive;
+    }
+
+    /** 1 normally; how many times longer connection and ping timeouts are while emergency mode is on. */
+    public int timeoutFactor() {
+        return emergencyModeActive ? 3 : 1;
+    }
+
+    private void setEmergencyMode(final boolean active) {
+        emergencyModeActive = active;
+        EmergencyMode.publish(active);
     }
 
     /**
      * Re-evaluated on every account status change (see updateAccountUi()) rather than only on
      * demand, so isDataSaverDisabled() above can stay a cheap volatile-field read instead of
      * scanning every account's status on every avatar/download decision.
+     *
+     * Turns on when an account is stuck at SERVER_NOT_FOUND / CONNECTION_TIMEOUT. Turns off when
+     * every enabled account has been online for EMERGENCY_STABLE_MS, or when the user turns it off
+     * by hand (it then stays off until the connection has been healthy once).
      */
     private void refreshEmergencyMode() {
         if (!new FeatureFlagPreferences(this).isEnabled(FeatureFlag.EMERGENCY_MODE)) {
-            emergencyModeActive = false;
+            emergencyHealthySince = 0;
+            EmergencyMode.setDismissed(false);
+            setEmergencyMode(false);
             return;
         }
-        boolean shouldBeActive = false;
+        boolean failing = false;
+        boolean allOnline = true;
+        boolean any = false;
         for (final Account account : getAccounts()) {
+            if (!account.isEnabled()) {
+                continue;
+            }
+            any = true;
             final Account.State status = account.getStatus();
             if (status == Account.State.SERVER_NOT_FOUND
                     || status == Account.State.CONNECTION_TIMEOUT) {
-                shouldBeActive = true;
-                break;
+                failing = true;
+            }
+            if (status != Account.State.ONLINE) {
+                allOnline = false;
             }
         }
-        emergencyModeActive = shouldBeActive;
+        if (failing) {
+            emergencyHealthySince = 0;
+            if (!emergencyModeActive && !EmergencyMode.isDismissed()) {
+                setEmergencyMode(true);
+            }
+            return;
+        }
+        final boolean healthy = any && allOnline;
+        if (!emergencyModeActive) {
+            if (healthy) {
+                EmergencyMode.setDismissed(false);
+            }
+            return;
+        }
+        if (!healthy) {
+            emergencyHealthySince = 0;
+            return;
+        }
+        final long now = SystemClock.elapsedRealtime();
+        if (emergencyHealthySince == 0) {
+            emergencyHealthySince = now;
+        }
+        final long remaining = EMERGENCY_STABLE_MS - (now - emergencyHealthySince);
+        if (remaining <= 0) {
+            emergencyHealthySince = 0;
+            setEmergencyMode(false);
+        } else {
+            new Handler(Looper.getMainLooper()).postDelayed(this::refreshEmergencyMode, remaining + 50);
+        }
     }
 
     private ListenableFuture<Void> directReply(
@@ -3633,7 +3700,7 @@ public class XmppConnectionService extends Service {
                 connection.prepareNewConnection();
                 connection.interrupt();
                 thread.start();
-                scheduleWakeUpCall(Config.CONNECT_DISCO_TIMEOUT, account.getUuid().hashCode());
+                scheduleWakeUpCall(Config.CONNECT_DISCO_TIMEOUT * timeoutFactor(), account.getUuid().hashCode());
             } else {
                 if (account.getTrueStatus().isError()) {
                     connection.disconnectHard();

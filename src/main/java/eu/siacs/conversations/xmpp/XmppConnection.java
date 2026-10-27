@@ -501,8 +501,9 @@ public class XmppConnection implements Runnable {
                         } else {
                             timeout = Config.SOCKET_TIMEOUT_LOW;
                         }
-                        localSocket.connect(addr, timeout);
-                        localSocket.setSoTimeout(timeout);
+                        final int scaledTimeout = timeout * mXmppConnectionService.timeoutFactor();
+                        localSocket.connect(addr, scaledTimeout);
+                        localSocket.setSoTimeout(scaledTimeout);
                         if (features.encryptionEnabled) {
                             localSocket = upgradeSocketToTls(localSocket);
                         }
@@ -2238,7 +2239,8 @@ public class XmppConnection implements Runnable {
         mWaitForDisco.set(waitForDisco);
         this.lastDiscoStarted = SystemClock.elapsedRealtime();
         mXmppConnectionService.scheduleWakeUpCall(
-                Config.CONNECT_DISCO_TIMEOUT * 1000L, account.getUuid().hashCode());
+                Config.CONNECT_DISCO_TIMEOUT * 1000L * mXmppConnectionService.timeoutFactor(),
+                account.getUuid().hashCode());
 
         final var nodeHash = streamFeatures.getCapabilities();
         final var serverInfoFuture =
@@ -2797,7 +2799,9 @@ public class XmppConnection implements Runnable {
         } else {
             final int additionalTime =
                     account.getLastErrorStatus() == Account.State.POLICY_VIOLATION ? 3 : 0;
-            interval = Math.min((int) (25 * Math.pow(1.3, (additionalTime + attempt))), 300);
+            // A weak connection (emergency mode) is retried at least every minute: the link may come back at any moment.
+            final int cap = mXmppConnectionService.isEmergencyModeActive() ? 60 : 300;
+            interval = Math.min((int) (25 * Math.pow(1.3, (additionalTime + attempt))), cap);
         }
         final var connectionDuration = Ints.saturatedCast(getConnectionDuration() / 1000);
         return interval - connectionDuration;

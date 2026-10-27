@@ -237,6 +237,12 @@ object ConversationListHelper {
                             )
                         }
                     }
+                    EmergencyBanner(
+                        Modifier.align(Alignment.TopCenter).padding(
+                            top = androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+                                if (glass) LiquidTopRowHeight else 64.dp,
+                        ),
+                    )
                     DownloadProgressBar(
                         onComplete = onDownloadComplete,
                         modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),

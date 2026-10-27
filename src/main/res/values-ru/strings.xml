@@ -1510,6 +1510,9 @@
     <string name="birthday_line_2">И чтобы Импульс сам обновлялся :)</string>
     <string name="birthday_signature">С любовью, Дима ❤</string>
     <string name="birthday_close">Закрыть</string>
+    <string name="emergency_mode_banner_title">Режим слабой связи</string>
+    <string name="emergency_mode_banner_text">Связь плохая, поэтому приложение дольше ждёт соединения и не загружает аватары и файлы автоматически. Выключится само, когда связь станет стабильной.</string>
+    <string name="emergency_mode_turn_off">Выключить</string>
     <string name="feature_flag_emergency_mode_title">Аварийный режим</string>
     <string name="feature_flag_emergency_mode_description">При плохом соединении (сервер не найден / тайм-аут соединения) автоматически прекращает загрузку новых аватаров и медиафайлов — текстовые сообщения продолжают работать</string>
     <string name="invite_title">Пригласить</string>
