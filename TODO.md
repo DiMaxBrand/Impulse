@@ -370,8 +370,9 @@ same spirit as the app's other spring-based status transitions (see
   - [ ] Disable message carbons (XEP-0280) while active — less XML per message
   - [x] Longer connection/read timeouts while active (x3 for socket, connect, disco and ping; retries at most every minute) -- beta.277
   - [x] Visible indicator with a "Turn off" button (`EmergencyBanner`, chat list); turns itself off after all accounts were online for 45 s -- beta.277
-  - [ ] Priority order on a weak link: send first, receive second, MAM catch-up last (defer/limit catch-up)
-  - [ ] Carbons: instead of switching them off, either keep them but only when nothing is being sent/received, or off as a last resort
+  - [x] Priority order on a weak link: after bind, MAM catch-up, carbons, server commands and device sync wait until the connection has held 20 s (queued messages and presence go first) -- beta.278
+  - [ ] Still open on that: cap/limit the catch-up window itself, not just delay it
+  - [ ] "Send-only" light session for when a full session can't hold: connect, send queued messages (marked sent on the XEP-0198 ack), send NO presence so nothing is routed to us, disconnect; the real catch-up happens on the next full connection. Resent messages already carry their compose time (XEP-0203 delay via `resendMessage(.., delay=true)`)
   - [ ] Look at what the connect handshake does after bind (disco, bookmarks, etc.) -- a link that carries a login may still not carry all of it
 - [ ] **Container transform on the rest of Start Chat's + menu items** — "Invite" now grows into
   its destination via a shared-bounds transform inline in `StartConversationScreen.kt` (see

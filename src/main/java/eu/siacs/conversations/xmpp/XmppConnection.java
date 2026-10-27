@@ -2365,6 +2365,9 @@ public class XmppConnection implements Runnable {
         this.changeStatusToOnline();
     }
 
+    /** How long the connection must hold before the extras are fetched in emergency mode. */
+    private static final long EMERGENCY_DEFER_MS = 20_000L;
+
     private void enableAdvancedStreamFeatures() {
         final var blockingManager = getManager(BlockingManager.class);
         if (blockingManager.hasFeature()) {
@@ -2374,20 +2377,42 @@ public class XmppConnection implements Runnable {
                 advancedStreamFeaturesLoadedListeners) {
             listener.onAdvancedStreamFeaturesAvailable(account);
         }
-        final var carbonsManager = getManager(CarbonsManager.class);
-        if (carbonsManager.hasFeature() && !carbonsManager.isEnabled()) {
-            carbonsManager.enable();
-        }
-        final var discoManager = getManager(DiscoManager.class);
-        if (discoManager.hasServerCommands()) {
-            discoManager.fetchServerCommands();
-        }
+        // The rest is not needed to send and receive messages. On a weak link (emergency mode) it
+        // waits until the connection has held for a while, so messages go first: sending is
+        // already done from the queue, receiving needs only presence, and history catch-up, carbons
+        // and device sync come after.
+        final Runnable rest =
+                () -> {
+                    final var carbonsManager = getManager(CarbonsManager.class);
+                    if (carbonsManager.hasFeature() && !carbonsManager.isEnabled()) {
+                        carbonsManager.enable();
+                    }
+                    final var discoManager = getManager(DiscoManager.class);
+                    if (discoManager.hasServerCommands()) {
+                        discoManager.fetchServerCommands();
+                    }
 
-        final var messageArchiveManager = getManager(MessageArchiveManager.class);
-        if (messageArchiveManager.hasFeature()) {
-            messageArchiveManager.catchup();
+                    final var messageArchiveManager = getManager(MessageArchiveManager.class);
+                    if (messageArchiveManager.hasFeature()) {
+                        messageArchiveManager.catchup();
+                    }
+                    getManager(eu.siacs.conversations.xmpp.manager.DevicesManager.class).sync();
+                };
+        if (mXmppConnectionService.isEmergencyModeActive()) {
+            final long session = getLastSessionEstablished();
+            Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": emergency mode, deferring catch-up");
+            new android.os.Handler(android.os.Looper.getMainLooper())
+                    .postDelayed(
+                            () -> {
+                                if (account.getStatus() == Account.State.ONLINE
+                                        && session == getLastSessionEstablished()) {
+                                    rest.run();
+                                }
+                            },
+                            EMERGENCY_DEFER_MS);
+        } else {
+            rest.run();
         }
-        getManager(eu.siacs.conversations.xmpp.manager.DevicesManager.class).sync();
     }
 
     private void processStreamError(final StreamError streamError) throws IOException {
