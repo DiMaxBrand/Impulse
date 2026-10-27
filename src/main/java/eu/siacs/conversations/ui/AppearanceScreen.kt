@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import com.kyant.backdrop.backdrops.layerBackdrop
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -190,10 +191,12 @@ internal fun AppearanceScreen(
     playgroundOrigin: androidx.compose.ui.geometry.Rect? = null,
     onClosePlayground: () -> Unit = {},
 ) {
+  val labBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
   Box(Modifier.fillMaxSize()) {
     // The playground arrives over the lab, which stays where it is underneath.
     val shownPage = if (page == AppearancePage.PLAYGROUND) AppearancePage.LAB else page
     AnimatedContent(
+        modifier = Modifier.fillMaxSize().layerBackdrop(labBackdrop),
         targetState = shownPage,
         transitionSpec = {
             if (targetState != AppearancePage.MAIN) {
@@ -221,7 +224,7 @@ internal fun AppearanceScreen(
         enter = EnterTransition.None,
         exit = fadeOut(tween(450)),
     ) {
-        GlassPlayground(origin = playgroundOrigin, onBack = onClosePlayground)
+        GlassPlayground(origin = playgroundOrigin, onBack = onClosePlayground, labBackdrop = labBackdrop)
     }
   }
 }

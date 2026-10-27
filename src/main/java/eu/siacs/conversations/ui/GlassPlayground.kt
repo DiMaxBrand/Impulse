@@ -122,9 +122,13 @@ private fun Modifier.cascade(index: Int, shown: Int): Modifier {
 }
 
 @Composable
-internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit) {
+internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com.kyant.backdrop.backdrops.LayerBackdrop? = null) {
     val density = LocalDensity.current
-    val backdrop = rememberLayerBackdrop()
+    // The playground's own page, and (when it arrives from the lab) the lab page too: the glass looks through
+    // both, so on the way it bends the lab's rows as they fade out.
+    val pageBackdrop = rememberLayerBackdrop()
+    val backdrop: com.kyant.backdrop.Backdrop =
+        if (labBackdrop != null) com.kyant.backdrop.backdrops.rememberCombinedBackdrop(labBackdrop, pageBackdrop) else pageBackdrop
     val base = rememberGlassStack(backdrop)
     // The three elements melt into each other while they are close: a wide reach, a slow, soft join.
     val host = remember { FluidGlassHost(density.density, LiquidGlassStyle.Bar, reachDp = 22f, softnessDp = 14f, responseSeconds = 0.5f) }
@@ -186,7 +190,7 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit) {
 
     Box(Modifier.fillMaxSize().onGloballyPositioned { rootPos = it.positionInWindow() }) {
         // What the glass looks through: the lab's own colour first, then the playground's page.
-        Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
+        Box(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
             Box(
                 Modifier.fillMaxSize()
                     .graphicsLayer { alpha = ease(win(p.value, 0f, 0.25f)) }
