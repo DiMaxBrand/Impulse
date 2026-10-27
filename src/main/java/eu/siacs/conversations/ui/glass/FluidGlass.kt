@@ -561,16 +561,16 @@ fun FluidGlassLayer(
     margin: Dp = 72.dp,
 ) {
     val cache = remember(scene) { FluidSnapshotCache() }
+    val frame = remember(scene) { LayerFrame() }
     val marginPx = with(androidx.compose.ui.platform.LocalDensity.current) { margin.roundToPx() }
     Box(modifier) {
         if (look.shadow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val shadowShader = remember { RuntimeShader(SHADOW_SRC) }
-            Canvas(Modifier.matchParentSize().layerBounds(scene, marginPx)) {
+            Canvas(Modifier.matchParentSize().layerBounds(scene, marginPx, frame)) {
                 scene.tick
                 try {
                     val snap = cache.get(scene)
-                    val o = layerOrigin(scene, marginPx)
-                    snap.applyField(shadowShader, -o.x.toFloat(), -o.y.toFloat(), exact = true)
+                    snap.applyField(shadowShader, -frame.x.toFloat(), -frame.y.toFloat(), exact = true)
                     shadowShader.setFloatUniform("shadowSigma", 9.dp.toPx())
                     shadowShader.setFloatUniform("shadowOffset", 0f, 3.dp.toPx())
                     shadowShader.setFloatUniform("shadowAlpha", 0.16f)
@@ -584,7 +584,7 @@ fun FluidGlassLayer(
         Box(
             Modifier
                 .matchParentSize()
-                .layerBounds(scene, marginPx)
+                .layerBounds(scene, marginPx, frame)
                 .glassSnapshot()
                 // Reading the scene here as well makes every step redraw the glass, whether or not
                 // the backdrop noticed the read inside its own effect block.
@@ -594,7 +594,7 @@ fun FluidGlassLayer(
                     shape = { RectangleShape },
                     effects = {
                         scene.tick
-                        fluidPass(cache, scene, look, marginPx, frost = false)
+                        fluidPass(cache, scene, look, frame, frost = false)
                     },
                     onDrawBackdrop = { drawBackdrop ->
                         drawBackdrop()
@@ -607,7 +607,7 @@ fun FluidGlassLayer(
             Box(
                 Modifier
                     .matchParentSize()
-                    .layerBounds(scene, marginPx)
+                    .layerBounds(scene, marginPx, frame)
                     .glassSnapshot()
                     .drawBehind { scene.tick }
                     .drawPlainBackdrop(
@@ -615,7 +615,7 @@ fun FluidGlassLayer(
                         shape = { RectangleShape },
                         effects = {
                             scene.tick
-                            fluidPass(cache, scene, look, marginPx, frost = true)
+                            fluidPass(cache, scene, look, frame, frost = true)
                         },
                     ),
             )
@@ -627,7 +627,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
     cache: FluidSnapshotCache,
     scene: FluidScene,
     look: FluidLook,
-    marginPx: Int,
+    frame: LayerFrame,
     frost: Boolean,
 ) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
@@ -637,8 +637,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
         // plain one (clear glass).
         if (frost) glassBlur(look.frostBlur.toPx(), useLabScale = false) else glassBlur(look.blur.toPx())
         val shader: RuntimeShader = obtainRuntimeShader(if (frost) "FluidGlassFrost" else "FluidGlass", GLASS_SRC)
-        val o = layerOrigin(scene, marginPx)
-        snap.applyField(shader, padding - o.x, padding - o.y)
+        snap.applyField(shader, padding - frame.x, padding - frame.y)
         shader.setFloatUniform("look", snap.looks)
         shader.setFloatUniform("touch", snap.touches)
         shader.setFloatUniform("tint", snap.tints)
@@ -660,6 +659,12 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
     }
 }
 
+/** Where the layer was last laid out (its top-left in the area's coordinates): the shaders use THIS, not a fresh guess. */
+internal class LayerFrame {
+    @Volatile var x = 0
+    @Volatile var y = 0
+}
+
 /** Where the layer's top-left is, in the area's own coordinates: just covering the shapes (plus the margin), or the area grown by the margin. */
 internal fun layerOrigin(scene: FluidScene, marginPx: Int): androidx.compose.ui.unit.IntOffset {
     val b = scene.bounds() ?: return androidx.compose.ui.unit.IntOffset(-marginPx, -marginPx)
@@ -667,7 +672,7 @@ internal fun layerOrigin(scene: FluidScene, marginPx: Int): androidx.compose.ui.
 }
 
 /** Lays the node out to cover the scene's shapes (see [FluidScene.bounds]), without changing the size its parent sees. */
-private fun Modifier.layerBounds(scene: FluidScene, marginPx: Int): Modifier = this.layout { measurable, constraints ->
+private fun Modifier.layerBounds(scene: FluidScene, marginPx: Int, frame: LayerFrame): Modifier = this.layout { measurable, constraints ->
     val w = constraints.maxWidth
     val h = constraints.maxHeight
     val b = scene.bounds()
@@ -675,5 +680,9 @@ private fun Modifier.layerBounds(scene: FluidScene, marginPx: Int): Modifier = t
     val lw = if (b == null) w + 2 * marginPx else (kotlin.math.ceil(b.right + marginPx).toInt() - o.x).coerceAtLeast(1)
     val lh = if (b == null) h + 2 * marginPx else (kotlin.math.ceil(b.bottom + marginPx).toInt() - o.y).coerceAtLeast(1)
     val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(lw, lh))
+    // The shaders must use exactly this origin: the shapes move between layout and draw, and a fresh guess at draw
+    // time put the glass tens of px off its content while a bubble changed size fast (the bar "dipped").
+    frame.x = o.x
+    frame.y = o.y
     layout(w, h) { placeable.place(o.x, o.y) }
 }

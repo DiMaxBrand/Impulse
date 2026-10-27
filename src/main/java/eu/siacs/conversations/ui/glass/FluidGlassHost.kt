@@ -206,8 +206,13 @@ class FluidGlassHost(
         if (all.isEmpty()) return Rect.Zero
         var l = Float.MAX_VALUE; var t = Float.MAX_VALUE; var r = -Float.MAX_VALUE; var b = -Float.MAX_VALUE
         for (s in all) {
-            l = min(l, s.cx - s.bound); t = min(t, s.cy - s.bound)
-            r = max(r, s.cx + s.bound); b = max(b, s.cy + s.bound)
+            // The box that holds the (turned) shape, not the circle around it: a wide bubble is not a big square.
+            val c = kotlin.math.abs(kotlin.math.cos(s.angle))
+            val sn = kotlin.math.abs(kotlin.math.sin(s.angle))
+            val ex = c * s.hw + sn * s.hh + 2f
+            val ey = sn * s.hw + c * s.hh + 2f
+            l = min(l, s.cx - ex); t = min(t, s.cy - ey)
+            r = max(r, s.cx + ex); b = max(b, s.cy + ey)
         }
         return Rect(l, t, r, b)
     }
