@@ -145,28 +145,36 @@ internal fun DevicesCards(accounts: List<Account>, revision: Int) {
     var tick by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     accounts.filter { it.isOnlineAndConnected() }.forEach { account ->
-        val rows = remember(revision, tick, account) { deviceRows(account) }
-        if (rows.size < 2) return@forEach
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
-                .animateContentSize(spring(stiffness = 380f, dampingRatio = 0.8f)),
-        ) {
-            Column(Modifier.padding(vertical = 14.dp)) {
-                Text(
-                    stringResource(R.string.devices_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                )
-                Text(
-                    account.getJid().asBareJid().toString() + "\n" + stringResource(R.string.devices_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-                )
-                rows.forEach { row ->
-                    DeviceItem(account, row, rows) { tick++ ; Unit }
+        // Each account's card is its own keyed group, and nothing returns early out of it: an account
+        // coming or going between two compositions (it goes online or offline) used to leave the
+        // slots of the cards out of step (BUG-EGYB: a lambda slot read back as an Int).
+        androidx.compose.runtime.key(account.getUuid()) {
+            val rows = remember(revision, tick, account) { deviceRows(account) }
+            if (rows.size >= 2) {
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
+                        .animateContentSize(spring(stiffness = 380f, dampingRatio = 0.8f)),
+                ) {
+                    Column(Modifier.padding(vertical = 14.dp)) {
+                        Text(
+                            stringResource(R.string.devices_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                        )
+                        Text(
+                            account.getJid().asBareJid().toString() + "\n" + stringResource(R.string.devices_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                        )
+                        rows.forEach { row ->
+                            androidx.compose.runtime.key(row.resource) {
+                                DeviceItem(account, row, rows) { tick++ ; Unit }
+                            }
+                        }
+                    }
                 }
             }
         }
