@@ -190,8 +190,12 @@ class FluidGlassHost(
             val wins = if (other.press != mine.press) other.press > mine.press else o.id > e.id
             if (!wins) continue
             val overlap = -bridges.gapBetween(mine, other)
-            if (overlap <= 0f) continue
-            val t = (overlap / (0.55f * min(mine.hw, mine.hh))).coerceIn(0f, 1f)
+            // Hidden once its centre is covered (a bubble under a growing menu), or as the overlap grows.
+            val centre = -shapeSd(other, mine.cx, mine.cy)
+            if (overlap <= 0f && centre <= 0f) continue
+            val byOverlap = overlap / (0.55f * min(mine.hw, mine.hh))
+            val byCentre = centre / (0.5f * min(mine.hw, mine.hh))
+            val t = max(byOverlap, byCentre).coerceIn(0f, 1f)
             alpha = min(alpha, 1f - t * t * (3f - 2f * t))
         }
         return alpha

@@ -266,7 +266,7 @@ class FluidLook(
     val frostSaturation: Float = 0.68f,
     val frostContrast: Float = 0.9f,
     /** How softly colour, frost and light flow from one element into its neighbour. */
-    val blendEdge: Dp = 9.dp,
+    val blendEdge: Dp = 3.dp,
 )
 
 internal const val FLUID_MAX = 16
@@ -362,7 +362,9 @@ half4 main(float2 coord) {
         float dc = length(p - box[i].xy);
         if (dc > info[i].y + 5.0 * tau) continue;
         float si = sdBoxI(p, box[i], info[i]);
-        float w = exp(-clamp(si, -2.0 * tau, 5.0 * tau) / tau);
+        // Inside a shape its weight is 1; outside it falls off quickly, so a shape's neighbours (a big frosted menu next to
+        // a plain button) only lend it their frost, colour and light right where the two really run into each other.
+        float w = exp(-max(si, 0.0) / tau);
         wsum += w;
         bright += w * look[i].z;
         frostAcc += w * look[i].x;
