@@ -373,6 +373,7 @@ same spirit as the app's other spring-based status transitions (see
   - [x] Priority order on a weak link: after bind, MAM catch-up, carbons, server commands and device sync wait until the connection has held 20 s (queued messages and presence go first) -- beta.278
   - [ ] Still open on that: cap/limit the catch-up window itself, not just delay it
   - [ ] "Send-only" light session for when a full session can't hold: connect, send queued messages (marked sent on the XEP-0198 ack), send NO presence so nothing is routed to us, disconnect; the real catch-up happens on the next full connection. Resent messages already carry their compose time (XEP-0203 delay via `resendMessage(.., delay=true)`)
+    Decision: parked until beta.278's longer timeouts + deferred catch-up are tried on a real weak link. It is still a full TCP+TLS+login+bind session (only the roster/bookmarks/disco/MAM/presence part is skipped), so the gain is modest: the cost on a bad link is round trips (~5-6), not bytes. Cheaper variant: resume the XEP-0198 stream (skips login+bind) when the server still holds it. A truly session-less send needs an HTTP gateway module on the server or a side channel, neither of which the app can rely on.
   - [ ] Look at what the connect handshake does after bind (disco, bookmarks, etc.) -- a link that carries a login may still not carry all of it
 - [ ] **Container transform on the rest of Start Chat's + menu items** — "Invite" now grows into
   its destination via a shared-bounds transform inline in `StartConversationScreen.kt` (see
