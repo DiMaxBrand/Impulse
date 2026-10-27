@@ -414,26 +414,6 @@ class DeveloperOptionsActivity : ActionBarActivity() {
 
                                 Spacer(Modifier.height(6.dp))
 
-                                ExpressiveGroupRow(GroupPosition.SINGLE) {
-                                    ListItem(
-                                        headlineContent = {
-                                            Text(stringResource(R.string.developer_options_liquid_glass_playground))
-                                        },
-                                        supportingContent = {
-                                            Text(stringResource(R.string.developer_options_liquid_glass_playground_summary))
-                                        },
-                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                        modifier = Modifier.clickable {
-                                            startActivity(
-                                                Intent(
-                                                    this@DeveloperOptionsActivity,
-                                                    LiquidGlassPlaygroundActivity::class.java,
-                                                )
-                                            )
-                                        },
-                                    )
-                                }
-
                                 Spacer(Modifier.height(6.dp))
 
                                 // The "Impulse was updated" sheet is hard to get on demand (it needs a

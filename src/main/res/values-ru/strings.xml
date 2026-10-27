@@ -1492,8 +1492,6 @@
         <item quantity="many">%1$s (%2$d лет)</item>
         <item quantity="other">%1$s (%2$d года)</item>
     </plurals>
-    <string name="developer_options_liquid_glass_playground">Площадка жидкого стекла</string>
-    <string name="developer_options_liquid_glass_playground_summary">Попробовать тянущиеся стеклянные элементы, в том числе нижнюю панель вкладок</string>
     <string name="liquid_playground_title">Жидкое стекло</string>
     <string name="liquid_playground_hint">Нажимайте, тяните и отпускайте: всё растягивается и пружинит обратно.</string>
     <string name="liquid_playground_taps">Нажатий: %1$d</string>

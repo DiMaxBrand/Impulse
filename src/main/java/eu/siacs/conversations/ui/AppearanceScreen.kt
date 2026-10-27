@@ -232,7 +232,7 @@ internal fun AppearanceScreen(
 // ─── Building blocks ─────────────────────────────────────────────────────────
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleSmall,
@@ -1302,8 +1302,6 @@ private fun GlassLabPage(onOpenPlayground: (androidx.compose.ui.geometry.Rect) -
             stringResource(R.string.glass_lab_bar_blur), stringResource(R.string.glass_lab_bar_blur_summary),
             GlassTuning.barBlur,
         ) { GlassTuning.putBarBlur(it) }
-        Spacer(Modifier.height(6.dp))
-        FluidPrototype()
         Spacer(Modifier.height(10.dp))
         OutlinedButton(onClick = { GlassTuning.reset() }, modifier = Modifier.padding(horizontal = 12.dp)) {
             Text(stringResource(R.string.glass_lab_reset))
@@ -1314,7 +1312,7 @@ private fun GlassLabPage(onOpenPlayground: (androidx.compose.ui.geometry.Rect) -
 
 /** The merging-glass prototype: three pieces to drag around, and the numbers that shape the bridge. */
 @Composable
-private fun FluidPrototype() {
+internal fun FluidPrototype() {
     val skin = LocalGlassSkin.current ?: return
     var reach by remember { mutableFloatStateOf(28f) }
     var response by remember { mutableFloatStateOf(650f) }
@@ -1353,6 +1351,53 @@ private fun FluidPrototype() {
             add("glass_lab_merge_soft") { ProtoSlider(it, R.string.glass_lab_merge_soft, soft, 4f..48f, "dp") { v -> soft = v } }
         }
     }
+    // The field comes first (the playground), the controls under it.
+    Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilledTonalButton(onClick = { fluid.add() }, enabled = fluid.pieces.size < 16, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.glass_lab_merge_add, fluid.pieces.size))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { fluid.removeLast() }, enabled = fluid.pieces.size > 1, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.glass_lab_merge_remove), maxLines = 1)
+            }
+            OutlinedButton(onClick = { fluid.reset() }, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.glass_lab_reset), maxLines = 1)
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    eu.siacs.conversations.ui.glass.GlassFluidField(
+        state = fluid,
+        reach = reach,
+        responseMs = response,
+        softness = soft,
+        wallsOn = walls,
+        inertiaOn = floor,
+        friction = friction,
+        bounce = bounce,
+        rigidOn = rigidOn,
+        rotationLevel = rotation,
+        solidOn = solidOn,
+        mergeOff = mergeOff,
+        gravityOn = gravityOn,
+        gravity = gravity,
+        gravityAngle = gravityAngle,
+        tiltOn = tiltOn,
+        laserOn = laser,
+        laserAngle = laserAngle,
+        laserSpin = laserSpin,
+        glassIndex = glassIndex,
+        heightDp = fieldHeight,
+        widthFraction = fieldWidth,
+    ) { index, tint ->
+        when (index % 4) {
+            0 -> Icon(painterResource(R.drawable.ic_palette_24dp), null, tint = tint)
+            1 -> Text("Merge", color = tint, style = MaterialTheme.typography.titleSmall)
+            2 -> Icon(painterResource(R.drawable.ic_touch_app_24dp), null, tint = tint)
+            else -> Icon(painterResource(R.drawable.ic_hourglass_top_24dp), null, tint = tint)
+        }
+    }
+    Spacer(Modifier.height(8.dp))
     SettingsGroup(mergeRows)
     val behaviour = buildList<SettingsRow> {
         add("glass_lab_merge_rigid") {
@@ -1454,52 +1499,7 @@ private fun FluidPrototype() {
             SettingsRow("width") { p -> ProtoSlider(p, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { v -> fieldWidth = v } },
         ),
     )
-    Spacer(Modifier.height(8.dp))
-    Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalButton(onClick = { fluid.add() }, enabled = fluid.pieces.size < 16, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.glass_lab_merge_add, fluid.pieces.size))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { fluid.removeLast() }, enabled = fluid.pieces.size > 1, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.glass_lab_merge_remove), maxLines = 1)
-            }
-            OutlinedButton(onClick = { fluid.reset() }, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.glass_lab_reset), maxLines = 1)
-            }
-        }
-    }
-    Spacer(Modifier.height(8.dp))
-    eu.siacs.conversations.ui.glass.GlassFluidField(
-        state = fluid,
-        reach = reach,
-        responseMs = response,
-        softness = soft,
-        wallsOn = walls,
-        inertiaOn = floor,
-        friction = friction,
-        bounce = bounce,
-        rigidOn = rigidOn,
-        rotationLevel = rotation,
-        solidOn = solidOn,
-        mergeOff = mergeOff,
-        gravityOn = gravityOn,
-        gravity = gravity,
-        gravityAngle = gravityAngle,
-        tiltOn = tiltOn,
-        laserOn = laser,
-        laserAngle = laserAngle,
-        laserSpin = laserSpin,
-        glassIndex = glassIndex,
-        heightDp = fieldHeight,
-        widthFraction = fieldWidth,
-    ) { index, tint ->
-        when (index % 4) {
-            0 -> Icon(painterResource(R.drawable.ic_palette_24dp), null, tint = tint)
-            1 -> Text("Merge", color = tint, style = MaterialTheme.typography.titleSmall)
-            2 -> Icon(painterResource(R.drawable.ic_touch_app_24dp), null, tint = tint)
-            else -> Icon(painterResource(R.drawable.ic_hourglass_top_24dp), null, tint = tint)
-        }
-    }
+
 }
 
 /** A row with a few choices as chips. */

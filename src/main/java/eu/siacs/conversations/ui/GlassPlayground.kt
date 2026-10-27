@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -154,7 +156,7 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
     LaunchedEffect(arriving) {
         if (arriving) {
             snapshotFlow { p.value }.first { it >= 0.95f }
-            for (i in 1..6) {
+            for (i in 1..7) {
                 shown = i
                 delay(280)
             }
@@ -209,6 +211,9 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
                 Box(Modifier.size(52.dp).onGloballyPositioned { backTarget = it.boundsInWindow().translate(-rootPos) })
                 Box(Modifier.weight(1f).height(52.dp).onGloballyPositioned { titleTarget = it.boundsInWindow().translate(-rootPos) })
             }
+            // Everything else scrolls under the top row: the playground's controls in their old order, then the
+            // merging-glass prototype (its field first, its controls under it).
+            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
             Text(
                 stringResource(R.string.liquid_playground_hint),
                 style = MaterialTheme.typography.bodyMedium,
@@ -216,15 +221,6 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp).cascade(0, shown),
             )
 
-            // The playground: the page itself (behind) with the lens on it.
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                Box(
-                    Modifier.offset(110.dp, 24.dp).size(150.dp)
-                        .onGloballyPositioned { lensTarget = it.boundsInWindow().translate(-rootPos) },
-                )
-            }
-
-            // The controls, below the playground.
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp).cascade(1, shown),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -259,6 +255,13 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
             }
+            // The lens has the room under the slider.
+            Box(Modifier.fillMaxWidth().height(260.dp)) {
+                Box(
+                    Modifier.offset(110.dp, 24.dp).size(150.dp)
+                        .onGloballyPositioned { lensTarget = it.boundsInWindow().translate(-rootPos) },
+                )
+            }
             val tabs = listOf(
                 R.drawable.ic_chat_24dp to R.string.liquid_tab_chats,
                 R.drawable.ic_call_24dp to R.string.liquid_tab_calls,
@@ -278,6 +281,10 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
                         Text(stringResource(label), style = MaterialTheme.typography.labelSmall)
                     }
                 }
+            }
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 16.dp).cascade(6, shown)) {
+                FluidPrototype()
+            }
             }
         }
 

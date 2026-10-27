@@ -1,5 +1,14 @@
 package eu.siacs.conversations.ui.glass
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.spring
@@ -240,83 +249,81 @@ fun GlassGroupRow(
 
 
 /**
- * The "Impulse was updated" sheet opens with a drop of glass: it falls from the top edge onto the
- * sheet, and where it lands the sheet's content spreads out in a circle (a ring of light running
- * ahead of the edge), wobbling into place like a jelly. [enabled] is the glass style; without it
- * the content is simply there.
+ * The "Impulse was updated" card opens with a drop of glass: it falls from the top of the screen to
+ * the middle, and the drop itself is what grows into the card (the same shape getting bigger and
+ * less round, on a spring that overshoots a little), then the content fades in. A tap on the dim
+ * area around it calls [onDismiss]. [enabled] is the glass style; without it the card is simply there.
  */
 @Composable
-fun GlassDropReveal(enabled: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun GlassDropCard(
+    enabled: Boolean,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
     val fall = remember { Animatable(if (enabled) 0f else 1f) }
-    val spread = remember { Animatable(if (enabled) 0f else 1f) }
+    val grow = remember { Animatable(if (enabled) 0f else 1f) }
     val haptic = LocalHapticFeedback.current
     LaunchedEffect(enabled) {
         if (!enabled) return@LaunchedEffect
-        fall.animateTo(1f, tween(420, easing = androidx.compose.animation.core.CubicBezierEasing(0.5f, 0f, 0.9f, 0.6f)))
+        fall.animateTo(1f, tween(520, easing = androidx.compose.animation.core.CubicBezierEasing(0.5f, 0f, 0.9f, 0.6f)))
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        spread.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 55f))
+        grow.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 70f))
     }
     val tint = MaterialTheme.colorScheme.primary
-    Box(modifier) {
+    val surface = MaterialTheme.colorScheme.surfaceContainerHigh
+    val density = LocalDensity.current
+    val dropSize = with(density) { 30.dp.toPx() }
+    val cardCorner = with(density) { 28.dp.toPx() }
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f * fall.value))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+    ) {
+        // The card: the drop, grown. It is measured at its final size, so nothing reflows while it grows.
         Box(
             Modifier
-                .graphicsLayer {
-                    // A little squashed while the circle is still spreading, springing past full.
-                    val s = spread.value
-                    scaleY = 0.97f + 0.03f * s
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
+                .align(Alignment.Center)
+                .padding(horizontal = 24.dp)
+                .widthIn(max = 560.dp)
+                .fillMaxWidth()
+                .pointerInput(Unit) { detectTapGestures { } }
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    val g = grow.value
+                    val w = (dropSize + (placeable.width - dropSize) * g).toInt()
+                    val h = (dropSize + (placeable.height - dropSize) * g).toInt()
+                    layout(w, h) { placeable.place((w - placeable.width) / 2, (h - placeable.height) / 2) }
                 }
-                .drawWithContent {
-                    val s = spread.value
-                    if (s >= 1f && fall.value >= 1f) {
-                        drawContent()
-                    } else {
-                        val landing = Offset(size.width / 2f, 56.dp.toPx())
-                        val far = kotlin.math.hypot(size.width, size.height)
-                        val path = androidx.compose.ui.graphics.Path().apply {
-                            addOval(
-                                androidx.compose.ui.geometry.Rect(
-                                    center = landing,
-                                    radius = (s * far).coerceAtLeast(0f),
-                                ),
-                            )
-                        }
-                        clipPath(path) { this@drawWithContent.drawContent() }
-                    }
-                },
-        ) { content() }
-        if (fall.value < 1f || spread.value < 0.9f) {
+                .graphicsLayer {
+                    // Nothing of the card is seen while the drop is still falling (the drop is drawn below).
+                    alpha = if (grow.value > 0f || fall.value >= 1f) 1f else 0f
+                    clip = true
+                    val round = kotlin.math.min(size.width, size.height) / 2f
+                    shape = RoundedCornerShape(round + (cardCorner - round) * grow.value.coerceIn(0f, 1f))
+                }
+                .background(androidx.compose.ui.graphics.lerp(tint.copy(alpha = 0.55f), surface, grow.value.coerceIn(0f, 1f))),
+        ) {
+            Box(Modifier.graphicsLayer { alpha = ((grow.value - 0.4f) / 0.5f).coerceIn(0f, 1f) }) { content() }
+        }
+        if (fall.value < 1f) {
             Canvas(Modifier.fillMaxSize()) {
-                val landingY = 56.dp.toPx()
                 val x = size.width / 2f
-                val y = -20.dp.toPx() + (landingY + 20.dp.toPx()) * fall.value
-                val s = spread.value
-                // The drop: a bead of glass, stretched along its fall, with a bright edge.
-                val r = (13.dp.toPx() * (1f + 0.35f * s)) * (1f - 0.6f * s.coerceIn(0f, 1f)).coerceAtLeast(0.2f)
+                val centreY = size.height / 2f
+                val y = -20.dp.toPx() + (centreY + 20.dp.toPx()) * fall.value
+                val r = dropSize / 2f
                 val stretch = 1f + 0.5f * (1f - fall.value)
-                val alpha = (1f - s * 1.2f).coerceIn(0f, 1f)
-                withTransform({
-                    scale(1f, stretch, Offset(x, y))
-                }) {
+                withTransform({ scale(1f, stretch, Offset(x, y)) }) {
                     drawCircle(
                         Brush.radialGradient(
-                            listOf(Color.White.copy(alpha = 0.9f * alpha), tint.copy(alpha = 0.45f * alpha), Color.Transparent),
+                            listOf(Color.White.copy(alpha = 0.9f), tint.copy(alpha = 0.55f), Color.Transparent),
                             center = Offset(x - r * 0.25f, y - r * 0.3f),
                             radius = r * 1.5f,
                         ),
                         radius = r * 1.4f, center = Offset(x, y),
                     )
-                    drawCircle(Color.White.copy(alpha = 0.7f * alpha), radius = r * 0.28f, center = Offset(x - r * 0.35f, y - r * 0.4f))
-                }
-                // The ring of light at the edge of the spreading circle.
-                if (s > 0.01f && s < 1f) {
-                    val far = kotlin.math.hypot(size.width, size.height)
-                    drawCircle(
-                        Color.White.copy(alpha = 0.35f * (1f - s)),
-                        radius = s * far,
-                        center = Offset(x, landingY),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx()),
-                    )
+                    drawCircle(Color.White.copy(alpha = 0.7f), radius = r * 0.28f, center = Offset(x - r * 0.35f, y - r * 0.4f))
                 }
             }
         }

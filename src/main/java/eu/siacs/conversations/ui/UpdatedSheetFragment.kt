@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -23,7 +24,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import androidx.fragment.app.DialogFragment
 import eu.siacs.conversations.BuildConfig
 import eu.siacs.conversations.R
 import eu.siacs.conversations.update.UpdatePreferences
@@ -32,10 +33,25 @@ import eu.siacs.conversations.update.UpdatePreferences
  * "Impulse was updated!" -- shown on the first launch after an update (by the nightly one, or
  * the manual button), with the release title and notes of what was just installed. A dismiss
  * button sits at the top. Dismissing in any way forgets the update, so it shows once.
+ *
+ * It is a card in the middle of the screen, not a bottom sheet. In the glass style a drop of glass
+ * falls from the top of the screen to the middle, and the drop itself grows into the card (a
+ * container transform: the card is that circle, getting bigger and less round), whose content then
+ * fades in. Without the glass style the card is simply there.
  */
-class UpdatedSheetFragment : BottomSheetDialogFragment() {
+class UpdatedSheetFragment : DialogFragment() {
 
     private lateinit var prefs: UpdatePreferences
+
+    override fun onCreateDialog(savedInstanceState: Bundle?): android.app.Dialog {
+        val dialog = android.app.Dialog(requireContext(), android.R.style.Theme_Translucent_NoTitleBar)
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setDimAmount(0f)
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        }
+        return dialog
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -52,41 +68,42 @@ class UpdatedSheetFragment : BottomSheetDialogFragment() {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 ImpulseExpressiveTheme {
-                    // Glass style: the sheet opens with a drop of glass that spreads into it.
-                    eu.siacs.conversations.ui.glass.GlassDropReveal(
+                    eu.siacs.conversations.ui.glass.GlassDropCard(
                         enabled = LiquidGlass.enabled(requireContext()),
+                        onDismiss = { dismiss() },
                     ) {
-                    Column(
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 24.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        // Dismiss, above everything else.
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            IconButton(onClick = { dismiss() }) {
-                                Icon(
-                                    painterResource(R.drawable.ic_close_24dp),
-                                    contentDescription = stringResource(R.string.updated_sheet_dismiss),
-                                )
+                        Column(
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .heightIn(max = 560.dp)
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            // Dismiss, above everything else.
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                IconButton(onClick = { dismiss() }) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_close_24dp),
+                                        contentDescription = stringResource(R.string.updated_sheet_dismiss),
+                                    )
+                                }
                             }
+                            Text(
+                                text = stringResource(R.string.updated_sheet_title),
+                                style = MaterialTheme.typography.headlineMedium,
+                            )
+                            Text(
+                                text = stringResource(R.string.updated_sheet_whats_new),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (!title.isNullOrBlank()) {
+                                Text(text = title, style = MaterialTheme.typography.titleLarge)
+                            }
+                            ReleaseNotesSection(notes)
+                            androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 16.dp))
                         }
-                        Text(
-                            text = stringResource(R.string.updated_sheet_title),
-                            style = MaterialTheme.typography.headlineMedium,
-                        )
-                        Text(
-                            text = stringResource(R.string.updated_sheet_whats_new),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (!title.isNullOrBlank()) {
-                            Text(text = title, style = MaterialTheme.typography.titleLarge)
-                        }
-                        ReleaseNotesSection(notes)
-                        androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 16.dp))
-                    }
                     }
                 }
             }
