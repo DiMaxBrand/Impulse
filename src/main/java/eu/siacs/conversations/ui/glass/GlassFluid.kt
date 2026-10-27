@@ -166,8 +166,12 @@ class GlassFluidState(private val density: Float) : FluidScene {
 
     private val shapeList = ArrayList<FluidShape>()
 
+    /** True while something else draws the pieces (the playground's tab morph): they and their content are not drawn. */
+    var hidden by mutableStateOf(false)
+
     /** The pieces as shapes for the glass layer, right now. */
     override fun shapes(): List<FluidShape> {
+        if (hidden) return emptyList()
         val n = pieces.size
         while (shapeList.size < n) shapeList.add(FluidShape(shapeList.size))
         while (shapeList.size > n) shapeList.removeAt(shapeList.lastIndex)
@@ -1007,6 +1011,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
 
     /** How visible piece [i]'s own content is: it gives way while another piece's content is near. */
     fun contentAlpha(i: Int): Float {
+        if (hidden) return 0f
         if (i >= pieces.size || solidOn || mergeOff) return 1f
         var alpha = 1f
         for (j in 0 until min(i, pieces.size)) {

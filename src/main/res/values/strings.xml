@@ -1418,6 +1418,8 @@
         <item quantity="one">%1$s (%2$d year old)</item>
         <item quantity="other">%1$s (%2$d years old)</item>
     </plurals>
+    <string name="liquid_playground_tab_simple">Simple glass</string>
+    <string name="liquid_playground_tab_merging">Merging glass</string>
     <string name="liquid_playground_title">Liquid glass</string>
     <string name="liquid_playground_hint">Press, drag and let go: everything stretches and springs back.</string>
     <string name="liquid_playground_taps">Taps: %1$d</string>

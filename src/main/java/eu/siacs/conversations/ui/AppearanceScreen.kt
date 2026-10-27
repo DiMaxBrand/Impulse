@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.graphics.graphicsLayer
 import com.kyant.backdrop.backdrops.layerBackdrop
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.layout.boundsInWindow
@@ -1312,7 +1313,14 @@ private fun GlassLabPage(onOpenPlayground: (androidx.compose.ui.geometry.Rect) -
 
 /** The merging-glass prototype: three pieces to drag around, and the numbers that shape the bridge. */
 @Composable
-internal fun FluidPrototype() {
+internal fun FluidPrototype(
+    fluid: eu.siacs.conversations.ui.glass.GlassFluidState = eu.siacs.conversations.ui.glass.rememberGlassFluidState(),
+    /** How visible the add/remove/reset buttons are (the playground's tab morph hides them while it moves its own glass over them). */
+    controlsAlpha: Float = 1f,
+    onFieldBounds: (androidx.compose.ui.geometry.Rect) -> Unit = {},
+    /** 0: add, 1: remove, 2: reset; window pixels. */
+    onButtonBounds: (Int, androidx.compose.ui.geometry.Rect) -> Unit = { _, _ -> },
+) {
     val skin = LocalGlassSkin.current ?: return
     var reach by remember { mutableFloatStateOf(28f) }
     var response by remember { mutableFloatStateOf(650f) }
@@ -1335,7 +1343,6 @@ internal fun FluidPrototype() {
     var glassIndex by remember { mutableFloatStateOf(1.5f) }
     var fieldHeight by remember { mutableFloatStateOf(300f) }
     var fieldWidth by remember { mutableFloatStateOf(100f) }
-    val fluid = eu.siacs.conversations.ui.glass.rememberGlassFluidState()
     SectionTitle(stringResource(R.string.glass_lab_section_merge))
     Text(
         stringResource(R.string.glass_lab_merge_hint),
@@ -1352,15 +1359,22 @@ internal fun FluidPrototype() {
         }
     }
     // The field comes first (the playground), the controls under it.
-    Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalButton(onClick = { fluid.add() }, enabled = fluid.pieces.size < 16, modifier = Modifier.fillMaxWidth()) {
+    Column(
+        Modifier.padding(horizontal = 12.dp).graphicsLayer { alpha = controlsAlpha },
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FilledTonalButton(
+            onClick = { fluid.add() },
+            enabled = fluid.pieces.size < 16,
+            modifier = Modifier.fillMaxWidth().onGloballyPositioned { onButtonBounds(0, it.boundsInWindow()) },
+        ) {
             Text(stringResource(R.string.glass_lab_merge_add, fluid.pieces.size))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { fluid.removeLast() }, enabled = fluid.pieces.size > 1, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = { fluid.removeLast() }, enabled = fluid.pieces.size > 1, modifier = Modifier.weight(1f).onGloballyPositioned { onButtonBounds(1, it.boundsInWindow()) }) {
                 Text(stringResource(R.string.glass_lab_merge_remove), maxLines = 1)
             }
-            OutlinedButton(onClick = { fluid.reset() }, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = { fluid.reset() }, modifier = Modifier.weight(1f).onGloballyPositioned { onButtonBounds(2, it.boundsInWindow()) }) {
                 Text(stringResource(R.string.glass_lab_reset), maxLines = 1)
             }
         }
@@ -1389,6 +1403,7 @@ internal fun FluidPrototype() {
         glassIndex = glassIndex,
         heightDp = fieldHeight,
         widthFraction = fieldWidth,
+        modifier = Modifier.onGloballyPositioned { onFieldBounds(it.boundsInWindow()) },
     ) { index, tint ->
         when (index % 4) {
             0 -> Icon(painterResource(R.drawable.ic_palette_24dp), null, tint = tint)

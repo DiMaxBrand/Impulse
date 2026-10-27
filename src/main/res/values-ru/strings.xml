@@ -1492,6 +1492,8 @@
         <item quantity="many">%1$s (%2$d лет)</item>
         <item quantity="other">%1$s (%2$d года)</item>
     </plurals>
+    <string name="liquid_playground_tab_simple">Простое стекло</string>
+    <string name="liquid_playground_tab_merging">Сливающееся стекло</string>
     <string name="liquid_playground_title">Жидкое стекло</string>
     <string name="liquid_playground_hint">Нажимайте, тяните и отпускайте: всё растягивается и пружинит обратно.</string>
     <string name="liquid_playground_taps">Нажатий: %1$d</string>

@@ -5,6 +5,8 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -73,6 +75,8 @@ import eu.siacs.conversations.ui.glass.LiquidSlider
 import eu.siacs.conversations.ui.glass.LiquidToggle
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableStateListOf
 import kotlinx.coroutines.flow.first
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -123,6 +127,38 @@ private fun Modifier.cascade(index: Int, shown: Int): Modifier {
     }
 }
 
+/** The two experiments as glass pills: the open one is filled with the theme's colour and fully round, the other is a softer rounded shape. */
+@Composable
+private fun PlaygroundTabs(tab: Int, onTab: (Int) -> Unit, glass: eu.siacs.conversations.ui.glass.GlassStack, modifier: Modifier = Modifier) {
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        listOf(R.string.liquid_playground_tab_simple, R.string.liquid_playground_tab_merging).forEachIndexed { i, label ->
+            val selected = tab == i
+            val corner by animateDpAsState(if (selected) 26.dp else 14.dp, spring(dampingRatio = 0.6f, stiffness = 380f), label = "tabCorner")
+            val fill by animateColorAsState(
+                if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f) else Color.Transparent,
+                label = "tabFill",
+            )
+            LiquidGlassButton(
+                onClick = { onTab(i) },
+                glass = glass,
+                shape = RoundedCornerShape(corner),
+                tint = fill,
+                modifier = Modifier.weight(1f).height(52.dp),
+            ) {
+                Text(
+                    stringResource(label),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com.kyant.backdrop.backdrops.LayerBackdrop? = null) {
     val density = LocalDensity.current
@@ -142,6 +178,31 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
     var titleTarget by remember { mutableStateOf(Rect.Zero) }
     var lensTarget by remember { mutableStateOf(Rect.Zero) }
     var lensDrag by remember { mutableStateOf(Offset.Zero) }
+    var lensArea by remember { mutableStateOf(Rect.Zero) }
+    var page by remember { mutableIntStateOf(0) }
+    val fluidState = eu.siacs.conversations.ui.glass.rememberGlassFluidState()
+    var fieldBounds by remember { mutableStateOf(Rect.Zero) }
+    val protoButtons = remember { mutableStateListOf(Rect.Zero, Rect.Zero, Rect.Zero) }
+    val roundButtons = remember { mutableStateListOf(Rect.Zero, Rect.Zero, Rect.Zero, Rect.Zero) }
+    var barBounds by remember { mutableStateOf(Rect.Zero) }
+    // Changing tab: the glass of one tab flows over to the other's (1 = at rest).
+    val morph = remember { Animatable(1f) }
+    var morphFrom by remember { mutableIntStateOf(0) }
+    var morphActive by remember { mutableStateOf(false) }
+    val morphing = morphActive
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    fun switchTo(target: Int) {
+        if (target == page || morphActive) return
+        morphFrom = page
+        page = target
+        morphActive = true
+        scope.launch {
+            morph.snapTo(0f)
+            morph.animateTo(1f, tween(1900, easing = LinearEasing))
+            morphActive = false
+        }
+    }
+    androidx.compose.runtime.SideEffect { fluidState.hidden = morphActive }
     var taps by remember { mutableIntStateOf(0) }
     var toggled by remember { mutableStateOf(true) }
     var slider by remember { mutableFloatStateOf(0.4f) }
@@ -165,8 +226,15 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
 
     // Where each element is at progress [pv]: from the lab's button, out to its own spread-out spot as a round blob,
     // into the shape of its button, then over to the button's place.
+    fun clampTo(r: Rect, area: Rect): Rect {
+        if (area.width <= 0f) return r
+        val dx = if (r.left < area.left) area.left - r.left else if (r.right > area.right) area.right - r.right else 0f
+        val dy = if (r.top < area.top) area.top - r.top else if (r.bottom > area.bottom) area.bottom - r.bottom else 0f
+        return r.translate(dx, dy)
+    }
+
     fun rectAt(i: Int): Rect {
-        val target = when (i) { 0 -> backTarget; 1 -> titleTarget; else -> lensTarget.translate(if (p.value >= 1f) lensDrag else Offset.Zero) }
+        val target = when (i) { 0 -> backTarget; 1 -> titleTarget; else -> clampTo(lensTarget.translate(if (p.value >= 1f) lensDrag else Offset.Zero), lensArea) }
         if (!arriving || !known) return if (origin != null && !known) origin.translate(-rootPos) else target
         val o = origin!!.translate(-rootPos)
         val d = density.density
@@ -187,6 +255,41 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
         val cx = lerp(lerp(o.center.x, burstCx, s), target.center.x, m)
         val cy = lerp(lerp(o.center.y, burstCy, s), target.center.y, m)
         return Rect(cx - width / 2f, cy - height / 2f, cx + width / 2f, cy + height / 2f)
+    }
+    // The glass elements that take part in the tab morph, in pairs: the simple tab's [button, lens, button, bar, button,
+    // button] to the merging tab's [piece, piece, piece, add, remove, reset].
+    fun simpleRect(i: Int): Rect = when (i) {
+        0 -> roundButtons[0]
+        1 -> clampTo(lensTarget.translate(lensDrag), lensArea)
+        2 -> roundButtons[1]
+        3 -> barBounds
+        4 -> roundButtons[2]
+        else -> roundButtons[3]
+    }
+    fun mergingRect(i: Int): Rect {
+        if (i >= 3) return protoButtons[i - 3]
+        val piece = fluidState.pieces.getOrNull(i)
+        return if (piece == null) {
+            Rect(fieldBounds.center.x - 30f, fieldBounds.center.y - 30f, fieldBounds.center.x + 30f, fieldBounds.center.y + 30f).translate(-rootPos)
+        } else {
+            Rect(
+                fieldBounds.left + piece.left, fieldBounds.top + piece.top,
+                fieldBounds.left + piece.left + piece.width, fieldBounds.top + piece.top + piece.height,
+            ).translate(-rootPos)
+        }
+    }
+    fun actorRect(i: Int): Rect {
+        val from = if (morphFrom == 0) simpleRect(i) else mergingRect(i)
+        val to = if (morphFrom == 0) mergingRect(i) else simpleRect(i)
+        if (from.width <= 0f || to.width <= 0f) return if (to.width > 0f) to else from
+        val m = morph.value
+        val move = ease(win(m, 0.05f, 0.85f))
+        val grow = back(win(m, 0.15f, 0.8f))
+        val w = lerp(from.width, to.width, grow)
+        val h = lerp(from.height, to.height, grow)
+        val cx = lerp(from.center.x, to.center.x, move)
+        val cy = lerp(from.center.y, to.center.y, move)
+        return Rect(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
     }
     val contentAlpha = { if (arriving) ease(win(p.value, 0.78f, 0.93f)) else 1f }
 
@@ -211,86 +314,151 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
                 Box(Modifier.size(52.dp).onGloballyPositioned { backTarget = it.boundsInWindow().translate(-rootPos) })
                 Box(Modifier.weight(1f).height(52.dp).onGloballyPositioned { titleTarget = it.boundsInWindow().translate(-rootPos) })
             }
-            // Everything else scrolls under the top row: the playground's controls in their old order, then the
-            // merging-glass prototype (its field first, its controls under it).
-            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
-            Text(
-                stringResource(R.string.liquid_playground_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp).cascade(0, shown),
-            )
+            // The two experiments are tabs: only the open one exists, so the other costs nothing.
+            PlaygroundTabs(tab = page, onTab = { switchTo(it) }, glass = base, modifier = Modifier.cascade(0, shown))
 
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp).cascade(1, shown),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                for (icon in listOf(R.drawable.ic_chat_24dp, R.drawable.ic_call_24dp, R.drawable.ic_contacts_24dp, R.drawable.ic_settings_24dp)) {
-                    LiquidGlassButton(onClick = { taps++ }, glass = base, modifier = Modifier.size(60.dp)) {
-                        Icon(painterResource(icon), contentDescription = null)
+            // Both tabs are laid out while the glass moves over (so each knows where its places are); the one that
+            // is leaving fades out first and the one that is arriving fades in last.
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                val simpleAlpha = when {
+                    !morphing -> 1f
+                    morphFrom == 0 -> 1f - ease(win(morph.value, 0f, 0.3f))
+                    else -> ease(win(morph.value, 0.7f, 1f))
+                }
+                val mergingAlpha = when {
+                    !morphing -> 1f
+                    morphFrom == 1 -> 1f - ease(win(morph.value, 0f, 0.3f))
+                    else -> ease(win(morph.value, 0.7f, 1f))
+                }
+                if (page == 0 || (morphing && morphFrom == 0)) {
+                    // The simple glass demo: one screen that does not scroll.
+                    Column(Modifier.fillMaxSize().graphicsLayer { alpha = simpleAlpha }) {
+                        Text(
+                            stringResource(R.string.liquid_playground_hint),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp).cascade(0, shown),
+                        )
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp).cascade(1, shown)
+                                .graphicsLayer { alpha = if (morphing) 0f else 1f },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            listOf(R.drawable.ic_chat_24dp, R.drawable.ic_call_24dp, R.drawable.ic_contacts_24dp, R.drawable.ic_settings_24dp)
+                                .forEachIndexed { index, icon ->
+                                    LiquidGlassButton(
+                                        onClick = { taps++ },
+                                        glass = base,
+                                        modifier = Modifier.size(60.dp)
+                                            .onGloballyPositioned { roundButtons[index] = it.boundsInWindow().translate(-rootPos) },
+                                    ) {
+                                        Icon(painterResource(icon), contentDescription = null)
+                                    }
+                                }
+                        }
+                        Text(
+                            stringResource(R.string.liquid_playground_taps, taps),
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(horizontal = 24.dp).cascade(2, shown),
+                        )
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp).cascade(3, shown),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(R.string.liquid_playground_toggle), style = MaterialTheme.typography.titleMedium)
+                            LiquidToggle(selected = { toggled }, onSelect = { toggled = it }, backdrop = backdrop)
+                        }
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp).cascade(4, shown)) {
+                            Text(stringResource(R.string.liquid_playground_slider, (slider * 100).roundToInt()), style = MaterialTheme.typography.titleMedium)
+                            LiquidSlider(
+                                value = { slider },
+                                onValueChange = { slider = it },
+                                valueRange = 0f..1f,
+                                visibilityThreshold = 0.001f,
+                                backdrop = backdrop,
+                                modifier = Modifier.padding(vertical = 12.dp),
+                            )
+                        }
+                        // The lens has the room under the slider; it cannot leave it.
+                        Box(
+                            Modifier.weight(1f).fillMaxWidth()
+                                .onGloballyPositioned { lensArea = it.boundsInWindow().translate(-rootPos) },
+                        ) {
+                            Box(
+                                Modifier.offset(110.dp, 24.dp).size(150.dp)
+                                    .onGloballyPositioned { lensTarget = it.boundsInWindow().translate(-rootPos) },
+                            )
+                        }
+                        val tabs = listOf(
+                            R.drawable.ic_chat_24dp to R.string.liquid_tab_chats,
+                            R.drawable.ic_call_24dp to R.string.liquid_tab_calls,
+                            R.drawable.ic_contacts_24dp to R.string.liquid_tab_contacts,
+                            R.drawable.ic_settings_24dp to R.string.liquid_tab_settings,
+                        )
+                        LiquidBottomTabs(
+                            selectedTabIndex = { tab },
+                            onTabSelected = { tab = it },
+                            backdrop = backdrop,
+                            tabsCount = tabs.size,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).cascade(5, shown)
+                                .graphicsLayer { alpha = if (morphing) 0f else 1f }
+                                .onGloballyPositioned { barBounds = it.boundsInWindow().translate(-rootPos) },
+                        ) {
+                            tabs.forEachIndexed { index, (icon, label) ->
+                                LiquidBottomTab({ tab = index }) {
+                                    Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp))
+                                    Text(stringResource(label), style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
                     }
                 }
-            }
-            Text(
-                stringResource(R.string.liquid_playground_taps, taps),
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(horizontal = 24.dp).cascade(2, shown),
-            )
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp).cascade(3, shown),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.liquid_playground_toggle), style = MaterialTheme.typography.titleMedium)
-                LiquidToggle(selected = { toggled }, onSelect = { toggled = it }, backdrop = backdrop)
-            }
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp).cascade(4, shown)) {
-                Text(stringResource(R.string.liquid_playground_slider, (slider * 100).roundToInt()), style = MaterialTheme.typography.titleMedium)
-                LiquidSlider(
-                    value = { slider },
-                    onValueChange = { slider = it },
-                    valueRange = 0f..1f,
-                    visibilityThreshold = 0.001f,
-                    backdrop = backdrop,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                )
-            }
-            // The lens has the room under the slider.
-            Box(Modifier.fillMaxWidth().height(260.dp)) {
-                Box(
-                    Modifier.offset(110.dp, 24.dp).size(150.dp)
-                        .onGloballyPositioned { lensTarget = it.boundsInWindow().translate(-rootPos) },
-                )
-            }
-            val tabs = listOf(
-                R.drawable.ic_chat_24dp to R.string.liquid_tab_chats,
-                R.drawable.ic_call_24dp to R.string.liquid_tab_calls,
-                R.drawable.ic_contacts_24dp to R.string.liquid_tab_contacts,
-                R.drawable.ic_settings_24dp to R.string.liquid_tab_settings,
-            )
-            LiquidBottomTabs(
-                selectedTabIndex = { tab },
-                onTabSelected = { tab = it },
-                backdrop = backdrop,
-                tabsCount = tabs.size,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).cascade(5, shown),
-            ) {
-                tabs.forEachIndexed { index, (icon, label) ->
-                    LiquidBottomTab({ tab = index }) {
-                        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp))
-                        Text(stringResource(label), style = MaterialTheme.typography.labelSmall)
+                if (page == 1 || (morphing && morphFrom == 1)) {
+                    // The merging glass experiment: its field first, its controls under it. This one scrolls.
+                    Column(Modifier.fillMaxSize().graphicsLayer { alpha = mergingAlpha }.verticalScroll(rememberScrollState())) {
+                        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                            FluidPrototype(
+                                fluid = fluidState,
+                                controlsAlpha = if (morphing) 0f else 1f,
+                                onFieldBounds = { fieldBounds = it },
+                                onButtonBounds = { i, r -> protoButtons[i] = r },
+                            )
+                        }
                     }
                 }
-            }
-            Column(Modifier.padding(horizontal = 12.dp, vertical = 16.dp).cascade(6, shown)) {
-                FluidPrototype()
-            }
             }
         }
 
         // The three elements: one body of glass that pours apart and together, above everything else.
         FluidGlassHost(backdrop, host, Modifier.fillMaxSize()) {
             val round = RoundedCornerShape(50)
+            // The glass of the tab being left, flowing to where the other tab has its own.
+            if (morphing) {
+                val actorIcons = listOf(R.drawable.ic_chat_24dp, null, R.drawable.ic_call_24dp, null, R.drawable.ic_contacts_24dp, R.drawable.ic_settings_24dp)
+                for (i in 0 until 6) {
+                    androidx.compose.runtime.key(i) {
+                        LiquidGlassButton(
+                            onClick = {},
+                            glass = fluid,
+                            shape = round,
+                            isInteractive = false,
+                            modifier = Modifier.placedAt { actorRect(i) },
+                        ) {
+                            val icon = actorIcons[i]
+                            if (icon != null) {
+                                Icon(painterResource(icon), contentDescription = null, modifier = Modifier.graphicsLayer { alpha = 1f - ease(win(morph.value, 0.2f, 0.55f)) })
+                            } else if (i == 1) {
+                                Text(
+                                    stringResource(R.string.liquid_playground_drag_me),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.graphicsLayer { alpha = 1f - ease(win(morph.value, 0.2f, 0.55f)) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
             LiquidGlassButton(
                 onClick = onBack,
                 glass = fluid,
@@ -312,7 +480,7 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
                     modifier = Modifier.graphicsLayer { alpha = contentAlpha() },
                 )
             }
-            LiquidGlassButton(
+            if (page == 0 && !morphing) LiquidGlassButton(
                 onClick = {},
                 glass = fluid,
                 shape = round,
