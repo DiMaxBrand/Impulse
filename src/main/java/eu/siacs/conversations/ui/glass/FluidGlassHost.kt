@@ -250,7 +250,8 @@ class FluidGlassHost(
                 sh.tintA = 0f
             }
             sh.frost = e.frostProvider?.invoke() ?: e.frost
-            sh.frostRim = e.frostRim
+            // A thin element (a banner, the message field) must not be all rim: the clear rim is capped to a share of its half-height.
+            sh.frostRim = min(e.frostRim, min(sh.hw, sh.hh) * 0.4f)
             sh.brightness = e.ink?.let { glassBrightness(it.level.value) } ?: 0f
             sh.press = ia?.pressProgress ?: 0f
             if (ia != null) {
