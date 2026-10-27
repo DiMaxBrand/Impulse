@@ -48,6 +48,16 @@ enum class FeatureFlag(
         audience = FlagAudience.Nobody,
     ),
 
+    /** For experiments only: keeps emergency mode ON whatever the connection is doing (it still
+     * needs [EMERGENCY_MODE] on). The banner's Turn off button works as usual. Takes effect at the
+     * next account status change (reconnect, or toggling the account off and on). */
+    EMERGENCY_MODE_FORCED(
+        key = "emergency_mode_forced",
+        titleRes = R.string.feature_flag_emergency_mode_forced_title,
+        descriptionRes = R.string.feature_flag_emergency_mode_forced_description,
+        audience = FlagAudience.Nobody,
+    ),
+
 }
 
 /**

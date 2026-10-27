@@ -1147,6 +1147,14 @@ public class XmppConnectionService extends Service {
             setEmergencyMode(false);
             return;
         }
+        if (new FeatureFlagPreferences(this).isEnabled(FeatureFlag.EMERGENCY_MODE_FORCED)) {
+            // For experiments: on whatever the connection does, until the user turns it off by hand.
+            emergencyHealthySince = 0;
+            if (!emergencyModeActive && !EmergencyMode.isDismissed()) {
+                setEmergencyMode(true);
+            }
+            return;
+        }
         boolean failing = false;
         boolean allOnline = true;
         boolean any = false;
