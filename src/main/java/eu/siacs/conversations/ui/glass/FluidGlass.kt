@@ -101,7 +101,7 @@ interface FluidScene {
      * Called while the sharp glass draws: a chance to record what is behind each element (for the glass and the
      * text on it to adapt to a bright or a dark backdrop). [draw] draws the backdrop of the whole layer.
      */
-    fun sampleInks(scope: androidx.compose.ui.graphics.drawscope.DrawScope, draw: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit) {}
+    fun sampleInks(originX: Float, originY: Float, scope: androidx.compose.ui.graphics.drawscope.DrawScope, draw: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit) {}
 }
 
 /** Signed distance from a point to the shape's body: negative inside. */
@@ -598,7 +598,7 @@ fun FluidGlassLayer(
                     },
                     onDrawBackdrop = { drawBackdrop ->
                         drawBackdrop()
-                        scene.sampleInks(this, drawBackdrop)
+                        scene.sampleInks(frame.x.toFloat(), frame.y.toFloat(), this, drawBackdrop)
                     },
                 ),
         )

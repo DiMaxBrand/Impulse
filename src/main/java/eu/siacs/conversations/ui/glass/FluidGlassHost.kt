@@ -266,6 +266,8 @@ class FluidGlassHost(
 
     /** What is behind each element, recorded for its ink about three times a second (see rememberGlassInk). */
     override fun sampleInks(
+        originX: Float,
+        originY: Float,
         scope: androidx.compose.ui.graphics.drawscope.DrawScope,
         draw: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit,
     ) {
@@ -277,7 +279,8 @@ class FluidGlassHost(
             if (!ink.request.take()) continue
             with(scope) {
                 ink.layer.record(androidx.compose.ui.unit.IntSize(r.width.toInt(), r.height.toInt())) {
-                    translate(-r.left, -r.top) { draw() }
+                    // The backdrop is drawn in the layer's own coordinates: the area's, less where the layer starts.
+                    translate(originX - r.left, originY - r.top) { draw() }
                 }
             }
         }
