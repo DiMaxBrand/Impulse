@@ -347,14 +347,9 @@ fun rememberFluidHost(enabled: Boolean, reachDp: Float = 5f): FluidGlassHost? {
     return remember(enabled) { if (enabled) FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = reachDp) else null }
 }
 
-/** Whether the developer flag for merging glass is on (read once per screen). */
+/** Merging glass is how every liquid-glass screen is drawn now (it was a developer flag while it was being built). */
 @Composable
-fun rememberMergingGlass(): Boolean {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    return remember {
-        eu.siacs.conversations.utils.FeatureFlagPreferences(context).isEnabled(eu.siacs.conversations.FeatureFlag.MERGING_GLASS)
-    }
-}
+fun rememberMergingGlass(): Boolean = true
 
 /** The area whose glass elements are drawn as one body: the glass behind [content], the elements in it. */
 @Composable

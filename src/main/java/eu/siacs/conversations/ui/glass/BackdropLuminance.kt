@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -59,7 +60,27 @@ class GlassInk internal constructor(
     internal val measured: Float?,
     internal val adaptive: Boolean,
     internal val request: RecordRequest,
+    /** What is behind the piece as a grid of brightness cells (see [InkRegion]); null until measured. */
+    internal val grid: LumaGrid? = null,
 )
+
+/** Brightness (0 black .. 1 white) of the backdrop in [cols] x [rows] cells over a piece, row by row. */
+internal class LumaGrid(val cols: Int, val rows: Int, val data: FloatArray) {
+    /** The mean over the part of the piece given as fractions (0..1) of its width and height. */
+    fun mean(l: Float, t: Float, r: Float, b: Float): Float {
+        val c0 = (l.coerceIn(0f, 1f) * cols).toInt().coerceIn(0, cols - 1)
+        val c1 = (kotlin.math.ceil(r.coerceIn(0f, 1f) * cols).toInt() - 1).coerceIn(c0, cols - 1)
+        val r0 = (t.coerceIn(0f, 1f) * rows).toInt().coerceIn(0, rows - 1)
+        val r1 = (kotlin.math.ceil(b.coerceIn(0f, 1f) * rows).toInt() - 1).coerceIn(r0, rows - 1)
+        var sum = 0f
+        var n = 0
+        for (y in r0..r1) for (x in c0..c1) { sum += data[y * cols + x]; n++ }
+        return if (n > 0) sum / n else 0.5f
+    }
+}
+
+private const val GRID_COLS = 24
+private const val GRID_ROWS = 8
 
 @Composable
 fun rememberGlassInk(adaptive: Boolean): GlassInk {
@@ -68,6 +89,7 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
     val level = remember { Animatable(0.5f) }
     var lightInk by remember { mutableStateOf(true) }
     var measured by remember { mutableStateOf<Float?>(null) }
+    var grid by remember { mutableStateOf<LumaGrid?>(null) }
     // A transparent part of what is behind counts as the theme's background, not as black.
     val baseLuma = MaterialTheme.colorScheme.background.luminance()
     LaunchedEffect(layer, adaptive, baseLuma) {
@@ -82,7 +104,7 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
             request.due = true
             delay(60)
             val l = try {
-                sampleLuma(layer, baseLuma)
+                sampleLuma(layer, baseLuma) { grid = it }
             } catch (e: Exception) {
                 lastSampleError = e.javaClass.simpleName + ": " + e.message
                 null
@@ -101,10 +123,10 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
             level.animateTo(l, tween(durationMillis = 300))
         }
     }
-    return GlassInk(lightInk, level, layer, measured, adaptive, request)
+    return GlassInk(lightInk, level, layer, measured, adaptive, request, grid)
 }
 
-private suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float): Float? {
+private suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float, onGrid: (LumaGrid) -> Unit): Float? {
     if (layer.size.width <= 0 || layer.size.height <= 0) return null
     val src = layer.toImageBitmap().asAndroidBitmap().let {
         if (it.config == Bitmap.Config.HARDWARE) it.copy(Bitmap.Config.ARGB_8888, false) else it
@@ -121,6 +143,15 @@ private suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float): Float? {
         val l = 0.2126f * r + 0.7152f * g + 0.0722f * b
         sum += l * a + baseLuma * (1f - a)
     }
+    // The same picture as a finer grid, for the text that sits on only a part of the piece.
+    val cells = Bitmap.createScaledBitmap(Bitmap.createScaledBitmap(src, GRID_COLS * 3, GRID_ROWS * 3, true), GRID_COLS, GRID_ROWS, true)
+    val raw = IntArray(GRID_COLS * GRID_ROWS).also { cells.getPixels(it, 0, GRID_COLS, 0, 0, GRID_COLS, GRID_ROWS) }
+    onGrid(LumaGrid(GRID_COLS, GRID_ROWS, FloatArray(raw.size) { i ->
+        val c = raw[i]
+        val a = ((c ushr 24) and 0xFF) / 255f
+        val l = 0.2126f * ((c shr 16) and 0xFF) / 255f + 0.7152f * ((c shr 8) and 0xFF) / 255f + 0.0722f * (c and 0xFF) / 255f
+        l * a + baseLuma * (1f - a)
+    }))
     return sum / pixels.size
 }
 
@@ -153,8 +184,13 @@ fun GlassInkBox(
     } else {
         MaterialTheme.colorScheme
     }
+    val field = remember { InkField() }
+    field.grid = ink.grid
+    field.lightInk = ink.lightInk
+    field.adaptive = ink.adaptive
     MaterialTheme(colorScheme = scheme) {
-        Box(modifier, contentAlignment = alignment) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalInkField provides field) {
+        Box(modifier.onGloballyPositioned { field.coords = it }, contentAlignment = alignment) {
             content()
             // DEBUG: only while no brightness has been measured; disappears once it works.
             if (ink.adaptive && ink.measured == null) {
@@ -166,6 +202,61 @@ fun GlassInkBox(
                 )
             }
         }
+        }
+    }
+}
+
+/** What a [GlassInkBox] knows about the backdrop behind it, for the [InkRegion]s inside. */
+internal class InkField {
+    var grid by mutableStateOf<LumaGrid?>(null)
+    var lightInk by mutableStateOf(true)
+    var adaptive by mutableStateOf(false)
+    var coords: androidx.compose.ui.layout.LayoutCoordinates? = null
+}
+
+internal val LocalInkField = androidx.compose.runtime.compositionLocalOf<InkField?> { null }
+
+/**
+ * Text (or an icon) that looks at what is behind IT, not behind the whole glass piece: it takes its
+ * ink from the brightness of just the cells of the piece it covers. A name over a dark message can
+ * be white while the line under it, over a light part, stays dark. Outside an adaptive piece it
+ * changes nothing.
+ */
+@Composable
+fun InkRegion(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val field = LocalInkField.current
+    if (field == null || !field.adaptive) {
+        Box(modifier) { content() }
+        return
+    }
+    var fractions by remember { mutableStateOf<FloatArray?>(null) }
+    var light by remember { mutableStateOf(field.lightInk) }
+    val g = field.grid
+    val f = fractions
+    if (g != null && f != null) {
+        val l = g.mean(f[0], f[1], f[2], f[3])
+        // The same hysteresis as the piece itself.
+        if (light && l > 0.54f) light = false else if (!light && l < 0.46f) light = true
+    } else if (light != field.lightInk && g == null) {
+        light = field.lightInk
+    }
+    val target = onGlassColors(MaterialTheme.colorScheme, light)
+    val onSurface by animateColorAsState(target.onSurface, tween(durationMillis = 250), label = "regionOnSurface")
+    val onSurfaceVariant by animateColorAsState(target.onSurfaceVariant, tween(durationMillis = 250), label = "regionOnSurfaceVariant")
+    MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(onSurface = onSurface, onSurfaceVariant = onSurfaceVariant)) {
+        Box(
+            modifier.onGloballyPositioned { c ->
+                val root = field.coords
+                if (root != null && root.isAttached && c.isAttached) {
+                    val b = root.localBoundingBoxOf(c)
+                    val w = root.size.width.toFloat().coerceAtLeast(1f)
+                    val h = root.size.height.toFloat().coerceAtLeast(1f)
+                    val n = floatArrayOf(b.left / w, b.top / h, b.right / w, b.bottom / h)
+                    val o = fractions
+                    if (o == null || (0..3).any { kotlin.math.abs(o[it] - n[it]) > 0.01f }) fractions = n
+                }
+            },
+        ) { content() }
     }
 }
 

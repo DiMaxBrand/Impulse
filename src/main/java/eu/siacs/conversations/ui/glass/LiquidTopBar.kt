@@ -184,24 +184,28 @@ private fun LiquidTopBarBody(
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(
-                            text = conversation?.getName()?.toString() ?: "",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        InkRegion {
+                            Text(
+                                text = conversation?.getName()?.toString() ?: "",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                         val subtitle = chatSubtitle(conversation, header)
                         if (subtitle != null) {
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (header.isTyping) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                // Two lines before it is cut; a second line makes the bar taller.
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                onTextLayout = { wrapped = it.lineCount > 1 },
-                            )
+                            InkRegion {
+                                Text(
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (header.isTyping) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    // Two lines before it is cut; a second line makes the bar taller.
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    onTextLayout = { wrapped = it.lineCount > 1 },
+                                )
+                            }
                         }
                     }
                 }

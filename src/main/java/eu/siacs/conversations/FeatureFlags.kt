@@ -39,15 +39,6 @@ enum class FeatureFlag(
      * Off by default: this is the first slice only (skip new avatar fetches, disable
      * auto-download) — MAM catch-up limiting, disabling carbons, and longer timeouts are a
      * follow-up, see TODO.md. */
-    /** The chat's top bar bubbles drawn as one body of fluid glass: elements side by side flow into
-     * each other as they get close (see ui/glass/FluidGlass.kt). Off by default: a first slice. */
-    MERGING_GLASS(
-        key = "merging_glass",
-        titleRes = R.string.feature_flag_merging_glass_title,
-        descriptionRes = R.string.feature_flag_merging_glass_description,
-        audience = FlagAudience.Nobody,
-    ),
-
     EMERGENCY_MODE(
         key = "emergency_mode",
         titleRes = R.string.feature_flag_emergency_mode_title,

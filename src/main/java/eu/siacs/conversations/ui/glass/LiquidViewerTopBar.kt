@@ -157,14 +157,17 @@ private fun LiquidViewerTopBarBody(
                     }
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        text = conversation.getName()?.toString() ?: "",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Box {
+                    InkRegion {
+                        Text(
+                            text = conversation.getName()?.toString() ?: "",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    InkRegion {
+                      Box {
                         if (chatLine != null) {
                             Text(
                                 text = chatLine,
@@ -183,6 +186,7 @@ private fun LiquidViewerTopBarBody(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.graphicsLayer { alpha = enter().coerceIn(0f, 1f) },
                         )
+                      }
                     }
                 }
             }

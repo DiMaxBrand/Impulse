@@ -1834,6 +1834,4 @@
     <string name="glass_lab_merge_rotation_off">Выкл</string>
     <string name="glass_lab_merge_rotation_stiff">Жёсткое</string>
     <string name="glass_lab_merge_rotation_free">Свободное</string>
-    <string name="feature_flag_merging_glass_title">Сливающееся стекло</string>
-    <string name="feature_flag_merging_glass_description">Стеклянные панели и кнопки (верх чата и баннеры, поле сообщения, верх списка чатов, панель просмотра медиа) рисуются как одно стеклянное тело и перетекают друг в друга, когда сближаются. Ранняя версия, может выглядеть сыро.</string>
 </resources>

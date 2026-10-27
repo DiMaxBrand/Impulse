@@ -1485,10 +1485,12 @@ private fun LiquidPinnedBanner(
         LiquidGlassPanel(
             glass = glass,
             shape = RoundedCornerShape(24.dp),
-            fluidShift = { androidx.compose.ui.geometry.Offset(0f, pull.value) },
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer { translationY = pull.value }
+                // A layout offset, not a layer translation: the glass element follows where the panel is laid
+                // out, so its glass and its text move by the same amount (a layer translation was also added
+                // to the glass by hand, which put it ahead of the text).
+                .offset { androidx.compose.ui.unit.IntOffset(0, pull.value.toInt()) }
                 .pointerInput(Unit) {
                     detectVerticalDragGestures(
                         onDragStart = { dragged = 0f },
@@ -1530,6 +1532,7 @@ private fun LiquidPinnedBanner(
                         onLongClick = onOpenAll,
                     )
                 ) {
+                    eu.siacs.conversations.ui.glass.InkRegion {
                     Text(
                         text = if (total > 1)
                             stringResource(R.string.pinned_message) + " ${currentIndex + 1}/$total"
@@ -1538,6 +1541,8 @@ private fun LiquidPinnedBanner(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    }
+                    eu.siacs.conversations.ui.glass.InkRegion {
                     Text(
                         text = MessageUtils.replyPreview(message),
                         style = MaterialTheme.typography.bodyMedium,
@@ -1545,6 +1550,7 @@ private fun LiquidPinnedBanner(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    }
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
                     Icon(
@@ -2538,7 +2544,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             if (offsetFraction <= 0f) 0
             else if (viewportHeight > 0) -(viewportHeight * offsetFraction).toInt()
             else -800 // fallback if layout not yet measured
-        listState.animateScrollToItem(index, scrollOffset = offsetPx)
+        listState.flyToItem(index, scrollOffset = offsetPx)
         if (index == 0) listener.onScrolledToBottom()
     }
 
@@ -2689,7 +2695,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 }
             }
             if (idx >= 0) {
-                listState.animateScrollToItem(idx)
+                listState.flyToItem(idx)
                 highlightKey = scrollToUuid
                 // Heart tap: the reaction itself flashes, a shorter beat than the bubble highlight.
                 state.pendingBlink?.takeIf { it.first == scrollToUuid }?.let {
@@ -2720,7 +2726,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         val index = items.indexOfFirst { it.key == key }
         if (index >= 0) {
             highlightKey = key
-            scope.launch { listState.animateScrollToItem(index) }
+            scope.launch { listState.flyToItem(index) }
         }
     }
 
@@ -2961,7 +2967,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                         // speed; the band is triggered explicitly once the scroll has landed.
                         flingSpeed[0] = 0f
                         scope.launch {
-                            listState.animateScrollToItem(0)
+                            listState.flyToItem(0)
                             if (experimentalAnimations) {
                                 state.barBumpStrength.floatValue = 1f
                                 state.barBump.intValue++
@@ -8324,4 +8330,25 @@ private fun Modifier.rubberLift(
         val v = rubber.value
         translationY = if (v > 0f) -v * factor else 0f
     }
+}
+
+
+/**
+ * Scrolls to [index] the way Telegram does for a far target: when it is more than about
+ * [screens] screens away, the list first jumps (no animation, nothing in between is composed) to
+ * [screens] screens before it, then the last stretch is animated. A long animated flight through
+ * hundreds of messages composes and draws every one of them, and that was what stalled the frame
+ * rate (it scrolled, stood still, then went on).
+ */
+suspend fun androidx.compose.foundation.lazy.LazyListState.flyToItem(index: Int, scrollOffset: Int = 0, screens: Int = 2) {
+    val visible = layoutInfo.visibleItemsInfo
+    val perScreen = visible.size.coerceAtLeast(4)
+    val reach = perScreen * screens
+    val from = firstVisibleItemIndex
+    if (kotlin.math.abs(index - from) > reach) {
+        // Land just short of the target, on the side we are coming from.
+        val start = if (from > index) index + reach else (index - reach).coerceAtLeast(0)
+        scrollToItem(start)
+    }
+    animateScrollToItem(index, scrollOffset)
 }
