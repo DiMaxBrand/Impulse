@@ -1080,9 +1080,11 @@ public class XmppConnectionService extends Service {
     }
 
     public boolean isDataSaverDisabled() {
-        // Emergency mode reuses this exact gate rather than adding parallel checks in
-        // AvatarManager/HttpDownloadConnection/JingleFileTransferConnection: activating it is
-        // equivalent to Android's own Data Saver being on, network-metered-or-not.
+        // Emergency mode (a weak or failing connection, not about saving data: it applies on an
+        // unlimited plan too) reuses this exact gate rather than adding parallel checks in
+        // AvatarManager/HttpDownloadConnection/JingleFileTransferConnection: while it is active the
+        // optional traffic (new avatars, media auto-download) is held back, as if Android's Data
+        // Saver were on.
         if (emergencyModeActive) {
             return false;
         }

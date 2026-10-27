@@ -365,7 +365,7 @@ same spirit as the app's other spring-based status transitions (see
     already-3-icon row, more of a problem on narrow screens.
   - Swap-on-tap with the existing attach button (long-press or a secondary state) — rejected as a
     starting idea, too undiscoverable for a first version.
-- [ ] **Emergency mode, part 2** — `FeatureFlag.EMERGENCY_MODE` (see `XmppConnectionService.refreshEmergencyMode()`/`isEmergencyModeActive()`) currently only reuses `isDataSaverDisabled()` to skip new avatar fetches and disable media auto-download while any account is `SERVER_NOT_FOUND`/`CONNECTION_TIMEOUT`. Confirmed-but-not-yet-built for a second pass:
+- [ ] **Emergency mode, part 2** — `FeatureFlag.EMERGENCY_MODE` (see `XmppConnectionService.refreshEmergencyMode()`/`isEmergencyModeActive()`) currently only reuses the `isDataSaverDisabled()` gate (the name is historical) to hold back optional traffic -- new avatar fetches and media auto-download -- while any account is `SERVER_NOT_FOUND`/`CONNECTION_TIMEOUT`. Confirmed-but-not-yet-built for a second pass:
   - [ ] Limit/skip MAM catch-up history sync while active
   - [ ] Disable message carbons (XEP-0280) while active — less XML per message
   - [ ] Longer connection/read timeouts while active, so a slow-but-working link doesn't get treated as dead and retried repeatedly

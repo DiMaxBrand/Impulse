@@ -31,14 +31,16 @@ enum class FeatureFlag(
         audience = FlagAudience.Everyone,
     ),
 
-    /** Auto-activates a reduced-data mode while any account is stuck at
+    /** Switches the app to a bad-connection mode while any account is stuck at
      * [eu.siacs.conversations.entities.Account.State.SERVER_NOT_FOUND] or
-     * [eu.siacs.conversations.entities.Account.State.CONNECTION_TIMEOUT] — reuses the existing
-     * `isDataSaverDisabled()` gate (already checked by avatar fetching and file auto-download), so
-     * activating this is equivalent to Android's own Data Saver being on, network-metered-or-not.
-     * Off by default: this is the first slice only (skip new avatar fetches, disable
-     * auto-download) — MAM catch-up limiting, disabling carbons, and longer timeouts are a
-     * follow-up, see TODO.md. */
+     * [eu.siacs.conversations.entities.Account.State.CONNECTION_TIMEOUT]: it stops the optional
+     * traffic (new avatars, media auto-download) so the little the link can carry goes to messages.
+     * This is about a weak or failing connection, NOT about saving data: it applies on an
+     * unlimited plan too, and it has nothing to do with the user's data plan or Android's Data
+     * Saver. It reuses the existing `isDataSaverDisabled()` gate only because that gate already
+     * sits in front of avatar fetching and file auto-download (the name is historical). Off by
+     * default: this is the first slice only (skip new avatar fetches, disable auto-download); MAM
+     * catch-up limiting, disabling carbons and longer timeouts are a follow-up, see TODO.md. */
     EMERGENCY_MODE(
         key = "emergency_mode",
         titleRes = R.string.feature_flag_emergency_mode_title,
