@@ -5,6 +5,9 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -165,7 +168,7 @@ private val QUICK_ACTION_LABELS = listOf(
 private val springBounds = BoundsTransform { _, _ -> spring(stiffness = 380f, dampingRatio = 0.8f) }
 private val quickFade = spring<Float>(stiffness = 1600f, dampingRatio = 1.0f)
 
-internal enum class AppearancePage { MAIN, BUBBLES, LAB }
+internal enum class AppearancePage { MAIN, BUBBLES, LAB, PLAYGROUND }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -182,9 +185,16 @@ internal fun AppearanceScreen(
     onOpenBubbles: () -> Unit,
     onStyleChosen: (InterfaceStyle) -> Unit = {},
     onOpenLab: () -> Unit = {},
+    /** The lab's button was pressed: where it is on the screen (window pixels), for the playground to grow out of. */
+    onOpenPlayground: (androidx.compose.ui.geometry.Rect) -> Unit = {},
+    playgroundOrigin: androidx.compose.ui.geometry.Rect? = null,
+    onClosePlayground: () -> Unit = {},
 ) {
+  Box(Modifier.fillMaxSize()) {
+    // The playground arrives over the lab, which stays where it is underneath.
+    val shownPage = if (page == AppearancePage.PLAYGROUND) AppearancePage.LAB else page
     AnimatedContent(
-        targetState = page,
+        targetState = shownPage,
         transitionSpec = {
             if (targetState != AppearancePage.MAIN) {
                 (slideInHorizontally { it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 } + fadeOut())
@@ -197,7 +207,7 @@ internal fun AppearanceScreen(
         if (target == AppearancePage.BUBBLES) {
             BubblesPage(settings)
         } else if (target == AppearancePage.LAB) {
-            GlassLabPage()
+            GlassLabPage(onOpenPlayground)
         } else {
             MainPage(
                 settings, dynamicAvailable, onThemeChosen, onDynamicChanged, onAccentChanged,
@@ -206,6 +216,14 @@ internal fun AppearanceScreen(
             )
         }
     }
+    AnimatedVisibility(
+        visible = page == AppearancePage.PLAYGROUND,
+        enter = EnterTransition.None,
+        exit = fadeOut(tween(450)),
+    ) {
+        GlassPlayground(origin = playgroundOrigin, onBack = onClosePlayground)
+    }
+  }
 }
 
 // ─── Building blocks ─────────────────────────────────────────────────────────
@@ -1228,7 +1246,7 @@ private fun GlassPreview() {
 
 /** The Glass lab: sliders and switches for how the glass looks and behaves, live on this very screen. */
 @Composable
-private fun GlassLabPage() {
+private fun GlassLabPage(onOpenPlayground: (androidx.compose.ui.geometry.Rect) -> Unit) {
     val context = LocalContext.current
     Column(
         modifier = Modifier
@@ -1243,6 +1261,22 @@ private fun GlassLabPage() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         )
+        // The playground: this button melts into the playground's own buttons (see GlassPlayground).
+        var playgroundBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+        FilledTonalButton(
+            onClick = { onOpenPlayground(playgroundBounds) },
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .height(64.dp)
+                .onGloballyPositioned { playgroundBounds = it.boundsInWindow() },
+        ) {
+            Icon(painterResource(R.drawable.ic_touch_app_24dp), contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.glass_lab_playground), style = MaterialTheme.typography.titleMedium)
+        }
+        Spacer(Modifier.height(6.dp))
         SectionTitle(stringResource(R.string.glass_lab_section_look))
         LabSlider(GroupPosition.TOP, R.string.glass_lab_blur, GlassTuning.blur) { GlassTuning.putBlur(it) }
         LabSlider(GroupPosition.MIDDLE, R.string.glass_lab_refraction, GlassTuning.refraction) { GlassTuning.putRefraction(it) }

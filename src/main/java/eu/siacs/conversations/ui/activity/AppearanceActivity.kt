@@ -61,7 +61,10 @@ class AppearanceActivity : ActionBarActivity() {
                 var celebrate by remember { mutableStateOf(0) }
                 val glassOn = eu.siacs.conversations.ui.LiquidGlass.supported &&
                     settings.interfaceStyle.value == eu.siacs.conversations.ui.InterfaceStyle.GLASS.key
-                BackHandler(enabled = page != AppearancePage.MAIN) { page = AppearancePage.MAIN }
+                var playgroundOrigin by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+                BackHandler(enabled = page != AppearancePage.MAIN) {
+                    page = if (page == AppearancePage.PLAYGROUND) AppearancePage.LAB else AppearancePage.MAIN
+                }
                 val pickImage = rememberLauncherForActivityResult(
                     ActivityResultContracts.GetContent()) { uri -> if (uri != null) importBackground(settings, uri) }
                 eu.siacs.conversations.ui.glass.GlassSkinHost(
@@ -72,6 +75,13 @@ class AppearanceActivity : ActionBarActivity() {
                 Scaffold(
                     containerColor = androidx.compose.ui.graphics.Color.Transparent,
                     topBar = {
+                        // The playground has its own top row; the bar goes away while it is open.
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = page != AppearancePage.PLAYGROUND,
+                            enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                            exit = androidx.compose.animation.shrinkVertically(androidx.compose.animation.core.tween(2000)) +
+                                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(800)),
+                        ) {
                         TopAppBar(
                             title = {
                                 Text(stringResource(
@@ -92,6 +102,7 @@ class AppearanceActivity : ActionBarActivity() {
                                 containerColor = androidx.compose.ui.graphics.Color.Transparent,
                             ),
                         )
+                        }
                     },
                 ) { padding ->
                     Box(Modifier.padding(padding)) {
@@ -112,6 +123,9 @@ class AppearanceActivity : ActionBarActivity() {
                             onScreenshotsChanged = { SettingsUtils.applyScreenshotSetting(this@AppearanceActivity) },
                             onOpenBubbles = { page = AppearancePage.BUBBLES },
                             onOpenLab = { page = AppearancePage.LAB },
+                            onOpenPlayground = { bounds -> playgroundOrigin = bounds; page = AppearancePage.PLAYGROUND },
+                            playgroundOrigin = playgroundOrigin,
+                            onClosePlayground = { page = AppearancePage.LAB },
                             onStyleChosen = { picked ->
                                 if (picked == eu.siacs.conversations.ui.InterfaceStyle.GLASS) celebrate++
                             },
