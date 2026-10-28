@@ -1644,6 +1644,8 @@
     <string name="attach_phone_contact">Контакт</string>
     <string name="contact_card_message">Написать</string>
     <string name="contact_card_save">Сохранить контакт</string>
+    <string name="saved_messages">Избранное</string>
+    <string name="saved_messages_summary">Заметки, ссылки и файлы для себя</string>
     <string name="attach_impulse_contact">Контакт Импульса</string>
     <string name="attach_impulse_contact_title">Поделиться контактом</string>
     <string name="attach_support_section">Поддержка</string>

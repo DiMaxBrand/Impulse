@@ -137,6 +137,9 @@ interface StartConversationScreenListener {
     fun onFabCreatePrivateGroupChat()
     fun onFabCreateContact()
     fun onQuicksyRefresh()
+
+    /** The pinned "Saved messages" row: a chat with yourself, for notes, links and files. */
+    fun onSavedMessages()
 }
 
 object StartConversationListHelper {
@@ -401,7 +404,11 @@ private fun ContactsTab(
 ) {
     var longPressed by remember { mutableStateOf<Contact?>(null) }
     val list: @Composable () -> Unit = {
-        ItemList(items = items, revision = revision) { item, shape ->
+        ItemList(
+            items = items,
+            revision = revision,
+            header = { SavedMessagesRow(onClick = { listener.onSavedMessages() }) },
+        ) { item, shape ->
             val contact = item as Contact
             ListItemRow(
                 item = item,
@@ -452,14 +459,62 @@ private fun ConferencesTab(
     }
 }
 
+/** The chat with yourself, pinned above the contacts: a bookmark in a tonal tile, like the other rows. */
+@Composable
+private fun SavedMessagesRow(onClick: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 8.dp)
+            .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
+            Box(
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_bookmark_24dp),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            Spacer(Modifier.width(dimensionResource(R.dimen.avatar_item_distance)))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.saved_messages),
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(R.string.saved_messages_summary),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ItemList(
     items: List<ListItem>,
     revision: Int,
+    header: (@Composable () -> Unit)? = null,
     row: @Composable (ListItem, RoundedCornerShape) -> Unit,
 ) {
     val listState = rememberLazyListState()
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        if (header != null) item(key = "pinned_header") { header() }
         itemsIndexed(items, key = { _, item -> listItemKey(item) }) { index, item ->
             row(item, listItemShape(index, items.size))
         }

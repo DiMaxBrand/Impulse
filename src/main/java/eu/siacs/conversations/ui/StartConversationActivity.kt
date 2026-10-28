@@ -94,6 +94,7 @@ class StartConversationActivity :
     companion object {
         private const val PREF_KEY_CONTACT_INTEGRATION_CONSENT = "contact_list_integration_consent"
         const val EXTRA_INVITE_URI = "eu.siacs.conversations.invite_uri"
+        private const val ATTRIBUTE_SAVED_PINNED_SET = "saved_messages_pinned_set"
 
         /** Opens the "add contact" dialog straight away (the empty chat list's "Address" button). */
         const val EXTRA_OPEN_ADD_CONTACT = "eu.siacs.conversations.open_add_contact"
@@ -378,6 +379,10 @@ class StartConversationActivity :
                 openConversationsForBookmark(bookmark)
             }
 
+            override fun onSavedMessages() {
+                openSavedMessages()
+            }
+
             override fun onContactDetails(contact: Contact) {
                 switchToContactDetails(contact)
             }
@@ -618,6 +623,23 @@ class StartConversationActivity :
         ft.addToBackStack(null)
         val dialog = CreatePublicChannelDialog.newInstance(mActivatedAccounts)
         dialog.show(ft, FRAGMENT_TAG_DIALOG)
+    }
+
+    /**
+     * The chat with yourself ("Saved messages"). The first time it is opened it is pinned to the top of the chat list;
+     * after that it is left as the person has it, so unpinning it sticks.
+     */
+    private fun openSavedMessages() {
+        val service = xmppConnectionService ?: return
+        val account = service.accounts.firstOrNull { it.isEnabled } ?: return
+        val address = account.jid.asBareJid()
+        val conversation = service.findOrCreateConversation(account, address, false, true)
+        if (!conversation.getBooleanAttribute(ATTRIBUTE_SAVED_PINNED_SET, false)) {
+            conversation.setAttribute(Conversation.ATTRIBUTE_PINNED_ON_TOP, true)
+            conversation.setAttribute(ATTRIBUTE_SAVED_PINNED_SET, true)
+            service.updateConversation(conversation)
+        }
+        switchToConversation(conversation)
     }
 
     protected fun switchToConversation(contact: Contact) {
