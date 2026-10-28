@@ -52,7 +52,8 @@ import eu.siacs.conversations.R
  */
 class AddToAddressBookDialogFragment : DialogFragment() {
 
-    // 0: waiting for the permission question, 1: the note, 2: the person is already in the address book.
+    // 0: waiting for the permission question, 1: the note, 2: the person is already in the address book,
+    // 3: the offer (a roster contact who may not be in the address book: Add / Ignore).
     private var stage by mutableIntStateOf(0)
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { evaluate() }
@@ -66,7 +67,10 @@ class AddToAddressBookDialogFragment : DialogFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val offer = requireArguments().getBoolean(ARG_OFFER)
-        if (offer || AddressBook.hasPermission(requireContext())) {
+        if (offer && savedInstanceState == null) {
+            // The offer comes first, with or without the permission: the question is asked once "Add" is tapped.
+            stage = 3
+        } else if (AddressBook.hasPermission(requireContext())) {
             evaluate()
         } else if (savedInstanceState == null) {
             // Looking in the address book needs the contacts permission: it is asked for here, at the moment it matters.
@@ -80,15 +84,18 @@ class AddToAddressBookDialogFragment : DialogFragment() {
     private fun evaluate() {
         val address = requireArguments().getString(ARG_ADDRESS)
         val phone = requireArguments().getString(ARG_PHONE)
-        val offer = requireArguments().getBoolean(ARG_OFFER)
-        stage = if (!offer && AddressBook.isPresent(requireContext(), address, phone)) 2 else 1
+        stage = if (AddressBook.isPresent(requireContext(), address, phone)) 2 else 1
+    }
+
+    /** "Add" on the offer: ask for the permission if it is missing, then see whether the person is there already. */
+    private fun continueAfterOffer() {
+        if (AddressBook.hasPermission(requireContext())) evaluate() else permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val name = requireArguments().getString(ARG_NAME)
         val address = requireArguments().getString(ARG_ADDRESS)
         val phone = requireArguments().getString(ARG_PHONE)
-        val offer = requireArguments().getBoolean(ARG_OFFER)
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
@@ -106,7 +113,24 @@ class AddToAddressBookDialogFragment : DialogFragment() {
                                 modifier = Modifier.size(32.dp),
                             )
                             Text(stringResource(R.string.save_to_contact), style = MaterialTheme.typography.headlineSmall)
-                            if (stage == 2) {
+                            if (stage == 3) {
+                                Text(
+                                    stringResource(R.string.add_to_address_book_offer, name?.takeIf { it.isNotBlank() } ?: address.orEmpty()),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                                    // "Ignore" is remembered, so the offer does not come back for this person.
+                                    TextButton(onClick = {
+                                        if (address != null) AddressBook.markHandled(requireContext(), address)
+                                        dismiss()
+                                    }) { Text(stringResource(R.string.add_to_address_book_ignore)) }
+                                    Button(onClick = {
+                                        if (address != null) AddressBook.markHandled(requireContext(), address)
+                                        continueAfterOffer()
+                                    }) { Text(stringResource(R.string.add_to_address_book_add)) }
+                                }
+                            } else if (stage == 2) {
                                 Text(
                                     stringResource(R.string.add_to_address_book_already, name?.takeIf { it.isNotBlank() } ?: address.orEmpty()),
                                     style = MaterialTheme.typography.bodyMedium,
@@ -122,16 +146,11 @@ class AddToAddressBookDialogFragment : DialogFragment() {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                                    TextButton(onClick = {
-                                        // "Ignore" is remembered, so the offer does not come back for this person.
-                                        if (offer && address != null) AddressBook.markHandled(requireContext(), address)
-                                        dismiss()
-                                    }) { Text(stringResource(if (offer) R.string.add_to_address_book_ignore else R.string.cancel)) }
+                                    TextButton(onClick = { dismiss() }) { Text(stringResource(R.string.cancel)) }
                                     Button(onClick = {
-                                        if (offer && address != null) AddressBook.markHandled(requireContext(), address)
                                         open(requireActivity(), name, address, phone)
                                         dismiss()
-                                    }) { Text(stringResource(if (offer) R.string.add_to_address_book_add else R.string.add_to_address_book_open)) }
+                                    }) { Text(stringResource(R.string.add_to_address_book_open)) }
                                 }
                             }
                         }

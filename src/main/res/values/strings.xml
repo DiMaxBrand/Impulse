@@ -223,6 +223,7 @@
     <string name="add_to_address_book_already">%1$s is already in your address book.</string>
     <string name="add_to_address_book_ignore">Ignore</string>
     <string name="add_to_address_book_add">Add</string>
+    <string name="add_to_address_book_offer">%1$s isn\'t in your contacts yet. Add them to your address book?</string>
     <string name="add_to_address_book_note">Your phone\'s contacts will open next. If this person is already in your address book, pick them from the list. If not, create a new contact: their name and Impulse address are filled in for you.</string>
     <string name="add_to_address_book_open">Open contacts</string>
     <string name="add_phone_book_text">Do you want to add %s to your address book?</string>

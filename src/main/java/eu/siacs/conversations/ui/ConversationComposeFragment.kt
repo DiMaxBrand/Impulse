@@ -409,18 +409,22 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     /**
      * Somebody in the roster who is not in the phone's address book yet: once, offer to add them (Add / Ignore).
-     * Only when the app may look in the address book (the permission is asked for when someone is added by hand).
+     * With the contacts permission the address book is checked first (nothing is offered for someone who is there);
+     * without it the offer comes anyway, and "Add" asks for the permission.
      */
     private fun maybeOfferAddressBook(c: Conversation) {
         val ctx = context ?: return
         if (c.getMode() != Conversational.MODE_SINGLE) return
         val contact = c.getContact()
-        if (!contact.showInRoster() || !AddressBook.hasPermission(ctx)) return
+        if (!contact.showInRoster()) return
         val address = c.getAddress().asBareJid().toString()
         if (AddressBook.isHandled(ctx, address) || !offeredAddressBook.add(address)) return
         val name = contact.getDisplayName()
         viewLifecycleOwner.lifecycleScope.launch {
-            val present = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { AddressBook.hasAddress(ctx, address) }
+            // Without the permission the address book cannot be looked in: the offer comes anyway, and the question
+            // about the permission is asked when "Add" is tapped.
+            val present = AddressBook.hasPermission(ctx) &&
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { AddressBook.hasAddress(ctx, address) }
             if (present) {
                 AddressBook.markHandled(ctx, address)
             } else if (isAdded && this@ConversationComposeFragment.conversation === c) {
