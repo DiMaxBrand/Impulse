@@ -120,6 +120,8 @@ internal fun ContactCard(
     actionLabel: String?,
     onAction: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     val title = contact.name?.takeIf { it.isNotBlank() } ?: contact.username ?: contact.phones.firstOrNull().orEmpty()
     Surface(
@@ -171,6 +173,11 @@ internal fun ContactCard(
             if (actionLabel != null && onAction != null) {
                 FilledTonalButton(onClick = onAction, modifier = Modifier.fillMaxWidth()) {
                     Text(actionLabel)
+                }
+            }
+            if (secondaryLabel != null && onSecondary != null) {
+                androidx.compose.material3.TextButton(onClick = onSecondary, modifier = Modifier.fillMaxWidth()) {
+                    Text(secondaryLabel)
                 }
             }
         }

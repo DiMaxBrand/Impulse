@@ -172,38 +172,12 @@ public class ContactDetailsActivity extends OmemoActivity
         } else {
             value = jid.toString();
         }
-        final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
-        builder.setTitle(getString(R.string.save_to_contact));
-        builder.setMessage(getString(R.string.add_phone_book_text, value));
-        builder.setNegativeButton(getString(R.string.cancel), null);
-        builder.setPositiveButton(
-                getString(R.string.add),
-                (dialog, which) -> {
-                    final Intent intent = new Intent(Intent.ACTION_INSERT_OR_EDIT);
-                    intent.setType(Contacts.CONTENT_ITEM_TYPE);
-                    if (quicksyContact) {
-                        intent.putExtra(Intents.Insert.PHONE, value);
-                    } else {
-                        intent.putExtra(Intents.Insert.IM_HANDLE, value);
-                        intent.putExtra(
-                                Intents.Insert.IM_PROTOCOL, CommonDataKinds.Im.PROTOCOL_JABBER);
-                        // TODO for modern use we want PROTOCOL_CUSTOM and an extra field with a
-                        // value of 'XMPP'
-                        // however we don’t have such a field and thus have to use the legacy
-                        // PROTOCOL_JABBER
-                    }
-                    intent.putExtra("finishActivityOnSaveCompleted", true);
-                    try {
-                        startActivityForResult(intent, 0);
-                    } catch (ActivityNotFoundException e) {
-                        Toast.makeText(
-                                        ContactDetailsActivity.this,
-                                        R.string.no_application_found_to_view_contact,
-                                        Toast.LENGTH_SHORT)
-                                .show();
-                    }
-                });
-        builder.create().show();
+        // A note first, then the phone's contacts screen (pick an existing contact or make a new one).
+        AddToAddressBookDialogFragment.show(
+                this,
+                contact.getDisplayName(),
+                quicksyContact ? null : value,
+                quicksyContact ? value : null);
     }
 
     @Override

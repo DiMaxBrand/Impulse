@@ -5068,6 +5068,10 @@ private fun MessageContent(
                     contact = shared,
                     actionLabel = stringResource(R.string.contact_card_message),
                     onAction = if (address != null) ({ openUrl(context, "xmpp:$address") }) else null,
+                    secondaryLabel = stringResource(R.string.save_to_contact),
+                    onSecondary = if (address != null && activity != null) ({
+                        AddToAddressBookDialogFragment.show(activity, shared.name, address, null)
+                    }) else null,
                 )
             }
         }
