@@ -74,7 +74,12 @@ class AddReactionDialogFragment : DialogFragment() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val emoji = result.data?.getStringExtra(AddReactionActivity.EXTRA_PICKED_EMOJI)
-            if (emoji != null) pickedEmoji.value = emoji
+            if (emoji != null) {
+                // Recorded right here, not only once the card has seen the pick: the card may not be on screen at
+                // the moment the picker returns, and a pick that is never recorded never comes back as a shortcut.
+                AppSettings(requireContext()).recordReactionEmojiUsed(emoji)
+                pickedEmoji.value = emoji
+            }
         }
     }
 

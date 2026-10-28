@@ -365,9 +365,21 @@ public abstract class XmppActivity extends ActionBarActivity {
             Toast.makeText(this, R.string.this_reaction_isnt_allowed, Toast.LENGTH_LONG).show();
             return;
         }
+        // The emoji that are new on this message, taken before sending changes what the message holds.
+        final var added = new java.util.ArrayList<>(reactions);
+        added.removeAll(message.getAggregatedReactions().ourReactions);
         if (account.getXmppConnection()
                 .getManager(ReactionManager.class)
                 .sendReactions(message, reactions)) {
+            // Every reaction you add counts towards the add-reaction menu's recent emoji, whichever way it was
+            // added (a shortcut, the "..." picker, a chip, a double tap), not only through that menu itself.
+            // A room with a fixed list of allowed emoji has its own row.
+            if (allowList == null) {
+                final var settings = new eu.siacs.conversations.AppSettings(this);
+                for (final String emoji : added) {
+                    settings.recordReactionEmojiUsed(emoji);
+                }
+            }
             return;
         }
         Toast.makeText(this, R.string.could_not_add_reaction, Toast.LENGTH_LONG).show();
