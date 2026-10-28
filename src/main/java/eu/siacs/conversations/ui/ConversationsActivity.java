@@ -226,6 +226,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
         final eu.siacs.conversations.AppSettings appSettings =
                 new eu.siacs.conversations.AppSettings(this);
+        SetupSchedule.noteLaunch(this);
         if (appSettings.isNotificationSetupDone()) {
             // The one-time setup is done, but phones sometimes switch the call permissions off
             // again later. Ask about exactly the missing one, in a small dialog, at most once a
@@ -238,6 +239,7 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                             .getBoolean(CallPermissionDialogFragment.PREF_REMINDER, true)
                     && !getPreferences().getBoolean("call_permission_nag_disabled", false)
                     && CallPermissions.anyMissing(this)
+                    && SetupSchedule.callReminderDue(this)
                     && System.currentTimeMillis() - last > dayMs) {
                 getPreferences()
                         .edit()
@@ -247,16 +249,21 @@ public class ConversationsActivity extends QrCodeProcessingActivity
                         .postDelayed(
                                 () -> {
                                     if (isFinishing() || isDestroyed()) return;
+                                    if (!SetupSchedule.claim()) return;
                                     showCallPermissionDialog();
                                 },
                                 2000);
             }
             return;
         }
+        // Not done yet: at the first chance, and again each day until it is (never several prompts at once).
+        if (!SetupSchedule.notificationSetupDue(this)) return;
         binding.getRoot()
                 .postDelayed(
                         () -> {
                             if (isFinishing() || isDestroyed()) return;
+                            if (!SetupSchedule.claim()) return;
+                            SetupSchedule.noteNotificationSetupShown(this);
                             startActivity(new Intent(this, NotificationSetupActivity.class));
                         },
                         2000);

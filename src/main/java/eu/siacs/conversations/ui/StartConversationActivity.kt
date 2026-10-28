@@ -95,6 +95,9 @@ class StartConversationActivity :
         private const val PREF_KEY_CONTACT_INTEGRATION_CONSENT = "contact_list_integration_consent"
         const val EXTRA_INVITE_URI = "eu.siacs.conversations.invite_uri"
 
+        /** Opens the "add contact" dialog straight away (the empty chat list's "Address" button). */
+        const val EXTRA_OPEN_ADD_CONTACT = "eu.siacs.conversations.open_add_contact"
+
         @JvmStatic
         fun populateAccountSpinner(
             context: Context,
@@ -844,6 +847,8 @@ class StartConversationActivity :
         actionBar.setDisplayHomeAsUpEnabled(!isTaskRoot)
     }
 
+    private var openedAddContactFromExtra = false
+
     override fun onBackendConnected() {
         if (AbstractQuickConversationsService.isContactListIntegration(this) &&
             (Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
@@ -870,6 +875,10 @@ class StartConversationActivity :
             } else {
                 filter(null)
             }
+        }
+        if (this.intent?.getBooleanExtra(EXTRA_OPEN_ADD_CONTACT, false) == true && !openedAddContactFromExtra) {
+            openedAddContactFromExtra = true
+            showCreateContactDialog(null, null)
         }
         val fragment = getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG_DIALOG)
         if (fragment is OnBackendConnected) {

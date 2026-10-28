@@ -165,6 +165,8 @@ class BirthdayPromptDialogFragment : DialogFragment() {
         fun maybeShow(activity: XmppActivity) {
             val prefs = PreferenceManager.getDefaultSharedPreferences(activity)
             if (prefs.getBoolean(PREF_SEEN, false)) return
+            // From the third day on, and not on a launch that already showed another first-run prompt.
+            if (!SetupSchedule.birthdayPromptDue(activity)) return
             val service = activity.xmppConnectionService ?: return
             if (service.accounts.none { it.isEnabled }) return
             activity.window.decorView.postDelayed({
@@ -172,6 +174,7 @@ class BirthdayPromptDialogFragment : DialogFragment() {
                 val manager = (activity as FragmentActivity).supportFragmentManager
                 // Never on top of another dialog, and not while the birthday greeting is up.
                 if (manager.isStateSaved || manager.fragments.any { it is DialogFragment }) return@postDelayed
+                if (!SetupSchedule.claim()) return@postDelayed
                 BirthdayPromptDialogFragment().show(manager, TAG)
             }, 3000)
         }

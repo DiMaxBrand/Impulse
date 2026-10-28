@@ -287,7 +287,7 @@ fun ConversationList(
 ) {
     if (conversations.isEmpty()) {
         LaunchedEffect(Unit) { onFirstVisibleIndexChanged(0) }
-        EmptyConversationsHint(modifier = modifier.fillMaxSize())
+        EmptyConversationsHint(actions = actions, modifier = modifier.fillMaxSize())
         return
     }
 
@@ -387,7 +387,8 @@ internal fun conversationItemShape(index: Int, total: Int): RoundedCornerShape {
 }
 
 @Composable
-private fun EmptyConversationsHint(modifier: Modifier = Modifier) {
+private fun EmptyConversationsHint(actions: ConversationListActions, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -405,6 +406,30 @@ private fun EmptyConversationsHint(modifier: Modifier = Modifier) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, start = 48.dp, end = 48.dp),
         )
+        // The first thing to do with an empty list: add someone. One button that opens into the two ways.
+        androidx.compose.material3.FilledTonalButton(
+            onClick = { open = !open },
+            modifier = Modifier.padding(top = 20.dp),
+        ) {
+            Text(stringResource(R.string.empty_list_add_first_contact))
+        }
+        AnimatedVisibility(
+            visible = open,
+            enter = expandVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) + fadeIn(),
+            exit = shrinkVertically(spring(stiffness = 380f, dampingRatio = 0.8f)) + fadeOut(),
+        ) {
+            Row(
+                Modifier.padding(top = 12.dp, start = 24.dp, end = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                androidx.compose.material3.OutlinedButton(onClick = { actions.scanQrCode() }, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.empty_list_qr_code), maxLines = 1)
+                }
+                androidx.compose.material3.OutlinedButton(onClick = { actions.addContactByAddress() }, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.empty_list_address), maxLines = 1)
+                }
+            }
+        }
     }
 }
 

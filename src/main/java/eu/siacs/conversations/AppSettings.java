@@ -684,6 +684,7 @@ public class AppSettings {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
                 .putInt(NOTIFICATION_SETUP_VERSION, CURRENT_NOTIFICATION_SETUP_VERSION)
+                .putLong("setup_notification_done_at", System.currentTimeMillis())
                 .apply();
     }
 

@@ -41,6 +41,10 @@ interface ConversationListActions {
     fun markRead(conversation: Conversation)
     fun archive(conversation: Conversation)
     fun openContact(conversation: Conversation)
+
+    /** The empty list's "add your first contact" card: scan a QR code, or type an address. */
+    fun scanQrCode() {}
+    fun addContactByAddress() {}
 }
 
 /** Nothing happens: for previews, where no row is ever pressed. */

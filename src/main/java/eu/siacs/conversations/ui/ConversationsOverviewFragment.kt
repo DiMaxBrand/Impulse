@@ -133,6 +133,17 @@ class ConversationsOverviewFragment : XmppFragment() {
         override fun openContact(conversation: Conversation) {
             requireXmppActivity().switchToContactDetails(conversation.getContact())
         }
+
+        override fun scanQrCode() {
+            (requireActivity() as? QrCodeScanningActivity)?.requestQrCodeScan()
+        }
+
+        override fun addContactByAddress() {
+            startActivity(
+                android.content.Intent(requireActivity(), StartConversationActivity::class.java)
+                    .putExtra(StartConversationActivity.EXTRA_OPEN_ADD_CONTACT, true),
+            )
+        }
     }
 
     private var avatarLoading = false

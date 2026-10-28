@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impulse: install guide</title>
+<meta name="description" content="How to install Impulse on Android, step by step, including what Google Play Protect may say and what to tap.">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var l='en';try{l=localStorage.getItem('lang')||''}catch(e){}if(l!=='ru'&&l!=='en'){l=((navigator.language||'en')+'').toLowerCase().indexOf('ru')===0?'ru':'en'}document.documentElement.lang=l})();
+</script>
+<style>:root{--bg:#f6faf9;--fg:#14201e;--muted:#4b5d5a;--card:#ffffff;--line:#d5e3e0;--accent:#0b7d70;--accent-fg:#ffffff;--soft:#d8f1ec;--warm:#fff2d6;
+--m-frame:#27322f;--m-screen:#e9f0ee;--m-dim:rgba(0,0,0,.42);--m-card:#fbfdfc;--m-text:#1c2624;--m-sub:#506360;--m-btn:#0b7d70;--ring:#f2a400}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1514;--fg:#e6f0ee;--muted:#9db3af;--card:#16201e;--line:#2a3a37;--accent:#53d1bf;--accent-fg:#06211d;--soft:#173430;--warm:#3a2f12;
+--m-frame:#050808;--m-screen:#1d2927;--m-dim:rgba(0,0,0,.5);--m-card:#26332f;--m-text:#e6f0ee;--m-sub:#a9bdb9;--m-btn:#53d1bf;--ring:#ffc247}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif}
+html[lang=ru] .en,html[lang=en] .ru{display:none!important}
+.wrap{max-width:980px;margin:0 auto;padding:0 20px}
+.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;justify-content:space-between;height:58px}
+.brand{font-weight:700;font-size:1.15rem;color:var(--fg);text-decoration:none;display:flex;align-items:center;gap:10px}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 5px var(--soft)}
+.langs{display:flex;background:var(--soft);border-radius:999px;padding:3px}
+.langs button{border:0;background:transparent;color:var(--fg);font:inherit;font-size:.85rem;padding:5px 14px;border-radius:999px;cursor:pointer}
+html[lang=en] .langs [data-set=en],html[lang=ru] .langs [data-set=ru]{background:var(--accent);color:var(--accent-fg)}
+.hero{padding:56px 20px 24px}
+h1{font-size:clamp(2rem,6vw,3.2rem);line-height:1.1;margin:0 0 14px;letter-spacing:-.02em}
+h2{font-size:1.6rem;margin:0 0 14px;letter-spacing:-.01em}h3{font-size:1.15rem;margin:0 0 6px}
+.lead{font-size:1.15rem;color:var(--muted);max-width:640px;margin:0 0 22px}
+.small{font-size:.88rem;color:var(--muted);margin:8px 0 0}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-block;background:var(--accent);color:var(--accent-fg);text-decoration:none;font-weight:600;padding:14px 26px;border-radius:999px;transition:transform .15s}
+.btn:hover{transform:translateY(-1px)}.btn.ghost{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 2px var(--line)}
+section.wrap{padding-top:30px;padding-bottom:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:20px 22px}
+.card.tip{background:var(--warm);border-color:transparent}.card p{margin:0}
+.steps{display:flex;flex-direction:column;gap:22px}
+.step{display:grid;grid-template-columns:1fr;gap:18px;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:22px}
+.step .num{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-fg);font-weight:700;margin-bottom:10px}
+.step p{margin:0 0 8px}.pp{margin:6px 0 10px;padding-left:20px}.pp li{margin:6px 0}
+.art{display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+.art>div{display:contents}
+.mock{width:240px;max-width:100%;height:auto}
+.m-frame{fill:var(--m-frame)}.m-screen{fill:var(--m-screen)}.m-dim{fill:var(--m-dim)}.m-card{fill:var(--m-card)}
+.m-icon{fill:var(--m-btn);opacity:.9}.m-tick{fill:none;stroke:var(--m-card);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.m-title{font:600 16px system-ui,sans-serif;fill:var(--m-text)}.m-body{font:13px system-ui,sans-serif;fill:var(--m-sub)}.m-body2{font:13px system-ui,sans-serif;fill:var(--m-text)}
+.m-btn-primary{fill:var(--m-btn)}.m-btn-text{fill:none;stroke:var(--m-sub);stroke-opacity:.35}
+.m-btn-label{font:600 13px system-ui,sans-serif;fill:var(--m-text)}.m-btn-label.on-primary{fill:var(--card)}
+.m-toggle{fill:var(--m-btn)}.m-knob{fill:#fff}
+.m-ring{fill:none;stroke:var(--ring);stroke-width:3;stroke-dasharray:7 5;animation:dash 1.2s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-24}}
+@media(prefers-reduced-motion:reduce){.m-ring{animation:none}}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+details{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 18px;margin:10px 0}
+summary{cursor:pointer;font-weight:600}details p{margin:10px 0 0;color:var(--muted)}
+a{color:var(--accent)}
+footer{margin-top:40px;padding:24px 0 50px;border-top:1px solid var(--line)}
+@media(min-width:760px){.step{grid-template-columns:1fr auto;align-items:center}.step .art.duo{grid-column:1/-1}.hero{padding-top:84px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap bar">
+    <a class="brand" href="#top"><span class="dot"></span>Impulse</a>
+    <div class="langs" role="group" aria-label="Language">
+      <button type="button" data-set="en">EN</button><button type="button" data-set="ru">RU</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+<section class="hero wrap">
+  <h1><span class="en">Install Impulse</span><span class="ru">Установка Impulse</span></h1>
+  <p class="lead"><span class="en">A friendly messenger for chats, calls and voice messages. This page walks you through the install, step by step, so nothing on the way surprises you.</span><span class="ru">Дружелюбный мессенджер: чаты, звонки и голосовые сообщения. Эта страница шаг за шагом проведёт вас через установку, чтобы по дороге ничего не удивило.</span></p>
+  <div class="cta">
+    <a class="btn" href="https://github.com/DiMaxBrand/Impulse/releases/latest/download/Impulse_arm64.apk"><span class="en">Download for Android</span><span class="ru">Скачать для Android</span></a>
+    <a class="btn ghost" href="#steps"><span class="en">Show me the steps</span><span class="ru">Показать шаги</span></a>
+  </div>
+  <p class="small"><span class="en">The file comes straight from the project's GitHub page.</span><span class="ru">Файл скачивается прямо со страницы проекта на GitHub.</span></p>
+</section>
+
+<section class="wrap" id="quick">
+  <div class="card tip">
+    <h2><span class="en">In a hurry?</span><span class="ru">Спешите?</span></h2>
+    <p><span class="en">Download the file, open it and tap <b>Install</b>. If Google Play Protect stops you, tap <b>More details</b> and then <b>Install anyway</b> (or <b>Install without scanning</b>). That is the quick way. Scanning the app first is fine too, it just takes a minute.</span><span class="ru">Скачайте файл, откройте его и нажмите <b>Установить</b>. Если Play Защита останавливает установку, нажмите <b>Подробнее</b>, а затем <b>Всё равно установить</b> (или <b>Установить без проверки</b>). Это быстрый путь. Можно и сначала проверить приложение, это займёт минуту.</span></p>
+  </div>
+</section>
+
+<section class="wrap steps" id="steps">
+  <h2><span class="en">Step by step</span><span class="ru">Шаг за шагом</span></h2>
+
+  <article class="step">
+    <div class="txt">
+      <span class="num">1</span>
+      <h3><span class="en">Download the file</span><span class="ru">Скачайте файл</span></h3>
+      <p><span class="en">Tap <b>Download for Android</b> above. Your phone may ask whether you want to keep a file of this type: tap <b>Download</b> or <b>OK</b>.</span><span class="ru">Нажмите <b>Скачать для Android</b> выше. Телефон может спросить, хотите ли вы сохранить файл такого типа: нажмите <b>Скачать</b> или <b>ОК</b>.</span></p>
+    </div>
+  </article>
+
+  <article class="step">
+    <div class="txt">
+      <span class="num">2</span>
+      <h3><span class="en">Allow the install, once</span><span class="ru">Разрешите установку, один раз</span></h3>
+      <p><span class="en">The first time, Android asks you to allow your browser to install apps. Switch <b>Allow from this source</b> on, then go back. You will not be asked again.</span><span class="ru">В первый раз Android просит разрешить браузеру устанавливать приложения. Включите <b>Разрешить из этого источника</b> и вернитесь назад. Повторно спрашивать не будет.</span></p>
+    </div>
+    <div class="art"><div class="en"><svg class="mock" viewBox="0 0 280 388" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="384" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="364" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="364" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="298" rx="26" class="m-card"/><rect x="122.0" y="77.0" width="36" height="36" rx="10" class="m-icon"/><path d="M130.0 95.0 l10 -10 l10 10 m-10 -10 v22" class="m-tick" /><text x="140.0" y="143.0" text-anchor="middle" class="m-title">Install unknown apps</text><text x="140.0" y="169.0" text-anchor="middle" class="m-body">Allow this browser to install</text><text x="140.0" y="187.0" text-anchor="middle" class="m-body">apps. You only do this once.</text><text x="38" y="227.0" class="m-body2">Allow from this source</text><rect x="196" y="211.0" width="46" height="26" rx="13" class="m-toggle"/><circle cx="229" cy="224.0" r="9" class="m-knob"/><rect x="38" y="263.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="287.0" text-anchor="middle" class="m-btn-label ">Back</text></svg></div><div class="ru"><svg class="mock" viewBox="0 0 280 412" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="408" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="388" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="388" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="322" rx="26" class="m-card"/><rect x="122.0" y="77.0" width="36" height="36" rx="10" class="m-icon"/><path d="M130.0 95.0 l10 -10 l10 10 m-10 -10 v22" class="m-tick" /><text x="140.0" y="143.0" text-anchor="middle" class="m-title">Установка неизвестных</text><text x="140.0" y="167.0" text-anchor="middle" class="m-title">приложений</text><text x="140.0" y="193.0" text-anchor="middle" class="m-body">Разрешите браузеру ставить</text><text x="140.0" y="211.0" text-anchor="middle" class="m-body">приложения. Это один раз.</text><text x="38" y="251.0" class="m-body2">Разрешить из этого источника</text><rect x="196" y="235.0" width="46" height="26" rx="13" class="m-toggle"/><circle cx="229" cy="248.0" r="9" class="m-knob"/><rect x="38" y="287.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="311.0" text-anchor="middle" class="m-btn-label ">Назад</text></svg></div></div>
+  </article>
+
+  <article class="step">
+    <div class="txt">
+      <span class="num">3</span>
+      <h3><span class="en">Open the file and tap Install</span><span class="ru">Откройте файл и нажмите «Установить»</span></h3>
+      <p><span class="en">Open the downloaded file (from the browser's download bar or the <b>Downloads</b> folder) and tap <b>Install</b>.</span><span class="ru">Откройте скачанный файл (в панели загрузок браузера или в папке <b>Загрузки</b>) и нажмите <b>Установить</b>.</span></p>
+    </div>
+    <div class="art"><div class="en"><svg class="mock" viewBox="0 0 280 366" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="362" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="276" rx="26" class="m-card"/><rect x="122.0" y="77.0" width="36" height="36" rx="10" class="m-icon"/><path d="M130.0 95.0 l10 -10 l10 10 m-10 -10 v22" class="m-tick" /><text x="140.0" y="143.0" text-anchor="middle" class="m-title">Do you want to install</text><text x="140.0" y="167.0" text-anchor="middle" class="m-title">this app?</text><text x="140.0" y="193.0" text-anchor="middle" class="m-body">Impulse</text><text x="140.0" y="211.0" text-anchor="middle" class="m-body">needs no special access to install</text><rect x="38" y="241.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="265.0" text-anchor="middle" class="m-btn-label on-primary">Install</text><rect x="34" y="237.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="285.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="309.0" text-anchor="middle" class="m-btn-label ">Cancel</text></svg></div><div class="ru"><svg class="mock" viewBox="0 0 280 366" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="362" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="276" rx="26" class="m-card"/><rect x="122.0" y="77.0" width="36" height="36" rx="10" class="m-icon"/><path d="M130.0 95.0 l10 -10 l10 10 m-10 -10 v22" class="m-tick" /><text x="140.0" y="143.0" text-anchor="middle" class="m-title">Установить это</text><text x="140.0" y="167.0" text-anchor="middle" class="m-title">приложение?</text><text x="140.0" y="193.0" text-anchor="middle" class="m-body">Impulse</text><text x="140.0" y="211.0" text-anchor="middle" class="m-body">не требует особого доступа</text><rect x="38" y="241.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="265.0" text-anchor="middle" class="m-btn-label on-primary">Установить</text><rect x="34" y="237.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="285.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="309.0" text-anchor="middle" class="m-btn-label ">Отмена</text></svg></div></div>
+  </article>
+
+  <article class="step">
+    <div class="txt">
+      <span class="num">4</span>
+      <h3><span class="en">If Google Play Protect speaks up</span><span class="ru">Если вмешивается Play Защита</span></h3>
+      <p><span class="en">Impulse does not come from the Play Store, so Google may show a warning. That is normal, and it does not mean something is wrong with the app. Depending on your phone you will see one of these two:</span><span class="ru">Impulse не из Play Маркета, поэтому Google может показать предупреждение. Это нормально и не значит, что с приложением что-то не так. В зависимости от телефона вы увидите одно из двух окон:</span></p>
+      <ul class="pp">
+        <li><span class="en"><b>“App scan recommended”:</b> tap <b>Install without scanning</b> to save time, or <b>Scan app</b> if you want Google to look at it first (about a minute).</span><span class="ru"><b>«Рекомендуем проверить приложение»:</b> нажмите <b>Установить без проверки</b>, чтобы не терять время, или <b>Проверить приложение</b>, если хотите, чтобы Google сначала посмотрел его (около минуты).</span></li>
+        <li><span class="en"><b>“Blocked by Play Protect”:</b> tap <b>More details</b>, then <b>Install anyway</b>. Do not tap OK, that cancels the install.</span><span class="ru"><b>«Заблокировано Play Защитой»:</b> нажмите <b>Подробнее</b>, затем <b>Всё равно установить</b>. Кнопка ОК отменяет установку, её нажимать не нужно.</span></li>
+      </ul>
+      <p class="small"><span class="en">The wording on your phone may differ a little from the pictures. The idea is the same: look for “more details”, “install anyway” or “install without scanning”.</span><span class="ru">Слова на вашем телефоне могут немного отличаться от картинок. Смысл тот же: ищите «Подробнее», «Всё равно установить» или «Установить без проверки».</span></p>
+    </div>
+    <div class="art duo">
+      <div class="en"><svg class="mock" viewBox="0 0 280 342" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="338" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="318" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="318" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="252" rx="26" class="m-card"/><path d="M140.0 77.0 l20 8 v12 c0 14 -9 22 -20 27 c-11 -5 -20 -13 -20 -27 v-12 z" class="m-icon"/><path d="M132.0 101.0 l6 6 l11 -12" class="m-tick"/><text x="140.0" y="155.0" text-anchor="middle" class="m-title">App scan recommended</text><text x="140.0" y="181.0" text-anchor="middle" class="m-body">Google Play Protect can check</text><text x="140.0" y="199.0" text-anchor="middle" class="m-body">this app before you install it.</text><rect x="38" y="229.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="253.0" text-anchor="middle" class="m-btn-label ">Install without scanning</text><rect x="34" y="225.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="273.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="297.0" text-anchor="middle" class="m-btn-label on-primary">Scan app</text></svg></div><div class="ru"><svg class="mock" viewBox="0 0 280 366" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="362" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="276" rx="26" class="m-card"/><path d="M140.0 77.0 l20 8 v12 c0 14 -9 22 -20 27 c-11 -5 -20 -13 -20 -27 v-12 z" class="m-icon"/><path d="M132.0 101.0 l6 6 l11 -12" class="m-tick"/><text x="140.0" y="155.0" text-anchor="middle" class="m-title">Рекомендуем проверить</text><text x="140.0" y="179.0" text-anchor="middle" class="m-title">приложение</text><text x="140.0" y="205.0" text-anchor="middle" class="m-body">Play Защита может проверить</text><text x="140.0" y="223.0" text-anchor="middle" class="m-body">его перед установкой.</text><rect x="38" y="253.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="277.0" text-anchor="middle" class="m-btn-label ">Установить без проверки</text><rect x="34" y="249.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="297.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="321.0" text-anchor="middle" class="m-btn-label on-primary">Проверить приложение</text></svg></div>
+      <div class="en"><svg class="mock" viewBox="0 0 280 342" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="338" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="318" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="318" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="252" rx="26" class="m-card"/><path d="M140.0 77.0 l20 8 v12 c0 14 -9 22 -20 27 c-11 -5 -20 -13 -20 -27 v-12 z" class="m-icon"/><path d="M132.0 101.0 l6 6 l11 -12" class="m-tick"/><text x="140.0" y="155.0" text-anchor="middle" class="m-title">Blocked by Play Protect</text><text x="140.0" y="181.0" text-anchor="middle" class="m-body">Play Protect doesn&#x27;t recognize</text><text x="140.0" y="199.0" text-anchor="middle" class="m-body">the developer of this app.</text><rect x="38" y="229.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="253.0" text-anchor="middle" class="m-btn-label on-primary">More details</text><rect x="34" y="225.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="273.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="297.0" text-anchor="middle" class="m-btn-label ">OK</text></svg></div><div class="ru"><svg class="mock" viewBox="0 0 280 366" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="362" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="276" rx="26" class="m-card"/><path d="M140.0 77.0 l20 8 v12 c0 14 -9 22 -20 27 c-11 -5 -20 -13 -20 -27 v-12 z" class="m-icon"/><path d="M132.0 101.0 l6 6 l11 -12" class="m-tick"/><text x="140.0" y="155.0" text-anchor="middle" class="m-title">Заблокировано</text><text x="140.0" y="179.0" text-anchor="middle" class="m-title">Play Защитой</text><text x="140.0" y="205.0" text-anchor="middle" class="m-body">Play Защита не знает</text><text x="140.0" y="223.0" text-anchor="middle" class="m-body">разработчика этого приложения.</text><rect x="38" y="253.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="277.0" text-anchor="middle" class="m-btn-label on-primary">Подробнее</text><rect x="34" y="249.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="297.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="321.0" text-anchor="middle" class="m-btn-label ">ОК</text></svg></div>
+      <div class="en"><svg class="mock" viewBox="0 0 280 342" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="338" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="318" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="318" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="252" rx="26" class="m-card"/><path d="M140.0 77.0 l20 8 v12 c0 14 -9 22 -20 27 c-11 -5 -20 -13 -20 -27 v-12 z" class="m-icon"/><path d="M132.0 101.0 l6 6 l11 -12" class="m-tick"/><text x="140.0" y="155.0" text-anchor="middle" class="m-title">Blocked by Play Protect</text><text x="140.0" y="181.0" text-anchor="middle" class="m-body">This app may be unsafe.</text><text x="140.0" y="199.0" text-anchor="middle" class="m-body">You can install it anyway.</text><rect x="38" y="229.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="253.0" text-anchor="middle" class="m-btn-label on-primary">Install anyway</text><rect x="34" y="225.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="273.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="297.0" text-anchor="middle" class="m-btn-label ">OK</text></svg></div><div class="ru"><svg class="mock" viewBox="0 0 280 366" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="362" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="342" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="276" rx="26" class="m-card"/><path d="M140.0 77.0 l20 8 v12 c0 14 -9 22 -20 27 c-11 -5 -20 -13 -20 -27 v-12 z" class="m-icon"/><path d="M132.0 101.0 l6 6 l11 -12" class="m-tick"/><text x="140.0" y="155.0" text-anchor="middle" class="m-title">Заблокировано</text><text x="140.0" y="179.0" text-anchor="middle" class="m-title">Play Защитой</text><text x="140.0" y="205.0" text-anchor="middle" class="m-body">Приложение может быть</text><text x="140.0" y="223.0" text-anchor="middle" class="m-body">небезопасным. Можно продолжить.</text><rect x="38" y="253.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="277.0" text-anchor="middle" class="m-btn-label on-primary">Всё равно установить</text><rect x="34" y="249.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="297.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="321.0" text-anchor="middle" class="m-btn-label ">ОК</text></svg></div>
+    </div>
+  </article>
+
+  <article class="step">
+    <div class="txt">
+      <span class="num">5</span>
+      <h3><span class="en">Open Impulse and make your account</span><span class="ru">Откройте Impulse и создайте аккаунт</span></h3>
+      <p><span class="en">Tap <b>Create new account</b>, pick a username and a password, and you are in. If you already have an account, tap <b>I already have an account</b> instead.</span><span class="ru">Нажмите <b>Создать аккаунт</b>, придумайте имя пользователя и пароль, и всё готово. Если аккаунт у вас уже есть, нажмите <b>У меня уже есть аккаунт</b>.</span></p>
+      <p class="small"><span class="en">Impulse then asks about notifications and calls. It is worth saying yes: that is how you hear about a new message.</span><span class="ru">Затем Impulse спросит про уведомления и звонки. Лучше согласиться: так вы узнаете о новом сообщении.</span></p>
+    </div>
+    <div class="art"><div class="en"><svg class="mock" viewBox="0 0 280 324" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="320" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="300" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="300" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="234" rx="26" class="m-card"/><text x="140.0" y="97.0" text-anchor="middle" class="m-title">Join the Conversation</text><text x="140.0" y="123.0" text-anchor="middle" class="m-body">Do you have an account?</text><rect x="38" y="153.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="177.0" text-anchor="middle" class="m-btn-label on-primary">Create new account</text><rect x="34" y="149.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="197.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="221.0" text-anchor="middle" class="m-btn-label ">I already have an account</text></svg></div><div class="ru"><svg class="mock" viewBox="0 0 280 324" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="276" height="320" rx="30" class="m-frame"/><rect x="12" y="12" width="256" height="300" rx="22" class="m-screen"/><rect x="12" y="12" width="256" height="300" rx="22" class="m-dim"/><rect x="26" y="55.0" width="228" height="234" rx="26" class="m-card"/><text x="140.0" y="97.0" text-anchor="middle" class="m-title">Присоединяйтесь</text><text x="140.0" y="123.0" text-anchor="middle" class="m-body">У вас уже есть аккаунт?</text><rect x="38" y="153.0" width="204" height="38" rx="19" class="m-btn-primary"/><text x="140.0" y="177.0" text-anchor="middle" class="m-btn-label on-primary">Создать аккаунт</text><rect x="34" y="149.0" width="212" height="46" rx="23" class="m-ring"/><rect x="38" y="197.0" width="204" height="38" rx="19" class="m-btn-text"/><text x="140.0" y="221.0" text-anchor="middle" class="m-btn-label ">У меня уже есть аккаунт</text></svg></div></div>
+  </article>
+</section>
+
+<section class="wrap" id="next">
+  <h2><span class="en">Your first minutes</span><span class="ru">Первые минуты</span></h2>
+  <div class="grid">
+    <div class="card"><h3><span class="en">Add your first contact</span><span class="ru">Добавьте первый контакт</span></h3>
+      <p><span class="en">The chat list starts empty. Tap <b>Add your first contact</b>, then scan your friend's <b>QR code</b> or type their <b>address</b>.</span><span class="ru">Список чатов сначала пуст. Нажмите <b>Добавьте первый контакт</b>, затем отсканируйте <b>QR-код</b> друга или введите его <b>адрес</b>.</span></p></div>
+    <div class="card"><h3><span class="en">Send a message</span><span class="ru">Напишите сообщение</span></h3>
+      <p><span class="en">Open the chat and type. Hold the microphone for a voice message, or tap the paperclip for photos, files and contacts.</span><span class="ru">Откройте чат и пишите. Удерживайте микрофон для голосового сообщения или нажмите на скрепку, чтобы отправить фото, файл или контакт.</span></p></div>
+    <div class="card"><h3><span class="en">Call</span><span class="ru">Позвоните</span></h3>
+      <p><span class="en">Voice and video calls are in the top bar of every chat.</span><span class="ru">Голосовые и видеозвонки находятся в верхней панели каждого чата.</span></p></div>
+  </div>
+</section>
+
+<section class="wrap" id="faq">
+  <h2><span class="en">Questions</span><span class="ru">Вопросы</span></h2>
+  <details><summary><span class="en">Why does Google warn me?</span><span class="ru">Почему Google предупреждает?</span></summary>
+    <p><span class="en">Play Protect warns about any app that was not installed from the Play Store and whose developer it has not seen before. It is a general caution, not a verdict on Impulse.</span><span class="ru">Play Защита предупреждает о любом приложении, которое установлено не из Play Маркета и чьего разработчика она раньше не встречала. Это общая осторожность, а не вывод об Impulse.</span></p></details>
+  <details><summary><span class="en">Is it safe?</span><span class="ru">Это безопасно?</span></summary>
+    <p><span class="en">Impulse is open source: anyone can read its code on GitHub, and every download comes from the project's own releases page. It is built on Conversations, a well-known open-source messenger.</span><span class="ru">Impulse с открытым исходным кодом: любой может прочитать его на GitHub, а все загрузки идут со страницы релизов самого проекта. Он основан на Conversations, известном мессенджере с открытым кодом.</span></p></details>
+  <details><summary><span class="en">I tapped OK and nothing was installed</span><span class="ru">Я нажал(а) ОК, и ничего не установилось</span></summary>
+    <p><span class="en">OK cancels the install. Open the downloaded file again and, this time, choose <b>More details</b> and <b>Install anyway</b>.</span><span class="ru">ОК отменяет установку. Откройте скачанный файл ещё раз и на этот раз выберите <b>Подробнее</b> и <b>Всё равно установить</b>.</span></p></details>
+  <details><summary><span class="en">The download says “file type can be harmful”</span><span class="ru">Браузер пишет, что файл может быть вредным</span></summary>
+    <p><span class="en">Browsers say this about every app file. Tap <b>Download anyway</b> or <b>OK</b>.</span><span class="ru">Браузеры пишут так про любой файл приложения. Нажмите <b>Всё равно скачать</b> или <b>ОК</b>.</span></p></details>
+  <details><summary><span class="en">My phone is not an arm64 phone</span><span class="ru">У меня не arm64-телефон</span></summary>
+    <p><span class="en">Almost every phone made in the last years is. If the file will not install, open the {LINK_OPEN}releases page</a> and look for another file.</span><span class="ru">Почти все телефоны последних лет такие. Если файл не устанавливается, откройте {LINK_OPEN}страницу релизов</a> и поищите другой файл.</span></p></details>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/DiMaxBrand/Impulse"><span class="en">Source code on GitHub</span><span class="ru">Исходный код на GitHub</span></a> ·
+    <a href="https://github.com/DiMaxBrand/Impulse/releases/latest"><span class="en">All downloads</span><span class="ru">Все загрузки</span></a>
+    <p class="small"><span class="en">The pictures on this page are drawings. Your phone may word things a little differently.</span><span class="ru">Картинки на этой странице нарисованы. На вашем телефоне слова могут немного отличаться.</span></p>
+  </div>
+</footer>
+<script>
+document.querySelectorAll('.langs button').forEach(function(b){b.addEventListener('click',function(){var l=b.getAttribute('data-set');document.documentElement.lang=l;try{localStorage.setItem('lang',l)}catch(e){}})});
+</script>
+</body>
+</html>
