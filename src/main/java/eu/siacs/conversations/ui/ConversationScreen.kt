@@ -888,10 +888,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                         }
                 }
             AnimatedVisibility(visible = isStranger) {
-                androidx.compose.material3.Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ) {
+                val strangerContent: @Composable () -> Unit = {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                         Text(
                             text = stringResource(R.string.stranger_banner_text),
@@ -909,6 +906,26 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                             }
                         }
                     }
+                }
+                if (glass) {
+                    // Glass like the pinned message and the birthday card: the same card colour as a tint on glass.
+                    LiquidGlassPanel(
+                        glass = barStack,
+                        tint = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                        contentAlignment = Alignment.CenterStart,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
+                    ) {
+                        androidx.compose.runtime.CompositionLocalProvider(
+                            androidx.compose.material3.LocalContentColor provides
+                                MaterialTheme.colorScheme.onSurface,
+                        ) { strangerContent() }
+                    }
+                } else {
+                    androidx.compose.material3.Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) { strangerContent() }
                 }
             }
             // The person you are writing to has their birthday today (they chose to share it with
