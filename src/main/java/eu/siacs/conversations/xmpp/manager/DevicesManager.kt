@@ -145,7 +145,10 @@ class DevicesManager(private val appContext: Context, connection: XmppConnection
         val index = list.indexOfFirst { it.resource == resource }
         if (excluded) {
             val others = onlineResources().filter { it != resource }
-            val stillCounting = list.count { !it.excluded && it.resource != resource && it.resource in others } +
+            // This phone counts too (it is not in the list of the OTHER online devices): leaving another one out
+            // while this one counts used to be refused as "the last device".
+            val thisCounts = resource != getAccount().getResource() && !isThisDeviceExcluded()
+            val stillCounting = (if (thisCounts) 1 else 0) + list.count { !it.excluded && it.resource != resource && it.resource in others } +
                 others.count { r -> list.none { it.resource == r } }
             if (stillCounting < 1) return Result.LAST_DEVICE
         }
