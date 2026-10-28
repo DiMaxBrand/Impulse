@@ -29,6 +29,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
@@ -48,21 +52,48 @@ import eu.siacs.conversations.R
  */
 class AddToAddressBookDialogFragment : DialogFragment() {
 
+    // 0: waiting for the permission question, 1: the note, 2: the person is already in the address book.
+    private var stage by mutableIntStateOf(0)
+
+    private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { evaluate() }
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState)
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
         return dialog
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val offer = requireArguments().getBoolean(ARG_OFFER)
+        if (offer || AddressBook.hasPermission(requireContext())) {
+            evaluate()
+        } else if (savedInstanceState == null) {
+            // Looking in the address book needs the contacts permission: it is asked for here, at the moment it matters.
+            permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        } else {
+            evaluate()
+        }
+    }
+
+    /** With or without the permission: is the person in the address book already, or is it time for the note. */
+    private fun evaluate() {
+        val address = requireArguments().getString(ARG_ADDRESS)
+        val phone = requireArguments().getString(ARG_PHONE)
+        val offer = requireArguments().getBoolean(ARG_OFFER)
+        stage = if (!offer && AddressBook.isPresent(requireContext(), address, phone)) 2 else 1
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val name = requireArguments().getString(ARG_NAME)
         val address = requireArguments().getString(ARG_ADDRESS)
         val phone = requireArguments().getString(ARG_PHONE)
+        val offer = requireArguments().getBoolean(ARG_OFFER)
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 ImpulseExpressiveTheme {
-                    Surface(
+                    if (stage != 0) Surface(
                         shape = RoundedCornerShape(28.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         tonalElevation = 6.dp,
@@ -75,17 +106,33 @@ class AddToAddressBookDialogFragment : DialogFragment() {
                                 modifier = Modifier.size(32.dp),
                             )
                             Text(stringResource(R.string.save_to_contact), style = MaterialTheme.typography.headlineSmall)
-                            Text(
-                                stringResource(R.string.add_to_address_book_note),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                                TextButton(onClick = { dismiss() }) { Text(stringResource(R.string.cancel)) }
-                                Button(onClick = {
-                                    open(requireActivity(), name, address, phone)
-                                    dismiss()
-                                }) { Text(stringResource(R.string.add_to_address_book_open)) }
+                            if (stage == 2) {
+                                Text(
+                                    stringResource(R.string.add_to_address_book_already, name?.takeIf { it.isNotBlank() } ?: address.orEmpty()),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                    Button(onClick = { dismiss() }) { Text(stringResource(android.R.string.ok)) }
+                                }
+                            } else {
+                                Text(
+                                    stringResource(R.string.add_to_address_book_note),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(onClick = {
+                                        // "Ignore" is remembered, so the offer does not come back for this person.
+                                        if (offer && address != null) AddressBook.markHandled(requireContext(), address)
+                                        dismiss()
+                                    }) { Text(stringResource(if (offer) R.string.add_to_address_book_ignore else R.string.cancel)) }
+                                    Button(onClick = {
+                                        if (offer && address != null) AddressBook.markHandled(requireContext(), address)
+                                        open(requireActivity(), name, address, phone)
+                                        dismiss()
+                                    }) { Text(stringResource(if (offer) R.string.add_to_address_book_add else R.string.add_to_address_book_open)) }
+                                }
                             }
                         }
                     }
@@ -99,10 +146,20 @@ class AddToAddressBookDialogFragment : DialogFragment() {
         private const val ARG_NAME = "name"
         private const val ARG_ADDRESS = "address"
         private const val ARG_PHONE = "phone"
+        private const val ARG_OFFER = "offer"
 
         /** The note first, then the phone's contacts screen. */
         @JvmStatic
         fun show(activity: FragmentActivity, name: String?, address: String?, phone: String?) {
+            show(activity, name, address, phone, offer = false)
+        }
+
+        /**
+         * [offer]: somebody already in the roster who is not in the address book yet: the same note, with Add and Ignore
+         * (Ignore is remembered).
+         */
+        @JvmStatic
+        fun show(activity: FragmentActivity, name: String?, address: String?, phone: String?, offer: Boolean) {
             val manager = activity.supportFragmentManager
             if (manager.isStateSaved || manager.findFragmentByTag(TAG) != null) return
             AddToAddressBookDialogFragment().apply {
@@ -110,6 +167,7 @@ class AddToAddressBookDialogFragment : DialogFragment() {
                     putString(ARG_NAME, name)
                     putString(ARG_ADDRESS, address)
                     putString(ARG_PHONE, phone)
+                    putBoolean(ARG_OFFER, offer)
                 }
             }.show(manager, TAG)
         }
@@ -126,7 +184,7 @@ class AddToAddressBookDialogFragment : DialogFragment() {
                 }
                 // The number goes in only when the address book does not have it yet: for a contact that is
                 // already there it would be a second copy of the same number.
-                if (!phone.isNullOrBlank() && !inAddressBook(activity, phone)) putExtra(Intents.Insert.PHONE, phone)
+                if (!phone.isNullOrBlank() && !AddressBook.hasNumber(activity, phone)) putExtra(Intents.Insert.PHONE, phone)
                 putExtra("finishActivityOnSaveCompleted", true)
             }
             try {
@@ -135,19 +193,56 @@ class AddToAddressBookDialogFragment : DialogFragment() {
                 Toast.makeText(activity, R.string.no_application_found_to_view_contact, Toast.LENGTH_SHORT).show()
             }
         }
+    }
+}
 
-        /** Whether some contact already has this number (false when the app may not look). */
-        private fun inAddressBook(activity: FragmentActivity, phone: String): Boolean {
-            if (activity.checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return false
-            return try {
-                val uri = android.net.Uri.withAppendedPath(
-                    ContactsContract.PhoneLookup.CONTENT_FILTER_URI, android.net.Uri.encode(phone),
-                )
-                activity.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup._ID), null, null, null)
-                    ?.use { it.count > 0 } ?: false
-            } catch (_: Exception) {
-                false
-            }
+/** Looking in the phone's address book (needs the contacts permission; without it nothing is found). */
+object AddressBook {
+    private const val PREFS = "address_book_offers"
+
+    fun hasPermission(context: android.content.Context): Boolean =
+        context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+
+    /** Some contact already has this phone number. */
+    fun hasNumber(context: android.content.Context, phone: String): Boolean {
+        if (!hasPermission(context)) return false
+        return try {
+            val uri = android.net.Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI, android.net.Uri.encode(phone),
+            )
+            context.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup._ID), null, null, null)
+                ?.use { it.count > 0 } ?: false
+        } catch (_: Exception) {
+            false
         }
     }
+
+    /** Some contact already has this Impulse address as a chat (IM) entry. */
+    fun hasAddress(context: android.content.Context, address: String): Boolean {
+        if (!hasPermission(context)) return false
+        return try {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.Data._ID),
+                ContactsContract.Data.MIMETYPE + "=? AND lower(" + CommonDataKinds.Im.DATA + ")=?",
+                arrayOf(CommonDataKinds.Im.CONTENT_ITEM_TYPE, address.lowercase()),
+                null,
+            )?.use { it.count > 0 } ?: false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun isPresent(context: android.content.Context, address: String?, phone: String?): Boolean =
+        (!address.isNullOrBlank() && hasAddress(context, address)) || (!phone.isNullOrBlank() && hasNumber(context, phone))
+
+    /** Added or ignored: not offered again for this person. */
+    fun markHandled(context: android.content.Context, address: String) {
+        val p = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+        p.edit().putStringSet("handled", (p.getStringSet("handled", emptySet()) ?: emptySet()) + address.lowercase()).apply()
+    }
+
+    fun isHandled(context: android.content.Context, address: String): Boolean =
+        context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+            .getStringSet("handled", emptySet())?.contains(address.lowercase()) == true
 }

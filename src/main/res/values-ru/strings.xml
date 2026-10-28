@@ -211,6 +211,9 @@
     <string name="password">Пароль</string>
     <string name="invalid_jid">Недопустимый XMPP-адрес</string>
     <string name="error_out_of_memory">Нехватка памяти. Изображение слишком большое.</string>
+    <string name="add_to_address_book_already">%1$s уже есть в вашей адресной книге.</string>
+    <string name="add_to_address_book_ignore">Не сейчас</string>
+    <string name="add_to_address_book_add">Добавить</string>
     <string name="add_to_address_book_note">Дальше откроются контакты телефона. Если этот человек уже есть в вашей адресной книге, выберите его из списка. Если нет, создайте новый контакт: имя и адрес в Impulse подставятся сами.</string>
     <string name="add_to_address_book_open">Открыть контакты</string>
     <string name="add_phone_book_text">Добавить %s в вашу адресную книгу?</string>

@@ -405,6 +405,30 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         service.sendMessagePacket(c.getAccount(), packet)
     }
 
+    private val offeredAddressBook = HashSet<String>()
+
+    /**
+     * Somebody in the roster who is not in the phone's address book yet: once, offer to add them (Add / Ignore).
+     * Only when the app may look in the address book (the permission is asked for when someone is added by hand).
+     */
+    private fun maybeOfferAddressBook(c: Conversation) {
+        val ctx = context ?: return
+        if (c.getMode() != Conversational.MODE_SINGLE) return
+        val contact = c.getContact()
+        if (!contact.showInRoster() || !AddressBook.hasPermission(ctx)) return
+        val address = c.getAddress().asBareJid().toString()
+        if (AddressBook.isHandled(ctx, address) || !offeredAddressBook.add(address)) return
+        val name = contact.getDisplayName()
+        viewLifecycleOwner.lifecycleScope.launch {
+            val present = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { AddressBook.hasAddress(ctx, address) }
+            if (present) {
+                AddressBook.markHandled(ctx, address)
+            } else if (isAdded && this@ConversationComposeFragment.conversation === c) {
+                AddToAddressBookDialogFragment.show(requireActivity(), name, address, null, offer = true)
+            }
+        }
+    }
+
     fun reInit(conversation: Conversation, extras: Bundle) {
         if (this.conversation !== conversation) {
             // Persist whatever was sitting unsent in the composer against the conversation we're
@@ -428,6 +452,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         this.conversation = conversation
         this.pendingConversationUuid = null
         conversation.messagesLoaded.set(true)
+        maybeOfferAddressBook(conversation)
         val text = extras.getString(Intent.EXTRA_TEXT)
         if (!text.isNullOrBlank() &&
             !extras.getBoolean(ConversationsActivity.EXTRA_DO_NOT_APPEND, false)
