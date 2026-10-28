@@ -1633,6 +1633,8 @@
     <string name="support_check_sent">Попросили его телефон проверить обновления. Ответ появится в чате аккаунта поддержки с ним.</string>
     <string name="support_not_connected">Сейчас нет подключения: попробуйте через минуту</string>
     <string name="attach_phone_contact">Контакт</string>
+    <string name="contact_card_message">Написать</string>
+    <string name="contact_card_save">Сохранить контакт</string>
     <string name="attach_impulse_contact">Контакт Импульса</string>
     <string name="attach_impulse_contact_title">Поделиться контактом</string>
     <string name="attach_support_section">Поддержка</string>

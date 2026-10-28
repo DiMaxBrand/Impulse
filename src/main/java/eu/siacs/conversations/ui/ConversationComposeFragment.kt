@@ -147,7 +147,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode != AppCompatActivity.RESULT_OK) return@registerForActivityResult
             val jid = result.data?.getStringExtra("contact") ?: return@registerForActivityResult
-            sendPlainMessage("xmpp:$jid")
+            // Two lines readable in any client (name and username, then the link); Impulse shows it as a card.
+            val name = try {
+                conversation?.getAccount()?.roster?.getContact(eu.siacs.conversations.xmpp.Jid.of(jid))?.getDisplayName()
+            } catch (_: Exception) {
+                null
+            }
+            sendPlainMessage(contactCardBody(name, jid))
         }
 
     private val trustKeysLauncher =

@@ -5039,6 +5039,17 @@ private fun MessageContent(
                     )
             }
         }
+        message.isFileOrImage && !message.isDeleted && isVCardMime(message.mimeType) &&
+            message.encryption != Message.ENCRYPTION_PGP &&
+            message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
+            vcardOf(message, activity) != null -> {
+            // A shared phone contact: a card with the name and the numbers; the button opens it in Contacts.
+            ContactCard(
+                contact = vcardOf(message, activity)!!,
+                actionLabel = stringResource(R.string.contact_card_save),
+                onAction = { listener.onOpenMessage(message) },
+            )
+        }
         message.isFileOrImage &&
             message.encryption != Message.ENCRYPTION_PGP &&
             message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED -> {
@@ -5047,6 +5058,18 @@ private fun MessageContent(
                 label = stringResource(R.string.open_x_file, UIHelper.getFileDescriptionString(context, message)),
                 onClick = { listener.onOpenMessage(message) },
             )
+        }
+        !message.isFileOrImage && parseImpulseContact(message.body) != null -> {
+            // A shared Impulse contact: a card with the name, and the username in brackets.
+            val shared = remember(message.getUuid(), revision) { parseImpulseContact(message.body) }
+            if (shared != null) {
+                val address = shared.username
+                ContactCard(
+                    contact = shared,
+                    actionLabel = stringResource(R.string.contact_card_message),
+                    onAction = if (address != null) ({ openUrl(context, "xmpp:$address") }) else null,
+                )
+            }
         }
         message.isGeoUri -> {
             FileRow(
@@ -8354,4 +8377,19 @@ suspend fun androidx.compose.foundation.lazy.LazyListState.flyToItem(index: Int,
         scrollToItem(start)
     }
     animateScrollToItem(index, scrollOffset)
+}
+
+
+/** The vCard behind a shared-contact file message, read once per message (null when it cannot be read). */
+@Composable
+private fun vcardOf(message: Message, activity: XmppActivity?): SharedContact? {
+    val uuid = message.getUuid()
+    return remember(uuid) {
+        try {
+            val file = activity?.xmppConnectionService?.fileBackend?.getFile(message)
+            if (file == null) null else parseVCard(file)
+        } catch (_: Exception) {
+            null
+        }
+    }
 }
