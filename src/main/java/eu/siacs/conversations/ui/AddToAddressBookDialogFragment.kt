@@ -178,9 +178,9 @@ class AddToAddressBookDialogFragment : DialogFragment() {
          * (Ignore is remembered).
          */
         @JvmStatic
-        fun show(activity: FragmentActivity, name: String?, address: String?, phone: String?, offer: Boolean) {
+        fun show(activity: FragmentActivity, name: String?, address: String?, phone: String?, offer: Boolean): Boolean {
             val manager = activity.supportFragmentManager
-            if (manager.isStateSaved || manager.findFragmentByTag(TAG) != null) return
+            if (manager.isStateSaved || manager.findFragmentByTag(TAG) != null) return false
             AddToAddressBookDialogFragment().apply {
                 arguments = Bundle().apply {
                     putString(ARG_NAME, name)
@@ -189,6 +189,7 @@ class AddToAddressBookDialogFragment : DialogFragment() {
                     putBoolean(ARG_OFFER, offer)
                 }
             }.show(manager, TAG)
+            return true
         }
 
         /** The contacts screen that lets the person pick an existing contact or create a new one. */

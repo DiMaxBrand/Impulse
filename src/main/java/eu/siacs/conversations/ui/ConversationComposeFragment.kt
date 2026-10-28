@@ -320,6 +320,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView)
             .isAppearanceLightStatusBars = isLight
         AudioPlaybackController.onTransition = ::handleListenTransition
+        // The first time a chat opens its fragment is created in the same step as reInit, so it is not attached
+        // yet there: the offer to add the person to the address book is made here.
+        conversation?.let { maybeOfferAddressBook(it) }
     }
 
     override fun onStop() {
@@ -416,9 +419,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val ctx = context ?: return
         if (c.getMode() != Conversational.MODE_SINGLE) return
         val contact = c.getContact()
-        if (!contact.showInRoster()) return
+        if (!contact.showInContactList()) return
         val address = c.getAddress().asBareJid().toString()
-        if (AddressBook.isHandled(ctx, address) || !offeredAddressBook.add(address)) return
+        if (AddressBook.isHandled(ctx, address) || address in offeredAddressBook) return
         val name = contact.getDisplayName()
         viewLifecycleOwner.lifecycleScope.launch {
             // Without the permission the address book cannot be looked in: the offer comes anyway, and the question
@@ -428,7 +431,10 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             if (present) {
                 AddressBook.markHandled(ctx, address)
             } else if (isAdded && this@ConversationComposeFragment.conversation === c) {
-                AddToAddressBookDialogFragment.show(requireActivity(), name, address, null, offer = true)
+                // Counted as offered only once it was really shown (it can be skipped while the screen is busy).
+                if (AddToAddressBookDialogFragment.show(requireActivity(), name, address, null, offer = true)) {
+                    offeredAddressBook.add(address)
+                }
             }
         }
     }
@@ -456,6 +462,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         this.conversation = conversation
         this.pendingConversationUuid = null
         conversation.messagesLoaded.set(true)
+        // The fragment may not be attached yet on the first open (see onResume): then this does nothing.
         maybeOfferAddressBook(conversation)
         val text = extras.getString(Intent.EXTRA_TEXT)
         if (!text.isNullOrBlank() &&
