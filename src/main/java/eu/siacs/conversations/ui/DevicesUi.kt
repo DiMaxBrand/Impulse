@@ -1,5 +1,7 @@
 package eu.siacs.conversations.ui
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.LayoutInflater
@@ -139,42 +141,39 @@ private fun availabilityLabel(a: Presence.Availability?): String =
         else -> stringResource(R.string.devices_offline)
     }
 
-/** The "Devices" cards of the accounts screen: one per account that has more than one device. */
+/**
+ * The devices of one account, shown inside that account's card (only when it has more than one
+ * device): which ones count in the status, rename, details. Each device is keyed by its resource, so
+ * a device coming or going between two compositions cannot put the rows out of step (BUG-EGYB).
+ */
 @Composable
-internal fun DevicesCards(accounts: List<Account>, revision: Int) {
-    var tick by remember { mutableIntStateOf(0) }
-    val context = LocalContext.current
-    accounts.filter { it.isOnlineAndConnected() }.forEach { account ->
-        // Each account's card is its own keyed group, and nothing returns early out of it: an account
-        // coming or going between two compositions (it goes online or offline) used to leave the
-        // slots of the cards out of step (BUG-EGYB: a lambda slot read back as an Int).
-        androidx.compose.runtime.key(account.getUuid()) {
-            val rows = remember(revision, tick, account) { deviceRows(account) }
-            if (rows.size >= 2) {
-                Surface(
-                    shape = RoundedCornerShape(28.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
-                        .animateContentSize(spring(stiffness = 380f, dampingRatio = 0.8f)),
-                ) {
-                    Column(Modifier.padding(vertical = 14.dp)) {
-                        Text(
-                            stringResource(R.string.devices_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                        )
-                        Text(
-                            account.getJid().asBareJid().toString() + "\n" + stringResource(R.string.devices_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-                        )
-                        rows.forEach { row ->
-                            androidx.compose.runtime.key(row.resource) {
-                                DeviceItem(account, row, rows) { tick++ ; Unit }
-                            }
-                        }
-                    }
+internal fun DevicesBlock(account: Account, revision: Int) {
+    var tick by remember(account.getUuid()) { mutableIntStateOf(0) }
+    val rows = remember(revision, tick, account) { deviceRows(account) }
+    if (rows.size >= 2) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .animateContentSize(spring(stiffness = 380f, dampingRatio = 0.8f))
+                .padding(vertical = 10.dp),
+        ) {
+            Text(
+                stringResource(R.string.devices_title),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Text(
+                stringResource(R.string.devices_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+            rows.forEach { row ->
+                androidx.compose.runtime.key(row.resource) {
+                    DeviceItem(account, row, rows) { tick++ ; Unit }
                 }
             }
         }
@@ -201,11 +200,12 @@ private fun DeviceItem(account: Account, row: DeviceRow, all: List<DeviceRow>, c
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                if (row.isThis) title + " · " + stringResource(R.string.devices_this) else title,
+                title,
                 style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             val status = when {
-                row.isThis -> stringResource(if (row.excluded) R.string.devices_excluded else R.string.devices_included)
+                row.isThis -> stringResource(R.string.devices_this) + " · " +
+                    stringResource(if (row.excluded) R.string.devices_excluded else R.string.devices_included)
                 row.needsUpdate && row.excluded && row.pendingUntil > 0 -> stringResource(
                     R.string.devices_pending,
                     DateUtils.formatDateTime(context, row.pendingUntil, DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_DATE),

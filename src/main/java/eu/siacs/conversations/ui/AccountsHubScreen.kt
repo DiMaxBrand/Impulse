@@ -236,7 +236,6 @@ internal fun AccountsHubScreen(
                     actions = actions,
                 )
             }
-            item { DevicesCards(accounts, revision) }
             item { SettingsCard(settings) }
             item { Spacer(Modifier.height(24.dp)) }
         }
@@ -389,6 +388,8 @@ private fun AccountDetails(
                 muted = false,
                 onEdit = null,
             )
+            // This account's other devices, in its own card.
+            DevicesBlock(account, revision)
             ListItem(
                 headlineContent = { Text(stringResource(R.string.server_info_show_more)) },
                 trailingContent = { Switch(checked = serverInfoOn, onCheckedChange = onServerInfoChange) },
