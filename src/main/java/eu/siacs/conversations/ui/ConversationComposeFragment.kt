@@ -421,7 +421,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         val contact = c.getContact()
         if (!contact.showInContactList()) return
         val address = c.getAddress().asBareJid().toString()
-        if (AddressBook.isHandled(ctx, address) || address in offeredAddressBook) return
+        if (AddressBook.isHandled(ctx, address) || AddressBook.isSnoozed(ctx, address) || address in offeredAddressBook) return
         val name = contact.getDisplayName()
         viewLifecycleOwner.lifecycleScope.launch {
             // Without the permission the address book cannot be looked in: the offer comes anyway, and the question

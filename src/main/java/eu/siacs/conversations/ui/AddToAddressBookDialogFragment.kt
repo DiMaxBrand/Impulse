@@ -56,6 +56,10 @@ class AddToAddressBookDialogFragment : DialogFragment() {
     // 3: the offer (a roster contact who may not be in the address book: Add / Ignore).
     private var stage by mutableIntStateOf(0)
 
+    // Set once the person has really answered (Ignore, added, or found to be there already); anything else, like
+    // tapping outside the dialog, only puts the offer off for a day.
+    private var answered = false
+
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { evaluate() }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
@@ -85,6 +89,19 @@ class AddToAddressBookDialogFragment : DialogFragment() {
         val address = requireArguments().getString(ARG_ADDRESS)
         val phone = requireArguments().getString(ARG_PHONE)
         stage = if (AddressBook.isPresent(requireContext(), address, phone)) 2 else 1
+        if (stage == 2 && requireArguments().getBoolean(ARG_OFFER) && address != null) {
+            // Turns out they are in the address book: nothing to offer, ever.
+            answered = true
+            AddressBook.markHandled(requireContext(), address)
+        }
+    }
+
+    override fun onDismiss(dialog: android.content.DialogInterface) {
+        super.onDismiss(dialog)
+        val address = arguments?.getString(ARG_ADDRESS)
+        if (arguments?.getBoolean(ARG_OFFER) == true && !answered && address != null) {
+            context?.let { AddressBook.snooze(it, address) }
+        }
     }
 
     /** "Add" on the offer: ask for the permission if it is missing, then see whether the person is there already. */
@@ -122,13 +139,12 @@ class AddToAddressBookDialogFragment : DialogFragment() {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                                     // "Ignore" is remembered, so the offer does not come back for this person.
                                     TextButton(onClick = {
+                                        answered = true
                                         if (address != null) AddressBook.markHandled(requireContext(), address)
                                         dismiss()
                                     }) { Text(stringResource(R.string.add_to_address_book_ignore)) }
-                                    Button(onClick = {
-                                        if (address != null) AddressBook.markHandled(requireContext(), address)
-                                        continueAfterOffer()
-                                    }) { Text(stringResource(R.string.add_to_address_book_add)) }
+                                    // "Add" is not an answer yet: the permission may be refused or the contacts screen left.
+                                    Button(onClick = { continueAfterOffer() }) { Text(stringResource(R.string.add_to_address_book_add)) }
                                 }
                             } else if (stage == 2) {
                                 Text(
@@ -148,6 +164,8 @@ class AddToAddressBookDialogFragment : DialogFragment() {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                                     TextButton(onClick = { dismiss() }) { Text(stringResource(R.string.cancel)) }
                                     Button(onClick = {
+                                        answered = true
+                                        if (requireArguments().getBoolean(ARG_OFFER) && address != null) AddressBook.markHandled(requireContext(), address)
                                         open(requireActivity(), name, address, phone)
                                         dismiss()
                                     }) { Text(stringResource(R.string.add_to_address_book_open)) }
@@ -265,4 +283,16 @@ object AddressBook {
     fun isHandled(context: android.content.Context, address: String): Boolean =
         context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
             .getStringSet("handled", emptySet())?.contains(address.lowercase()) == true
+
+    /** The offer was closed without an answer: it comes back, but not before a day has passed. */
+    fun snooze(context: android.content.Context, address: String) {
+        context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+            .edit().putLong("snoozed_" + address.lowercase(), System.currentTimeMillis()).apply()
+    }
+
+    fun isSnoozed(context: android.content.Context, address: String): Boolean {
+        val at = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+            .getLong("snoozed_" + address.lowercase(), 0L)
+        return at != 0L && System.currentTimeMillis() - at < 24L * 60 * 60 * 1000
+    }
 }
