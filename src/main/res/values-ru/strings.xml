@@ -1648,6 +1648,13 @@
     <string name="contact_details_media">Медиа</string>
     <string name="contact_details_keys">Ключи шифрования</string>
     <string name="contact_enable_device">Доверять</string>
+    <string name="media_browser_empty">Пока ничего нет</string>
+    <plurals name="media_selected">
+        <item quantity="one">Выбран %d</item>
+        <item quantity="few">Выбрано %d</item>
+        <item quantity="many">Выбрано %d</item>
+        <item quantity="other">Выбрано %d</item>
+    </plurals>
     <string name="contact_card_message">Написать</string>
     <string name="contact_card_save">Сохранить контакт</string>
     <string name="saved_messages">Избранное</string>

@@ -1582,6 +1582,11 @@
     <string name="contact_details_media">Media</string>
     <string name="contact_details_keys">Encryption keys</string>
     <string name="contact_enable_device">Trust device</string>
+    <string name="media_browser_empty">Nothing here yet</string>
+    <plurals name="media_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
     <string name="contact_card_message">Message</string>
     <string name="contact_card_save">Save contact</string>
     <string name="saved_messages">Saved messages</string>
