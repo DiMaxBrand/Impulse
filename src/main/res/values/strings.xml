@@ -1577,6 +1577,11 @@
     <string name="support_not_connected">Not connected right now: try again in a moment</string>
     <string name="attach_phone_contact">Contact</string>
     <string name="contact_card_open_account">Open account</string>
+    <string name="contact_action_message">Message</string>
+    <string name="contact_card_address_hint">Tap to copy</string>
+    <string name="contact_details_media">Media</string>
+    <string name="contact_details_keys">Encryption keys</string>
+    <string name="contact_enable_device">Trust device</string>
     <string name="contact_card_message">Message</string>
     <string name="contact_card_save">Save contact</string>
     <string name="saved_messages">Saved messages</string>

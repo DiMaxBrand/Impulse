@@ -645,7 +645,7 @@ private fun rememberVisibleTags(item: ListItem): List<DynamicTag> {
 }
 
 @Composable
-private fun TagChip(tag: DynamicTag, onClick: () -> Unit) {
+internal fun TagChip(tag: DynamicTag, onClick: () -> Unit) {
     val (label, containerColor, contentColor) = tagAppearance(tag)
     Surface(
         onClick = onClick,

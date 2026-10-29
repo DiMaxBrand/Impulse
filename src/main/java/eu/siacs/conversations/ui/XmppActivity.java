@@ -746,6 +746,16 @@ public abstract class XmppActivity extends ActionBarActivity {
     }
 
     public void switchToContactDetails(Contact contact, String messageFingerprint) {
+        if (contact.isSelf() && messageFingerprint == null) {
+            // "Details" of yourself (the Saved messages chat's title, its row in the chat list): your account, on the
+            // accounts screen, not a contact card with "add to contacts".
+            final Intent hub = new Intent(this, AccountsHubActivity.class);
+            hub.putExtra(
+                    AccountsHubActivity.EXTRA_FOCUS_ACCOUNT,
+                    contact.getAccount().getJid().asBareJid().toString());
+            startActivity(hub);
+            return;
+        }
         Intent intent = new Intent(this, ContactDetailsActivity.class);
         intent.setAction(ContactDetailsActivity.ACTION_VIEW_CONTACT);
         intent.putExtra(EXTRA_ACCOUNT, contact.getAccount().getJid().asBareJid().toString());
