@@ -1655,6 +1655,7 @@
         <item quantity="many">Выбрано %d</item>
         <item quantity="other">Выбрано %d</item>
     </plurals>
+    <string name="contact_action_more">Ещё</string>
     <string name="contact_card_message">Написать</string>
     <string name="contact_card_save">Сохранить контакт</string>
     <string name="saved_messages">Избранное</string>

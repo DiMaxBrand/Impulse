@@ -6,6 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -32,8 +36,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroup
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
@@ -321,7 +323,6 @@ private class ActionItem(
     val onClick: () -> Unit,
 )
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ActionRow(ui: ContactDetailsUi, actions: ContactDetailsActions) {
     val items = buildList {
@@ -341,37 +342,57 @@ private fun ActionRow(ui: ContactDetailsUi, actions: ContactDetailsActions) {
         )
         if (ui.canEditDelete) add(ActionItem(R.drawable.ic_delete_24dp, stringResource(R.string.action_delete_contact), actions::onDelete))
     }
-    val sources = remember(items.size) { List(items.size) { MutableInteractionSource() } }
-    ButtonGroup(
-        overflowIndicator = { menuState -> ButtonGroupDefaults.OverflowIndicator(menuState = menuState) },
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-    ) {
-        items.forEachIndexed { index, item ->
-            customItem(
-                buttonGroupContent = {
-                    FilledTonalButton(
-                        onClick = item.onClick,
-                        interactionSource = sources[index],
-                        modifier = Modifier.animateWidth(sources[index]),
-                        contentPadding = ButtonDefaults.ContentPadding,
-                    ) {
-                        Icon(painterResource(item.icon), contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(item.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    // The buttons that fit sit in a row; the rest are behind the last one ("More"). (The button group of the
+    // Material library measures itself with a negative width when its labels do not fit, and crashes; this row
+    // works out how many fit by itself.)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val slots = (maxWidth / 92.dp).toInt().coerceAtLeast(2)
+        val overflow = items.size > slots
+        val shown = if (overflow) items.take(slots - 1) else items
+        val rest = if (overflow) items.drop(slots - 1) else emptyList()
+        var menu by remember { mutableStateOf(false) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            shown.forEach { item -> ActionButton(item.icon, item.label, item.onClick, Modifier.weight(1f)) }
+            if (overflow) {
+                Box(Modifier.weight(1f)) {
+                    ActionButton(R.drawable.ic_more_vert_24dp, stringResource(R.string.contact_action_more), { menu = true }, Modifier.fillMaxWidth())
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        rest.forEach { item ->
+                            DropdownMenuItem(
+                                text = { Text(item.label) },
+                                leadingIcon = { Icon(painterResource(item.icon), contentDescription = null) },
+                                onClick = { menu = false; item.onClick() },
+                            )
+                        }
                     }
-                },
-                menuContent = { menuState ->
-                    DropdownMenuItem(
-                        text = { Text(item.label) },
-                        leadingIcon = { Icon(painterResource(item.icon), contentDescription = null) },
-                        onClick = {
-                            menuState.dismiss()
-                            item.onClick()
-                        },
-                    )
-                },
-            )
+                }
+            }
+        }
+    }
+}
+
+/** An icon over a label in a tonal tile: pressed, it swells and rounds off (like the library's button group does). */
+@Composable
+private fun ActionButton(icon: Int, label: String, onClick: () -> Unit, modifier: Modifier) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val corner by animateDpAsState(if (pressed) 30.dp else 18.dp, spring(dampingRatio = 0.6f, stiffness = 500f), label = "actionCorner")
+    val scale by animateFloatAsState(if (pressed) 1.08f else 1f, spring(dampingRatio = 0.55f, stiffness = 500f), label = "actionScale")
+    androidx.compose.material3.Surface(
+        onClick = onClick,
+        interactionSource = source,
+        shape = RoundedCornerShape(corner),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = modifier.graphicsLayer { scaleX = scale; scaleY = scale },
+    ) {
+        Column(
+            Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.height(4.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

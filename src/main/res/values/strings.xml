@@ -1587,6 +1587,7 @@
         <item quantity="one">%d selected</item>
         <item quantity="other">%d selected</item>
     </plurals>
+    <string name="contact_action_more">More</string>
     <string name="contact_card_message">Message</string>
     <string name="contact_card_save">Save contact</string>
     <string name="saved_messages">Saved messages</string>
