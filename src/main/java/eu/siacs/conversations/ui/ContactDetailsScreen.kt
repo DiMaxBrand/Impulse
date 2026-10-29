@@ -236,12 +236,26 @@ fun ContactDetailsScreen(state: ContactDetailsState, actions: ContactDetailsActi
 
 private class CameraSpot(val centerX: Float, val centerY: Float, val radius: Float)
 
-/** The camera hole at the top of the screen, from the display cut-out; null when the phone has none. */
+/**
+ * The camera hole at the top of the screen; null when the phone has none. The cut-out's bounding box is
+ * padded by the maker and runs two or three times wider than the lens, so the real outline is used where
+ * the system hands it out (Android 14+), and the box is shrunk to roughly the lens otherwise.
+ */
 private fun cameraSpot(view: android.view.View): CameraSpot? {
     if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.P) return null
-    val cutout = view.rootWindowInsets?.displayCutout?.boundingRects?.firstOrNull { it.top <= 8 && it.width() > 0 && it.height() > 0 }
-        ?: return null
-    return CameraSpot(cutout.exactCenterX(), cutout.exactCenterY(), kotlin.math.max(cutout.width(), cutout.height()) / 2f)
+    val cutout = view.rootWindowInsets?.displayCutout ?: return null
+    val box = cutout.boundingRects.firstOrNull { it.top <= 8 && it.width() > 0 && it.height() > 0 } ?: return null
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        val path = cutout.cutoutPath
+        if (path != null) {
+            val b = android.graphics.RectF()
+            path.computeBounds(b, true)
+            if (b.width() > 0f && b.height() > 0f) {
+                return CameraSpot(b.centerX(), b.centerY(), min(b.width(), b.height()) / 2f)
+            }
+        }
+    }
+    return CameraSpot(box.exactCenterX(), box.exactCenterY(), min(box.width(), box.height()) * 0.2f)
 }
 
 @Composable

@@ -204,7 +204,7 @@ internal fun ProfileHeader(
     val cy1 = (t1 + b1) / 2f
 
     // Circle -> camera: it climbs to just under the hole and shrinks to its size; on the way it is stretched upward.
-    val endR = max(metrics.camR * 1.15f, with(density) { 9.dp.toPx() })
+    val endR = max(metrics.camR * 1.15f, with(density) { 7.dp.toPx() })
     val endX = if (metrics.hasCamera) metrics.camX else metrics.width / 2f
     val endY = if (metrics.hasCamera) metrics.camY + metrics.camR * 0.9f + endR else metrics.circleTop * 0.5f
     val stretch = 1f + 0.22f * sin(p2 * Math.PI.toFloat())
