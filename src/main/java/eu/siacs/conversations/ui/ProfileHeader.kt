@@ -9,7 +9,9 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.graphics.RuntimeShader
 import android.os.Build
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -86,6 +88,49 @@ internal class HeaderMetrics(
 )
 
 private fun lerpF(a: Float, b: Float, t: Float) = a + (b - a) * t
+
+/**
+ * The camera hole and the picture's silhouette as two distance fields joined with a polynomial smooth minimum (the
+ * join rounds off by [soft] pixels), plus a tapering strand from the hole towards the picture. Black, hard-edged.
+ */
+private const val CAMERA_BLOB_SRC = """
+uniform float2 cam;
+uniform float camR;
+uniform float2 av;
+uniform float2 avR;
+uniform float soft;
+uniform float strand;
+
+float sdEllipse(float2 p, float2 r) {
+    float2 q = p / max(r, float2(0.5));
+    return (length(q) - 1.0) * min(r.x, r.y);
+}
+
+float sdStrand(float2 p, float2 a, float2 b, float ra, float rb) {
+    float2 pa = p - a;
+    float2 ba = b - a;
+    float t = clamp(dot(pa, ba) / max(dot(ba, ba), 1.0), 0.0, 1.0);
+    return length(pa - ba * t) - mix(ra, rb, t);
+}
+
+float smin(float a, float b, float k) {
+    float h = clamp(0.5 + 0.5 * (b - a) / max(k, 0.001), 0.0, 1.0);
+    return mix(b, a, h) - k * h * (1.0 - h);
+}
+
+half4 main(float2 p) {
+    float dCam = length(p - cam) - camR;
+    float dAv = sdEllipse(p - av, avR);
+    float d = smin(dCam, dAv, soft);
+    if (strand > 0.5) {
+        // From the hole to the top of the picture, thicker at the hole.
+        float2 top = av - float2(0.0, avR.y * 0.8);
+        d = smin(d, sdStrand(p, cam, top, strand, strand * 0.25), soft);
+    }
+    float a = clamp(0.5 - d, 0.0, 1.0);
+    return half4(0.0, 0.0, 0.0, a);
+}
+"""
 private fun ease(t: Float): Float = t * t * (3f - 2f * t)
 
 /** The phone's tilt as two numbers in -1..1 (sideways, forward/back), smoothed; zero when [enabled] is false. */
@@ -177,49 +222,58 @@ internal fun ProfileHeader(
     val wDp = with(density) { w.toDp() }
     val hDp = with(density) { h.toDp() }
 
-    // Black, never the picture's colour (the camera cannot change colour): the hole reaches down to the picture with
-    // a neck, the picture draws itself into it. Both are cut out of one layer that is blurred and then thresholded, so
-    // where they come close they run together like drops. The picture itself is drawn sharp on top.
-    if (metrics.hasCamera && p2 > 0.01f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val blurPx = with(density) { 7.dp.toPx() }
-        val effect = remember(blurPx) {
-            val threshold = AndroidColorMatrix(
-                floatArrayOf(
-                    0f, 0f, 0f, 0f, 0f,
-                    0f, 0f, 0f, 0f, 0f,
-                    0f, 0f, 0f, 0f, 0f,
-                    0f, 0f, 0f, 30f, -30f * 0.5f * 255f,
-                ),
-            )
-            RenderEffect.createChainEffect(
-                RenderEffect.createColorFilterEffect(ColorMatrixColorFilter(threshold)),
-                RenderEffect.createBlurEffect(blurPx, blurPx, Shader.TileMode.DECAL),
-            ).asComposeRenderEffect()
-        }
-        Canvas(
-            Modifier.fillMaxSize().graphicsLayer {
-                compositingStrategy = CompositingStrategy.Offscreen
-                renderEffect = effect
-            },
-        ) {
-            val camera = Offset(metrics.camX, metrics.camY)
-            drawCircle(Color.Black, radius = metrics.camR, center = camera)
-            // The picture's silhouette shrinks as the picture dissolves, so the black retracts into the hole.
-            val silhouette = (1f - ((p2 - 0.7f) / 0.3f).coerceIn(0f, 1f) * 0.9f)
-            val rx = w / 2f * silhouette
-            val ry = h / 2f * silhouette
-            drawOval(Color.Black, topLeft = Offset(cx - rx, cy - ry), size = androidx.compose.ui.geometry.Size(rx * 2f, ry * 2f))
-            // The neck: from the hole's lower edge to the top of the picture, thinner the closer they are.
-            if (cy - ry > camera.y) {
-                val neck = Path().apply {
-                    val baseHalf = rx * 0.55f
-                    moveTo(cx - baseHalf, cy - ry * 0.7f)
-                    lineTo(cx + baseHalf, cy - ry * 0.7f)
-                    lineTo(camera.x + metrics.camR * 0.35f, camera.y)
-                    lineTo(camera.x - metrics.camR * 0.35f, camera.y)
-                    close()
-                }
-                drawPath(neck, Color.Black)
+    // Black, never the picture's colour (the camera cannot change colour): the hole reaches down to the picture with a
+    // neck, and the picture draws itself into it.
+    if (metrics.hasCamera && p2 > 0.01f) {
+        val silhouette = (1f - ((p2 - 0.7f) / 0.3f).coerceIn(0f, 1f) * 0.9f)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // The same kind of merging as the playground's glass: the two shapes are distance fields, joined with a smooth
+            // minimum, so the join is exact at any size (and costs one small shader), with a strand that runs from the hole
+            // to the picture while they are apart.
+            val shader = remember { RuntimeShader(CAMERA_BLOB_SRC) }
+            val soft = with(density) { 11.dp.toPx() }
+            Canvas(Modifier.fillMaxSize()) {
+                shader.setFloatUniform("cam", metrics.camX, metrics.camY)
+                shader.setFloatUniform("camR", metrics.camR)
+                shader.setFloatUniform("av", cx, cy)
+                shader.setFloatUniform("avR", w / 2f * silhouette, h / 2f * silhouette)
+                shader.setFloatUniform("soft", soft * (0.35f + 0.65f * p2))
+                // The strand is there while the picture is on its way up, and gone when it has arrived.
+                shader.setFloatUniform("strand", (sin(p2 * Math.PI.toFloat()).coerceIn(0f, 1f)) * 0.55f * metrics.camR)
+                drawRect(
+                    ShaderBrush(shader),
+                    topLeft = Offset.Zero,
+                    size = androidx.compose.ui.geometry.Size(size.width, min(size.height, metrics.circleTop + metrics.circle + soft * 4f)),
+                )
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Older phones: the same thing by blurring and cutting hard.
+            val blurPx = with(density) { 7.dp.toPx() }
+            val effect = remember(blurPx) {
+                val threshold = AndroidColorMatrix(
+                    floatArrayOf(
+                        0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 30f, -30f * 0.5f * 255f,
+                    ),
+                )
+                RenderEffect.createChainEffect(
+                    RenderEffect.createColorFilterEffect(ColorMatrixColorFilter(threshold)),
+                    RenderEffect.createBlurEffect(blurPx, blurPx, Shader.TileMode.DECAL),
+                ).asComposeRenderEffect()
+            }
+            Canvas(
+                Modifier.fillMaxSize().graphicsLayer {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                    renderEffect = effect
+                },
+            ) {
+                val camera = Offset(metrics.camX, metrics.camY)
+                drawCircle(Color.Black, radius = metrics.camR, center = camera)
+                val rx = w / 2f * silhouette
+                val ry = h / 2f * silhouette
+                drawOval(Color.Black, topLeft = Offset(cx - rx, cy - ry), size = androidx.compose.ui.geometry.Size(rx * 2f, ry * 2f))
             }
         }
     }
