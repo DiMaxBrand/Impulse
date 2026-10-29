@@ -558,6 +558,18 @@ public class ConversationsActivity extends QrCodeProcessingActivity
     }
 
     public boolean onXmppUriClicked(final MiniUri.Xmpp uri) {
+        if (uri.isAddress() && xmppConnectionService != null && uri.asJid() != null) {
+            // Your own address (your contact card, shared back to you): the accounts screen, at that account.
+            final var address = uri.asJid().asBareJid();
+            for (final var account : xmppConnectionService.getAccounts()) {
+                if (account.getJid().asBareJid().equals(address)) {
+                    final Intent hub = new Intent(this, AccountsHubActivity.class);
+                    hub.putExtra(AccountsHubActivity.EXTRA_FOCUS_ACCOUNT, address.toString());
+                    startActivity(hub);
+                    return true;
+                }
+            }
+        }
         if (uri.isAddress() && uri.getOmemoFingerprints().isEmpty()) {
             final Conversation conversation =
                     xmppConnectionService.findUniqueConversationByJid(uri);

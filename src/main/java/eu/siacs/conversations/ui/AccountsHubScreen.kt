@@ -131,6 +131,9 @@ internal fun AccountsHubScreen(
     revision: Int,
     settings: List<SettingsEntry>,
     actions: AccountsHubActions,
+    /** An account to bring to the user's eye (scroll to, open, flash): the address of one of [accounts]. */
+    focusJid: String? = null,
+    onFocused: () -> Unit = {},
 ) {
     // "Server info" is deliberately not remembered across visits: it starts off every time.
     var serverInfoOn by remember { mutableStateOf(false) }
@@ -211,7 +214,19 @@ internal fun AccountsHubScreen(
         },
         containerColor = MaterialTheme.colorScheme.surface,
     ) { padding ->
+        val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+        // Coming here for one account (its own contact card was tapped): scroll to it; it opens and flashes by itself.
+        androidx.compose.runtime.LaunchedEffect(focusJid, accounts.size) {
+            if (focusJid == null) return@LaunchedEffect
+            val index = accounts.indexOfFirst { it.getJid().asBareJid().toString().equals(focusJid, ignoreCase = true) }
+            if (index < 0) return@LaunchedEffect
+            kotlinx.coroutines.delay(250)
+            listState.animateScrollToItem(index)
+            kotlinx.coroutines.delay(2200)
+            onFocused()
+        }
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -231,6 +246,8 @@ internal fun AccountsHubScreen(
                     account = account,
                     revision = revision,
                     startExpanded = accounts.size == 1,
+                    focused = focusJid != null &&
+                        account.getJid().asBareJid().toString().equals(focusJid, ignoreCase = true),
                     serverInfoOn = serverInfoOn,
                     onServerInfoChange = { serverInfoOn = it },
                     actions = actions,
@@ -270,11 +287,23 @@ private fun AccountCard(
     account: Account,
     revision: Int,
     startExpanded: Boolean,
+    focused: Boolean = false,
     serverInfoOn: Boolean,
     onServerInfoChange: (Boolean) -> Unit,
     actions: AccountsHubActions,
 ) {
     var expanded by remember(account.getUuid()) { mutableStateOf(startExpanded) }
+    // The account that was asked for opens (if it was shut) and flashes twice, like a reply that was jumped to.
+    val flash = remember(account.getUuid()) { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(focused) {
+        if (focused) {
+            expanded = true
+            repeat(2) {
+                flash.animateTo(1f, androidx.compose.animation.core.tween(260))
+                flash.animateTo(0f, androidx.compose.animation.core.tween(520))
+            }
+        }
+    }
     val arrow by animateFloatAsState(if (expanded) 180f else 0f, spring(stiffness = 380f, dampingRatio = 0.8f), label = "arrow")
     val online = account.isOnlineAndConnected()
     val statusText = stringResource(account.getStatus().getReadableId())
@@ -283,7 +312,11 @@ private fun AccountCard(
         shape = RoundedCornerShape(28.dp),
         // One tonal step lighter than before (Low, not High); the rows on top of it are one step
         // lighter too (surfaceContainer, not Highest), so they stay darker than their card.
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = androidx.compose.ui.graphics.lerp(
+            MaterialTheme.colorScheme.surfaceContainerLow,
+            MaterialTheme.colorScheme.tertiaryContainer,
+            flash.value,
+        ),
         modifier = Modifier.fillMaxWidth().animateContentSize(spring(stiffness = 380f, dampingRatio = 0.8f)),
     ) {
         Column {

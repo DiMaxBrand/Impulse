@@ -716,6 +716,9 @@ public class Conversation extends AbstractEntity
     public @NonNull CharSequence getName() {
         if (getMode() == MODE_MULTI) {
             return getName(getMucOptions(), getBookmark());
+        } else if (this.getContact().isSelf()) {
+            // The chat with yourself: "Saved messages", not your own name.
+            return eu.siacs.conversations.utils.SavedMessages.title();
         } else if (eu.siacs.conversations.utils.SupportAccounts.isSupportAddress(contactJid)
                 && !this.getContact().isSelf()) {
             // Also when support is not in the roster (a stranger would show the bare address).

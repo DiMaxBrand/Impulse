@@ -1902,7 +1902,7 @@ private fun ConversationTopBar(
                     stringResource(R.string.action_clear_history),
                     dismissThen(listener::onClearHistory),
                 )
-                if (isSingle) {
+                if (isSingle && conversation?.getContact()?.isSelf != true) {
                     ExpressiveMenuItem(
                         R.drawable.ic_cancel_24dp,
                         stringResource(
@@ -5081,12 +5081,16 @@ private fun MessageContent(
             val shared = remember(message.getUuid(), revision) { parseImpulseContact(message.body) }
             if (shared != null) {
                 val address = shared.username
+                // Your own contact sent back to you: the button opens that account, not a chat with yourself.
+                val isOwnAccount = address != null && activity?.xmppConnectionService?.accounts?.any {
+                    it.getJid().asBareJid().toString().equals(address, ignoreCase = true)
+                } == true
                 ContactCard(
                     contact = shared,
-                    actionLabel = stringResource(R.string.contact_card_message),
+                    actionLabel = stringResource(if (isOwnAccount) R.string.contact_card_open_account else R.string.contact_card_message),
                     onAction = if (address != null) ({ openUrl(context, "xmpp:$address") }) else null,
                     secondaryLabel = stringResource(R.string.save_to_contact),
-                    onSecondary = if (address != null && activity != null) ({
+                    onSecondary = if (address != null && activity != null && !isOwnAccount) ({
                         AddToAddressBookDialogFragment.show(activity, shared.name, address, null)
                     }) else null,
                 )

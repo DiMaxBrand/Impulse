@@ -43,10 +43,12 @@ class AccountsHubActivity : XmppActivity(), OnAccountUpdate {
     private var accounts by mutableStateOf<List<Account>>(emptyList())
     private val revision = mutableIntStateOf(0)
     private var dialog by mutableStateOf<HubDialog?>(null)
+    private var focusJid by mutableStateOf<String?>(null)
     private var certificateTarget: Account? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        focusJid = intent?.getStringExtra(EXTRA_FOCUS_ACCOUNT)
         setContent {
             ImpulseExpressiveTheme {
                 AccountsHubScreen(
@@ -54,10 +56,18 @@ class AccountsHubActivity : XmppActivity(), OnAccountUpdate {
                     revision = revision.intValue,
                     settings = settingsEntries(),
                     actions = hubActions,
+                    focusJid = focusJid,
+                    onFocused = { focusJid = null },
                 )
                 HubDialogs()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra(EXTRA_FOCUS_ACCOUNT)?.let { focusJid = it }
     }
 
     override fun onAccountUpdate() = refreshUi()
@@ -390,5 +400,8 @@ class AccountsHubActivity : XmppActivity(), OnAccountUpdate {
     companion object {
         private const val REQUEST_IMPORT_BACKUP = 0x63fb
         const val EXTRA_OPEN_BIRTHDAY = "eu.siacs.conversations.open_birthday"
+
+        /** The address of an account to scroll to, open and flash (its own contact card was tapped). */
+        const val EXTRA_FOCUS_ACCOUNT = "eu.siacs.conversations.focus_account"
     }
 }

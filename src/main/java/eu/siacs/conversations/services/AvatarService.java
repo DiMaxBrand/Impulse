@@ -397,10 +397,42 @@ public class AvatarService {
 
     public Bitmap get(final Conversation conversation, final int size, final boolean cachedOnly) {
         if (conversation.getMode() == Conversation.MODE_SINGLE) {
+            if (conversation.getContact().isSelf()) {
+                return savedMessagesAvatar(size);
+            }
             return get(conversation.getContact(), size, cachedOnly);
         } else {
             return get(conversation.getMucOptions(), size, cachedOnly);
         }
+    }
+
+    /** The chat with yourself: a bookmark (Material Symbols Rounded) in white on a teal tile. */
+    private Bitmap savedMessagesAvatar(final int size) {
+        final String key = key("saved_messages", size);
+        final var cached = this.cache.getIfPresent(key);
+        if (cached != null) {
+            return cached.bitmap;
+        }
+        final var bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        final var canvas = new Canvas(bitmap);
+        canvas.drawColor(0xFF0B7D70);
+        final var path =
+                androidx.core.graphics.PathParser.createPathFromPathData(
+                        eu.siacs.conversations.utils.SavedMessages.BOOKMARK_PATH);
+        if (path != null) {
+            final var paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            paint.setColor(0xFFFFFFFF);
+            // The bookmark is about 690 units tall in its 960 box (centre near 480, 465): it fills 55 % of the tile.
+            final float scale = size * 0.55f / 690f;
+            final var matrix = new android.graphics.Matrix();
+            matrix.postTranslate(-480f, -465f);
+            matrix.postScale(scale, scale);
+            matrix.postTranslate(size / 2f, size / 2f);
+            path.transform(matrix);
+            canvas.drawPath(path, paint);
+        }
+        this.cache.put(key, new AvatarWithSurface(bitmap));
+        return bitmap;
     }
 
     private Bitmap get(final MucOptions mucOptions, final int size, final boolean cachedOnly) {

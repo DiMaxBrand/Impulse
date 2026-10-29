@@ -273,6 +273,8 @@ fun LiquidChatMenuOverlay(
     fluid: FluidGlassHost? = null,
 ) {
     val isSingle = conversation?.getMode() == Conversational.MODE_SINGLE
+    // Blocking yourself makes no sense: no such entry in the chat with yourself.
+    val isSelfChat = conversation?.getContact()?.isSelf == true
     val flags = rememberChatMenuFlags(conversation, revision, isSingle)
     LiquidMenuOverlay(menu, backdrop, menuWidth = 264.dp, fluid = fluid) {
         @Composable
@@ -304,7 +306,7 @@ fun LiquidChatMenuOverlay(
             listener::onTogglePinned,
         )
         entry(R.drawable.ic_delete_24dp, R.string.action_clear_history, listener::onClearHistory)
-        if (isSingle) {
+        if (isSingle && !isSelfChat) {
             entry(
                 R.drawable.ic_cancel_24dp,
                 if (flags.isBlocked) R.string.action_unblock_contact else R.string.action_block_contact,

@@ -102,11 +102,12 @@ class XmppUriLauncher {
                 intent.putExtra(Intent.EXTRA_TEXT, body)
             }
         } else if (jid != null && addresses.contains(jid)) {
-            intent = Intent(context, EditAccountActivity::class.java)
-            intent.action = Intent.ACTION_VIEW
-            intent.putExtra("jid", jid.asBareJid().toString())
-            intent.data = uri.asUri()
-            intent.putExtra("scanned", scanned)
+            // Your own address (your contact card, your QR code): the accounts screen, at that account.
+            intent = Intent(context, eu.siacs.conversations.ui.AccountsHubActivity::class.java)
+            intent.putExtra(
+                eu.siacs.conversations.ui.AccountsHubActivity.EXTRA_FOCUS_ACCOUNT,
+                jid.asBareJid().toString(),
+            )
         } else if (uri.isAddress) {
             intent = Intent(context, StartConversationActivity::class.java)
             intent.action = Intent.ACTION_VIEW
