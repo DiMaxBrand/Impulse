@@ -162,18 +162,21 @@ fun ContactDetailsScreen(state: ContactDetailsState, actions: ContactDetailsActi
         val bigHeight = min(width, with(density) { 440.dp.toPx() })
         val circle = with(density) { 124.dp.toPx() }
         val circleTop = statusTop + with(density) { 64.dp.toPx() }
-        // Where the camera is (the hole in the screen), or the middle of the top edge when there is none.
-        val dock = remember(view, width, statusTop) { cameraSpot(view, width, statusTop) }
+        // The name sits right under the picture; when the picture is a circle the name is just below it.
+        val toCircle = (bigHeight - (circleTop + circle) - with(density) { 8.dp.toPx() }).coerceAtLeast(with(density) { 90.dp.toPx() })
+        // Where the camera is (the hole in the screen); none on a screen without one.
+        val camera = remember(view, width, statusTop) { cameraSpot(view) }
         val metrics = HeaderMetrics(
             width = width,
             bigHeight = bigHeight,
-            toCircle = with(density) { 150.dp.toPx() },
-            toCamera = with(density) { 150.dp.toPx() } + with(density) { 150.dp.toPx() },
+            toCircle = toCircle,
+            toCamera = toCircle + with(density) { 150.dp.toPx() },
             circle = circle,
             circleTop = circleTop,
-            dockX = dock.x,
-            dockY = dock.y,
-            dockSize = with(density) { 18.dp.toPx() },
+            camX = camera?.centerX ?: width / 2f,
+            camY = camera?.centerY ?: statusTop / 2f,
+            camR = camera?.radius ?: 0f,
+            hasCamera = camera != null,
             bigCorner = with(density) { 36.dp.toPx() },
         )
         val s = scroll.value.toFloat()
@@ -209,8 +212,6 @@ fun ContactDetailsScreen(state: ContactDetailsState, actions: ContactDetailsActi
                 ProfileHeader(
                     bitmap = avatarImage,
                     tint = tint,
-                    name = ui.name,
-                    presence = ui.presenceLabel,
                     scroll = s,
                     pull = pull.value,
                     metrics = metrics,
@@ -218,7 +219,6 @@ fun ContactDetailsScreen(state: ContactDetailsState, actions: ContactDetailsActi
                     tilt = tilt,
                     onClick = actions::onAvatar,
                 )
-                BoxScopeName(ui.name, ui.presenceLabel, s, metrics, Modifier.fillMaxWidth())
             }
         }
 
@@ -234,16 +234,14 @@ fun ContactDetailsScreen(state: ContactDetailsState, actions: ContactDetailsActi
     }
 }
 
-/** The camera's place in the window: the centre of the top cut-out when the phone has one. */
-private fun cameraSpot(view: android.view.View, width: Float, statusTop: Float): Offset {
-    val cutout = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-        view.rootWindowInsets?.displayCutout?.boundingRects?.firstOrNull { it.top <= 8 && it.width() > 0 }
-    } else null
-    return if (cutout != null) {
-        Offset(cutout.exactCenterX(), cutout.exactCenterY())
-    } else {
-        Offset(width / 2f, statusTop / 2f)
-    }
+private class CameraSpot(val centerX: Float, val centerY: Float, val radius: Float)
+
+/** The camera hole at the top of the screen, from the display cut-out; null when the phone has none. */
+private fun cameraSpot(view: android.view.View): CameraSpot? {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.P) return null
+    val cutout = view.rootWindowInsets?.displayCutout?.boundingRects?.firstOrNull { it.top <= 8 && it.width() > 0 && it.height() > 0 }
+        ?: return null
+    return CameraSpot(cutout.exactCenterX(), cutout.exactCenterY(), kotlin.math.max(cutout.width(), cutout.height()) / 2f)
 }
 
 @Composable
@@ -303,6 +301,20 @@ private fun DetailsBody(ui: ContactDetailsUi, state: ContactDetailsState, action
         Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        // The name, right under the picture (and in the top bar once it has scrolled away).
+        Column(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                ui.name,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            if (ui.presenceLabel != null) {
+                Text(ui.presenceLabel, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         if (ui.tags.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 ui.tags.forEach { TagChip(it, onClick = {}) }

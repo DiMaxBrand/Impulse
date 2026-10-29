@@ -47,7 +47,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Path
 import kotlin.math.max
+import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -71,9 +77,11 @@ internal class HeaderMetrics(
     val toCamera: Float,
     val circle: Float,
     val circleTop: Float,
-    val dockX: Float,
-    val dockY: Float,
-    val dockSize: Float,
+    /** The camera hole: its centre and radius (px); [hasCamera] is false when the screen has no cut-out. */
+    val camX: Float,
+    val camY: Float,
+    val camR: Float,
+    val hasCamera: Boolean,
     val bigCorner: Float,
 )
 
@@ -126,8 +134,6 @@ internal fun averageColor(bitmap: Bitmap?): Color {
 internal fun ProfileHeader(
     bitmap: ImageBitmap?,
     tint: Color,
-    name: String,
-    presence: String?,
     scroll: Float,
     pull: Float,
     metrics: HeaderMetrics,
@@ -137,7 +143,9 @@ internal fun ProfileHeader(
 ) {
     val density = LocalDensity.current
     val p1 = ease(((scroll) / metrics.toCircle).coerceIn(0f, 1f))
-    val p2 = ease(((scroll - metrics.toCircle) / (metrics.toCamera - metrics.toCircle)).coerceIn(0f, 1f))
+    val p2raw = ease(((scroll - metrics.toCircle) / (metrics.toCamera - metrics.toCircle)).coerceIn(0f, 1f))
+    // The way into the camera trails the finger a little and overshoots when thrown: a drop, not a slider.
+    val p2 by animateFloatAsState(p2raw, spring(dampingRatio = 0.72f, stiffness = 330f), label = "intoCamera")
 
     // Big -> circle: the box is drawn together.
     val circleL = (metrics.width - metrics.circle) / 2f
@@ -145,35 +153,42 @@ internal fun ProfileHeader(
     val t1 = lerpF(0f, metrics.circleTop, p1)
     val r1 = lerpF(metrics.width, circleL + metrics.circle, p1)
     val b1 = lerpF(metrics.bigHeight + pull, metrics.circleTop + metrics.circle, p1)
-    // Circle -> camera.
     val w1 = r1 - l1
     val h1 = b1 - t1
     val cx1 = (l1 + r1) / 2f
     val cy1 = (t1 + b1) / 2f
-    val cx = lerpF(cx1, metrics.dockX, p2)
-    val cy = lerpF(cy1, metrics.dockY, p2)
-    val w = lerpF(w1, metrics.dockSize, p2)
-    val h = lerpF(h1, metrics.dockSize, p2)
+
+    // Circle -> camera: it climbs to just under the hole and shrinks to its size; on the way it is stretched upward.
+    val endR = max(metrics.camR * 1.15f, with(density) { 9.dp.toPx() })
+    val endX = if (metrics.hasCamera) metrics.camX else metrics.width / 2f
+    val endY = if (metrics.hasCamera) metrics.camY + metrics.camR * 0.9f + endR else metrics.circleTop * 0.5f
+    val stretch = 1f + 0.22f * sin(p2 * Math.PI.toFloat())
+    val cx = lerpF(cx1, endX, p2)
+    val cy = lerpF(cy1, endY, p2)
+    val w = lerpF(w1, endR * 2f, p2) / sqrt(stretch)
+    val h = lerpF(h1, endR * 2f, p2) * stretch
     val left = cx - w / 2f
     val top = cy - h / 2f
     val round = min(w, h) / 2f
     val topCorner = lerpF(0f, round, p1).coerceAtMost(round)
     val bottomCorner = lerpF(metrics.bigCorner, round, p1).coerceAtMost(round)
-    // The picture goes out into the camera: it is only there until the last part of the way.
-    val fade = (1f - ((p2 - 0.82f) / 0.18f).coerceIn(0f, 1f))
+    // The picture dissolves into the black of the camera over the last of the way.
+    val photoAlpha = 1f - ((p2 - 0.7f) / 0.3f).coerceIn(0f, 1f)
     val wDp = with(density) { w.toDp() }
     val hDp = with(density) { h.toDp() }
 
-    // The drop between the circle and the camera hole: both are the picture's colour, blurred together and cut hard.
-    if (p2 > 0.02f && p2 < 0.98f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val blurPx = with(density) { 9.dp.toPx() }
+    // Black, never the picture's colour (the camera cannot change colour): the hole reaches down to the picture with
+    // a neck, the picture draws itself into it. Both are cut out of one layer that is blurred and then thresholded, so
+    // where they come close they run together like drops. The picture itself is drawn sharp on top.
+    if (metrics.hasCamera && p2 > 0.01f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val blurPx = with(density) { 7.dp.toPx() }
         val effect = remember(blurPx) {
             val threshold = AndroidColorMatrix(
                 floatArrayOf(
-                    1f, 0f, 0f, 0f, 0f,
-                    0f, 1f, 0f, 0f, 0f,
-                    0f, 0f, 1f, 0f, 0f,
-                    0f, 0f, 0f, 26f, -26f * 0.5f * 255f,
+                    0f, 0f, 0f, 0f, 0f,
+                    0f, 0f, 0f, 0f, 0f,
+                    0f, 0f, 0f, 0f, 0f,
+                    0f, 0f, 0f, 30f, -30f * 0.5f * 255f,
                 ),
             )
             RenderEffect.createChainEffect(
@@ -187,8 +202,25 @@ internal fun ProfileHeader(
                 renderEffect = effect
             },
         ) {
-            drawCircle(tint, radius = min(w, h) / 2f * 1.05f, center = Offset(cx, cy))
-            drawCircle(tint, radius = metrics.dockSize / 2f * (1.1f + 0.6f * (1f - p2)), center = Offset(metrics.dockX, metrics.dockY))
+            val camera = Offset(metrics.camX, metrics.camY)
+            drawCircle(Color.Black, radius = metrics.camR, center = camera)
+            // The picture's silhouette shrinks as the picture dissolves, so the black retracts into the hole.
+            val silhouette = (1f - ((p2 - 0.7f) / 0.3f).coerceIn(0f, 1f) * 0.9f)
+            val rx = w / 2f * silhouette
+            val ry = h / 2f * silhouette
+            drawOval(Color.Black, topLeft = Offset(cx - rx, cy - ry), size = androidx.compose.ui.geometry.Size(rx * 2f, ry * 2f))
+            // The neck: from the hole's lower edge to the top of the picture, thinner the closer they are.
+            if (cy - ry > camera.y) {
+                val neck = Path().apply {
+                    val baseHalf = rx * 0.55f
+                    moveTo(cx - baseHalf, cy - ry * 0.7f)
+                    lineTo(cx + baseHalf, cy - ry * 0.7f)
+                    lineTo(camera.x + metrics.camR * 0.35f, camera.y)
+                    lineTo(camera.x - metrics.camR * 0.35f, camera.y)
+                    close()
+                }
+                drawPath(neck, Color.Black)
+            }
         }
     }
 
@@ -196,7 +228,7 @@ internal fun ProfileHeader(
         Modifier
             .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(wDp, hDp)
-            .graphicsLayer { alpha = fade }
+            .graphicsLayer { alpha = photoAlpha }
             .clip(RoundedCornerShape(topStart = with(density) { topCorner.toDp() }, topEnd = with(density) { topCorner.toDp() },
                 bottomEnd = with(density) { bottomCorner.toDp() }, bottomStart = with(density) { bottomCorner.toDp() }))
             .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) },
@@ -206,28 +238,9 @@ internal fun ProfileHeader(
         } else {
             Canvas(Modifier.fillMaxSize()) { drawRect(tint) }
         }
-        if (glass) {
-            GlassSurface(tilt, topCorner, bottomCorner)
-        }
-        // The name over the lower edge of the big picture, gone once it has become a circle.
-        val nameAlpha = (1f - p1 * 2f).coerceIn(0f, 1f)
-        if (nameAlpha > 0f) {
-            Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = nameAlpha }) {
-                drawRect(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)),
-                        startY = size.height * 0.45f,
-                        endY = size.height,
-                    ),
-                )
-            }
-            androidx.compose.foundation.layout.Column(
-                Modifier.align(Alignment.BottomStart).padding(start = 22.dp, end = 22.dp, bottom = 20.dp)
-                    .graphicsLayer { alpha = nameAlpha },
-            ) {
-                Text(name, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (presence != null) Text(presence, color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodyMedium)
-            }
+        // The glassy surface belongs to the small picture: the big one stays plain and crisp.
+        if (glass && p1 > 0.02f) {
+            GlassSurface(tilt, topCorner, bottomCorner, strength = p1)
         }
     }
 }
@@ -237,83 +250,43 @@ internal fun ProfileHeader(
  * highlight on the far side, and a rim that is bright where the light would catch. Nothing here bends the picture.
  */
 @Composable
-private fun GlassSurface(tilt: State<Offset>, topCorner: Float, bottomCorner: Float) {
+private fun GlassSurface(tilt: State<Offset>, topCorner: Float, bottomCorner: Float, strength: Float) {
     Canvas(Modifier.fillMaxSize()) {
         val t = tilt.value
         val w = size.width
         val h = size.height
         val reach = max(w, h)
-        // The shine: leans away from the side the phone dips to.
-        val shine = Offset(w * (0.5f - t.x * 0.42f), h * (0.22f - t.y * 0.3f))
-        drawRect(
+        // The shine: leans away from the side the phone dips to. Kept small and soft: the picture must stay clear.
+        val shine = Offset(w * (0.5f - t.x * 0.4f), h * (0.25f - t.y * 0.28f))
+        drawCircle(
             Brush.radialGradient(
-                colors = listOf(Color.White.copy(alpha = 0.34f), Color.White.copy(alpha = 0.10f), Color.Transparent),
+                colors = listOf(Color.White.copy(alpha = 0.26f * strength), Color.Transparent),
                 center = shine,
-                radius = reach * 0.75f,
+                radius = reach * 0.42f,
             ),
+            radius = reach * 0.42f,
+            center = shine,
         )
         // And the opposite: the same glass, darkened where the shine is not.
-        val shade = Offset(w * (0.5f + t.x * 0.5f), h * (0.95f + t.y * 0.25f))
-        drawRect(
+        val shade = Offset(w * (0.5f + t.x * 0.45f), h * (0.92f + t.y * 0.2f))
+        drawCircle(
             Brush.radialGradient(
-                colors = listOf(Color.Black.copy(alpha = 0.22f), Color.Transparent),
+                colors = listOf(Color.Black.copy(alpha = 0.16f * strength), Color.Transparent),
                 center = shade,
-                radius = reach * 0.8f,
+                radius = reach * 0.5f,
             ),
+            radius = reach * 0.5f,
+            center = shade,
         )
-        // A soft wide band of light across the surface, at an angle that follows the tilt.
-        drawRect(
-            Brush.linearGradient(
-                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.14f), Color.Transparent),
-                start = Offset(w * (0.1f - t.x * 0.4f), 0f),
-                end = Offset(w * (0.9f - t.x * 0.4f), h * (0.9f - t.y * 0.2f)),
-            ),
-        )
-        // The rim.
+        // The rim, bright on the side the light catches.
         drawRoundRect(
             Brush.linearGradient(
-                colors = listOf(Color.White.copy(alpha = 0.7f), Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.45f)),
+                colors = listOf(Color.White.copy(alpha = 0.65f * strength), Color.White.copy(alpha = 0.04f * strength), Color.White.copy(alpha = 0.35f * strength)),
                 start = Offset(w * (0f - t.x * 0.3f), 0f),
                 end = Offset(w * (1f - t.x * 0.3f), h),
             ),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(min(topCorner, bottomCorner).coerceAtLeast(1f)),
-            style = Stroke(width = 1.6.dp.toPx()),
+            style = Stroke(width = 1.4.dp.toPx()),
         )
-    }
-}
-
-/** The name under the circle (the middle state), fading out as the circle goes to the camera. */
-@Composable
-internal fun BoxScopeName(
-    name: String,
-    presence: String?,
-    scroll: Float,
-    metrics: HeaderMetrics,
-    modifier: Modifier = Modifier,
-) {
-    val p1 = ease((scroll / metrics.toCircle).coerceIn(0f, 1f))
-    val p2 = ease(((scroll - metrics.toCircle) / (metrics.toCamera - metrics.toCircle)).coerceIn(0f, 1f))
-    val alpha = ((p1 - 0.55f) / 0.45f).coerceIn(0f, 1f) * (1f - (p2 * 1.6f).coerceIn(0f, 1f))
-    if (alpha <= 0f) return
-    val density = LocalDensity.current
-    val y = lerpF(metrics.circleTop + metrics.circle + with(density) { 14.dp.toPx() }, metrics.dockY, p2 * 0.3f)
-    androidx.compose.foundation.layout.Column(
-        modifier
-            .offset { IntOffset(0, y.roundToInt()) }
-            .graphicsLayer { this.alpha = alpha }
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            name,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            textAlign = TextAlign.Center,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (presence != null) {
-            Text(presence, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }
