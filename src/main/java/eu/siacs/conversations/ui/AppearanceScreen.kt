@@ -1403,7 +1403,7 @@ internal fun FluidPrototype(
         glassIndex = glassIndex,
         heightDp = fieldHeight,
         widthFraction = fieldWidth,
-        modifier = Modifier.onGloballyPositioned { onFieldBounds(it.boundsInWindow()) },
+        onFieldBounds = onFieldBounds,
     ) { index, tint ->
         when (index % 4) {
             0 -> Icon(painterResource(R.drawable.ic_palette_24dp), null, tint = tint)

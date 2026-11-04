@@ -38,6 +38,8 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -168,6 +170,13 @@ class GlassFluidState(private val density: Float) : FluidScene {
 
     /** True while something else draws the pieces (the playground's tab morph): they and their content are not drawn. */
     var hidden by mutableStateOf(false)
+        private set
+
+    fun hideForMorph(value: Boolean) {
+        if (hidden == value) return
+        hidden = value
+        wake()
+    }
 
     /** The pieces as shapes for the glass layer, right now. */
     override fun shapes(): List<FluidShape> {
@@ -1079,6 +1088,7 @@ fun GlassFluidField(
     heightDp: Float,
     widthFraction: Float,
     modifier: Modifier = Modifier,
+    onFieldBounds: (Rect) -> Unit = {},
     content: @Composable (index: Int, tint: androidx.compose.ui.graphics.Color) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -1157,6 +1167,11 @@ fun GlassFluidField(
                 Modifier
                     .width(fieldWidth)
                     .height(heightDp.coerceAtLeast(20f).dp)
+                    .onGloballyPositioned {
+                        onFieldBounds(Rect(it.positionInWindow(), androidx.compose.ui.geometry.Size(
+                            it.size.width.toFloat(), it.size.height.toFloat(),
+                        )))
+                    }
                     .onSizeChanged {
                         state.fieldW = it.width.toFloat()
                         state.fieldH = it.height.toFloat()

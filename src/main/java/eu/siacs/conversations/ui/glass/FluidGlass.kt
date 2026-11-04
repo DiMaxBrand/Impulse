@@ -531,20 +531,14 @@ internal class FluidSnapshot(shapes: List<FluidShape>, scene: FluidScene) {
     }
 }
 
-/** Builds the frame's numbers once per tick however many passes ask for them. */
-internal class FluidSnapshotCache {
-    private var tick = Int.MIN_VALUE
-    private var snap: FluidSnapshot? = null
-
-    fun get(scene: FluidScene): FluidSnapshot {
-        val t = scene.tick
-        val cached = snap
-        if (cached != null && t == tick) return cached
-        val fresh = FluidSnapshot(scene.shapes(), scene)
-        snap = fresh
-        tick = t
-        return fresh
+/** Share passes, but invalidate on layout/visibility changes even when physics is asleep. */
+internal class FluidSnapshotCache(scene: FluidScene) {
+    private val snapshot = androidx.compose.runtime.derivedStateOf {
+        scene.tick // Bridge spring values are not snapshot state.
+        FluidSnapshot(scene.shapes(), scene)
     }
+
+    fun get(): FluidSnapshot = snapshot.value
 }
 
 /**
@@ -560,7 +554,7 @@ fun FluidGlassLayer(
     /** How far the glass may reach beyond the area it fills (a bubble pulled out of its bar, a shadow). */
     margin: Dp = 72.dp,
 ) {
-    val cache = remember(scene) { FluidSnapshotCache() }
+    val cache = remember(scene) { FluidSnapshotCache(scene) }
     val frame = remember(scene) { LayerFrame() }
     val marginPx = with(androidx.compose.ui.platform.LocalDensity.current) { margin.roundToPx() }
     Box(modifier) {
@@ -569,7 +563,7 @@ fun FluidGlassLayer(
             Canvas(Modifier.matchParentSize().layerBounds(scene, marginPx, frame)) {
                 scene.tick
                 try {
-                    val snap = cache.get(scene)
+                    val snap = cache.get()
                     snap.applyField(shadowShader, -frame.x.toFloat(), -frame.y.toFloat(), exact = true)
                     shadowShader.setFloatUniform("shadowSigma", 9.dp.toPx())
                     shadowShader.setFloatUniform("shadowOffset", 0f, 3.dp.toPx())
@@ -632,7 +626,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.fluidPass(
 ) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
     try {
-        val snap = cache.get(scene)
+        val snap = cache.get()
         // The blur comes first: the shader then refracts the blurred picture (frosted copy) or the
         // plain one (clear glass).
         if (frost) glassBlur(look.frostBlur.toPx(), useLabScale = false) else glassBlur(look.blur.toPx())

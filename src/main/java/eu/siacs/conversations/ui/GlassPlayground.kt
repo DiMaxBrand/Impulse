@@ -198,11 +198,17 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
         morphActive = true
         scope.launch {
             morph.snapTo(0f)
+            snapshotFlow {
+                fieldBounds.width > 0f && protoButtons.all { it.width > 0f } &&
+                    roundButtons.all { it.width > 0f } && barBounds.width > 0f
+            }.first { it }
+            androidx.compose.runtime.withFrameNanos { }
             morph.animateTo(1f, tween(1900, easing = LinearEasing))
+            androidx.compose.runtime.withFrameNanos { }
             morphActive = false
         }
     }
-    androidx.compose.runtime.SideEffect { fluidState.hidden = morphActive }
+    androidx.compose.runtime.SideEffect { fluidState.hideForMorph(morphActive) }
     var taps by remember { mutableIntStateOf(0) }
     var toggled by remember { mutableStateOf(true) }
     var slider by remember { mutableFloatStateOf(0.4f) }
@@ -267,7 +273,7 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
         else -> roundButtons[3]
     }
     fun mergingRect(i: Int): Rect {
-        if (i >= 3) return protoButtons[i - 3]
+        if (i >= 3) return protoButtons[i - 3].translate(-rootPos)
         val piece = fluidState.pieces.getOrNull(i)
         return if (piece == null) {
             Rect(fieldBounds.center.x - 30f, fieldBounds.center.y - 30f, fieldBounds.center.x + 30f, fieldBounds.center.y + 30f).translate(-rootPos)
@@ -441,7 +447,18 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
                         LiquidGlassButton(
                             onClick = {},
                             glass = fluid,
-                            shape = round,
+                            shape = RoundedCornerShape(with(density) {
+                                val piece = if (i < 3) fluidState.pieces.getOrNull(i) else null
+                                val target = mergingRect(i)
+                                val pieceRadius = piece?.radius ?: (minOf(target.width, target.height) / 2f)
+                                val simple = simpleRect(i)
+                                val simpleRadius = minOf(simple.width, simple.height) / 2f
+                                lerp(
+                                    if (morphFrom == 0) simpleRadius else pieceRadius,
+                                    if (morphFrom == 0) pieceRadius else simpleRadius,
+                                    ease(win(morph.value, 0.15f, 0.8f)),
+                                ).coerceAtLeast(0f).toDp()
+                            }),
                             isInteractive = false,
                             modifier = Modifier.placedAt { actorRect(i) },
                         ) {

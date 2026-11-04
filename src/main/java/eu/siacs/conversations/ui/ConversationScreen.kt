@@ -247,6 +247,7 @@ class ConversationScreenState {
     // whether one still is; when it isn't, InputBar springs its own copy back to 0.
     internal val barPullPx = androidx.compose.runtime.mutableFloatStateOf(0f)
     internal val barPullDragging = mutableStateOf(false)
+    internal val browsingHistory = mutableStateOf(false)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
     // Messages that got a reaction while off screen (uuid -> the new emoji). They turn the
     // scroll button into a heart; tapping it walks to them one by one.
@@ -343,6 +344,8 @@ interface ConversationScreenListener {
     fun onDownloadMessage(message: Message)
 
     fun onLoadMoreMessages()
+    fun onLoadNewerMessages() {}
+    fun onReturnToLatest() {}
 
     fun onScrolledToBottom()
 
@@ -2457,6 +2460,18 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             .collect { nearTop -> if (nearTop) listener.onLoadMoreMessages() }
     }
 
+    // reverseLayout: index zero is the newer end of a historical window. Extend it before
+    // the user runs out of rows; stable message keys preserve their viewport as pages arrive.
+    LaunchedEffect(listState, revision) {
+        snapshotFlow {
+            state.browsingHistory.value && listState.firstVisibleItemIndex < 5 &&
+                listState.layoutInfo.visibleItemsInfo.isNotEmpty() &&
+                state.requestScrollToUuid.value == null
+        }.distinctUntilChanged().collect { nearEnd ->
+            if (nearEnd) listener.onLoadNewerMessages()
+        }
+    }
+
     // Notify when the newest message becomes visible so read markers can be sent.
     //
     // Gated on hasPositioned -- markRead() (what onScrolledToBottom() ultimately calls) marks
@@ -2639,7 +2654,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         // worked for a same-day arrival: the previous newest message's index shifts to 2, not 1,
         // and silently failed the plain `<= 1` check every time a message crossed midnight.
         val extraForDatePill = if (items.getOrNull(1) is ChatItem.DatePill) 1 else 0
-        if (hasPositioned.value && listState.firstVisibleItemIndex <= 1 + extraForDatePill) {
+        if (!state.browsingHistory.value && hasPositioned.value && listState.firstVisibleItemIndex <= 1 + extraForDatePill) {
             requestScroll(0, 0f)
         }
     }
@@ -2980,10 +2995,15 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                             state.requestScrollToUuid.value = heartUuid
                             return@SmallFloatingActionButton
                         }
+                        if (state.browsingHistory.value) {
+                            listener.onReturnToLatest()
+                        }
                         // Cleared so the fling detector doesn't also fire on arrival with a stale
                         // speed; the band is triggered explicitly once the scroll has landed.
                         flingSpeed[0] = 0f
                         scope.launch {
+                            // Let a returned live window reach LazyColumn before scrolling it.
+                            androidx.compose.runtime.withFrameNanos { }
                             listState.flyToItem(0)
                             if (experimentalAnimations) {
                                 state.barBumpStrength.floatValue = 1f
