@@ -1555,11 +1555,6 @@ public class RtpSessionActivity extends XmppActivity
                             final var device = choices.get(which);
                             try {
                                 callIntegration.setAudioDevice(device);
-                                if (device == CallIntegration.AudioDevice.EARPIECE) {
-                                    acquireProximityWakeLock();
-                                } else {
-                                    releaseProximityWakeLock();
-                                }
                             } catch (final IllegalStateException e) {
                                 Toast.makeText(
                                                 this,
@@ -1901,7 +1896,6 @@ public class RtpSessionActivity extends XmppActivity
     private void switchToEarpiece(final View view) {
         try {
             requireCallIntegration().setAudioDevice(CallIntegration.AudioDevice.EARPIECE);
-            acquireProximityWakeLock();
         } catch (final IllegalStateException e) {
             Toast.makeText(this, R.string.could_not_modify_call, Toast.LENGTH_SHORT).show();
         }
@@ -1910,7 +1904,6 @@ public class RtpSessionActivity extends XmppActivity
     private void switchToSpeaker(final View view) {
         try {
             requireCallIntegration().setAudioDevice(CallIntegration.AudioDevice.SPEAKER_PHONE);
-            releaseProximityWakeLock();
         } catch (final IllegalStateException e) {
             Toast.makeText(this, R.string.could_not_modify_call, Toast.LENGTH_SHORT).show();
         }

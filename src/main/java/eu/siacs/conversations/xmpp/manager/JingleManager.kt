@@ -985,6 +985,13 @@ class JingleManager(
     }
 
     fun endRtpSession(sessionId: String) {
+        synchronized(rtpSessionProposals) {
+            val proposal = rtpSessionProposals.keys.firstOrNull { it.sessionId == sessionId }
+            if (proposal != null) {
+                retractSessionProposal(proposal)
+                return
+            }
+        }
         for (connection in this.connections.values) {
             if (connection.id.sessionId == sessionId) {
                 if (connection is JingleRtpConnection) {
@@ -1112,6 +1119,15 @@ class JingleManager(
 
     inner class ProposalStateCallback(private val proposal: RtpSessionProposal) :
         CallIntegration.Callback {
+
+        override fun onCallIntegrationTelecomStarted() {
+            service.setOngoingCall(AbstractJingleConnection.Id.of(account, proposal.with, proposal.sessionId),
+                proposal.media, false)
+        }
+
+        override fun onCallIntegrationTelecomStopped() {
+            service.removeOngoingCall(proposal.sessionId)
+        }
 
         override fun onCallIntegrationShowIncomingCallUi() {}
 

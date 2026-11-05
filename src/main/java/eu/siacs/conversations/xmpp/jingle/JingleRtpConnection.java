@@ -2812,6 +2812,16 @@ public class JingleRtpConnection extends AbstractJingleConnection
     }
 
     @Override
+    public void onCallIntegrationTelecomStarted() {
+        xmppConnectionService.setOngoingCall(id, getMedia(), false);
+    }
+
+    @Override
+    public void onCallIntegrationTelecomStopped() {
+        xmppConnectionService.removeOngoingCall(id.sessionId);
+    }
+
+    @Override
     public void onCallIntegrationReject() {
         Log.d(Config.LOGTAG, "rejecting call from system notification / call integration");
         try {

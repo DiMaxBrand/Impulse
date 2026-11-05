@@ -6,11 +6,14 @@ import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.net.Uri;
 import android.os.Build;
+import android.os.OutcomeReceiver;
 import android.telecom.CallAudioState;
 import android.telecom.CallEndpoint;
+import android.telecom.CallEndpointException;
 import android.telecom.Connection;
 import android.telecom.DisconnectCause;
 import android.util.Log;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import com.google.common.base.Strings;
@@ -19,6 +22,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
+import eu.siacs.conversations.R;
 import eu.siacs.conversations.ui.util.MainThreadExecutor;
 import eu.siacs.conversations.xmpp.Jid;
 import eu.siacs.conversations.xmpp.jingle.Media;
@@ -62,6 +66,7 @@ public class CallIntegration extends Connection {
     private final Context context;
 
     private final AppRTCAudioManager appRTCAudioManager;
+    private final TransactionalCallIntegration transactionalIntegration;
     private AudioDevice initialAudioDevice = null;
 
     private boolean isAudioRoutingRequested = false;
@@ -90,6 +95,12 @@ public class CallIntegration extends Connection {
         }
         setRingbackRequested(true);
         setConnectionCapabilities(CAPABILITY_MUTE | CAPABILITY_RESPOND_VIA_TEXT);
+        this.transactionalIntegration =
+                Build.VERSION.SDK_INT >= 35
+                                && hasSystemFeature(context)
+                                && new AppSettings(context).isCallIntegration()
+                        ? new TransactionalCallIntegration(this.context, this)
+                        : null;
     }
 
     public void setCallback(final Callback callback) {
@@ -151,7 +162,8 @@ public class CallIntegration extends Connection {
 
     @Override
     public void onCallAudioStateChanged(final CallAudioState state) {
-        if (selfManaged() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (selfManaged() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                && !availableEndpoints.isEmpty()) {
             Log.d(Config.LOGTAG, "ignoring onCallAudioStateChange() on Upside Down Cake");
             return;
         }
@@ -176,6 +188,9 @@ public class CallIntegration extends Connection {
     }
 
     public Set<AudioDevice> getAudioDevices() {
+        if (usesTransactionalIntegration()) {
+            return transactionalIntegration.getAudioDevices();
+        }
         if (notSelfManaged(context)) {
             return getAudioDevicesFallback();
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -188,6 +203,9 @@ public class CallIntegration extends Connection {
     }
 
     public AudioDevice getSelectedAudioDevice() {
+        if (usesTransactionalIntegration()) {
+            return transactionalIntegration.getSelectedAudioDevice();
+        }
         if (notSelfManaged(context)) {
             return getAudioDeviceFallback();
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -200,6 +218,10 @@ public class CallIntegration extends Connection {
     }
 
     public void setAudioDevice(final AudioDevice audioDevice) {
+        if (usesTransactionalIntegration()) {
+            transactionalIntegration.selectAudioDevice(audioDevice);
+            return;
+        }
         if (notSelfManaged(context)) {
             setAudioDeviceFallback(audioDevice);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -227,6 +249,7 @@ public class CallIntegration extends Connection {
 
     @RequiresApi(api = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private Set<AudioDevice> getAudioDevicesUpsideDownCake() {
+        if (availableEndpoints.isEmpty()) return getAudioDevicesOreo();
         return ImmutableSet.copyOf(
                 Lists.transform(
                         this.availableEndpoints, CallIntegration::getAudioDeviceUpsideDownCake));
@@ -234,7 +257,8 @@ public class CallIntegration extends Connection {
 
     @RequiresApi(api = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private AudioDevice getAudioDeviceUpsideDownCake() {
-        return getAudioDeviceUpsideDownCake(getCurrentCallEndpoint());
+        final var endpoint = getCurrentCallEndpoint();
+        return endpoint == null ? getAudioDeviceOreo() : getAudioDeviceUpsideDownCake(endpoint);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
@@ -265,9 +289,23 @@ public class CallIntegration extends Connection {
             requestCallEndpointChange(
                     endpoint,
                     MainThreadExecutor.getInstance(),
-                    result -> Log.d(Config.LOGTAG, "switched to endpoint " + endpoint));
+                    new OutcomeReceiver<Void, CallEndpointException>() {
+                        @Override public void onResult(Void result) {
+                            Log.d(Config.LOGTAG, "switched to endpoint " + endpoint);
+                        }
+
+                        @Override public void onError(CallEndpointException error) {
+                            Log.w(Config.LOGTAG, "Could not change call endpoint", error);
+                            Toast.makeText(context, R.string.call_audio_route_failed, Toast.LENGTH_SHORT).show();
+                        }
+                    });
         } else {
             Log.w(Config.LOGTAG, "no endpoint found matching " + audioDevice);
+            if (getAudioDevicesOreo().contains(audioDevice)) {
+                setAudioDeviceOreo(audioDevice);
+            } else {
+                Toast.makeText(context, R.string.call_audio_route_failed, Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -344,7 +382,7 @@ public class CallIntegration extends Connection {
 
     private void setAudioDeviceFallback(final AudioDevice audioDevice) {
         final var audioManager = requireAppRtcAudioManager();
-        audioManager.executeOnMain(() -> audioManager.setDefaultAudioDevice(audioDevice));
+        audioManager.executeOnMain(() -> audioManager.selectAudioDevice(audioDevice));
     }
 
     @NonNull
@@ -364,6 +402,12 @@ public class CallIntegration extends Connection {
     @Override
     public void onStateChanged(final int state) {
         Log.d(Config.LOGTAG, "onStateChanged(" + state + ")");
+        if (transactionalIntegration != null) {
+            transactionalIntegration.onStateChanged(state);
+            if (state == STATE_DISCONNECTED && callback != null) {
+                callback.onCallIntegrationTelecomStopped();
+            }
+        }
         if (notSelfManaged(context)) {
             if (state == STATE_DIALING) {
                 requireAppRtcAudioManager().startRingBack();
@@ -375,7 +419,7 @@ public class CallIntegration extends Connection {
             startTone(DEFAULT_TONE_VOLUME, ToneGenerator.TONE_CDMA_ANSWER, 100);
         } else if (state == STATE_DISCONNECTED) {
             final var audioManager = this.appRTCAudioManager;
-            if (audioManager != null) {
+            if (audioManager != null && !usesTransactionalIntegration()) {
                 audioManager.executeOnMain(audioManager::stop);
             }
         }
@@ -465,7 +509,7 @@ public class CallIntegration extends Connection {
         throw new AssertionError("CallIntegration has not been disconnected");
     }
 
-    private void onAudioDeviceChanged(
+    void onAudioDeviceChanged(
             final CallIntegration.AudioDevice selectedAudioDevice,
             final Set<CallIntegration.AudioDevice> availableAudioDevices) {
         if (isAudioRoutingRequested) {
@@ -485,6 +529,9 @@ public class CallIntegration extends Connection {
             return;
         }
         final var target = this.initialAudioDevice;
+        if (!availableAudioDevices.contains(target)) {
+            return; // Endpoint flows can initially be empty; wait for the real device list.
+        }
         if (this.initialAudioDeviceConfigured.compareAndSet(false, true)) {
             if (availableAudioDevices.contains(target)
                     && !availableAudioDevices.contains(AudioDevice.BLUETOOTH)) {
@@ -508,6 +555,11 @@ public class CallIntegration extends Connection {
                 && Build.VERSION.SDK_INT < 35
                 && hasSystemFeature(context)
                 && isDeviceModelSupported();
+    }
+
+    public static boolean systemIntegrationAvailable(final Context context) {
+        return selfManagedAvailable(context)
+                || (Build.VERSION.SDK_INT >= 35 && hasSystemFeature(context));
     }
 
     public static boolean selfManaged(final Context context) {
@@ -554,6 +606,10 @@ public class CallIntegration extends Connection {
 
     public void startAudioRouting() {
         this.isAudioRoutingRequested = true;
+        if (usesTransactionalIntegration()) {
+            configureInitialAudioDevice(transactionalIntegration.getAudioDevices());
+            return; // Core-Telecom owns audio focus and routing for this call.
+        }
         if (selfManaged()) {
             final var devices = getAudioDevices();
             if (devices.isEmpty()) {
@@ -572,12 +628,29 @@ public class CallIntegration extends Connection {
     }
 
     private void destroyCallIntegration() {
+        if (transactionalIntegration != null) {
+            transactionalIntegration.onStateChanged(STATE_DISCONNECTED);
+        }
         super.destroy();
         this.isDestroyed.set(true);
     }
 
     public boolean isDestroyed() {
         return this.isDestroyed.get();
+    }
+
+    private boolean usesTransactionalIntegration() {
+        return transactionalIntegration != null && !transactionalIntegration.getFailed();
+    }
+
+    void onTransactionalIntegrationFailed() {
+        if (isAudioRoutingRequested && getState() != STATE_DISCONNECTED && !isDestroyed()) {
+            startAudioRouting();
+        }
+    }
+
+    void onTransactionalCallStarted() {
+        if (callback != null) callback.onCallIntegrationTelecomStarted();
     }
 
     public enum AudioDevice {
@@ -598,6 +671,10 @@ public class CallIntegration extends Connection {
     }
 
     public interface Callback {
+        default void onCallIntegrationTelecomStarted() {}
+
+        default void onCallIntegrationTelecomStopped() {}
+
         void onCallIntegrationShowIncomingCallUi();
 
         void onCallIntegrationDisconnect();

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="call_audio_route_failed">Couldn’t switch call audio. Please try again.</string>
     <string name="app_name" translatable="true">Impulse</string>
     <string name="action_settings">Settings</string>
     <string name="action_accounts">Manage accounts</string>

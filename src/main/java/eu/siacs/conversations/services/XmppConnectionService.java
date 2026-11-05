@@ -1586,6 +1586,15 @@ public class XmppConnectionService extends Service {
         toggleForegroundService(false);
     }
 
+    public void removeOngoingCall(final String sessionId) {
+        final var current = ongoingCall.get();
+        if (current != null && current.id.sessionId.equals(sessionId)
+                && ongoingCall.compareAndSet(current, null)) {
+            callInProgress = false;
+            toggleForegroundService(false);
+        }
+    }
+
     private void toggleForegroundService(final boolean force) {
         final boolean status;
         final OngoingCall ongoing = ongoingCall.get();

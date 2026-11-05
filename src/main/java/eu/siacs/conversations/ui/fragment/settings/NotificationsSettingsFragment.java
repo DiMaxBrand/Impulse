@@ -102,7 +102,7 @@ public class NotificationsSettingsFragment extends XmppPreferenceFragment {
                         .canUseFullScreenIntent()) {
             fullscreenNotification.setVisible(false);
         }
-        callIntegration.setVisible(CallIntegration.selfManagedAvailable(requireContext()));
+        callIntegration.setVisible(CallIntegration.systemIntegrationAvailable(requireContext()));
     }
 
     @Override

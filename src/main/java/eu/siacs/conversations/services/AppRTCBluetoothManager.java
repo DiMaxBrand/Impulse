@@ -553,6 +553,8 @@ public class AppRTCBluetoothManager {
                         Log.w(
                                 Config.LOGTAG,
                                 "Unexpected state BluetoothHeadset.STATE_AUDIO_CONNECTED");
+                        bluetoothState = State.SCO_CONNECTED;
+                        updateAudioDeviceState();
                     }
                 } else if (state == BluetoothHeadset.STATE_AUDIO_CONNECTING) {
                     Log.d(Config.LOGTAG, "+++ Bluetooth audio SCO is now connecting...");
@@ -564,6 +566,10 @@ public class AppRTCBluetoothManager {
                                 "Ignore STATE_AUDIO_DISCONNECTED initial sticky broadcast.");
                         return;
                     }
+                    final boolean transferredFromHeadset = bluetoothState == State.SCO_CONNECTED;
+                    cancelTimer();
+                    bluetoothState = State.HEADSET_AVAILABLE;
+                    if (transferredFromHeadset) apprtcAudioManager.onBluetoothAudioDisconnected();
                     updateAudioDeviceState();
                 }
             }

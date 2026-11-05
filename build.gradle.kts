@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42782
-val appVersion = "1.15.0-beta.319+2.20.0"
+val baseVersionCode = 42783
+val appVersion = "1.15.0-beta.320+2.20.0"
 
 base {
     archivesName.set("Impulse")
@@ -39,6 +39,10 @@ base {
 android {
     namespace = "eu.siacs.conversations"
     compileSdk = 37
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 
     defaultConfig {
         minSdk = 26
@@ -228,6 +232,7 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.vanniktech:android-image-cropper:4.7.0")
     implementation("im.conversations.webrtc:webrtc-android:129.0.0")
+    implementation("androidx.core:core-telecom:1.0.0")
     implementation("io.deepmedia.community:transcoder-android:0.11.2")
     implementation("me.leolin:ShortcutBadger:1.1.22@aar")
     //noinspection NewerVersionAvailable

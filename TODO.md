@@ -1,5 +1,17 @@
 # Impulse — To-Do
 
+## Call audio and car controls — beta.320
+
+- Android 15+ with Call integration enabled uses `TransactionalCallIntegration` (Jetpack
+  Core-Telecom), replacing the legacy ConnectionService endpoint path disabled upstream on API 35.
+  `selfManagedAvailable()` still describes the old path; settings use `systemIntegrationAvailable()`.
+- Without system integration, Android 12+ uses `CommunicationDeviceRouter` and actual communication
+  device callbacks. Older Android retains SCO with explicit user-route priority. Transfers to the
+  phone must not automatically reconnect Bluetooth audio.
+- Seven Robolectric routing tests cover phone/Bluetooth switching, device changes, failed requests,
+  queued callbacks and cleanup. Real car answer/hang-up and private-audio transfer still need device
+  testing; a car may keep its call screen while the call is routed privately to the phone.
+
 ## Liquid glass — where it is going (decided after testing beta.171)
 
 - **Graduated (beta.233)**: the `LIQUID_GLASS` flag is gone. Appearance has an "Interface style"

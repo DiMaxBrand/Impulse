@@ -739,8 +739,15 @@ public class NotificationService {
         builder.setFullScreenIntent(pendingIntent, true);
         builder.setContentIntent(pendingIntent); // old androids need this?
         builder.setOngoing(true);
-        builder.addAction(
-                new NotificationCompat.Action.Builder(
+        if (Build.VERSION.SDK_INT >= 35) {
+            builder.setStyle(NotificationCompat.CallStyle.forIncomingCall(
+                    new Person.Builder().setName(contact.getDisplayName()).setImportant(true).build(),
+                    createCallAction(id.sessionId, XmppConnectionService.ACTION_DISMISS_CALL, 102),
+                    createPendingRtpSession(id, RtpSessionActivity.ACTION_ACCEPT_CALL, 103))
+                    .setIsVideo(media.contains(Media.VIDEO)));
+        } else {
+            builder.addAction(
+                    new NotificationCompat.Action.Builder(
                                 R.drawable.ic_call_end_24dp,
                                 mXmppConnectionService.getString(R.string.dismiss_call),
                                 createCallAction(
@@ -748,13 +755,14 @@ public class NotificationService {
                                         XmppConnectionService.ACTION_DISMISS_CALL,
                                         102))
                         .build());
-        builder.addAction(
-                new NotificationCompat.Action.Builder(
+            builder.addAction(
+                    new NotificationCompat.Action.Builder(
                                 R.drawable.ic_call_24dp,
                                 mXmppConnectionService.getString(R.string.answer_call),
                                 createPendingRtpSession(
                                         id, RtpSessionActivity.ACTION_ACCEPT_CALL, 103))
                         .build());
+        }
         modifyIncomingCall(builder);
         final Notification notification = builder.build();
         notification.audioAttributes =
@@ -795,13 +803,20 @@ public class NotificationService {
         builder.setCategory(NotificationCompat.CATEGORY_CALL);
         builder.setContentIntent(createPendingRtpSession(id, Intent.ACTION_VIEW, 101));
         builder.setOngoing(true);
-        builder.addAction(
-                new NotificationCompat.Action.Builder(
+        if (Build.VERSION.SDK_INT >= 35) {
+            builder.setStyle(NotificationCompat.CallStyle.forOngoingCall(
+                    new Person.Builder().setName(id.getContact().getDisplayName()).setImportant(true).build(),
+                    createCallAction(id.sessionId, XmppConnectionService.ACTION_END_CALL, 104))
+                    .setIsVideo(ongoingCall.media.contains(Media.VIDEO)));
+        } else {
+            builder.addAction(
+                    new NotificationCompat.Action.Builder(
                                 R.drawable.ic_call_end_24dp,
                                 mXmppConnectionService.getString(R.string.hang_up),
                                 createCallAction(
                                         id.sessionId, XmppConnectionService.ACTION_END_CALL, 104))
                         .build());
+        }
         builder.setLocalOnly(true);
         return builder.build();
     }

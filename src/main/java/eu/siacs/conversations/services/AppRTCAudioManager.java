@@ -17,6 +17,7 @@ import android.content.pm.PackageManager;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
+import android.os.Build;
 import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -37,6 +38,7 @@ public class AppRTCAudioManager {
     // Contains speakerphone setting: auto, true or false
     // Handles all tasks related to Bluetooth headset devices.
     private final AppRTCBluetoothManager bluetoothManager;
+    @Nullable private final CommunicationDeviceRouter communicationDeviceRouter;
     @Nullable private final AudioManager audioManager;
     @Nullable private AudioManagerEvents audioManagerEvents;
     private AudioManagerState amState;
@@ -54,8 +56,6 @@ public class AppRTCAudioManager {
     private CallIntegration.AudioDevice selectedAudioDevice;
     // Contains the user-selected audio device which overrides the predefined
     // selection scheme.
-    // TODO(henrika): always set to AudioDevice.NONE today. Add support for
-    // explicit selection based on choice by userSelectedAudioDevice.
     private CallIntegration.AudioDevice userSelectedAudioDevice;
 
     // Contains a list of available audio devices. A Set collection is used to
@@ -79,6 +79,16 @@ public class AppRTCAudioManager {
         } else {
             defaultAudioDevice = CallIntegration.AudioDevice.SPEAKER_PHONE;
         }
+        communicationDeviceRouter = Build.VERSION.SDK_INT >= 31
+                ? new CommunicationDeviceRouter(context, audioManager, defaultAudioDevice,
+                        (selected, available) -> {
+                            selectedAudioDevice = selected;
+                            audioDevices = new HashSet<>(available);
+                            if (audioManagerEvents != null) {
+                                audioManagerEvents.onAudioDeviceChanged(selected, getAudioDevices());
+                            }
+                        })
+                : null;
         Log.d(Config.LOGTAG, "defaultAudioDevice: " + defaultAudioDevice);
         AppRTCUtils.logDeviceInfo(Config.LOGTAG);
     }
@@ -159,14 +169,13 @@ public class AppRTCAudioManager {
         audioDevices.clear();
         // Initialize and start Bluetooth if a BT device is available or initiate
         // detection of new (enabled) BT devices.
-        bluetoothManager.start();
-        // Do initial selection of audio device. This setting can later be changed
-        // either by adding/removing a BT or wired headset or by covering/uncovering
-        // the proximity sensor.
-        updateAudioDeviceState();
-        // Register receiver for broadcast intents related to adding/removing a
-        // wired headset.
-        registerReceiver(wiredHeadsetReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
+        if (communicationDeviceRouter != null) {
+            communicationDeviceRouter.start();
+        } else {
+            bluetoothManager.start();
+            updateAudioDeviceState();
+            registerReceiver(wiredHeadsetReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
+        }
         Log.d(Config.LOGTAG, "AudioManager started");
     }
 
@@ -180,8 +189,12 @@ public class AppRTCAudioManager {
             return;
         }
         amState = AudioManagerState.UNINITIALIZED;
-        unregisterReceiver(wiredHeadsetReceiver);
-        bluetoothManager.stop();
+        if (communicationDeviceRouter != null) {
+            communicationDeviceRouter.stop();
+        } else {
+            unregisterReceiver(wiredHeadsetReceiver);
+            bluetoothManager.stop();
+        }
         // Restore previously stored audio states.
         setSpeakerphoneOn(savedIsSpeakerPhoneOn);
         setMicrophoneMute(savedIsMicrophoneMute);
@@ -223,6 +236,10 @@ public class AppRTCAudioManager {
             default -> Log.e(Config.LOGTAG, "Invalid default audio device selection");
         }
         Log.d(Config.LOGTAG, "setDefaultAudioDevice(device=" + defaultAudioDevice + ")");
+        if (communicationDeviceRouter != null) {
+            communicationDeviceRouter.setDefault(defaultAudioDevice);
+            return;
+        }
         updateAudioDeviceState();
     }
 
@@ -231,12 +248,25 @@ public class AppRTCAudioManager {
         ThreadUtils.checkIsOnMainThread();
         if (!audioDevices.contains(device)) {
             Log.e(Config.LOGTAG, "Can not select " + device + " from available " + audioDevices);
+            return;
+        }
+        if (device == CallIntegration.AudioDevice.EARPIECE
+                || device == CallIntegration.AudioDevice.SPEAKER_PHONE) defaultAudioDevice = device;
+        if (communicationDeviceRouter != null) {
+            communicationDeviceRouter.select(device);
+            return;
         }
         userSelectedAudioDevice = device;
         updateAudioDeviceState();
     }
 
     /** Returns current set of available/selectable audio devices. */
+    void onBluetoothAudioDisconnected() {
+        // A headset can transfer audio to the phone without disconnecting HFP.
+        // Don't immediately reopen SCO and steal the call back from the phone.
+        userSelectedAudioDevice = defaultAudioDevice;
+    }
+
     public Set<CallIntegration.AudioDevice> getAudioDevices() {
         return ImmutableSet.copyOf(audioDevices);
     }
@@ -306,6 +336,7 @@ public class AppRTCAudioManager {
      */
     public void updateAudioDeviceState() {
         ThreadUtils.checkIsOnMainThread();
+        if (amState != AudioManagerState.RUNNING || communicationDeviceRouter != null) return;
         Log.d(
                 Config.LOGTAG,
                 "--- updateAudioDeviceState: "
@@ -418,7 +449,11 @@ public class AppRTCAudioManager {
         }
         // Update selected audio device.
         final CallIntegration.AudioDevice newAudioDevice;
-        if (bluetoothManager.getState() == AppRTCBluetoothManager.State.SCO_CONNECTED) {
+        if (userSelectedAudioDevice != CallIntegration.AudioDevice.NONE
+                && userSelectedAudioDevice != CallIntegration.AudioDevice.BLUETOOTH
+                && audioDevices.contains(userSelectedAudioDevice)) {
+            newAudioDevice = userSelectedAudioDevice;
+        } else if (bluetoothManager.getState() == AppRTCBluetoothManager.State.SCO_CONNECTED) {
             // If a Bluetooth is connected, then it should be used as output audio
             // device. Note that it is not sufficient that a headset is available;
             // an active SCO channel must also be up and running.
