@@ -371,7 +371,7 @@ internal fun ProfileHeader(
     // Only the outer shadow swells and softens. Its radial falloff approximates a broad blur
     // without blurring the real cutout or allocating a screen-sized blur layer.
     val halo = cameraHaloProgress(p2)
-    if (metrics.hasCamera && halo > 0.001f) Canvas(Modifier.fillMaxSize()) {
+    if (glass && metrics.hasCamera && halo > 0.001f) Canvas(Modifier.fillMaxSize()) {
         val camera = Offset(metrics.camX, metrics.camY)
         val radius = metrics.camR + 36.dp.toPx() * halo
         val inner = (metrics.camR / radius).coerceIn(0f, 0.99f)
