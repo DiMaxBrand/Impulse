@@ -247,7 +247,6 @@ class ConversationScreenState {
     // whether one still is; when it isn't, InputBar springs its own copy back to 0.
     internal val barPullPx = androidx.compose.runtime.mutableFloatStateOf(0f)
     internal val barPullDragging = mutableStateOf(false)
-    internal val browsingHistory = mutableStateOf(false)
     internal val requestScrollToUuid = mutableStateOf<String?>(null)
     // Messages that got a reaction while off screen (uuid -> the new emoji). They turn the
     // scroll button into a heart; tapping it walks to them one by one.
@@ -273,7 +272,7 @@ class ConversationScreenState {
 
     fun update(conversation: Conversation?, source: List<Message>) {
         this.conversation.value = conversation
-        messages.value = source
+        messages.value = messagesForConversation(conversation?.getUuid(), source)
         unreadCount.intValue = conversation?.unreadCount() ?: 0
         revision.intValue++
     }
@@ -344,8 +343,6 @@ interface ConversationScreenListener {
     fun onDownloadMessage(message: Message)
 
     fun onLoadMoreMessages()
-    fun onLoadNewerMessages() {}
-    fun onReturnToLatest() {}
 
     fun onScrolledToBottom()
 
@@ -2259,11 +2256,12 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 if (first != null) first.getUuid() to (conversation?.unreadCount() ?: 0) else null
             }
         }
-    val items =
-        buildChatItems(state.messages.value, newMessagesBoundary?.first, newMessagesBoundary?.second ?: 0)
-    val listState = rememberLazyListState()
+    val fullItems = buildChatItems(state.messages.value, newMessagesBoundary?.first, newMessagesBoundary?.second ?: 0)
+    var jumpWindow by remember(conversation?.getUuid()) { mutableStateOf<List<ChatItem>?>(null) }
+    val items = jumpWindow ?: fullItems
+    val jumping = jumpWindow != null
+    val listState = androidx.compose.runtime.key(conversation?.getUuid()) { rememberLazyListState() }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var navigationInProgress by remember(conversation?.getUuid()) { mutableStateOf(false) }
     // Declared here (not down by the effect that actually sets it) so the onScrolledToBottom
     // effect below can gate on it too -- see that effect's own comment for why it has to.
     val hasPositioned = remember(conversation?.getUuid()) { mutableStateOf(false) }
@@ -2451,26 +2449,15 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     }
 
     // Request older messages when the user approaches the (chronological) top.
-    LaunchedEffect(listState, revision) {
+    LaunchedEffect(listState, revision, jumping) {
         snapshotFlow {
                 val info = listState.layoutInfo
                 val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-                last >= info.totalItemsCount - 4 && info.totalItemsCount > 0
+                !jumping && state.requestScrollToUuid.value == null &&
+                    last >= info.totalItemsCount - 4 && info.totalItemsCount > 0
             }
             .distinctUntilChanged()
             .collect { nearTop -> if (nearTop) listener.onLoadMoreMessages() }
-    }
-
-    // reverseLayout: index zero is the newer end of a historical window. Extend it before
-    // the user runs out of rows; stable message keys preserve their viewport as pages arrive.
-    LaunchedEffect(listState, revision) {
-        snapshotFlow {
-            state.browsingHistory.value && listState.firstVisibleItemIndex < 5 &&
-                listState.layoutInfo.visibleItemsInfo.isNotEmpty() &&
-                state.requestScrollToUuid.value == null
-        }.distinctUntilChanged().collect { nearEnd ->
-            if (nearEnd) listener.onLoadNewerMessages()
-        }
     }
 
     // Notify when the newest message becomes visible so read markers can be sent.
@@ -2488,8 +2475,8 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // its own regardless of where the list ends up landing. hasPositioned only becomes true once
     // the scroll-to-first-unread effect has actually run to completion, so this can no longer
     // fire on that first, not-yet-decided frame.
-    LaunchedEffect(listState) {
-        snapshotFlow { hasPositioned.value && listState.firstVisibleItemIndex == 0 }
+    LaunchedEffect(listState, jumping) {
+        snapshotFlow { !jumping && state.requestScrollToUuid.value == null && hasPositioned.value && listState.firstVisibleItemIndex == 0 }
             .distinctUntilChanged()
             .collect { atBottom -> if (atBottom) listener.onScrolledToBottom() }
     }
@@ -2509,7 +2496,6 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // why marking only ever seemed to happen via the separate onScrolledToBottom() path (that one
     // never touches `items` at all) and never dynamically as new messages scrolled into view.
     val latestItems = rememberUpdatedState(items)
-    val latestRevision = rememberUpdatedState(revision)
     // The typing bubble and "it's late for them" row are declared as their own item(key = ...)
     // entries ahead of itemsIndexed(items, ...) below, so whenever either is showing,
     // visibleItemsInfo's raw .index runs ahead of items' own indices by however many of those
@@ -2529,6 +2515,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             listState.layoutInfo.visibleItemsInfo.map { it.index - leadingCount }
         }
             .collect { visibleIndices ->
+                if (jumpWindow != null || state.requestScrollToUuid.value != null) return@collect
                 val currentItems = latestItems.value
                 val lowestVisibleUnread =
                     visibleIndices
@@ -2562,7 +2549,6 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         scrollNonce++
     }
     LaunchedEffect(scrollNonce) {
-        if (navigationInProgress) return@LaunchedEffect
         val (index, offsetFraction) = scrollRequest ?: return@LaunchedEffect
         // LazyListState.scrollToItem's own KDoc (androidx.compose.foundation.lazy.LazyListState):
         // "positive offset refers to forward scroll, so in a top-to-bottom list, positive offset
@@ -2657,7 +2643,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         // worked for a same-day arrival: the previous newest message's index shifts to 2, not 1,
         // and silently failed the plain `<= 1` check every time a message crossed midnight.
         val extraForDatePill = if (items.getOrNull(1) is ChatItem.DatePill) 1 else 0
-        if (!navigationInProgress && state.requestScrollToUuid.value == null && !state.browsingHistory.value && hasPositioned.value && listState.firstVisibleItemIndex <= 1 + extraForDatePill) {
+        if (!jumping && state.requestScrollToUuid.value == null && hasPositioned.value && listState.firstVisibleItemIndex <= 1 + extraForDatePill) {
             requestScroll(0, 0f)
         }
     }
@@ -2719,41 +2705,50 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // a grid tile is never a standalone ChatItem.Msg, so a Msg-only lookup silently finds nothing
     // for the common case of a grouped photo.
     val scrollToUuid = state.requestScrollToUuid.value
-    LaunchedEffect(scrollToUuid) {
-        if (scrollToUuid != null) {
-            navigationInProgress = true
-            try {
-                val idx = items.indexOfFirst { item ->
-                    when (item) {
-                        is ChatItem.Msg -> item.message.getUuid() == scrollToUuid || item.caption?.getUuid() == scrollToUuid
-                        is ChatItem.MediaGroup ->
-                            item.messages.any { it.getUuid() == scrollToUuid } || item.caption?.getUuid() == scrollToUuid
-                        else -> false
+    LaunchedEffect(conversation?.getUuid(), scrollToUuid) {
+        if (scrollToUuid == null) return@LaunchedEffect
+        fun contains(item: ChatItem, uuid: String): Boolean = when (item) {
+            is ChatItem.Msg -> item.message.getUuid() == uuid || item.caption?.getUuid() == uuid
+            is ChatItem.MediaGroup -> item.messages.any { it.getUuid() == uuid } || item.caption?.getUuid() == uuid
+            else -> false
+        }
+        val target = fullItems.indexOfFirst { contains(it, scrollToUuid) }
+        if (target < 0) {
+            state.requestScrollToUuid.value = null
+            return@LaunchedEffect
+        }
+        // Only the UI projection is shortened. The conversation model remains complete.
+        val originKey = listState.layoutInfo.visibleItemsInfo.firstOrNull {
+            fullItems.any { item -> item.key == it.key }
+        }?.key
+        val origin = fullItems.indexOfFirst { it.key == originKey }.coerceAtLeast(0)
+        val preview = navigationWindowIndices(fullItems.size, origin, target).map { fullItems[it] }
+        val compactTarget = preview.indexOfFirst { contains(it, scrollToUuid) }
+        try {
+            jumpWindow = preview
+            // Match item keys, not just counts: a same-size list may still be the old layout.
+            snapshotFlow {
+                val layout = listState.layoutInfo
+                layout.totalItemsCount == preview.size + latestLeadingCount.value &&
+                    layout.visibleItemsInfo.all { row ->
+                        row.key == "typing-indicator" || row.key == "local-time-indicator" ||
+                            preview.any { it.key == row.key }
                     }
-                }
-                if (idx >= 0) {
-                    // The DB range is ready; wait until LazyColumn has measured the expanded list.
-                    snapshotFlow { listState.layoutInfo.totalItemsCount >= items.size }.first { it }
-                    // Bound the animated travel to two screens. Animating the whole history
-                    // forces expensive rows through layout and can stall for several seconds.
-                    listState.flyToItem(idx)
-                    highlightKey = scrollToUuid
-                    // Heart tap: the reaction itself flashes, a shorter beat than the bubble highlight.
-                    state.pendingBlink?.takeIf { it.first == scrollToUuid }?.let {
-                        state.pendingBlink = null
-                        state.reactionBlink.value = it
-                        scope.launch {
-                            kotlinx.coroutines.delay(1100)
-                            if (state.reactionBlink.value == it) state.reactionBlink.value = null
-                        }
-                    }
-                }
-            } finally {
-                navigationInProgress = false
-                if (state.requestScrollToUuid.value == scrollToUuid) {
-                    state.requestScrollToUuid.value = null
+            }.first { it }
+            listState.animateScrollToItem(compactTarget + latestLeadingCount.value)
+            highlightKey = scrollToUuid
+            state.pendingBlink?.takeIf { it.first == scrollToUuid }?.let {
+                state.pendingBlink = null
+                state.reactionBlink.value = it
+                scope.launch {
+                    kotlinx.coroutines.delay(1100)
+                    if (state.reactionBlink.value == it) state.reactionBlink.value = null
                 }
             }
+        } finally {
+            // Stable row keys preserve the landed viewport when all intervening rows return.
+            jumpWindow = null
+            if (state.requestScrollToUuid.value == scrollToUuid) state.requestScrollToUuid.value = null
         }
     }
 
@@ -2830,7 +2825,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 val riskyVideoUpload = item is ChatItem.Msg &&
                     item.message.mimeType?.startsWith("video/") == true &&
                     item.message.transferable?.getStatus() == eu.siacs.conversations.entities.Transferable.STATUS_UPLOADING
-                val baseItemModifier = if (riskyVideoUpload || navigationInProgress) {
+                val baseItemModifier = if (riskyVideoUpload || jumping) {
                     Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
                 } else {
                     Modifier.animateItem()
@@ -2844,7 +2839,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                     is ChatItem.Msg ->
                         MessageRow(
                             item = item,
-                            isNewest = index == 0,
+                            isNewest = !jumping && index == 0,
                             highlighted = item.key == highlightKey,
                             isBeingEdited = state.correcting.value?.getUuid() == item.message.getUuid()
                                     || state.remoteEditingIds.value.contains(item.message.getUuid()),
@@ -3009,26 +3004,11 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                             state.requestScrollToUuid.value = heartUuid
                             return@SmallFloatingActionButton
                         }
-                        navigationInProgress = true
-                        if (state.browsingHistory.value) {
-                            listener.onReturnToLatest()
-                        }
-                        val targetRevision = state.revision.intValue
                         // Cleared so the fling detector doesn't also fire on arrival with a stale
                         // speed; the band is triggered explicitly once the scroll has landed.
                         flingSpeed[0] = 0f
-                        scope.launch {
-                            try {
-                                // Let a returned live window reach LazyColumn before scrolling it.
-                                snapshotFlow {
-                                    latestRevision.value >= targetRevision &&
-                                        listState.layoutInfo.totalItemsCount ==
-                                        latestItems.value.size + latestLeadingCount.value
-                                }.first { it }
-                                listState.flyToItem(0)
-                            } finally {
-                                navigationInProgress = false
-                            }
+                        state.messages.value.lastOrNull()?.getUuid()?.let {
+                            state.requestScrollToUuid.value = it
                         }
                     },
                     containerColor =
@@ -3483,8 +3463,6 @@ private fun MessageRow(
                     ),
             )
         } else {
-            // Paging can change which row is newest while the spring is still running.
-            // Always restore full size instead of leaving the cancelled spring at ~0.8.
             pop.snapTo(1f)
         }
     }

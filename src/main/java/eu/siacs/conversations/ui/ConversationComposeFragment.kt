@@ -52,11 +52,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private var conversation: Conversation? = null
     private var pendingConversationUuid: String? = null
     private val loadingMoreMessages = AtomicBoolean(false)
-    // A jump to a pin/search result is a contiguous window, not a batch spliced onto today's chat.
-    private var historyWindow: List<Message>? = null
+    private var historyLoad: kotlinx.coroutines.Job? = null
     private var historyGeneration = 0
-    private var historyPageLoading = false
-    private var historyHasOlder = true
     private var pendingTrustAction: (() -> Unit)? = null
     private var lastComposedText = ""
     private var typingPauseJob: kotlinx.coroutines.Job? = null
@@ -450,10 +447,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             // leaving (this.conversation, still the old one at this point) before switching away
             // from it — otherwise navigating away silently threw the draft out.
             storeNextMessage()
-            historyWindow = null
+            historyLoad?.cancel()
             historyGeneration++
-            historyPageLoading = false
-            state.browsingHistory.value = false
+            state.requestScrollToUuid.value = null
+            state.pendingRemovalUuids.clear()
+            state.update(conversation, emptyList())
             state.replyingTo.value = null
             // Abandoning an edit by switching conversations (rather than explicitly cancelling or
             // sending it) still needs its own "stop" sent — otherwise the peer's copy of this
@@ -598,12 +596,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
         val freshList = ArrayList<Message>()
         c.populateWithMessages(freshList)
-        historyWindow?.let { window ->
-            // Prefer live instances for edits, downloads and reactions in the current window.
-            val live = freshList.associateBy { it.getUuid() }
-            freshList.clear()
-            freshList.addAll(window.map { live[it.getUuid()] ?: it })
-        }
+        // Clean up foreign rows retained in memory by an earlier build; never animate them in.
+        freshList.filter { it.getConversationUuid() != c.getUuid() }.forEach { c.remove(it) }
+        freshList.removeAll { it.getConversationUuid() != c.getUuid() }
         // A message that just disappeared from conversation.messages between this refresh and
         // the last one -- a remote retraction/moderation reaching us, most commonly -- would
         // otherwise just vanish the instant this runs, with no chance for MessageRow's delete
@@ -614,12 +609,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         // pendingRemoval, then do the real, fully up-to-date refresh once the exit's had time to
         // play. Excludes uuids already pending -- that's our own delete flow already handling it,
         // don't double up.
-        val previousUuids = state.messages.value.mapNotNull { it.getUuid() }.toSet()
+        val previous = messagesForConversation(c.getUuid(), state.messages.value)
+        val previousUuids = previous.mapNotNull { it.getUuid() }.toSet()
         val freshUuids = freshList.mapNotNull { it.getUuid() }.toSet()
         val newlyGone = (previousUuids - freshUuids) - state.pendingRemovalUuids.toSet()
         val list: List<Message>
         if (newlyGone.isNotEmpty()) {
-            val goneMessages = state.messages.value.filter { it.getUuid() in newlyGone }
+            val goneMessages = previous.filter { it.getUuid() in newlyGone }
             val merged = ArrayList(freshList)
             for (gone in goneMessages) {
                 val insertAt = merged.indexOfFirst { it.timeSent > gone.timeSent }
@@ -627,8 +623,10 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
             list = merged
             state.pendingRemovalUuids.addAll(newlyGone)
+            val generation = historyGeneration
             lifecycleScope.launch {
                 kotlinx.coroutines.delay(280)
+                if (conversation !== c || historyGeneration != generation) return@launch
                 state.pendingRemovalUuids.removeAll(newlyGone)
                 refreshMessages()
             }
@@ -657,7 +655,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onMarkReadUpTo(uuid: String) {
-        if (!isResumed || historyWindow != null) return
+        if (!isResumed) return
         val activity = activity as? OnConversationRead ?: return
         activity.onConversationRead(conversation ?: return, uuid)
     }
@@ -1318,10 +1316,6 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onLoadMoreMessages() {
-        if (historyWindow != null) {
-            loadHistoryPage(newer = false)
-            return
-        }
         val c = conversation ?: return
         val service = getXmppConnectionService() ?: return
         if (!c.messagesLoaded.get()) return
@@ -1351,71 +1345,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         )
     }
 
-    override fun onLoadNewerMessages() {
-        loadHistoryPage(newer = true)
-    }
-
-    private fun loadHistoryPage(newer: Boolean) {
-        val window = historyWindow ?: return
-        val c = conversation ?: return
-        val service = getXmppConnectionService() ?: return
-        if (historyPageLoading || window.isEmpty() || (!newer && !historyHasOlder)) return
-        historyPageLoading = true
-        val generation = historyGeneration
-        val anchor = if (newer) window.last().timeSent else window.first().timeSent
-        lifecycleScope.launch {
-            try {
-                val page = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    val db = service.databaseBackend
-                    val batch = if (newer) db.getMessagesAfter(c, 50, anchor)
-                        else db.getMessages(c, 50, anchor)
-                    // Timestamp cursors must include all siblings at the page edge (albums/MAM).
-                    val edge = (if (newer) batch.lastOrNull() else batch.firstOrNull())?.timeSent
-                    if (edge != null) batch.addAll(db.getMessagesAtTimestamp(c, edge))
-                    batch
-                }
-                if (conversation !== c || historyGeneration != generation) return@launch
-                val current = historyWindow ?: return@launch
-                if (!newer && page.isEmpty()) {
-                    historyHasOlder = false
-                    return@launch
-                }
-                val joined = (current + page).distinctBy { it.getUuid() }.sortedBy { it.timeSent }
-                val live = ArrayList<Message>()
-                c.populateWithMessages(live)
-                if (newer && (page.isEmpty() || live.firstOrNull()?.let {
-                        joined.last().timeSent >= it.timeSent
-                    } == true)) {
-                    // We have reached the contiguous live tail; join it only now, with no gap.
-                    val existing = live.mapTo(HashSet()) { it.getUuid() }
-                    c.addAll(0, joined.filter { it.getUuid() !in existing })
-                    c.sort()
-                    historyWindow = null
-                    state.browsingHistory.value = false
-                } else {
-                    historyWindow = joined
-                }
-                refreshMessages()
-            } finally {
-                if (historyGeneration == generation) historyPageLoading = false
-            }
-        }
-    }
-
-    override fun onReturnToLatest() {
-        historyGeneration++
-        historyWindow = null
-        historyPageLoading = false
-        state.browsingHistory.value = false
-        val c = conversation ?: return
-        val latest = ArrayList<Message>()
-        c.populateWithMessages(latest)
-        state.update(c, latest)
-        refreshMessages()
-    }
-
     override fun onScrolledToBottom() {
-        if (historyWindow != null) return
         markRead()
     }
 
@@ -1783,7 +1713,6 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 service.evictPreview(message.getUuid())
             }
             c.remove(message)
-            historyWindow = historyWindow?.filterNot { it.getUuid() == message.getUuid() }
             service.databaseBackend.deleteMessage(message.getUuid())
             service.getNotificationService().clear(message)
         }
@@ -1805,7 +1734,6 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 service.evictPreview(message.getUuid())
             }
             c.remove(message)
-            historyWindow = historyWindow?.filterNot { it.getUuid() == message.getUuid() }
             service.databaseBackend.deleteMessage(message.getUuid())
             service.getNotificationService().clear(message)
         }
@@ -1934,7 +1862,6 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             service.evictPreview(message.getUuid())
         }
         c.remove(message)
-        historyWindow = historyWindow?.filterNot { it.getUuid() == message.getUuid() }
         service.databaseBackend.deleteMessage(message.getUuid())
         service.getNotificationService().clear(message)
         refreshMessages()
@@ -2002,6 +1929,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onScrollToMessage(message: Message) {
+        if (message.getConversationUuid() != conversation?.getUuid()) return
         val uuid = message.getUuid() ?: return
         scrollToMessage(uuid, message.timeSent, replyToIt = false)
     }
@@ -2011,6 +1939,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
      * is not there yet) and either scrolls to it with the usual highlight, or starts a reply to it.
      */
     private fun scrollToMessage(uuid: String, timeSent: Long, replyToIt: Boolean) {
+        val c = conversation ?: return
+        historyLoad?.cancel()
+        val generation = ++historyGeneration
         val arrive = {
             if (replyToIt) {
                 state.messages.value.firstOrNull { it.getUuid() == uuid }?.let {
@@ -2021,35 +1952,29 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 state.requestScrollToUuid.value = uuid
             }
         }
-        if (state.messages.value.none { it.getUuid() == uuid }) {
+        if (messagesForConversation(c.getUuid(), state.messages.value).none { it.getUuid() == uuid }) {
             val service = getXmppConnectionService() ?: return
-            val c = conversation ?: return
-            val generation = ++historyGeneration
-            // Keep the current viewport's keys in the list. Replacing them made the old rows
-            // fade away and made the pin look like the newest message (including its pop scale).
-            val visibleWindow = state.messages.value.toList()
-            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                val batch = service.databaseBackend.getMessages(c, 50, timeSent + 1)
-                batch.addAll(service.databaseBackend.getMessagesAtTimestamp(c, timeSent))
-                batch.firstOrNull()?.let {
-                    batch.addAll(service.databaseBackend.getMessagesAtTimestamp(c, it.timeSent))
+            // Snapshot the model of this conversation, never the reusable screen's displayed rows.
+            val current = messagesForConversation(c.getUuid(), c.snapshotMessages())
+            historyLoad = lifecycleScope.launch {
+                val loaded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val db = service.databaseBackend
+                    val older = db.getMessages(c, 50, timeSent + 1)
+                    val oldest = minOf(timeSent, older.minOfOrNull { it.timeSent } ?: timeSent,
+                        current.minOfOrNull { it.timeSent } ?: timeSent)
+                    val newest = maxOf(timeSent, current.maxOfOrNull { it.timeSent } ?: timeSent)
+                    db.getMessagesBetween(c, oldest, newest)
                 }
-                val oldest = minOf(timeSent, visibleWindow.firstOrNull()?.timeSent ?: timeSent,
-                    batch.minOfOrNull { it.timeSent } ?: timeSent)
-                val newest = maxOf(timeSent, visibleWindow.lastOrNull()?.timeSent ?: timeSent)
-                val bridge = service.databaseBackend.getMessagesBetween(c, oldest, newest)
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (conversation !== c || historyGeneration != generation) return@withContext
-                    if (batch.none { it.getUuid() == uuid }) return@withContext
-                    // Retain current instances, including messages delivered while the DB was loading.
-                    historyWindow = (state.messages.value + visibleWindow + bridge + batch)
-                        .distinctBy { it.getUuid() }.sortedBy { it.timeSent }
-                    historyPageLoading = false
-                    historyHasOlder = true
-                    state.browsingHistory.value = true
-                    refreshMessages()
-                    arrive()
-                }
+                // A cancelled database query may still finish; it must never update another chat.
+                if (conversation !== c || historyGeneration != generation || !isAdded) return@launch
+                val live = messagesForConversation(c.getUuid(), c.snapshotMessages())
+                val merged = mergeConversationHistory(c.getUuid(), live, loaded)
+                if (merged.none { it.getUuid() == uuid }) return@launch
+                val existing = live.mapTo(HashSet()) { it.getUuid() }
+                c.addAll(0, merged.filter { it.getUuid() !in existing })
+                c.sort()
+                refreshMessages()
+                arrive()
             }
         } else {
             arrive()
