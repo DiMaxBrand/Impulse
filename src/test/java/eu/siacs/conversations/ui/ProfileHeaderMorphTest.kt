@@ -6,6 +6,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProfileHeaderMorphTest {
+    @Test fun cameraHaloDisappearsAtBothRestingStatesAndReversesSymmetrically() {
+        assertEquals(0f, cameraHaloProgress(0f), 0f)
+        assertEquals(0f, cameraHaloProgress(1f), 0f)
+        assertEquals(1f, cameraHaloProgress(0.5f), 0f)
+        assertEquals(cameraHaloProgress(0.25f), cameraHaloProgress(0.75f), 0f)
+        assertEquals(0f, cameraHaloProgress(1.1f), 0f)
+    }
     @Test fun photoRemainsClearAwayFromCamera() {
         val look = cameraAbsorption(0f, 100f, 32f)
         assertEquals(0f, look.blur, 0f)

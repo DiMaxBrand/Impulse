@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -138,6 +139,13 @@ internal fun cameraMergePose(
 private fun ease(t: Float): Float = t * t * (3f - 2f * t)
 
 internal data class CameraAbsorption(val blur: Float, val topBlack: Float, val bottomBlack: Float)
+
+/** A reversible swell, with zero size/opacity velocity at either resting state. */
+internal fun cameraHaloProgress(progress: Float): Float {
+    val p = progress.coerceIn(0f, 1f)
+    val swell = 4f * p * (1f - p)
+    return swell * swell
+}
 
 /** Darken into opaque black before the photo fits inside the cutout; never fade into the page. */
 internal fun cameraAbsorption(progress: Float, gap: Float, reach: Float): CameraAbsorption {
@@ -358,6 +366,30 @@ internal fun ProfileHeader(
                 0.75f to Color.Black.copy(alpha = lerpF(absorption.topBlack, absorption.bottomBlack, 0.8f)),
                 1f to Color.Black.copy(alpha = absorption.bottomBlack),
             ))
+        }
+    }
+    // Only the outer shadow swells and softens. Its radial falloff approximates a broad blur
+    // without blurring the real cutout or allocating a screen-sized blur layer.
+    val halo = cameraHaloProgress(p2)
+    if (metrics.hasCamera && halo > 0.001f) Canvas(Modifier.fillMaxSize()) {
+        val camera = Offset(metrics.camX, metrics.camY)
+        val radius = metrics.camR + 36.dp.toPx() * halo
+        val inner = (metrics.camR / radius).coerceIn(0f, 0.99f)
+        val direction = Math.toDegrees(kotlin.math.atan2(
+            (cy - metrics.camY).toDouble(), (cx - metrics.camX).toDouble(),
+        )).toFloat() - 90f
+        withTransform({
+            rotate(direction, pivot = camera)
+            scale(1f, 1f + 0.45f * halo, pivot = camera)
+        }) {
+            drawCircle(Brush.radialGradient(
+                0f to Color.Black.copy(alpha = 0.58f * halo),
+                inner to Color.Black.copy(alpha = 0.5f * halo),
+                (inner + (1f - inner) * 0.3f) to Color.Black.copy(alpha = 0.28f * halo),
+                (inner + (1f - inner) * 0.65f) to Color.Black.copy(alpha = 0.07f * halo),
+                1f to Color.Transparent,
+                center = camera, radius = radius,
+            ), radius, camera)
         }
     }
     // Last, separate and always opaque: neither the photo blur nor its gradient can tint the lens.
