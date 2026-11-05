@@ -206,7 +206,8 @@ fun ContactDetailsScreen(state: ContactDetailsState, actions: ContactDetailsActi
             if (ui != null) {
                 Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                     Spacer(Modifier.height(with(density) { bigHeight.toDp() }))
-                    DetailsBody(ui, state, actions)
+                    val mergeProgress = ((s - metrics.toCircle) / (metrics.toCamera - metrics.toCircle)).coerceIn(0f, 1f)
+                    DetailsBody(ui, state, actions, profileTitleAlphas(mergeProgress).first)
                     Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(40.dp))
                 }
                 // The toolbar's surface belongs behind the whole camera/photo merge.
@@ -299,7 +300,7 @@ private fun TopBar(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).graphicsAlpha(((p - 0.6f) / 0.4f).coerceIn(0f, 1f)),
+                modifier = Modifier.weight(1f).graphicsAlpha(profileTitleAlphas(p).second),
             )
         }
     }
@@ -310,13 +311,13 @@ private fun Modifier.graphicsAlpha(alpha: Float): Modifier = this.alpha(alpha)
 // ─── Body ────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun DetailsBody(ui: ContactDetailsUi, state: ContactDetailsState, actions: ContactDetailsActions) {
+private fun DetailsBody(ui: ContactDetailsUi, state: ContactDetailsState, actions: ContactDetailsActions, titleAlpha: Float) {
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         // The name, right under the picture (and in the top bar once it has scrolled away).
-        Column(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.fillMaxWidth().padding(top = 4.dp).graphicsAlpha(titleAlpha), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 ui.name,
                 style = MaterialTheme.typography.headlineMedium,

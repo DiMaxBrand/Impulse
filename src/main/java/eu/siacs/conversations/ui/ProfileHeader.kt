@@ -117,11 +117,27 @@ half4 main(float2 p) {
     float dAv = sdBody(p - av, avR);
     float d = smin(dCam, dAv, soft);
     // Dissolve the boundary of the actual merged body, not a separate circle around it.
-    float cameraZone = 1.0 - smoothstep(camR + edgeSoft, camR + max(length(av - cam) * 0.8, edgeSoft + 1.0), length(p - cam));
-    cameraZone *= smoothstep(0.0, 1.0, max(dAv - d, 0.0));
+    float2 axis = (av - cam) / max(length(av - cam), 0.001);
+    float r = min(avR.x, avR.y);
+    float extent = dot(abs(axis), avR - float2(r)) + r;
+    float capDepth = dot(p - av, axis) + extent;
+    // A continuous spatial mask: gating by the union's displacement cut the
+    // feather off exactly where the camera field met the photo field.
+    float cameraZone = 1.0 - smoothstep(0.0, max(r * 0.55, 1.0), max(capDepth, 0.0));
     float feather = edgeSoft * cameraZone;
     float inward = min(feather * 0.5, camR * 0.2);
     float alpha = feather > 0.001 ? 1.0 - smoothstep(-inward, feather, d) : clamp(0.5 - d, 0.0, 1.0);
+    float reach = max(r * 0.55, 1.0);
+    float contact = 1.0 - smoothstep(0.0, reach, max(dCam - soft, 0.0));
+    float join = contact * (1.0 - smoothstep(0.0, reach, max(capDepth, 0.0)));
+    // A small opaque margin absorbs the last coloured sliver before it reaches
+    // the physical cutout. The union still bounds it, so no extra dot remains.
+    float lens = 1.0 - smoothstep(camR * 1.2, camR + max(camR * 0.7, 1.0), length(p - cam));
+    float shade = max(lens, join);
+    float photo = clamp(0.5 - dAv, 0.0, 1.0);
+    // Draw across the photo boundary in one pass, including the blurred outer
+    // neck. The image's clip can no longer slice a pale crescent through it.
+    alpha = mix(alpha * max(contact * cameraZone, lens), shade, photo);
     return half4(0.0, 0.0, 0.0, alpha);
 }
 """
@@ -144,32 +160,12 @@ internal fun cameraMergePose(
 
 private fun ease(t: Float): Float = t * t * (3f - 2f * t)
 
-/** Feather inward only from the camera-facing cap, never from the side/bottom perimeter. */
-internal fun cameraJoinShade(capDepth: Float, cameraDistance: Float, blend: Float, feather: Float): Float {
-    if (blend <= 0.001f) return 0f
-    val distance = max(capDepth, 0f) + max(cameraDistance - blend, 0f)
-    return 1f - ease((distance / feather.coerceAtLeast(1f)).coerceIn(0f, 1f))
+/** Finish fading the body title before introducing the toolbar's copy. */
+internal fun profileTitleAlphas(progress: Float): Pair<Float, Float> {
+    val p = progress.coerceIn(0f, 1f)
+    return (1f - ease(((p - 0.35f) / 0.3f).coerceIn(0f, 1f))) to
+        ease(((p - 0.7f) / 0.3f).coerceIn(0f, 1f))
 }
-
-private const val CAMERA_SHADE_SRC = """
-uniform float2 halfSize;
-uniform float2 cam;
-uniform float camR;
-uniform float blend;
-uniform float topBlack;
-uniform float bottomBlack;
-half4 main(float2 p) {
-    float r = min(halfSize.x, halfSize.y);
-    float2 axis = (halfSize - cam) / max(length(halfSize - cam), 0.001);
-    float extent = dot(abs(axis), halfSize - float2(r)) + r;
-    float capDepth = max(dot(p - halfSize, axis) + extent, 0.0);
-    float camera = length(p - cam) - camR;
-    float inward = capDepth + max(camera - blend, 0.0);
-    float join = blend > 0.001 ? 1.0 - smoothstep(0.0, max(r * 0.5, 1.0), inward) : 0.0;
-    float cap = topBlack * (1.0 - smoothstep(0.0, max(halfSize.y * 0.55, 1.0), capDepth));
-    return half4(0.0, 0.0, 0.0, max(bottomBlack, max(join, cap)));
-}
-"""
 
 private const val CAMERA_SHARP_MASK_SRC = """
 uniform shader content;
@@ -344,27 +340,8 @@ internal fun ProfileHeader(
                 blend = bridges.blend(cameraShape, avatarShape)
             }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // The same kind of merging as the playground's glass: the two shapes are distance fields, joined with a smooth
-            // minimum. Only nearby shapes join; there is no line drawn across an empty gap.
-            val shader = remember { RuntimeShader(CAMERA_BLOB_SRC) }
-            val soft = with(density) { 11.dp.toPx() }
-            Canvas(Modifier.fillMaxSize()) {
-                shader.setFloatUniform("cam", metrics.camX, metrics.camY)
-                shader.setFloatUniform("camR", metrics.camR)
-                shader.setFloatUniform("av", cx, cy)
-                shader.setFloatUniform("avR", w / 2f, h / 2f)
-                // Identical to the playground: attraction starts only within reach,
-                // broadens at both bodies and narrows naturally at the middle.
-                shader.setFloatUniform("soft", joinRadius)
-                shader.setFloatUniform("edgeSoft", if (glass) 18.dp.toPx() * cameraHaloProgress(p2) else 0f)
-                drawRect(
-                    ShaderBrush(shader),
-                    topLeft = Offset.Zero,
-                    size = androidx.compose.ui.geometry.Size(size.width, min(size.height, metrics.circleTop + metrics.circle + soft * 4f)),
-                )
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             // Older phones: the same thing by blurring and cutting hard.
             val blurPx = with(density) { 7.dp.toPx() }
             val effect = remember(blurPx) {
@@ -424,7 +401,7 @@ internal fun ProfileHeader(
         Box(Modifier.fillMaxSize().graphicsLayer {
             renderEffect = if (sharpMask != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 sharpMask.setFloatUniform("halfSize", size.width / 2f, size.height / 2f)
-                sharpMask.setFloatUniform("cam", metrics.camX - left, metrics.camY - top)
+                sharpMask.setFloatUniform("cam", metrics.camX - left.roundToInt(), metrics.camY - top.roundToInt())
                 sharpMask.setFloatUniform("camR", metrics.camR)
                 sharpMask.setFloatUniform("blend", joinRadius)
                 RenderEffect.createRuntimeShaderEffect(sharpMask, "content").asComposeRenderEffect()
@@ -434,24 +411,37 @@ internal fun ProfileHeader(
         if (glass && p1 > 0.02f) {
             GlassSurface(tilt, topCorner, bottomCorner, strength = p1 * (1f - absorption.bottomBlack))
         }
-        val shade = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            remember { RuntimeShader(CAMERA_SHADE_SRC) } else null
-        Canvas(Modifier.fillMaxSize()) {
-            if (shade != null) {
-                shade.setFloatUniform("halfSize", size.width / 2f, size.height / 2f)
-                shade.setFloatUniform("cam", metrics.camX - left, metrics.camY - top)
-                shade.setFloatUniform("camR", metrics.camR)
-                shade.setFloatUniform("blend", if (metrics.hasCamera && p2 > 0.01f) joinRadius else 0f)
-                shade.setFloatUniform("topBlack", absorption.topBlack)
-                shade.setFloatUniform("bottomBlack", absorption.bottomBlack)
-                drawRect(ShaderBrush(shade))
-            } else {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) Canvas(Modifier.fillMaxSize()) {
             drawRect(Brush.verticalGradient(
                 0f to Color.Black.copy(alpha = absorption.topBlack),
                 0.35f to Color.Black.copy(alpha = lerpF(absorption.topBlack, absorption.bottomBlack, 0.18f)),
                 0.75f to Color.Black.copy(alpha = lerpF(absorption.topBlack, absorption.bottomBlack, 0.8f)),
                 1f to Color.Black.copy(alpha = absorption.bottomBlack),
             ))
+        }
+    }
+    if (metrics.hasCamera && p2 > 0.01f) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // The same kind of merging as the playground's glass: the two shapes are distance fields, joined with a smooth
+            // minimum. Only nearby shapes join; there is no line drawn across an empty gap.
+            val shader = remember { RuntimeShader(CAMERA_BLOB_SRC) }
+            val soft = with(density) { 11.dp.toPx() }
+            Canvas(Modifier.fillMaxSize()) {
+                shader.setFloatUniform("cam", metrics.camX, metrics.camY)
+                shader.setFloatUniform("camR", metrics.camR)
+                // Match Compose's pixel-rounded photo layout, including subpixel scroll positions.
+                shader.setFloatUniform("av", left.roundToInt() + w.roundToInt() / 2f,
+                    top.roundToInt() + h.roundToInt() / 2f)
+                shader.setFloatUniform("avR", w.roundToInt() / 2f, h.roundToInt() / 2f)
+                // Identical to the playground: attraction starts only within reach,
+                // broadens at both bodies and narrows naturally at the middle.
+                shader.setFloatUniform("soft", joinRadius)
+                shader.setFloatUniform("edgeSoft", if (glass) 18.dp.toPx() * cameraHaloProgress(p2) else 0f)
+                drawRect(
+                    ShaderBrush(shader),
+                    topLeft = Offset.Zero,
+                    size = androidx.compose.ui.geometry.Size(size.width, min(size.height, metrics.circleTop + metrics.circle + soft * 4f)),
+                )
             }
         }
     }

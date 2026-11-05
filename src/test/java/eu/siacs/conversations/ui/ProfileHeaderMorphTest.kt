@@ -6,6 +6,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProfileHeaderMorphTest {
+    @Test fun titleCopiesNeverAppearTogetherDuringForwardOrReverseScroll() {
+        for (step in 0..100) {
+            val (body, toolbar) = profileTitleAlphas(step / 100f)
+            assertTrue(body == 0f || toolbar == 0f)
+        }
+        assertEquals(1f to 0f, profileTitleAlphas(0f))
+        assertEquals(0f to 1f, profileTitleAlphas(1f))
+    }
     @Test fun dissolvedEdgeChangesTheSilhouetteButKeepsItsInteriorOpaque() {
         assertEquals(1f, cameraEdgeAlpha(-10f, 20f), 0f)
         assertEquals(0f, cameraEdgeAlpha(20f, 20f), 0f)
@@ -15,16 +23,6 @@ class ProfileHeaderMorphTest {
         assertEquals(0f, cameraEdgeAlpha(2f, 0f), 0f)
         // A broad soft edge must not make the narrow neck's interior translucent grey.
         assertEquals(1f, cameraEdgeAlpha(-3f, 20f, 8f), 0f)
-    }
-    @Test fun curvedJoinIsBlackAtRimAndFeathersIntoPhoto() {
-        assertEquals(1f, cameraJoinShade(0f, 10f, 30f, 30f), 0f)
-        assertEquals(0.5f, cameraJoinShade(15f, 10f, 30f, 30f), 0.001f)
-        assertEquals(0f, cameraJoinShade(30f, 10f, 30f, 30f), 0f)
-    }
-
-    @Test fun detachedOrCameraOppositeRimDoesNotAcquireJoinShading() {
-        assertEquals(0f, cameraJoinShade(0f, 10f, 0f, 30f), 0f)
-        assertEquals(0f, cameraJoinShade(0f, 100f, 30f, 30f), 0f)
     }
     @Test fun cameraHaloDisappearsAtBothRestingStatesAndReversesSymmetrically() {
         assertEquals(0f, cameraHaloProgress(0f), 0f)
@@ -56,8 +54,6 @@ class ProfileHeaderMorphTest {
         for (p in listOf(0.4f, 0.6f, 0.8f, 0.9f)) {
             assertEquals(0f, cameraAbsorption(p, 0f, 32f).bottomBlack, 0f)
         }
-        // A side/center point is outside the shallow camera-facing cap even at contact.
-        assertEquals(0f, cameraJoinShade(50f, 0f, 60f, 25f), 0f)
     }
     private val metrics = HeaderMetrics(1080f, 1080f, 100f, 400f, 360f, 180f,
         540f, 30f, 18f, true, 60f)
