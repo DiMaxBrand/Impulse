@@ -138,6 +138,49 @@ internal fun cameraMergePose(
 
 private fun ease(t: Float): Float = t * t * (3f - 2f * t)
 
+/** Feather inward from the curved photo rim wherever the live bridge meets it. */
+internal fun cameraJoinShade(bodyDistance: Float, cameraDistance: Float, blend: Float, feather: Float): Float {
+    if (blend <= 0.001f) return 0f
+    val distance = max(-bodyDistance, 0f) + max(cameraDistance - blend, 0f)
+    return 1f - ease((distance / feather.coerceAtLeast(1f)).coerceIn(0f, 1f))
+}
+
+private const val CAMERA_SHADE_SRC = """
+uniform float2 halfSize;
+uniform float2 cam;
+uniform float camR;
+uniform float blend;
+uniform float topBlack;
+uniform float bottomBlack;
+half4 main(float2 p) {
+    float r = min(halfSize.x, halfSize.y);
+    float2 q = abs(p - halfSize) - (halfSize - float2(r));
+    float body = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+    float camera = length(p - cam) - camR;
+    float inward = max(-body, 0.0) + max(camera - blend, 0.0);
+    float join = blend > 0.001 ? 1.0 - smoothstep(0.0, max(r * 0.9, 1.0), inward) : 0.0;
+    float vertical = mix(topBlack, bottomBlack, smoothstep(0.0, halfSize.y * 2.0, p.y));
+    return half4(0.0, 0.0, 0.0, max(join, vertical));
+}
+"""
+
+private const val CAMERA_SHARP_MASK_SRC = """
+uniform shader content;
+uniform float2 halfSize;
+uniform float2 cam;
+uniform float camR;
+uniform float blend;
+half4 main(float2 p) {
+    float r = min(halfSize.x, halfSize.y);
+    float2 q = abs(p - halfSize) - (halfSize - float2(r));
+    float body = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+    float camera = length(p - cam) - camR;
+    float inward = max(-body, 0.0) + max(camera - blend, 0.0);
+    float blur = blend > 0.001 ? 1.0 - smoothstep(0.0, max(r * 1.2, 1.0), inward) : 0.0;
+    return content.eval(p) * half(1.0 - blur);
+}
+"""
+
 internal data class CameraAbsorption(val blur: Float, val topBlack: Float, val bottomBlack: Float)
 
 /** A reversible swell, with zero size/opacity velocity at either resting state. */
@@ -238,9 +281,12 @@ internal fun ProfileHeader(
     val round = min(w, h) / 2f
     val topCorner = lerpF(0f, round, p1).coerceAtMost(round)
     val bottomCorner = lerpF(metrics.bigCorner, round, p1).coerceAtMost(round)
+    var blend by remember { mutableFloatStateOf(0f) }
+    val joinRadius = blend * ease(((1f - p2) / 0.12f).coerceIn(0f, 1f))
     val absorption = cameraAbsorption(p2, top - (metrics.camY + metrics.camR),
         with(density) { 32.dp.toPx() })
-    val photoBlurPx = with(density) { 24.dp.toPx() } * absorption.blur
+    // A blurred backing is exposed only near the curved join by the sharp layer's mask.
+    val photoBlurPx = with(density) { 24.dp.toPx() }
     val photoBlur = remember(photoBlurPx) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && photoBlurPx > 0.1f)
             RenderEffect.createBlurEffect(photoBlurPx, photoBlurPx, Shader.TileMode.CLAMP)
@@ -263,7 +309,6 @@ internal fun ProfileHeader(
         val cameraShape = remember { FluidShape(0) }
         val avatarShape = remember { FluidShape(1) }
         val currentPose by rememberUpdatedState(pose)
-        var blend by remember { mutableFloatStateOf(0f) }
         if (p2 < 1f) LaunchedEffect(bridges) {
             var previous = 0L
             while (true) {
@@ -296,7 +341,7 @@ internal fun ProfileHeader(
                 shader.setFloatUniform("avR", w / 2f, h / 2f)
                 // Identical to the playground: attraction starts only within reach,
                 // broadens at both bodies and narrows naturally at the middle.
-                shader.setFloatUniform("soft", blend * ease(((1f - p2) / 0.12f).coerceIn(0f, 1f)))
+                shader.setFloatUniform("soft", joinRadius)
                 drawRect(
                     ShaderBrush(shader),
                     topLeft = Offset.Zero,
@@ -346,8 +391,10 @@ internal fun ProfileHeader(
                 bottomEnd = with(density) { bottomCorner.toDp() }, bottomStart = with(density) { bottomCorner.toDp() }))
             .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) },
     ) {
-        // Blur only the photo, before its dark gradient. The cutout and silhouette stay sharp.
-        Box(Modifier.fillMaxSize().graphicsLayer { renderEffect = photoBlur }) {
+        val localBlur = metrics.hasCamera && p2 > 0.01f && joinRadius > 0.001f &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        val sharpMask = if (localBlur) remember { RuntimeShader(CAMERA_SHARP_MASK_SRC) } else null
+        val picture: @Composable () -> Unit = {
             Canvas(Modifier.fillMaxSize()) { drawRect(Color.Black) }
             if (bitmap != null) {
                 Image(bitmap = bitmap, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -355,17 +402,41 @@ internal fun ProfileHeader(
                 Canvas(Modifier.fillMaxSize()) { drawRect(tint) }
             }
         }
+        if (localBlur) Box(Modifier.fillMaxSize().graphicsLayer { renderEffect = photoBlur }) {
+            picture()
+        }
+        Box(Modifier.fillMaxSize().graphicsLayer {
+            renderEffect = if (sharpMask != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                sharpMask.setFloatUniform("halfSize", size.width / 2f, size.height / 2f)
+                sharpMask.setFloatUniform("cam", metrics.camX - left, metrics.camY - top)
+                sharpMask.setFloatUniform("camR", metrics.camR)
+                sharpMask.setFloatUniform("blend", joinRadius)
+                RenderEffect.createRuntimeShaderEffect(sharpMask, "content").asComposeRenderEffect()
+            } else null
+        }) { picture() }
         // The glassy surface belongs to the small picture: the big one stays plain and crisp.
         if (glass && p1 > 0.02f) {
             GlassSurface(tilt, topCorner, bottomCorner, strength = p1 * (1f - absorption.bottomBlack))
         }
+        val shade = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            remember { RuntimeShader(CAMERA_SHADE_SRC) } else null
         Canvas(Modifier.fillMaxSize()) {
+            if (shade != null) {
+                shade.setFloatUniform("halfSize", size.width / 2f, size.height / 2f)
+                shade.setFloatUniform("cam", metrics.camX - left, metrics.camY - top)
+                shade.setFloatUniform("camR", metrics.camR)
+                shade.setFloatUniform("blend", if (metrics.hasCamera && p2 > 0.01f) joinRadius else 0f)
+                shade.setFloatUniform("topBlack", absorption.topBlack)
+                shade.setFloatUniform("bottomBlack", absorption.bottomBlack)
+                drawRect(ShaderBrush(shade))
+            } else {
             drawRect(Brush.verticalGradient(
                 0f to Color.Black.copy(alpha = absorption.topBlack),
                 0.35f to Color.Black.copy(alpha = lerpF(absorption.topBlack, absorption.bottomBlack, 0.18f)),
                 0.75f to Color.Black.copy(alpha = lerpF(absorption.topBlack, absorption.bottomBlack, 0.8f)),
                 1f to Color.Black.copy(alpha = absorption.bottomBlack),
             ))
+            }
         }
     }
     // Only the outer shadow swells and softens. Its radial falloff approximates a broad blur

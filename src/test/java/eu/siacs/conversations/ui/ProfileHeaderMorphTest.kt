@@ -6,6 +6,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProfileHeaderMorphTest {
+    @Test fun curvedJoinIsBlackAtRimAndFeathersIntoPhoto() {
+        assertEquals(1f, cameraJoinShade(0f, 10f, 30f, 30f), 0f)
+        assertEquals(0.5f, cameraJoinShade(-15f, 10f, 30f, 30f), 0.001f)
+        assertEquals(0f, cameraJoinShade(-30f, 10f, 30f, 30f), 0f)
+    }
+
+    @Test fun detachedOrCameraOppositeRimDoesNotAcquireJoinShading() {
+        assertEquals(0f, cameraJoinShade(0f, 10f, 0f, 30f), 0f)
+        assertEquals(0f, cameraJoinShade(0f, 100f, 30f, 30f), 0f)
+    }
     @Test fun cameraHaloDisappearsAtBothRestingStatesAndReversesSymmetrically() {
         assertEquals(0f, cameraHaloProgress(0f), 0f)
         assertEquals(0f, cameraHaloProgress(1f), 0f)
