@@ -121,10 +121,12 @@ half4 main(float2 p) {
     float r = min(avR.x, avR.y);
     float extent = dot(abs(axis), avR - float2(r)) + r;
     float capDepth = dot(p - av, axis) + extent;
-    // A continuous spatial mask: gating by the union's displacement cut the
-    // feather off exactly where the camera field met the photo field.
-    float cameraZone = 1.0 - smoothstep(0.0, max(r * 0.55, 1.0), max(capDepth, 0.0));
-    float feather = edgeSoft * cameraZone;
+    // Keep the playground's complete fluid silhouette. Multiplying its exterior
+    // by a photo-cap mask made a flat, flared skirt instead of a connecting neck.
+    // Only soften a narrow contour near the camera; never expand it into a halo.
+    float cameraZone = 1.0 - smoothstep(camR, camR + max(length(av - cam) * 0.8, 1.0), length(p - cam));
+    float cameraWeight = smoothstep(-camR, camR, dAv - dCam);
+    float feather = min(edgeSoft, camR * 0.25) * cameraZone * cameraWeight;
     float inward = min(feather * 0.5, camR * 0.2);
     float alpha = feather > 0.001 ? 1.0 - smoothstep(-inward, feather, d) : clamp(0.5 - d, 0.0, 1.0);
     float reach = max(r * 0.55, 1.0);
@@ -137,7 +139,10 @@ half4 main(float2 p) {
     float photo = clamp(0.5 - dAv, 0.0, 1.0);
     // Draw across the photo boundary in one pass, including the blurred outer
     // neck. The image's clip can no longer slice a pale crescent through it.
-    alpha = mix(alpha * max(contact * cameraZone, lens), shade, photo);
+    // Remove the avatar's own antialias coverage from the outer layer: only the
+    // union's added neck belongs there, otherwise the photo acquires a black rim.
+    float extension = clamp((alpha - photo) / max(1.0 - photo, 0.001), 0.0, 1.0);
+    alpha = mix(extension, shade, photo);
     return half4(0.0, 0.0, 0.0, alpha);
 }
 """
