@@ -6,6 +6,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProfileHeaderMorphTest {
+    @Test fun blurStartsBeforeBridgeReachAndGrowsContinuouslyTowardCamera() {
+        assertEquals(0f, cameraBlurAmount(0.5f, 64f, 64f), 0f)
+        assertTrue(cameraBlurAmount(0.5f, 48f, 64f) > 0f)
+        assertTrue(cameraBlurAmount(0.5f, 32f, 64f) > cameraBlurAmount(0.5f, 48f, 64f))
+        assertEquals(1f, cameraBlurAmount(0.5f, 12f, 64f), 0f)
+        assertEquals(1f, cameraBlurAmount(1f, -10f, 64f), 0f)
+        assertEquals(0f, cameraBlurAmount(0f, 12f, 64f), 0f)
+    }
     @Test fun titleCopiesNeverAppearTogetherDuringForwardOrReverseScroll() {
         for (step in 0..100) {
             val (body, toolbar) = profileTitleAlphas(step / 100f)

@@ -171,19 +171,24 @@ private const val CAMERA_SHARP_MASK_SRC = """
 uniform shader content;
 uniform float2 halfSize;
 uniform float2 cam;
-uniform float camR;
-uniform float blend;
+uniform float amount;
 half4 main(float2 p) {
     float r = min(halfSize.x, halfSize.y);
     float2 axis = (halfSize - cam) / max(length(halfSize - cam), 0.001);
     float extent = dot(abs(axis), halfSize - float2(r)) + r;
     float capDepth = max(dot(p - halfSize, axis) + extent, 0.0);
-    float camera = length(p - cam) - camR;
-    float inward = capDepth + max(camera - blend, 0.0);
-    float blur = blend > 0.001 ? 1.0 - smoothstep(0.0, max(r * 0.7, 1.0), inward) : 0.0;
+    // Blur leads the black join. A broader camera-facing cap remains visible
+    // below the dark neck, without softening the sides or lower half.
+    float blur = amount * (1.0 - smoothstep(0.0, max(r * 0.95, 1.0), capDepth));
     return content.eval(p) * half(1.0 - blur);
 }
 """
+
+/** Begin softening before the bridge attaches; track distance in either scroll direction. */
+internal fun cameraBlurAmount(progress: Float, gap: Float, reach: Float): Float {
+    val distance = ((gap - reach * 0.2f) / (reach * 0.8f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+    return (1f - ease(distance)) * ease((progress / 0.15f).coerceIn(0f, 1f))
+}
 
 internal data class CameraAbsorption(val blur: Float, val topBlack: Float, val bottomBlack: Float)
 
@@ -296,6 +301,8 @@ internal fun ProfileHeader(
     val joinRadius = blend * ease(((1f - p2) / 0.12f).coerceIn(0f, 1f))
     val absorption = cameraAbsorption(p2, top - (metrics.camY + metrics.camR),
         with(density) { 32.dp.toPx() })
+    val blurAmount = if (metrics.hasCamera) cameraBlurAmount(p2,
+        top - (metrics.camY + metrics.camR), with(density) { 64.dp.toPx() }) else 0f
     // A blurred backing is exposed only near the curved join by the sharp layer's mask.
     val photoBlurPx = with(density) { 24.dp.toPx() }
     val photoBlur = remember(photoBlurPx) {
@@ -384,7 +391,7 @@ internal fun ProfileHeader(
                 bottomEnd = with(density) { bottomCorner.toDp() }, bottomStart = with(density) { bottomCorner.toDp() }))
             .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) },
     ) {
-        val localBlur = metrics.hasCamera && p2 > 0.01f && joinRadius > 0.001f &&
+        val localBlur = blurAmount > 0f &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
         val sharpMask = if (localBlur) remember { RuntimeShader(CAMERA_SHARP_MASK_SRC) } else null
         val picture: @Composable () -> Unit = {
@@ -402,8 +409,7 @@ internal fun ProfileHeader(
             renderEffect = if (sharpMask != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 sharpMask.setFloatUniform("halfSize", size.width / 2f, size.height / 2f)
                 sharpMask.setFloatUniform("cam", metrics.camX - left.roundToInt(), metrics.camY - top.roundToInt())
-                sharpMask.setFloatUniform("camR", metrics.camR)
-                sharpMask.setFloatUniform("blend", joinRadius)
+                sharpMask.setFloatUniform("amount", blurAmount)
                 RenderEffect.createRuntimeShaderEffect(sharpMask, "content").asComposeRenderEffect()
             } else null
         }) { picture() }
