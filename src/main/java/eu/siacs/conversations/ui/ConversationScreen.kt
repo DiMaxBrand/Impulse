@@ -2263,6 +2263,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         buildChatItems(state.messages.value, newMessagesBoundary?.first, newMessagesBoundary?.second ?: 0)
     val listState = rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var navigationInProgress by remember(conversation?.getUuid()) { mutableStateOf(false) }
     // Declared here (not down by the effect that actually sets it) so the onScrolledToBottom
     // effect below can gate on it too -- see that effect's own comment for why it has to.
     val hasPositioned = remember(conversation?.getUuid()) { mutableStateOf(false) }
@@ -2508,6 +2509,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // why marking only ever seemed to happen via the separate onScrolledToBottom() path (that one
     // never touches `items` at all) and never dynamically as new messages scrolled into view.
     val latestItems = rememberUpdatedState(items)
+    val latestRevision = rememberUpdatedState(revision)
     // The typing bubble and "it's late for them" row are declared as their own item(key = ...)
     // entries ahead of itemsIndexed(items, ...) below, so whenever either is showing,
     // visibleItemsInfo's raw .index runs ahead of items' own indices by however many of those
@@ -2560,6 +2562,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         scrollNonce++
     }
     LaunchedEffect(scrollNonce) {
+        if (navigationInProgress) return@LaunchedEffect
         val (index, offsetFraction) = scrollRequest ?: return@LaunchedEffect
         // LazyListState.scrollToItem's own KDoc (androidx.compose.foundation.lazy.LazyListState):
         // "positive offset refers to forward scroll, so in a top-to-bottom list, positive offset
@@ -2654,7 +2657,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         // worked for a same-day arrival: the previous newest message's index shifts to 2, not 1,
         // and silently failed the plain `<= 1` check every time a message crossed midnight.
         val extraForDatePill = if (items.getOrNull(1) is ChatItem.DatePill) 1 else 0
-        if (!state.browsingHistory.value && hasPositioned.value && listState.firstVisibleItemIndex <= 1 + extraForDatePill) {
+        if (!navigationInProgress && state.requestScrollToUuid.value == null && !state.browsingHistory.value && hasPositioned.value && listState.firstVisibleItemIndex <= 1 + extraForDatePill) {
             requestScroll(0, 0f)
         }
     }
@@ -2718,31 +2721,39 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     val scrollToUuid = state.requestScrollToUuid.value
     LaunchedEffect(scrollToUuid) {
         if (scrollToUuid != null) {
-            val idx = items.indexOfFirst { item ->
-                when (item) {
-                    is ChatItem.Msg -> item.message.getUuid() == scrollToUuid || item.caption?.getUuid() == scrollToUuid
-                    is ChatItem.MediaGroup ->
-                        item.messages.any { it.getUuid() == scrollToUuid } || item.caption?.getUuid() == scrollToUuid
-                    else -> false
-                }
-            }
-            if (idx >= 0) {
-                // The DB range is ready; wait until LazyColumn has measured the expanded list.
-                snapshotFlow { listState.layoutInfo.totalItemsCount >= items.size }.first { it }
-                // Start at the current viewport, without flyToItem's preliminary jump.
-                listState.animateScrollToItem(idx)
-                highlightKey = scrollToUuid
-                // Heart tap: the reaction itself flashes, a shorter beat than the bubble highlight.
-                state.pendingBlink?.takeIf { it.first == scrollToUuid }?.let {
-                    state.pendingBlink = null
-                    state.reactionBlink.value = it
-                    scope.launch {
-                        kotlinx.coroutines.delay(1100)
-                        if (state.reactionBlink.value == it) state.reactionBlink.value = null
+            navigationInProgress = true
+            try {
+                val idx = items.indexOfFirst { item ->
+                    when (item) {
+                        is ChatItem.Msg -> item.message.getUuid() == scrollToUuid || item.caption?.getUuid() == scrollToUuid
+                        is ChatItem.MediaGroup ->
+                            item.messages.any { it.getUuid() == scrollToUuid } || item.caption?.getUuid() == scrollToUuid
+                        else -> false
                     }
                 }
+                if (idx >= 0) {
+                    // The DB range is ready; wait until LazyColumn has measured the expanded list.
+                    snapshotFlow { listState.layoutInfo.totalItemsCount >= items.size }.first { it }
+                    // Bound the animated travel to two screens. Animating the whole history
+                    // forces expensive rows through layout and can stall for several seconds.
+                    listState.flyToItem(idx)
+                    highlightKey = scrollToUuid
+                    // Heart tap: the reaction itself flashes, a shorter beat than the bubble highlight.
+                    state.pendingBlink?.takeIf { it.first == scrollToUuid }?.let {
+                        state.pendingBlink = null
+                        state.reactionBlink.value = it
+                        scope.launch {
+                            kotlinx.coroutines.delay(1100)
+                            if (state.reactionBlink.value == it) state.reactionBlink.value = null
+                        }
+                    }
+                }
+            } finally {
+                navigationInProgress = false
+                if (state.requestScrollToUuid.value == scrollToUuid) {
+                    state.requestScrollToUuid.value = null
+                }
             }
-            state.requestScrollToUuid.value = null
         }
     }
 
@@ -2819,7 +2830,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 val riskyVideoUpload = item is ChatItem.Msg &&
                     item.message.mimeType?.startsWith("video/") == true &&
                     item.message.transferable?.getStatus() == eu.siacs.conversations.entities.Transferable.STATUS_UPLOADING
-                val baseItemModifier = if (riskyVideoUpload) {
+                val baseItemModifier = if (riskyVideoUpload || navigationInProgress) {
                     Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
                 } else {
                     Modifier.animateItem()
@@ -2998,19 +3009,25 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                             state.requestScrollToUuid.value = heartUuid
                             return@SmallFloatingActionButton
                         }
+                        navigationInProgress = true
                         if (state.browsingHistory.value) {
                             listener.onReturnToLatest()
                         }
+                        val targetRevision = state.revision.intValue
                         // Cleared so the fling detector doesn't also fire on arrival with a stale
                         // speed; the band is triggered explicitly once the scroll has landed.
                         flingSpeed[0] = 0f
                         scope.launch {
-                            // Let a returned live window reach LazyColumn before scrolling it.
-                            androidx.compose.runtime.withFrameNanos { }
-                            listState.flyToItem(0)
-                            if (experimentalAnimations) {
-                                state.barBumpStrength.floatValue = 1f
-                                state.barBump.intValue++
+                            try {
+                                // Let a returned live window reach LazyColumn before scrolling it.
+                                snapshotFlow {
+                                    latestRevision.value >= targetRevision &&
+                                        listState.layoutInfo.totalItemsCount ==
+                                        latestItems.value.size + latestLeadingCount.value
+                                }.first { it }
+                                listState.flyToItem(0)
+                            } finally {
+                                navigationInProgress = false
                             }
                         }
                     },
