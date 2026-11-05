@@ -12,6 +12,10 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -210,6 +214,7 @@ class DampedDragAnimation(
     val visibilityThreshold: Float,
     val initialScale: Float,
     val pressedScale: Float,
+    val followFinger: Boolean = false,
     val onDragStarted: DampedDragAnimation.(position: Offset) -> Unit,
     val onDragStopped: DampedDragAnimation.() -> Unit,
     val onDrag: DampedDragAnimation.(size: IntSize, dragAmount: Offset) -> Unit,
@@ -225,13 +230,17 @@ class DampedDragAnimation(
     private val pressProgressAnimation = Animatable(0f, 0.001f)
     private val scaleXAnimation = Animatable(initialScale, 0.001f)
     private val scaleYAnimation = Animatable(initialScale, 0.001f)
+    private var requestedValue = initialValue
+    private var dragging by mutableStateOf(false)
+    private var draggedValue by mutableFloatStateOf(initialValue)
+    private var pressGeneration = 0
 
     private val mutatorMutex = MutatorMutex()
     private val velocityTracker = VelocityTracker()
 
-    val value: Float get() = valueAnimation.value
+    val value: Float get() = if (followFinger && dragging) draggedValue else valueAnimation.value
     val progress: Float get() = (value - valueRange.start) / (valueRange.endInclusive - valueRange.start)
-    val targetValue: Float get() = valueAnimation.targetValue
+    val targetValue: Float get() = requestedValue
     val pressProgress: Float get() = pressProgressAnimation.value
     val scaleX: Float get() = scaleXAnimation.value
     val scaleY: Float get() = scaleYAnimation.value
@@ -241,23 +250,34 @@ class DampedDragAnimation(
         Modifier.pointerInput(Unit) {
             inspectDragGestures(
                 onDragStart = { down ->
-                    onDragStarted(down.position)
-                    press()
+                    beginDrag(down.position)
                 },
                 onDragEnd = {
                     onDragStopped()
+                    dragging = false
                     release()
                 },
                 onDragCancel = {
                     onDragStopped()
+                    dragging = false
                     release()
                 },
-            ) { _, dragAmount ->
+            ) { change, dragAmount ->
+                if (followFinger && abs(dragAmount.x) > abs(dragAmount.y)) change.consume()
                 onDrag(size, dragAmount)
             }
         }
 
+    internal fun beginDrag(position: Offset) {
+        draggedValue = valueAnimation.value
+        requestedValue = draggedValue
+        dragging = true
+        onDragStarted(position)
+        press()
+    }
+
     fun press() {
+        pressGeneration++
         velocityTracker.resetTracking()
         animationScope.launch {
             launch { pressProgressAnimation.animateTo(1f, pressProgressAnimationSpec) }
@@ -267,6 +287,7 @@ class DampedDragAnimation(
     }
 
     fun release() {
+        val generation = pressGeneration
         animationScope.launch {
             withFrameNanos { }
             if (value != targetValue) {
@@ -276,6 +297,7 @@ class DampedDragAnimation(
                     .filter { abs(it - valueAnimation.targetValue) < threshold }
                     .first()
             }
+            if (generation != pressGeneration) return@launch
             launch { pressProgressAnimation.animateTo(0f, pressProgressAnimationSpec) }
             launch { scaleXAnimation.animateTo(initialScale, scaleXAnimationSpec) }
             launch { scaleYAnimation.animateTo(initialScale, scaleYAnimationSpec) }
@@ -284,12 +306,20 @@ class DampedDragAnimation(
 
     fun updateValue(value: Float) {
         val targetValue = value.coerceIn(valueRange)
+        requestedValue = targetValue
+        if (followFinger && dragging) draggedValue = targetValue
         animationScope.launch {
-            launch { valueAnimation.animateTo(targetValue, valueAnimationSpec) { updateVelocity() } }
+            if (followFinger && dragging) {
+                valueAnimation.snapTo(targetValue)
+                updateVelocity()
+            } else {
+                valueAnimation.animateTo(targetValue, valueAnimationSpec) { updateVelocity() }
+            }
         }
     }
 
     fun animateToValue(value: Float) {
+        requestedValue = value.coerceIn(valueRange)
         animationScope.launch {
             mutatorMutex.mutate {
                 press()

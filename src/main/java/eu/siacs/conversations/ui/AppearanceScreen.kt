@@ -1320,8 +1320,11 @@ internal fun FluidPrototype(
     onFieldBounds: (androidx.compose.ui.geometry.Rect) -> Unit = {},
     /** 0: add, 1: remove, 2: reset; window pixels. */
     onButtonBounds: (Int, androidx.compose.ui.geometry.Rect) -> Unit = { _, _ -> },
+    controlsGlass: eu.siacs.conversations.ui.glass.GlassStack? = null,
+    onFieldBackdrop: (com.kyant.backdrop.backdrops.LayerBackdrop) -> Unit = {},
 ) {
-    val skin = LocalGlassSkin.current ?: return
+    val skin = LocalGlassSkin.current
+    val glass = controlsGlass ?: eu.siacs.conversations.ui.glass.rememberGlassStack(skin?.backdrop ?: return, adaptive = true)
     var reach by remember { mutableFloatStateOf(28f) }
     var response by remember { mutableFloatStateOf(650f) }
     var soft by remember { mutableFloatStateOf(16f) }
@@ -1363,19 +1366,26 @@ internal fun FluidPrototype(
         Modifier.padding(horizontal = 12.dp).graphicsLayer { alpha = controlsAlpha },
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        FilledTonalButton(
+        eu.siacs.conversations.ui.glass.LiquidGlassButton(
             onClick = { fluid.add() },
+            glass = glass,
+            style = eu.siacs.conversations.ui.glass.LiquidGlassStyle.Panel,
+            shape = RoundedCornerShape(20.dp),
             enabled = fluid.pieces.size < 16,
-            modifier = Modifier.fillMaxWidth().onGloballyPositioned { onButtonBounds(0, it.boundsInWindow()) },
+            modifier = Modifier.fillMaxWidth().height(48.dp).onGloballyPositioned { onButtonBounds(0, it.boundsInWindow()) },
         ) {
-            Text(stringResource(R.string.glass_lab_merge_add, fluid.pieces.size))
+            Text(stringResource(R.string.glass_lab_merge_add, fluid.pieces.size), style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { fluid.removeLast() }, enabled = fluid.pieces.size > 1, modifier = Modifier.weight(1f).onGloballyPositioned { onButtonBounds(1, it.boundsInWindow()) }) {
-                Text(stringResource(R.string.glass_lab_merge_remove), maxLines = 1)
+            eu.siacs.conversations.ui.glass.LiquidGlassButton(onClick = { fluid.removeLast() }, glass = glass,
+                style = eu.siacs.conversations.ui.glass.LiquidGlassStyle.Panel, shape = RoundedCornerShape(20.dp),
+                enabled = fluid.pieces.size > 1, modifier = Modifier.weight(1f).height(48.dp).onGloballyPositioned { onButtonBounds(1, it.boundsInWindow()) }) {
+                Text(stringResource(R.string.glass_lab_merge_remove), maxLines = 1, style = MaterialTheme.typography.labelLarge)
             }
-            OutlinedButton(onClick = { fluid.reset() }, modifier = Modifier.weight(1f).onGloballyPositioned { onButtonBounds(2, it.boundsInWindow()) }) {
-                Text(stringResource(R.string.glass_lab_reset), maxLines = 1)
+            eu.siacs.conversations.ui.glass.LiquidGlassButton(onClick = { fluid.reset() }, glass = glass,
+                style = eu.siacs.conversations.ui.glass.LiquidGlassStyle.Panel, shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.weight(1f).height(48.dp).onGloballyPositioned { onButtonBounds(2, it.boundsInWindow()) }) {
+                Text(stringResource(R.string.glass_lab_reset), maxLines = 1, style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -1404,6 +1414,7 @@ internal fun FluidPrototype(
         heightDp = fieldHeight,
         widthFraction = fieldWidth,
         onFieldBounds = onFieldBounds,
+        onBackdrop = onFieldBackdrop,
     ) { index, tint ->
         when (index % 4) {
             0 -> Icon(painterResource(R.drawable.ic_palette_24dp), null, tint = tint)

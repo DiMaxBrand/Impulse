@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -138,6 +139,8 @@ fun LiquidGlassButton(
     fluidPresence: (() -> Float)? = null,
     // In a fluid host only: how far the button is moved by something outside its layout (px).
     fluidShift: (() -> androidx.compose.ui.geometry.Offset)? = null,
+    fluidFrost: (() -> Float)? = null,
+    enabled: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     // In a fluid host the glass is drawn by the host, for all its elements at once.
@@ -148,7 +151,7 @@ fun LiquidGlassButton(
             surfaceColor.isSpecified -> surfaceColor
             else -> style.surfaceColor()
         }
-        FluidButton(fluid, glass.adaptive, onClick, modifier, shape, isInteractive, recording, interactiveHighlight, extraLayerBlock, wash, fluidPresence, fluidShift, content)
+        FluidButton(fluid, glass.adaptive, onClick, modifier, shape, isInteractive && enabled, recording, interactiveHighlight, extraLayerBlock, wash, fluidPresence, fluidShift, style, fluidFrost, enabled, content)
         return
     }
     // This button's place in the stack: it records itself for the glass above it, and looks
@@ -159,7 +162,7 @@ fun LiquidGlassButton(
     Box(
         modifier = modifier
             .then(if (recording) Modifier.layerBackdrop(slot.record) else Modifier)
-            .glassSnapshot()
+            .glassSnapshot(shape)
             .drawBackdrop(
                 backdrop = slot.backdrop,
                 shape = { shape },
@@ -195,6 +198,7 @@ fun LiquidGlassButton(
                 },
             )
             .clickable(
+                enabled = enabled,
                 interactionSource = null,
                 indication = null,
                 role = Role.Button,
@@ -208,7 +212,13 @@ fun LiquidGlassButton(
                 }
             ),
         contentAlignment = Alignment.Center,
-        content = { GlassInkBox(Modifier.matchParentSize(), Alignment.Center, ink, content) },
+        content = {
+            style.frost?.let { frost ->
+                FrostedInterior(slot.backdrop, frost, style.frostRim,
+                    outerCorner = { size, density -> shape.topStart.toPx(size, density) })
+            }
+            GlassInkBox(Modifier.matchParentSize().graphicsLayer { alpha = if (enabled) 1f else 0.38f }, Alignment.Center, ink, content)
+        },
     )
 }
 
@@ -283,7 +293,7 @@ fun LiquidGlassPanel(
         if (visible) Box(
             Modifier
                 .matchParentSize()
-                .glassSnapshot()
+                .glassSnapshot(shape)
                 .drawBackdrop(
                     backdrop = slot.backdrop,
                     shape = { shape },
@@ -481,7 +491,8 @@ fun LiquidSlider(
                 visibilityThreshold = visibilityThreshold,
                 initialScale = 1f,
                 pressedScale = 1.5f,
-                onDragStarted = {},
+                followFinger = true,
+                onDragStarted = { didDrag = false },
                 onDragStopped = {
                     if (didDrag) {
                         onValueChange(targetValue)
@@ -492,10 +503,9 @@ fun LiquidSlider(
                         didDrag = dragAmount.x != 0f
                     }
                     val delta = (valueRange.endInclusive - valueRange.start) * (dragAmount.x / trackWidth)
-                    onValueChange(
-                        if (isLtr) (targetValue + delta).coerceIn(valueRange)
-                        else (targetValue - delta).coerceIn(valueRange)
-                    )
+                    val next = (targetValue + if (isLtr) delta else -delta).coerceIn(valueRange)
+                    updateValue(next)
+                    onValueChange(next)
                 },
             )
         }
@@ -507,6 +517,8 @@ fun LiquidSlider(
             }
         }
 
+        // Gestures belong to the stationary track, not the thumb moving under the finger.
+        Box(Modifier.fillMaxWidth().then(dampedDragAnimation.modifier)) {
         Box(Modifier.layerBackdrop(trackBackdrop)) {
             Box(
                 Modifier
@@ -547,7 +559,6 @@ fun LiquidSlider(
                             .fastCoerceIn(-size.width / 4f, trackWidth - size.width * 3f / 4f) *
                             if (isLtr) 1f else -1f
                 }
-                .then(dampedDragAnimation.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(
                         backdrop,
@@ -591,6 +602,7 @@ fun LiquidSlider(
                 )
                 .size(40f.dp, 24f.dp)
         )
+        }
     }
 }
 
@@ -637,6 +649,8 @@ fun LiquidBottomTabs(
     modifier: Modifier = Modifier,
     accentColor: Color = MaterialTheme.colorScheme.primary,
     containerColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+    heldProgress: () -> Float = { 0f },
+    onIndicatorBounds: (Rect) -> Unit = {},
     content: @Composable RowScope.() -> Unit,
 ) {
     val tabsBackdrop = rememberLayerBackdrop()
@@ -665,6 +679,7 @@ fun LiquidBottomTabs(
                 visibilityThreshold = 0.001f,
                 initialScale = 1f,
                 pressedScale = 78f / 56f,
+                followFinger = true,
                 onDragStarted = {},
                 onDragStopped = {
                     val targetIndex = targetValue.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
@@ -680,6 +695,24 @@ fun LiquidBottomTabs(
                     animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
                 },
             )
+        }
+        val forcedHold by rememberUpdatedState(heldProgress)
+        val reportIndicator by rememberUpdatedState(onIndicatorBounds)
+        var barRect by remember { mutableStateOf(Rect.Zero) }
+        fun pressProgress() = maxOf(dampedDragAnimation.pressProgress, forcedHold().coerceIn(0f, 1f))
+        LaunchedEffect(dampedDragAnimation) {
+            snapshotFlow {
+                val held = forcedHold().coerceIn(0f, 1f)
+                val sx = maxOf(dampedDragAnimation.scaleX, lerp(1f, 78f / 56f, held))
+                val sy = maxOf(dampedDragAnimation.scaleY, lerp(1f, 78f / 56f, held))
+                val index = dampedDragAnimation.value
+                val centerX = if (isLtr) barRect.left + with(density) { 4.dp.toPx() } + (index + 0.5f) * tabWidth
+                    else barRect.right - with(density) { 4.dp.toPx() } - (index + 0.5f) * tabWidth
+                val hw = tabWidth * sx / 2f
+                val hh = with(density) { 28.dp.toPx() } * sy
+                if (barRect.width <= 0f) Rect.Zero else Rect(centerX + panelOffset - hw,
+                    barRect.center.y - hh, centerX + panelOffset + hw, barRect.center.y + hh)
+            }.collect { reportIndicator(it) }
         }
         LaunchedEffect(selectedTabIndex) {
             snapshotFlow { selectedTabIndex() }.collectLatest { index -> currentIndex = index }
@@ -706,6 +739,8 @@ fun LiquidBottomTabs(
             )
         }
 
+        // The bar stays put while its indicator follows the finger.
+        Box(Modifier.fillMaxWidth().onGloballyPositioned { barRect = it.boundsInWindow() }.then(dampedDragAnimation.modifier)) {
         Row(
             Modifier
                 .graphicsLayer { translationX = panelOffset }
@@ -718,7 +753,7 @@ fun LiquidBottomTabs(
                         glassLens(24f.dp.toPx(), 24f.dp.toPx())
                     },
                     layerBlock = {
-                        val progress = dampedDragAnimation.pressProgress
+                        val progress = pressProgress()
                         val scale = lerp(1f, 1f + 16f.dp.toPx() / size.width, progress)
                         scaleX = scale
                         scaleY = scale
@@ -735,7 +770,7 @@ fun LiquidBottomTabs(
 
         // The same tabs again, tinted, invisible: only there for the bubble's lens to look at.
         CompositionLocalProvider(
-            LocalLiquidBottomTabScale provides { lerp(1f, 1.2f, dampedDragAnimation.pressProgress) }
+            LocalLiquidBottomTabScale provides { lerp(1f, 1.2f, pressProgress()) }
         ) {
             Row(
                 Modifier
@@ -747,13 +782,13 @@ fun LiquidBottomTabs(
                         backdrop = backdrop,
                         shape = { CircleShape },
                         effects = {
-                            val progress = dampedDragAnimation.pressProgress
+                            val progress = pressProgress()
                             vibrancy()
                             blur(8f.dp.toPx())
                             glassLens(24f.dp.toPx() * progress, 24f.dp.toPx() * progress)
                         },
                         highlight = {
-                            val progress = dampedDragAnimation.pressProgress
+                            val progress = pressProgress()
                             Highlight.Default.copy(alpha = progress)
                         },
                         onDrawSurface = { drawRect(containerColor) },
@@ -777,35 +812,34 @@ fun LiquidBottomTabs(
                         else size.width - (dampedDragAnimation.value + 1f) * tabWidth + panelOffset
                 }
                 .then(interactiveHighlight.gestureModifier)
-                .then(dampedDragAnimation.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
                     shape = { CircleShape },
                     effects = {
-                        val progress = dampedDragAnimation.pressProgress
+                        val progress = pressProgress()
                         glassLens(10f.dp.toPx() * progress, 14f.dp.toPx() * progress, chromaticAberration = true)
                     },
                     highlight = {
-                        val progress = dampedDragAnimation.pressProgress
+                        val progress = pressProgress()
                         Highlight.Default.copy(alpha = progress)
                     },
                     shadow = {
-                        val progress = dampedDragAnimation.pressProgress
+                        val progress = pressProgress()
                         Shadow(alpha = progress)
                     },
                     innerShadow = {
-                        val progress = dampedDragAnimation.pressProgress
+                        val progress = pressProgress()
                         InnerShadow(radius = 8f.dp * progress, alpha = progress)
                     },
                     layerBlock = {
-                        scaleX = dampedDragAnimation.scaleX
-                        scaleY = dampedDragAnimation.scaleY
+                        scaleX = maxOf(dampedDragAnimation.scaleX, lerp(1f, 78f / 56f, forcedHold().coerceIn(0f, 1f)))
+                        scaleY = maxOf(dampedDragAnimation.scaleY, lerp(1f, 78f / 56f, forcedHold().coerceIn(0f, 1f)))
                         val velocity = dampedDragAnimation.velocity / 10f
                         scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
                         scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                     },
                     onDrawSurface = {
-                        val progress = dampedDragAnimation.pressProgress
+                        val progress = pressProgress()
                         drawRect(
                             if (isDark) Color.White.copy(0.1f) else Color.Black.copy(0.1f),
                             alpha = 1f - progress,
@@ -816,5 +850,6 @@ fun LiquidBottomTabs(
                 .height(56f.dp)
                 .fillMaxWidth(1f / tabsCount)
         )
+        }
     }
 }

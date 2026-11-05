@@ -168,7 +168,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
 
     private val shapeList = ArrayList<FluidShape>()
 
-    /** True while something else draws the pieces (the playground's tab morph): they and their content are not drawn. */
+    /** The playground's actors own the first three pieces; any extras fade with the destination page. */
     var hidden by mutableStateOf(false)
         private set
 
@@ -180,7 +180,6 @@ class GlassFluidState(private val density: Float) : FluidScene {
 
     /** The pieces as shapes for the glass layer, right now. */
     override fun shapes(): List<FluidShape> {
-        if (hidden) return emptyList()
         val n = pieces.size
         while (shapeList.size < n) shapeList.add(FluidShape(shapeList.size))
         while (shapeList.size > n) shapeList.removeAt(shapeList.lastIndex)
@@ -194,7 +193,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
             sh.radius = p.radius
             sh.angle = p.angle
         }
-        return shapeList
+        return if (hidden) shapeList.drop(3) else shapeList
     }
 
     override fun bridgeBlend(a: FluidShape, b: FluidShape): Float = bridges.blend(a, b)
@@ -1020,10 +1019,11 @@ class GlassFluidState(private val density: Float) : FluidScene {
 
     /** How visible piece [i]'s own content is: it gives way while another piece's content is near. */
     fun contentAlpha(i: Int): Float {
-        if (hidden) return 0f
+        if (hidden && i < 3) return 0f
         if (i >= pieces.size || solidOn || mergeOff) return 1f
         var alpha = 1f
         for (j in 0 until min(i, pieces.size)) {
+            if (hidden && j < 3) continue
             val dist = hypot(pieces[i].centerX - pieces[j].centerX, pieces[i].centerY - pieces[j].centerY)
             val r = (min(pieces[i].width, pieces[i].height) + min(pieces[j].width, pieces[j].height)) * 0.5f * 0.8f
             alpha = min(alpha, ((dist - r) / (r * 0.6f)).coerceIn(0f, 1f))
@@ -1089,6 +1089,7 @@ fun GlassFluidField(
     widthFraction: Float,
     modifier: Modifier = Modifier,
     onFieldBounds: (Rect) -> Unit = {},
+    onBackdrop: (com.kyant.backdrop.backdrops.LayerBackdrop) -> Unit = {},
     content: @Composable (index: Int, tint: androidx.compose.ui.graphics.Color) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -1160,6 +1161,7 @@ fun GlassFluidField(
     // What the glass looks through: the pattern below, recorded here (the page's own backdrop does not
     // contain it, so the glass used to show nothing but the plain page).
     val behind = rememberLayerBackdrop()
+    androidx.compose.runtime.SideEffect { onBackdrop(behind) }
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val fieldWidth = maxWidth * (widthFraction / 100f).coerceAtLeast(0.05f)
         Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
@@ -1214,7 +1216,7 @@ fun GlassFluidField(
                 FluidGlassLayer(
                     backdrop = behind,
                     scene = state,
-                    look = remember { FluidLook(refractionHeight = 14.dp, refractionAmount = 20.dp) },
+                    look = remember { FluidLook(refractionHeight = 14.dp, refractionAmount = 20.dp, shadow = true) },
                     modifier = Modifier.fillMaxSize(),
                 )
                 // The laser, over the glass and under the pieces' own content.

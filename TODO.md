@@ -1,5 +1,16 @@
 # Impulse — To-Do
 
+## Glass playground and dragging — beta.321
+
+- Slider/tab gestures live on stationary parents, with synchronous drag targets and direct position
+  tracking; only settling/press/velocity deformation springs. Toggle/button press mechanics retain
+  their spring behavior. The playground lens tracks window-space pointer travel and squishes at bounds.
+- Prototype controls use adaptive frosted glass; test pieces remain clear. Mode actors crossfade
+  source/destination contents, interpolate frost and sample the prototype pattern. The bottom bar
+  enters its held state first, then its indicator and panel travel as separate actors.
+- Fluid button corners are live providers, radius/frost changes wake the host, and geometry changes
+  invalidate cached non-fluid glass images. Device checks are still needed for visual handoffs.
+
 ## Call audio and car controls — beta.320
 
 - Android 15+ with Call integration enabled uses `TransactionalCallIntegration` (Jetpack

@@ -47,10 +47,10 @@ private const val LIVE_BEFORE_CAPTURE_MS = 70L
 private const val BLEND_MS = 140
 
 @Composable
-fun Modifier.glassSnapshot(): Modifier {
+fun Modifier.glassSnapshot(geometryKey: Any? = null): Modifier {
     val layer = rememberGraphicsLayer()
-    val state = remember { SnapshotState() }
-    LaunchedEffect(Unit) {
+    val state = remember(geometryKey) { SnapshotState() }
+    LaunchedEffect(state) {
         snapshotFlow { GlassPerformance.lite && GlassTuning.lessOften }.collectLatest { slow ->
             if (!slow) {
                 state.current = null

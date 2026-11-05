@@ -186,6 +186,7 @@ class FluidGlassHost(
         var alpha = 1f
         for (o in elements) {
             if (o === e || !o.visible) continue
+            if ((o.presence?.invoke() ?: 1f) < 0.02f) continue
             val other = shapesById[o.id] ?: continue
             val wins = if (other.press != mine.press) other.press > mine.press else o.id > e.id
             if (!wins) continue
@@ -293,6 +294,9 @@ class FluidGlassHost(
             h = h * 31 + s.cy.toBits()
             h = h * 31 + s.hw.toBits()
             h = h * 31 + s.hh.toBits()
+            h = h * 31 + s.radius.toBits()
+            h = h * 31 + s.frost.toBits()
+            h = h * 31 + s.tintA.toBits()
             h = h * 31 + s.id
         }
         return h
@@ -357,11 +361,12 @@ fun FluidGlassHost(
     base: Backdrop,
     host: FluidGlassHost,
     modifier: Modifier = Modifier,
+    styleOverride: LiquidGlassStyle? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     LaunchedEffect(host) { host.run() }
     val density = LocalDensity.current
-    val style = host.style
+    val style = styleOverride ?: host.style
     val frost = host.frostStyle
     val surface = MaterialTheme.colorScheme.surface
     val look = remember(style, frost, surface) {
@@ -401,6 +406,9 @@ internal fun FluidButton(
     tint: androidx.compose.ui.graphics.Color,
     presence: (() -> Float)?,
     shift: (() -> Offset)?,
+    style: LiquidGlassStyle,
+    frostAmount: (() -> Float)?,
+    enabled: Boolean,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -411,7 +419,11 @@ internal fun FluidButton(
         element.ink = ink
         element.visible = recording
         element.interactive = if (isInteractive) interactiveHighlight else null
-        element.frost = 0f
+        element.cornerProvider = { shape.topStart.toPx(Size(element.rect.width, element.rect.height), density) }
+        element.frost = if (style.frost != null) 1f else 0f
+        element.frostProvider = frostAmount
+        element.frostRim = with(density) { style.frostRim.toPx() }
+        if (style.frost != null && fluid.frostStyle == null) fluid.frostStyle = style.frost
         element.tint = tint
         element.presence = presence
         element.shift = shift
@@ -424,7 +436,7 @@ internal fun FluidButton(
                 fluid.place(element, c, shape.topStart.toPx(size, density))
             }
             .graphicsLayer {
-                alpha = fluid.contentAlpha(element)
+                alpha = fluid.contentAlpha(element) * (presence?.invoke() ?: 1f).coerceIn(0f, 1f) * if (enabled) 1f else 0.38f
                 if (isInteractive) {
                     val g = pressGeometry(size.width, size.height, this.density, interactiveHighlight.pressProgress, interactiveHighlight.offset, FLUID_LEAN)
                     scaleX = g[0]
@@ -434,7 +446,7 @@ internal fun FluidButton(
                 }
                 extraLayerBlock?.invoke(this)
             }
-            .clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, interactionSource = null, indication = null, role = Role.Button, onClick = onClick)
             .then(if (isInteractive) Modifier.then(interactiveHighlight.gestureModifier) else Modifier),
         contentAlignment = Alignment.Center,
         content = { GlassInkBox(Modifier.matchParentSize(), Alignment.Center, ink, content) },
