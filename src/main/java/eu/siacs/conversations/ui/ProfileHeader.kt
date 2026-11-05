@@ -118,6 +118,7 @@ half4 main(float2 p) {
     float d = smin(dCam, dAv, soft);
     // Dissolve the boundary of the actual merged body, not a separate circle around it.
     float cameraZone = 1.0 - smoothstep(camR + edgeSoft, camR + max(length(av - cam) * 0.8, edgeSoft + 1.0), length(p - cam));
+    cameraZone *= smoothstep(0.0, 1.0, max(dAv - d, 0.0));
     float feather = edgeSoft * cameraZone;
     float inward = min(feather * 0.5, camR * 0.2);
     float alpha = feather > 0.001 ? 1.0 - smoothstep(-inward, feather, d) : clamp(0.5 - d, 0.0, 1.0);
@@ -143,10 +144,10 @@ internal fun cameraMergePose(
 
 private fun ease(t: Float): Float = t * t * (3f - 2f * t)
 
-/** Feather inward from the curved photo rim wherever the live bridge meets it. */
-internal fun cameraJoinShade(bodyDistance: Float, cameraDistance: Float, blend: Float, feather: Float): Float {
+/** Feather inward only from the camera-facing cap, never from the side/bottom perimeter. */
+internal fun cameraJoinShade(capDepth: Float, cameraDistance: Float, blend: Float, feather: Float): Float {
     if (blend <= 0.001f) return 0f
-    val distance = max(-bodyDistance, 0f) + max(cameraDistance - blend, 0f)
+    val distance = max(capDepth, 0f) + max(cameraDistance - blend, 0f)
     return 1f - ease((distance / feather.coerceAtLeast(1f)).coerceIn(0f, 1f))
 }
 
@@ -159,13 +160,14 @@ uniform float topBlack;
 uniform float bottomBlack;
 half4 main(float2 p) {
     float r = min(halfSize.x, halfSize.y);
-    float2 q = abs(p - halfSize) - (halfSize - float2(r));
-    float body = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+    float2 axis = (halfSize - cam) / max(length(halfSize - cam), 0.001);
+    float extent = dot(abs(axis), halfSize - float2(r)) + r;
+    float capDepth = max(dot(p - halfSize, axis) + extent, 0.0);
     float camera = length(p - cam) - camR;
-    float inward = max(-body, 0.0) + max(camera - blend, 0.0);
-    float join = blend > 0.001 ? 1.0 - smoothstep(0.0, max(r * 0.9, 1.0), inward) : 0.0;
-    float vertical = mix(topBlack, bottomBlack, smoothstep(0.0, halfSize.y * 2.0, p.y));
-    return half4(0.0, 0.0, 0.0, max(join, vertical));
+    float inward = capDepth + max(camera - blend, 0.0);
+    float join = blend > 0.001 ? 1.0 - smoothstep(0.0, max(r * 0.5, 1.0), inward) : 0.0;
+    float cap = topBlack * (1.0 - smoothstep(0.0, max(halfSize.y * 0.55, 1.0), capDepth));
+    return half4(0.0, 0.0, 0.0, max(bottomBlack, max(join, cap)));
 }
 """
 
@@ -177,11 +179,12 @@ uniform float camR;
 uniform float blend;
 half4 main(float2 p) {
     float r = min(halfSize.x, halfSize.y);
-    float2 q = abs(p - halfSize) - (halfSize - float2(r));
-    float body = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+    float2 axis = (halfSize - cam) / max(length(halfSize - cam), 0.001);
+    float extent = dot(abs(axis), halfSize - float2(r)) + r;
+    float capDepth = max(dot(p - halfSize, axis) + extent, 0.0);
     float camera = length(p - cam) - camR;
-    float inward = max(-body, 0.0) + max(camera - blend, 0.0);
-    float blur = blend > 0.001 ? 1.0 - smoothstep(0.0, max(r * 1.2, 1.0), inward) : 0.0;
+    float inward = capDepth + max(camera - blend, 0.0);
+    float blur = blend > 0.001 ? 1.0 - smoothstep(0.0, max(r * 0.7, 1.0), inward) : 0.0;
     return content.eval(p) * half(1.0 - blur);
 }
 """
@@ -207,7 +210,7 @@ internal fun cameraAbsorption(progress: Float, gap: Float, reach: Float): Camera
     val p = progress.coerceIn(0f, 1f)
     val proximity = ease((1f - gap.coerceAtLeast(0f) / reach.coerceAtLeast(1f)).coerceIn(0f, 1f)) *
         ease((p / 0.2f).coerceIn(0f, 1f))
-    val black = ease(((p - 0.55f) / 0.35f).coerceIn(0f, 1f))
+    val black = ease(((p - 0.90f) / 0.09f).coerceIn(0f, 1f))
     return CameraAbsorption(max(proximity, black), max(proximity, black), black)
 }
 

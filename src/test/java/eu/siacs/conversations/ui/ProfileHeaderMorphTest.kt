@@ -18,8 +18,8 @@ class ProfileHeaderMorphTest {
     }
     @Test fun curvedJoinIsBlackAtRimAndFeathersIntoPhoto() {
         assertEquals(1f, cameraJoinShade(0f, 10f, 30f, 30f), 0f)
-        assertEquals(0.5f, cameraJoinShade(-15f, 10f, 30f, 30f), 0.001f)
-        assertEquals(0f, cameraJoinShade(-30f, 10f, 30f, 30f), 0f)
+        assertEquals(0.5f, cameraJoinShade(15f, 10f, 30f, 30f), 0.001f)
+        assertEquals(0f, cameraJoinShade(30f, 10f, 30f, 30f), 0f)
     }
 
     @Test fun detachedOrCameraOppositeRimDoesNotAcquireJoinShading() {
@@ -47,10 +47,17 @@ class ProfileHeaderMorphTest {
     }
 
     @Test fun photoIsAlreadyCompletelyBlackBeforeEnteringCamera() {
-        val look = cameraAbsorption(0.95f, -10f, 32f)
+        val look = cameraAbsorption(0.995f, -10f, 32f)
         assertEquals(1f, look.topBlack, 0f)
         assertEquals(1f, look.bottomBlack, 0f)
         assertEquals(1f, look.blur, 0f)
+    }
+    @Test fun photoCenterStaysUndarkenedUntilFinalAbsorption() {
+        for (p in listOf(0.4f, 0.6f, 0.8f, 0.9f)) {
+            assertEquals(0f, cameraAbsorption(p, 0f, 32f).bottomBlack, 0f)
+        }
+        // A side/center point is outside the shallow camera-facing cap even at contact.
+        assertEquals(0f, cameraJoinShade(50f, 0f, 60f, 25f), 0f)
     }
     private val metrics = HeaderMetrics(1080f, 1080f, 100f, 400f, 360f, 180f,
         540f, 30f, 18f, true, 60f)
