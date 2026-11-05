@@ -50,4 +50,5 @@ proguard/
 import-summary.txt
 .navigation/
 preview/
-.claude/worktrees/
+.agents/worktrees/
+.local/

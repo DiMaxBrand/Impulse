@@ -1,4 +1,14 @@
-# Impulse — Claude Code Notes
+# Impulse — Agent Instructions
+
+These repository instructions apply to Codex and other coding agents working on Impulse.
+
+## Delivery and release authorization
+
+- After completing user-facing fixes or features, compile-check them, bump the beta version and version code, commit and push the changes, then publish the beta through `.github/workflows/release.yml`. Do not leave a completed fix unpublished or ask the user to repeat the release request.
+- Documentation-only changes do not need an APK release. They may accompany a pending user-facing release.
+- Supply the Russian release title and Russian/English description before dispatching the workflow. Monitor it to completion and verify the published tag and APK asset before reporting success.
+- Stable releases still require the explicit approval described below. Never treat beta-release authorization as approval for a stable release.
+- At session start and after context compaction, read this file and `TODO.md`. Check the current Git branch, build version and latest published release before making delivery decisions.
 
 > **New session?** Read `TODO.md` first — it has the current backlog.
 
@@ -16,7 +26,7 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 - Release versionCode = `100 * baseVersionCode + abiCode` (arm64-v8a = 4, universal = 0).
 - Git tags follow `MAJOR.MINOR.PATCH` (e.g. `1.7.1`).
 - Bump `baseVersionCode` by at least 1 for every release, more for significant jumps.
-- **When to bump**: after completing a meaningful chapter of work (feature, set of fixes), before the user triggers a GitHub release. Analyze commits since the last tag — new user-facing features → MINOR, fixes/polish → PATCH, breaking changes → MAJOR. Do this proactively; don't wait to be asked.
+- **When to bump**: after completing a meaningful chapter of work (feature, set of fixes), before publishing its GitHub release. Analyze commits since the last tag — new user-facing features → MINOR, fixes/polish → PATCH, breaking changes → MAJOR. Do this proactively; don't wait to be asked.
 - **Beta versioning**: while in beta (`-beta.N`), increment only the beta number (`beta.4` → `beta.5`). Do NOT jump the MINOR or PATCH component during beta — that only happens on final release.
 - **Long, iterative work: ship it in parts, don't hold it for the end.** When a task is big enough to
   take around 20 minutes or more (several screens, a feature built piece by piece), and the first

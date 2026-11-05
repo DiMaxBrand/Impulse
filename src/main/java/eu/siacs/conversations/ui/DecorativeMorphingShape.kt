@@ -138,4 +138,4 @@ fun AutoMorphingShape(
 // Compose's text APIs into classic android.graphics for that one draw call. Real chunk of
 // work, not a one-line fix -- not attempted without a way to verify results on-device first.
 // The notification setup screen's title reverted to plain Text(); see its comment in
-// NotificationSetupScreen.kt and the HyperOS font-substitution notes in CLAUDE.md/TODO.md.
+// NotificationSetupScreen.kt and the HyperOS font-substitution notes in AGENTS.md/TODO.md.

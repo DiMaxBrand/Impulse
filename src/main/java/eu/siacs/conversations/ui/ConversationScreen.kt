@@ -2727,7 +2727,10 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 }
             }
             if (idx >= 0) {
-                listState.flyToItem(idx)
+                // The DB range is ready; wait until LazyColumn has measured the expanded list.
+                snapshotFlow { listState.layoutInfo.totalItemsCount >= items.size }.first { it }
+                // Start at the current viewport, without flyToItem's preliminary jump.
+                listState.animateScrollToItem(idx)
                 highlightKey = scrollToUuid
                 // Heart tap: the reaction itself flashes, a shorter beat than the bubble highlight.
                 state.pendingBlink?.takeIf { it.first == scrollToUuid }?.let {
@@ -3452,8 +3455,8 @@ private fun MessageRow(
 
     // Expressive "pop": the newest message springs in.
     val pop = remember(item.key) { Animatable(if (isNewest && !AppearanceState.noMotion) 0.8f else 1f) }
-    if (isNewest && !AppearanceState.noMotion) {
-        LaunchedEffect(item.key) {
+    LaunchedEffect(item.key, isNewest, AppearanceState.noMotion) {
+        if (isNewest && !AppearanceState.noMotion) {
             pop.animateTo(
                 1f,
                 animationSpec =
@@ -3462,6 +3465,10 @@ private fun MessageRow(
                         stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
                     ),
             )
+        } else {
+            // Paging can change which row is newest while the spring is still running.
+            // Always restore full size instead of leaving the cancelled spring at ~0.8.
+            pop.snapTo(1f)
         }
     }
 

@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.TextUnit
 
 /**
  * A small, deliberately non-exhaustive Markdown renderer for exactly one job: showing this app's
- * own GitHub release descriptions (see CLAUDE.md's release-notes convention — `## Что нового` /
+ * own GitHub release descriptions (see AGENTS.md's release-notes convention — `## Что нового` /
  * `## What's new` / `## Developer notes` headers, `` `code` `` spans, occasional bold and italic
  * text) inside ReleaseNotesSection (UpdatesScreen.kt) as something more than raw
  * Markdown source with literal `#`/`*` characters showing. Not a general CommonMark

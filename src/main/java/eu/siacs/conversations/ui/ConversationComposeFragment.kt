@@ -2025,21 +2025,28 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             val service = getXmppConnectionService() ?: return
             val c = conversation ?: return
             val generation = ++historyGeneration
+            // Keep the current viewport's keys in the list. Replacing them made the old rows
+            // fade away and made the pin look like the newest message (including its pop scale).
+            val visibleWindow = state.messages.value.toList()
             lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 val batch = service.databaseBackend.getMessages(c, 50, timeSent + 1)
                 batch.addAll(service.databaseBackend.getMessagesAtTimestamp(c, timeSent))
                 batch.firstOrNull()?.let {
                     batch.addAll(service.databaseBackend.getMessagesAtTimestamp(c, it.timeSent))
                 }
+                val oldest = minOf(timeSent, visibleWindow.firstOrNull()?.timeSent ?: timeSent,
+                    batch.minOfOrNull { it.timeSent } ?: timeSent)
+                val newest = maxOf(timeSent, visibleWindow.lastOrNull()?.timeSent ?: timeSent)
+                val bridge = service.databaseBackend.getMessagesBetween(c, oldest, newest)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (conversation !== c || historyGeneration != generation) return@withContext
                     if (batch.none { it.getUuid() == uuid }) return@withContext
-                    historyWindow = batch.distinctBy { it.getUuid() }.sortedBy { it.timeSent }
+                    // Retain current instances, including messages delivered while the DB was loading.
+                    historyWindow = (state.messages.value + visibleWindow + bridge + batch)
+                        .distinctBy { it.getUuid() }.sortedBy { it.timeSent }
                     historyPageLoading = false
                     historyHasOlder = true
                     state.browsingHistory.value = true
-                    // Replacing the window is navigation, not a remote deletion animation.
-                    state.update(c, historyWindow!!)
                     refreshMessages()
                     arrive()
                 }

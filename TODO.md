@@ -190,7 +190,7 @@ not the default experience.
 > **Built (1.15.0-beta.141).** `BugReportRegistry` stores the IDs; `ExceptionHelper.trackedReport()` adds the header; "Report a problem" in Help and support sends a manual report the same way; `UpdateCheckHelper.performCheck()` matches IDs in the release notes it just fetched (every release on the reporter's channel newer than the installed version, oldest first; the entry stays marked "fixed in X" until that version is installed) and posts a notification; the Updates screen card shows the waiting IDs and turns into a "ask support" wording after 14 days. Entries are dropped after 45 days.
 
 Only makes sense once stable releases (and the post-stable hotfix branching
-rule in `CLAUDE.md`) are real — a report's fix might land as a hotfix on the
+rule in `AGENTS.md`) are real — a report's fix might land as a hotfix on the
 stable channel specifically, not through the reporter's next regular update,
 so "did this ship yet" can't just mean "is there a newer version."
 

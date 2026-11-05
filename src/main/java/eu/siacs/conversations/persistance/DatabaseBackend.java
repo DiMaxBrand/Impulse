@@ -1510,6 +1510,30 @@ public class DatabaseBackend extends SQLiteOpenHelper {
         return list;
     }
 
+    /** A contiguous local history range, including both boundary timestamps and their siblings. */
+    public ArrayList<Message> getMessagesBetween(
+            Conversation conversation, long oldest, long newest) {
+        final ArrayList<Message> list = new ArrayList<>();
+        final String[] args = {
+            conversation.getUuid(), Long.toString(oldest), Long.toString(newest)
+        };
+        try (Cursor cursor = getReadableDatabase().query(
+                Message.TABLENAME, null,
+                Message.CONVERSATION + "=? AND " + Message.TIME_SENT + ">=? AND "
+                        + Message.TIME_SENT + "<=?",
+                args, null, null, Message.TIME_SENT + " ASC, rowid ASC")) {
+            CursorUtils.upgradeCursorWindowSize(cursor);
+            while (cursor.moveToNext()) {
+                try {
+                    list.add(Message.fromCursor(context, cursor, conversation));
+                } catch (final Exception e) {
+                    Log.e(Config.LOGTAG, "unable to restore message", e);
+                }
+            }
+        }
+        return list;
+    }
+
     /**
      * Messages strictly newer than {@code timestamp}, oldest-first — the symmetric counterpart to
      * {@link #getMessages(Conversation, int, long)}, which only goes older. Used by the media
