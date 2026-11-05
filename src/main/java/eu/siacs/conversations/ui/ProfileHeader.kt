@@ -49,10 +49,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Path
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
+import eu.siacs.conversations.ui.glass.FluidBridges
+import eu.siacs.conversations.ui.glass.FluidShape
 import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -89,48 +93,48 @@ internal class HeaderMetrics(
 
 private fun lerpF(a: Float, b: Float, t: Float) = a + (b - a) * t
 
-/**
- * The camera hole and the picture's silhouette as two distance fields joined with a polynomial smooth minimum (the
- * join rounds off by [soft] pixels), plus a tapering strand from the hole towards the picture. Black, hard-edged.
- */
+/** The same cubic smooth union as FluidGlass.kt; no separately drawn connecting strand. */
 private const val CAMERA_BLOB_SRC = """
 uniform float2 cam;
 uniform float camR;
 uniform float2 av;
 uniform float2 avR;
 uniform float soft;
-uniform float strand;
 
-float sdEllipse(float2 p, float2 r) {
-    float2 q = p / max(r, float2(0.5));
-    return (length(q) - 1.0) * min(r.x, r.y);
+float sdBody(float2 p, float2 halfSize) {
+    float r = min(halfSize.x, halfSize.y);
+    float2 q = abs(p) - (halfSize - float2(r));
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
-
-float sdStrand(float2 p, float2 a, float2 b, float ra, float rb) {
-    float2 pa = p - a;
-    float2 ba = b - a;
-    float t = clamp(dot(pa, ba) / max(dot(ba, ba), 1.0), 0.0, 1.0);
-    return length(pa - ba * t) - mix(ra, rb, t);
-}
-
 float smin(float a, float b, float k) {
-    float h = clamp(0.5 + 0.5 * (b - a) / max(k, 0.001), 0.0, 1.0);
-    return mix(b, a, h) - k * h * (1.0 - h);
+    if (k <= 0.001) return min(a, b);
+    float h = max(k - abs(a - b), 0.0) / k;
+    return min(a, b) - h * h * h * k / 6.0;
 }
-
 half4 main(float2 p) {
     float dCam = length(p - cam) - camR;
-    float dAv = sdEllipse(p - av, avR);
+    float dAv = sdBody(p - av, avR);
     float d = smin(dCam, dAv, soft);
-    if (strand > 0.5) {
-        // From the hole to the top of the picture, thicker at the hole.
-        float2 top = av - float2(0.0, avR.y * 0.8);
-        d = smin(d, sdStrand(p, cam, top, strand, strand * 0.25), soft);
-    }
-    float a = clamp(0.5 - d, 0.0, 1.0);
-    return half4(0.0, 0.0, 0.0, a);
+    return half4(0.0, 0.0, 0.0, clamp(0.5 - d, 0.0, 1.0));
 }
 """
+
+internal data class CameraMergePose(val x: Float, val y: Float, val width: Float, val height: Float)
+
+internal fun cameraMergePose(
+    metrics: HeaderMetrics, progress: Float, x: Float, y: Float, width: Float, height: Float,
+): CameraMergePose {
+    val p = progress.coerceIn(0f, 1f)
+    val radius = if (metrics.hasCamera) metrics.camR.coerceAtLeast(0.5f) else 0.5f
+    val stretch = 1f + 0.22f * sin(p * Math.PI.toFloat())
+    return CameraMergePose(
+        lerpF(x, if (metrics.hasCamera) metrics.camX else metrics.width / 2f, p),
+        lerpF(y, if (metrics.hasCamera) metrics.camY else 0f, p),
+        lerpF(width, radius * 2f, p) / sqrt(stretch),
+        lerpF(height, radius * 2f, p) * stretch,
+    )
+}
+
 private fun ease(t: Float): Float = t * t * (3f - 2f * t)
 
 /** The phone's tilt as two numbers in -1..1 (sideways, forward/back), smoothed; zero when [enabled] is false. */
@@ -189,8 +193,9 @@ internal fun ProfileHeader(
     val density = LocalDensity.current
     val p1 = ease(((scroll) / metrics.toCircle).coerceIn(0f, 1f))
     val p2raw = ease(((scroll - metrics.toCircle) / (metrics.toCamera - metrics.toCircle)).coerceIn(0f, 1f))
-    // The way into the camera trails the finger a little and overshoots when thrown: a drop, not a slider.
-    val p2 by animateFloatAsState(p2raw, spring(dampingRatio = 0.72f, stiffness = 330f), label = "intoCamera")
+    // One scroll-driven geometry for both the photo and its black body. A separate spring
+    // here lagged behind the expanding header when reversing direction.
+    val p2 = p2raw
 
     // Big -> circle: the box is drawn together.
     val circleL = (metrics.width - metrics.circle) / 2f
@@ -203,43 +208,69 @@ internal fun ProfileHeader(
     val cx1 = (l1 + r1) / 2f
     val cy1 = (t1 + b1) / 2f
 
-    // Circle -> camera: it climbs to just under the hole and shrinks to its size; on the way it is stretched upward.
-    val endR = max(metrics.camR * 1.15f, with(density) { 7.dp.toPx() })
-    val endX = if (metrics.hasCamera) metrics.camX else metrics.width / 2f
-    val endY = if (metrics.hasCamera) metrics.camY + metrics.camR * 0.9f + endR else metrics.circleTop * 0.5f
-    val stretch = 1f + 0.22f * sin(p2 * Math.PI.toFloat())
-    val cx = lerpF(cx1, endX, p2)
-    val cy = lerpF(cy1, endY, p2)
-    val w = lerpF(w1, endR * 2f, p2) / sqrt(stretch)
-    val h = lerpF(h1, endR * 2f, p2) * stretch
+    // End inside the actual cutout, not as a second dot underneath it.
+    val pose = cameraMergePose(metrics, p2, cx1, cy1, w1, h1)
+    val cx = pose.x
+    val cy = pose.y
+    val w = pose.width
+    val h = pose.height
     val left = cx - w / 2f
     val top = cy - h / 2f
     val round = min(w, h) / 2f
     val topCorner = lerpF(0f, round, p1).coerceAtMost(round)
     val bottomCorner = lerpF(metrics.bigCorner, round, p1).coerceAtMost(round)
     // The picture dissolves into the black of the camera over the last of the way.
-    val photoAlpha = 1f - ((p2 - 0.7f) / 0.3f).coerceIn(0f, 1f)
+    val photoAlpha = 1f - ease(((p2 - 0.82f) / 0.18f).coerceIn(0f, 1f))
     val wDp = with(density) { w.toDp() }
     val hDp = with(density) { h.toDp() }
 
     // Black, never the picture's colour (the camera cannot change colour): the hole reaches down to the picture with a
     // neck, and the picture draws itself into it.
     if (metrics.hasCamera && p2 > 0.01f) {
-        val silhouette = (1f - ((p2 - 0.7f) / 0.3f).coerceIn(0f, 1f) * 0.9f)
+        val bridges = remember(density.density) {
+            FluidBridges().apply {
+                reach = with(density) { 32.dp.toPx() }
+                softness = with(density) { 12.dp.toPx() }
+                response = 0.4f
+            }
+        }
+        val cameraShape = remember { FluidShape(0) }
+        val avatarShape = remember { FluidShape(1) }
+        val currentPose by rememberUpdatedState(pose)
+        var blend by remember { mutableFloatStateOf(0f) }
+        if (p2 < 1f) LaunchedEffect(bridges) {
+            var previous = 0L
+            while (true) {
+                val now = withFrameNanos { it }
+                val dt = if (previous == 0L) 1f / 60f else
+                    ((now - previous) / 1_000_000_000f).coerceIn(0f, 1f / 30f)
+                previous = now
+                cameraShape.apply {
+                    this.cx = metrics.camX; this.cy = metrics.camY
+                    hw = metrics.camR; hh = metrics.camR; radius = metrics.camR
+                }
+                avatarShape.apply {
+                    this.cx = currentPose.x; this.cy = currentPose.y
+                    hw = currentPose.width / 2f; hh = currentPose.height / 2f
+                    radius = min(hw, hh)
+                }
+                bridges.step(dt, listOf(cameraShape, avatarShape), false)
+                blend = bridges.blend(cameraShape, avatarShape)
+            }
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // The same kind of merging as the playground's glass: the two shapes are distance fields, joined with a smooth
-            // minimum, so the join is exact at any size (and costs one small shader), with a strand that runs from the hole
-            // to the picture while they are apart.
+            // minimum. Only nearby shapes join; there is no line drawn across an empty gap.
             val shader = remember { RuntimeShader(CAMERA_BLOB_SRC) }
             val soft = with(density) { 11.dp.toPx() }
             Canvas(Modifier.fillMaxSize()) {
                 shader.setFloatUniform("cam", metrics.camX, metrics.camY)
                 shader.setFloatUniform("camR", metrics.camR)
                 shader.setFloatUniform("av", cx, cy)
-                shader.setFloatUniform("avR", w / 2f * silhouette, h / 2f * silhouette)
-                shader.setFloatUniform("soft", soft * (0.35f + 0.65f * p2))
-                // The strand is there while the picture is on its way up, and gone when it has arrived.
-                shader.setFloatUniform("strand", (sin(p2 * Math.PI.toFloat()).coerceIn(0f, 1f)) * 0.55f * metrics.camR)
+                shader.setFloatUniform("avR", w / 2f, h / 2f)
+                // Identical to the playground: attraction starts only within reach,
+                // broadens at both bodies and narrows naturally at the middle.
+                shader.setFloatUniform("soft", blend * ease(((1f - p2) / 0.12f).coerceIn(0f, 1f)))
                 drawRect(
                     ShaderBrush(shader),
                     topLeft = Offset.Zero,
@@ -271,9 +302,11 @@ internal fun ProfileHeader(
             ) {
                 val camera = Offset(metrics.camX, metrics.camY)
                 drawCircle(Color.Black, radius = metrics.camR, center = camera)
-                val rx = w / 2f * silhouette
-                val ry = h / 2f * silhouette
-                drawOval(Color.Black, topLeft = Offset(cx - rx, cy - ry), size = androidx.compose.ui.geometry.Size(rx * 2f, ry * 2f))
+                val rx = w / 2f
+                val ry = h / 2f
+                drawRoundRect(Color.Black, topLeft = Offset(cx - rx, cy - ry),
+                    size = androidx.compose.ui.geometry.Size(rx * 2f, ry * 2f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(min(rx, ry)))
             }
         }
     }

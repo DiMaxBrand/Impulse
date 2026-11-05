@@ -1,0 +1,39 @@
+package eu.siacs.conversations.ui
+
+import eu.siacs.conversations.ui.glass.FluidBridges
+import eu.siacs.conversations.ui.glass.FluidShape
+import org.junit.Assert.*
+import org.junit.Test
+
+class ProfileHeaderMorphTest {
+    private val metrics = HeaderMetrics(1080f, 1080f, 100f, 400f, 360f, 180f,
+        540f, 30f, 18f, true, 60f)
+
+    @Test fun collapsedPictureEndsInsideCameraInsteadOfBelowIt() {
+        val pose = cameraMergePose(metrics, 1f, 540f, 360f, 360f, 360f)
+        assertEquals(metrics.camX, pose.x, 0.001f)
+        assertEquals(metrics.camY, pose.y, 0.001f)
+        assertEquals(metrics.camR * 2f, pose.width, 0.001f)
+        assertEquals(metrics.camR * 2f, pose.height, 0.001f)
+    }
+
+    @Test fun reverseScrollAndOvershootCannotProduceNegativeOrExtraGeometry() {
+        val start = cameraMergePose(metrics, -0.2f, 540f, 360f, 360f, 360f)
+        assertEquals(360f, start.width, 0.001f)
+        assertEquals(360f, start.y, 0.001f)
+        val end = cameraMergePose(metrics, 1.2f, 540f, 360f, 360f, 360f)
+        assertEquals(metrics.camY, end.y, 0.001f)
+        assertEquals(36f, end.height, 0.001f)
+    }
+
+    @Test fun playgroundBridgeHasNoStrandAcrossDistantShapes() {
+        val bridge = FluidBridges().apply { reach = 32f; softness = 12f; response = 0.4f }
+        val camera = FluidShape(0).apply { hw = 18f; hh = 18f; radius = 18f }
+        val avatar = FluidShape(1).apply { cy = 300f; hw = 60f; hh = 60f; radius = 60f }
+        repeat(120) { bridge.step(1f / 60f, listOf(camera, avatar), false) }
+        assertEquals(0f, bridge.blend(camera, avatar), 0f)
+        avatar.cy = 90f // A twelve-pixel gap, inside the same reach as the playground.
+        repeat(120) { bridge.step(1f / 60f, listOf(camera, avatar), false) }
+        assertTrue(bridge.blend(camera, avatar) > 0f)
+    }
+}
