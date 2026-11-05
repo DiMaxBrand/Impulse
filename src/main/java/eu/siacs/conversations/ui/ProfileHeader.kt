@@ -38,7 +38,6 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -101,6 +100,7 @@ uniform float camR;
 uniform float2 av;
 uniform float2 avR;
 uniform float soft;
+uniform float edgeSoft;
 
 float sdBody(float2 p, float2 halfSize) {
     float r = min(halfSize.x, halfSize.y);
@@ -116,7 +116,12 @@ half4 main(float2 p) {
     float dCam = length(p - cam) - camR;
     float dAv = sdBody(p - av, avR);
     float d = smin(dCam, dAv, soft);
-    return half4(0.0, 0.0, 0.0, clamp(0.5 - d, 0.0, 1.0));
+    // Dissolve the boundary of the actual merged body, not a separate circle around it.
+    float cameraZone = 1.0 - smoothstep(camR + edgeSoft, camR + max(length(av - cam) * 0.8, edgeSoft + 1.0), length(p - cam));
+    float feather = edgeSoft * cameraZone;
+    float inward = min(feather * 0.5, camR * 0.2);
+    float alpha = feather > 0.001 ? 1.0 - smoothstep(-inward, feather, d) : clamp(0.5 - d, 0.0, 1.0);
+    return half4(0.0, 0.0, 0.0, alpha);
 }
 """
 
@@ -189,6 +194,13 @@ internal fun cameraHaloProgress(progress: Float): Float {
     val swell = 4f * p * (1f - p)
     return swell * swell
 }
+
+internal fun cameraEdgeAlpha(distance: Float, feather: Float, coreRadius: Float = Float.POSITIVE_INFINITY): Float =
+    if (feather <= 0.001f) (0.5f - distance).coerceIn(0f, 1f)
+    else {
+        val inward = min(feather * 0.5f, coreRadius * 0.2f)
+        1f - ease(((distance + inward) / (feather + inward)).coerceIn(0f, 1f))
+    }
 
 /** Darken into opaque black before the photo fits inside the cutout; never fade into the page. */
 internal fun cameraAbsorption(progress: Float, gap: Float, reach: Float): CameraAbsorption {
@@ -342,6 +354,7 @@ internal fun ProfileHeader(
                 // Identical to the playground: attraction starts only within reach,
                 // broadens at both bodies and narrows naturally at the middle.
                 shader.setFloatUniform("soft", joinRadius)
+                shader.setFloatUniform("edgeSoft", if (glass) 18.dp.toPx() * cameraHaloProgress(p2) else 0f)
                 drawRect(
                     ShaderBrush(shader),
                     topLeft = Offset.Zero,
@@ -437,30 +450,6 @@ internal fun ProfileHeader(
                 1f to Color.Black.copy(alpha = absorption.bottomBlack),
             ))
             }
-        }
-    }
-    // Only the outer shadow swells and softens. Its radial falloff approximates a broad blur
-    // without blurring the real cutout or allocating a screen-sized blur layer.
-    val halo = cameraHaloProgress(p2)
-    if (glass && metrics.hasCamera && halo > 0.001f) Canvas(Modifier.fillMaxSize()) {
-        val camera = Offset(metrics.camX, metrics.camY)
-        val radius = metrics.camR + 36.dp.toPx() * halo
-        val inner = (metrics.camR / radius).coerceIn(0f, 0.99f)
-        val direction = Math.toDegrees(kotlin.math.atan2(
-            (cy - metrics.camY).toDouble(), (cx - metrics.camX).toDouble(),
-        )).toFloat() - 90f
-        withTransform({
-            rotate(direction, pivot = camera)
-            scale(1f, 1f + 0.45f * halo, pivot = camera)
-        }) {
-            drawCircle(Brush.radialGradient(
-                0f to Color.Black.copy(alpha = 0.58f * halo),
-                inner to Color.Black.copy(alpha = 0.5f * halo),
-                (inner + (1f - inner) * 0.3f) to Color.Black.copy(alpha = 0.28f * halo),
-                (inner + (1f - inner) * 0.65f) to Color.Black.copy(alpha = 0.07f * halo),
-                1f to Color.Transparent,
-                center = camera, radius = radius,
-            ), radius, camera)
         }
     }
     // Last, separate and always opaque: neither the photo blur nor its gradient can tint the lens.

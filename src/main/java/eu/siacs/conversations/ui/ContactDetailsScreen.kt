@@ -209,6 +209,12 @@ fun ContactDetailsScreen(state: ContactDetailsState, actions: ContactDetailsActi
                     DetailsBody(ui, state, actions)
                     Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(40.dp))
                 }
+                // The toolbar's surface belongs behind the whole camera/photo merge.
+                // Drawing it over the merge washed both the black neck and camera to grey.
+                val barProgress = ((s - metrics.toCircle) / (metrics.toCamera - metrics.toCircle)).coerceIn(0f, 1f)
+                Box(Modifier.fillMaxWidth().height(110.dp).background(Brush.verticalGradient(
+                    listOf(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f * barProgress), Color.Transparent),
+                )))
                 ProfileHeader(
                     bitmap = avatarImage,
                     tint = tint,
@@ -268,13 +274,7 @@ private fun TopBar(
     onBack: () -> Unit,
 ) {
     val p = ((scroll - metrics.toCircle) / (metrics.toCamera - metrics.toCircle)).coerceIn(0f, 1f)
-    val surface = MaterialTheme.colorScheme.surface
     Box(Modifier.fillMaxSize()) {
-        // The bar's own background, once the picture is gone.
-        Box(
-            Modifier.fillMaxWidth().height(110.dp)
-                .background(Brush.verticalGradient(listOf(surface.copy(alpha = 0.92f * p), Color.Transparent))),
-        )
         Row(
             Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,

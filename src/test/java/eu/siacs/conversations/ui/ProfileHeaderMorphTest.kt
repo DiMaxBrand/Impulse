@@ -6,6 +6,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProfileHeaderMorphTest {
+    @Test fun dissolvedEdgeChangesTheSilhouetteButKeepsItsInteriorOpaque() {
+        assertEquals(1f, cameraEdgeAlpha(-10f, 20f), 0f)
+        assertEquals(0f, cameraEdgeAlpha(20f, 20f), 0f)
+        assertTrue(cameraEdgeAlpha(-2f, 20f) < 1f)
+        assertTrue(cameraEdgeAlpha(2f, 20f) > 0f)
+        assertEquals(1f, cameraEdgeAlpha(-2f, 0f), 0f)
+        assertEquals(0f, cameraEdgeAlpha(2f, 0f), 0f)
+        // A broad soft edge must not make the narrow neck's interior translucent grey.
+        assertEquals(1f, cameraEdgeAlpha(-3f, 20f, 8f), 0f)
+    }
     @Test fun curvedJoinIsBlackAtRimAndFeathersIntoPhoto() {
         assertEquals(1f, cameraJoinShade(0f, 10f, 30f, 30f), 0f)
         assertEquals(0.5f, cameraJoinShade(-15f, 10f, 30f, 30f), 0.001f)
