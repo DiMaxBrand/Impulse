@@ -137,6 +137,17 @@ internal fun cameraMergePose(
 
 private fun ease(t: Float): Float = t * t * (3f - 2f * t)
 
+internal data class CameraAbsorption(val blur: Float, val topBlack: Float, val bottomBlack: Float)
+
+/** Darken into opaque black before the photo fits inside the cutout; never fade into the page. */
+internal fun cameraAbsorption(progress: Float, gap: Float, reach: Float): CameraAbsorption {
+    val p = progress.coerceIn(0f, 1f)
+    val proximity = ease((1f - gap.coerceAtLeast(0f) / reach.coerceAtLeast(1f)).coerceIn(0f, 1f)) *
+        ease((p / 0.2f).coerceIn(0f, 1f))
+    val black = ease(((p - 0.55f) / 0.35f).coerceIn(0f, 1f))
+    return CameraAbsorption(max(proximity, black), max(proximity, black), black)
+}
+
 /** The phone's tilt as two numbers in -1..1 (sideways, forward/back), smoothed; zero when [enabled] is false. */
 @Composable
 internal fun rememberTilt(enabled: Boolean): State<Offset> {
@@ -219,8 +230,15 @@ internal fun ProfileHeader(
     val round = min(w, h) / 2f
     val topCorner = lerpF(0f, round, p1).coerceAtMost(round)
     val bottomCorner = lerpF(metrics.bigCorner, round, p1).coerceAtMost(round)
-    // The picture dissolves into the black of the camera over the last of the way.
-    val photoAlpha = 1f - ease(((p2 - 0.82f) / 0.18f).coerceIn(0f, 1f))
+    val absorption = cameraAbsorption(p2, top - (metrics.camY + metrics.camR),
+        with(density) { 32.dp.toPx() })
+    val photoBlurPx = with(density) { 24.dp.toPx() } * absorption.blur
+    val photoBlur = remember(photoBlurPx) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && photoBlurPx > 0.1f)
+            RenderEffect.createBlurEffect(photoBlurPx, photoBlurPx, Shader.TileMode.CLAMP)
+                .asComposeRenderEffect()
+        else null
+    }
     val wDp = with(density) { w.toDp() }
     val hDp = with(density) { h.toDp() }
 
@@ -315,20 +333,36 @@ internal fun ProfileHeader(
         Modifier
             .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(wDp, hDp)
-            .graphicsLayer { alpha = photoAlpha }
+            .graphicsLayer { alpha = if (p2 < 1f) 1f else 0f }
             .clip(RoundedCornerShape(topStart = with(density) { topCorner.toDp() }, topEnd = with(density) { topCorner.toDp() },
                 bottomEnd = with(density) { bottomCorner.toDp() }, bottomStart = with(density) { bottomCorner.toDp() }))
             .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) },
     ) {
-        if (bitmap != null) {
-            Image(bitmap = bitmap, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        } else {
-            Canvas(Modifier.fillMaxSize()) { drawRect(tint) }
+        // Blur only the photo, before its dark gradient. The cutout and silhouette stay sharp.
+        Box(Modifier.fillMaxSize().graphicsLayer { renderEffect = photoBlur }) {
+            Canvas(Modifier.fillMaxSize()) { drawRect(Color.Black) }
+            if (bitmap != null) {
+                Image(bitmap = bitmap, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            } else {
+                Canvas(Modifier.fillMaxSize()) { drawRect(tint) }
+            }
         }
         // The glassy surface belongs to the small picture: the big one stays plain and crisp.
         if (glass && p1 > 0.02f) {
-            GlassSurface(tilt, topCorner, bottomCorner, strength = p1)
+            GlassSurface(tilt, topCorner, bottomCorner, strength = p1 * (1f - absorption.bottomBlack))
         }
+        Canvas(Modifier.fillMaxSize()) {
+            drawRect(Brush.verticalGradient(
+                0f to Color.Black.copy(alpha = absorption.topBlack),
+                0.35f to Color.Black.copy(alpha = lerpF(absorption.topBlack, absorption.bottomBlack, 0.18f)),
+                0.75f to Color.Black.copy(alpha = lerpF(absorption.topBlack, absorption.bottomBlack, 0.8f)),
+                1f to Color.Black.copy(alpha = absorption.bottomBlack),
+            ))
+        }
+    }
+    // Last, separate and always opaque: neither the photo blur nor its gradient can tint the lens.
+    if (metrics.hasCamera) Canvas(Modifier.fillMaxSize()) {
+        drawCircle(Color.Black, metrics.camR, Offset(metrics.camX, metrics.camY))
     }
 }
 

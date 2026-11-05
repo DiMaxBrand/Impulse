@@ -6,6 +6,25 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ProfileHeaderMorphTest {
+    @Test fun photoRemainsClearAwayFromCamera() {
+        val look = cameraAbsorption(0f, 100f, 32f)
+        assertEquals(0f, look.blur, 0f)
+        assertEquals(0f, look.topBlack, 0f)
+        assertEquals(0f, look.bottomBlack, 0f)
+    }
+
+    @Test fun approachingPhotoBlursAndDarkensFromCameraSide() {
+        val look = cameraAbsorption(0.5f, 8f, 32f)
+        assertTrue(look.blur > 0.5f)
+        assertTrue(look.topBlack > look.bottomBlack)
+    }
+
+    @Test fun photoIsAlreadyCompletelyBlackBeforeEnteringCamera() {
+        val look = cameraAbsorption(0.95f, -10f, 32f)
+        assertEquals(1f, look.topBlack, 0f)
+        assertEquals(1f, look.bottomBlack, 0f)
+        assertEquals(1f, look.blur, 0f)
+    }
     private val metrics = HeaderMetrics(1080f, 1080f, 100f, 400f, 360f, 180f,
         540f, 30f, 18f, true, 60f)
 
