@@ -46,7 +46,7 @@ class SupportChatTrackingTest {
     }
 
     @Test fun historicalFixUsesEarliestExactReleaseAndNeverMatchesIdPrefixes() {
-        val entry = SupportChatTracking.Entry(SupportChatTracking.parse(announcement(), false)!!, "c", "person", 1)
+        val entry = SupportChatTracking.Entry(SupportChatTracking.parse(announcement(), false)!!, "c", "person", 1, "message")
         val matched = SupportChatTracking.match(listOf(entry), listOf(
             UpdateChecker.NewerRelease("1.15.0-beta.300", "BUG-AB12"),
             UpdateChecker.NewerRelease("1.14.0", "BUG-AB12X"),
@@ -58,11 +58,11 @@ class SupportChatTrackingTest {
         SQLiteDatabase.create(null).use { db ->
             db.execSQL("CREATE TABLE accounts (uuid TEXT, username TEXT, server TEXT)")
             db.execSQL("CREATE TABLE conversations (uuid TEXT, accountUuid TEXT, contactJid TEXT, mode INT, status INT)")
-            db.execSQL("CREATE TABLE messages (body TEXT, status INT, timeSent INT, conversationUuid TEXT, type INT)")
+            db.execSQL("CREATE TABLE messages (body TEXT, status INT, timeSent INT, conversationUuid TEXT, type INT, uuid TEXT)")
             db.execSQL("INSERT INTO accounts VALUES ('support','support','example.org'), ('personal','me','example.org')")
             db.execSQL("INSERT INTO conversations VALUES ('archived','support','person@example.org',0,1), ('private','personal','person@example.org',0,0), ('room','support','room@example.org',1,0)")
             fun insert(chat: String, body: String, status: Int, time: Long, type: Int = 0) {
-                db.execSQL("INSERT INTO messages VALUES (?,?,?,?,?)", arrayOf<Any>(body, status, time, chat, type))
+                db.execSQL("INSERT INTO messages VALUES (?,?,?,?,?,?)", arrayOf<Any>(body, status, time, chat, type, "$chat-$time-$type"))
             }
             insert("archived", announcement(), 2, 1)
             insert("archived", announcement(), 2, 2, 3) // recovered resource duplicate
@@ -73,6 +73,9 @@ class SupportChatTrackingTest {
             assertEquals(setOf("BUG-AB12", "BUG-CD34"), rows.map { it.details.id }.toSet())
             assertEquals(2, rows.size)
             assertTrue(rows.all { it.conversationUuid == "archived" })
+            // Separate reports in the same conversation must retain separate navigation targets.
+            assertEquals("archived-4-0", rows.first { it.details.id == "BUG-CD34" }.messageUuid)
+            assertEquals("archived-2-3", rows.first { it.details.id == "BUG-AB12" }.messageUuid)
         }
     }
 

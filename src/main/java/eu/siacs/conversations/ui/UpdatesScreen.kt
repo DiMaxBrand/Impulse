@@ -112,7 +112,7 @@ fun UpdatesScreen(
     onMinIntervalSelected: (Int) -> Unit = {},
     onNightlyInstallToggled: (Boolean) -> Unit = {},
     onAllowInstallApps: () -> Unit = {},
-    onOpenSupportChat: (String) -> Unit = {},
+    onOpenSupportChat: (eu.siacs.conversations.update.SupportChatTracking.Entry) -> Unit = {},
     onRefreshSupportTracking: () -> Unit = {},
 ) {
     var intervalPickerVisible by remember { mutableStateOf(false) }
@@ -1709,7 +1709,8 @@ private fun TrackedItemLine(item: TrackedItemUi, suffix: String = "") {
 }
 
 @Composable
-private fun SupportTrackingCard(state: UpdatesUiState, onOpenChat: (String) -> Unit, onRefresh: () -> Unit) {
+private fun SupportTrackingCard(state: UpdatesUiState,
+    onOpenChat: (eu.siacs.conversations.update.SupportChatTracking.Entry) -> Unit, onRefresh: () -> Unit) {
     var showReleased by remember { mutableStateOf(false) }
     val waiting = state.supportItems.filter { it.fixedIn == null }
     val released = state.supportItems.filter { it.fixedIn != null }
@@ -1725,7 +1726,7 @@ private fun SupportTrackingCard(state: UpdatesUiState, onOpenChat: (String) -> U
                     else R.string.support_tracking_not_checked), style = MaterialTheme.typography.bodyMedium)
             }
             (waiting + if (showReleased) released else emptyList()).forEach { entry ->
-                Column(Modifier.fillMaxWidth().clickable { onOpenChat(entry.conversationUuid) }.padding(vertical = 8.dp)) {
+                Column(Modifier.fillMaxWidth().clickable { onOpenChat(entry) }.padding(vertical = 8.dp)) {
                     val item = entry.details
                     TrackedItemLine(TrackedItemUi(item.id, item.kind,
                         item.title(eu.siacs.conversations.update.SupportTracking.isRussian())))

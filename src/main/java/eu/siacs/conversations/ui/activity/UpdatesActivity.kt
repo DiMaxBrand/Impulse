@@ -86,10 +86,12 @@ class UpdatesActivity : ActionBarActivity() {
                             },
                             onCheckNow = { triggerManualCheck() },
                             onRefreshSupportTracking = { refreshChatTracking(force = true) },
-                            onOpenSupportChat = { uuid ->
+                            onOpenSupportChat = { item ->
                                 startActivity(android.content.Intent(this@UpdatesActivity, eu.siacs.conversations.ui.ConversationsActivity::class.java)
                                     .setAction(eu.siacs.conversations.ui.ConversationsActivity.ACTION_VIEW_CONVERSATION)
-                                    .putExtra(eu.siacs.conversations.ui.ConversationsActivity.EXTRA_CONVERSATION, uuid))
+                                    .putExtra(eu.siacs.conversations.ui.ConversationsActivity.EXTRA_CONVERSATION, item.conversationUuid)
+                                    .putExtra(eu.siacs.conversations.ui.ConversationsActivity.EXTRA_MESSAGE_UUID, item.messageUuid)
+                                    .putExtra(eu.siacs.conversations.ui.ConversationsActivity.EXTRA_MESSAGE_TIME, item.time))
                             },
                             onMinIntervalSelected = { hours ->
                                 prefs.minUpdateIntervalHours = hours

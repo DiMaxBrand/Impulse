@@ -18,7 +18,7 @@ object SupportChatTracking {
 
     data class Entry(
         val details: Details, val conversationUuid: String, val contact: String,
-        val time: Long, val fixedIn: String? = null,
+        val time: Long, val messageUuid: String, val fixedIn: String? = null,
     )
 
     fun announcement(item: SupportTracking.Item): String {
@@ -94,7 +94,7 @@ object SupportChatTracking {
     internal fun readDatabase(db: android.database.sqlite.SQLiteDatabase, local: String, domain: String): List<Entry> {
         val rows = mutableListOf<Entry>()
         db.rawQuery(
-            """SELECT m.body, m.status, m.timeSent, c.uuid, c.contactJid
+            """SELECT m.body, m.status, m.timeSent, c.uuid, c.contactJid, m.uuid
                FROM messages m JOIN conversations c ON m.conversationUuid=c.uuid
                JOIN accounts a ON c.accountUuid=a.uuid
                WHERE lower(a.username)=? AND lower(a.server)=? AND c.mode=0
@@ -105,7 +105,7 @@ object SupportChatTracking {
             while (cursor.moveToNext()) {
                 val details = parse(cursor.getString(0) ?: continue,
                     cursor.getInt(1) == Message.STATUS_RECEIVED) ?: continue
-                rows += Entry(details, cursor.getString(3), cursor.getString(4), cursor.getLong(2))
+                rows += Entry(details, cursor.getString(3), cursor.getString(4), cursor.getLong(2), cursor.getString(5))
             }
         }
         return rows.distinctBy { it.contact.substringBefore('/') to it.details.id }
