@@ -60,13 +60,27 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 
 | Branch | Purpose |
 |---|---|
-| `dev` | Integration branch — all features merge here |
-| `reimagine-conversation-screen` | Active: Compose chat screen (see handoff below) |
-| `allow-deleting-messages` | XEP-0424 retraction, local delete, pin/unpin rework — cherry-pick source |
-| `material-3-expressive` | Compose UI, avatar 3D effect, morphing shapes |
-| `java-to-kotlin` | Incremental Java → Kotlin migration |
-| `material-icons` | Material Icons Rounded icon set |
-| `allow-sending-videos` | Future: custom Compose media picker |
+| `master` | Stable line only; advance after the user has tested the release for a while and explicitly approves promotion |
+| `dev` | Integration branch for current development, including beta work |
+| `fix/history-and-glass` | Current task branch, originally based on `unified-compose-search` |
+| `unified-compose-search` | Retained predecessor; keep until the user decides to retire it |
+| `auto-updater` | Retained major milestone |
+| `reimagine-conversation-screen` | Retained major milestone: Compose chat rewrite |
+| `notification-setup-screen` | Retained major milestone |
+| `material-3-expressive` | Retained major milestone |
+| `listening_status` | Retained substantial development history; user has not approved deletion |
+
+### Branch retention — user decisions, 2026-11-06
+
+- The milestone branches above are intentional historical bookmarks. Being fully merged is not
+  permission to delete them in a later cleanup.
+- Keep `master` on the stable line. Updating `dev` is not a stable promotion and must not advance
+  `master` or publish a stable release.
+- `fix-avatar-quality`, `claude/current-branch-status-chox6s`,
+  `claude/brave-ritchie-prdd2y`, and the draft per-contact-notification-sounds branch remain under
+  review. Do not delete or archive them without the user's decision.
+- The frozen stable-branch policy above remains in force. The user has asked whether older
+  stable branches could be replaced by release tags; no deletion was authorized in that discussion.
 
 ## Session handoff: reimagine-conversation-screen (2026-06-15)
 
