@@ -54,15 +54,14 @@ import kotlinx.coroutines.launch
  * app: the Android runtime shader is used directly, the clock is SystemClock.
  */
 
-/** Maps a bar touch to the lens position, preserving the grab offset inside the current lens. */
-internal fun tabDragOrigin(
+/** Only the selected lens can start a drag; other tabs retain their normal click actions. */
+internal fun isTabLensTouch(
     pointerX: Float, width: Float, inset: Float, tabWidth: Float,
     tabsCount: Int, isLtr: Boolean, currentValue: Float,
-): Float {
-    if (tabWidth <= 0f || tabsCount <= 1) return 0f
+): Boolean {
+    if (tabWidth <= 0f || tabsCount <= 1) return false
     val touched = ((if (isLtr) pointerX else width - pointerX) - inset) / tabWidth - 0.5f
-    return if (abs(touched - currentValue) <= 0.5f) currentValue
-        else touched.coerceIn(0f, (tabsCount - 1).toFloat())
+    return abs(touched - currentValue) <= 0.5f
 }
 
 /**
@@ -71,6 +70,7 @@ internal fun tabDragOrigin(
  * whatever else is on the same element. (The demo has the same helper under the same name.)
  */
 suspend fun PointerInputScope.inspectDragGestures(
+    canStartDrag: (PointerInputChange) -> Boolean = { true },
     onDragStart: (down: PointerInputChange) -> Unit = {},
     onDragEnd: () -> Unit = {},
     onDragCancel: () -> Unit = {},
@@ -78,6 +78,7 @@ suspend fun PointerInputScope.inspectDragGestures(
 ) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        if (!canStartDrag(down)) return@awaitEachGesture
         onDragStart(down)
         while (true) {
             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -226,6 +227,7 @@ class DampedDragAnimation(
     val initialScale: Float,
     val pressedScale: Float,
     val followFinger: Boolean = false,
+    val canStartDrag: DampedDragAnimation.(Offset, IntSize) -> Boolean = { _, _ -> true },
     val onDragStarted: DampedDragAnimation.(position: Offset) -> Unit,
     val onDragStopped: DampedDragAnimation.() -> Unit,
     val onDrag: DampedDragAnimation.(size: IntSize, dragAmount: Offset) -> Unit,
@@ -261,6 +263,7 @@ class DampedDragAnimation(
     val modifier: Modifier =
         Modifier.pointerInput(Unit) {
             inspectDragGestures(
+                canStartDrag = { canStartDrag(it.position, size) },
                 onDragStart = { down ->
                     beginDrag(down.position)
                 },

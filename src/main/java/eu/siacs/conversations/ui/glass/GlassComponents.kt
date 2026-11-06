@@ -673,7 +673,6 @@ fun LiquidBottomTabs(
         val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
         val animationScope = rememberCoroutineScope()
         var currentIndex by remember { mutableIntStateOf(selectedTabIndex()) }
-        val dragOrigin = remember { floatArrayOf(Float.NaN) }
         val dampedDragAnimation = remember(animationScope) {
             DampedDragAnimation(
                 animationScope = animationScope,
@@ -683,13 +682,13 @@ fun LiquidBottomTabs(
                 initialScale = 1f,
                 pressedScale = 78f / 56f,
                 followFinger = true,
-                onDragStarted = { position ->
+                canStartDrag = { position, size ->
                     val inset = with(density) { 4.dp.toPx() }
-                    // Keep the grab offset inside the lens. Elsewhere, pick up the lens on
-                    // the first movement, so a plain tap still uses the tab's click action.
-                    dragOrigin[0] = tabDragOrigin(position.x, constraints.maxWidth.toFloat(),
-                        inset, tabWidth, tabsCount, isLtr, value)
+                    isTabLensTouch(position.x - panelOffset, size.width.toFloat(),
+                        inset, tabWidth, tabsCount, isLtr, value) &&
+                        abs(position.y - size.height / 2f) <= with(density) { 28.dp.toPx() }
                 },
+                onDragStarted = {},
                 onDragStopped = {
                     val targetIndex = targetValue.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
                     currentIndex = targetIndex
@@ -698,10 +697,9 @@ fun LiquidBottomTabs(
                 },
                 onDrag = { _, dragAmount ->
                     updateValue(
-                        ((dragOrigin[0].takeUnless { it.isNaN() } ?: targetValue) + dragAmount.x / tabWidth * if (isLtr) 1f else -1f)
+                        (targetValue + dragAmount.x / tabWidth * if (isLtr) 1f else -1f)
                             .fastCoerceIn(0f, (tabsCount - 1).toFloat())
                     )
-                    dragOrigin[0] = Float.NaN
                     animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
                 },
             )
@@ -752,7 +750,7 @@ fun LiquidBottomTabs(
 
         // The bar stays put while its indicator follows the finger.
         Box(Modifier.fillMaxWidth().onGloballyPositioned { barRect = it.boundsInWindow() }
-            .then(dampedDragAnimation.modifier).then(interactiveHighlight.gestureModifier), contentAlignment = Alignment.CenterStart) {
+            .then(dampedDragAnimation.modifier), contentAlignment = Alignment.CenterStart) {
         Row(
             Modifier
                 .graphicsLayer { translationX = panelOffset }
@@ -821,6 +819,7 @@ fun LiquidBottomTabs(
                         if (isLtr) dampedDragAnimation.value * tabWidth + panelOffset
                         else size.width - (dampedDragAnimation.value + 1f) * tabWidth + panelOffset
                 }
+                .then(interactiveHighlight.gestureModifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
                     shape = { CircleShape },
