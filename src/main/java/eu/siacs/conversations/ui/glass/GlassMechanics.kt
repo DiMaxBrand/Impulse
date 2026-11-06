@@ -54,6 +54,17 @@ import kotlinx.coroutines.launch
  * app: the Android runtime shader is used directly, the clock is SystemClock.
  */
 
+/** Maps a bar touch to the lens position, preserving the grab offset inside the current lens. */
+internal fun tabDragOrigin(
+    pointerX: Float, width: Float, inset: Float, tabWidth: Float,
+    tabsCount: Int, isLtr: Boolean, currentValue: Float,
+): Float {
+    if (tabWidth <= 0f || tabsCount <= 1) return 0f
+    val touched = ((if (isLtr) pointerX else width - pointerX) - inset) / tabWidth - 0.5f
+    return if (abs(touched - currentValue) <= 0.5f) currentValue
+        else touched.coerceIn(0f, (tabsCount - 1).toFloat())
+}
+
 /**
  * Watches a finger without ever consuming it: starts the moment it touches down (no touch-slop
  * wait), reports every movement, and ends on lift or cancel. Taps and the like keep working for

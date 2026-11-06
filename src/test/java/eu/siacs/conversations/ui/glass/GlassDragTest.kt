@@ -10,6 +10,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GlassDragTest {
+    @Test fun draggingElsewhereOnBarPicksUpLensAtThatPosition() {
+        assertEquals(2f, tabDragOrigin(254f, 408f, 4f, 100f, 4, true, 0f), 0f)
+        assertEquals(3f, tabDragOrigin(408f, 408f, 4f, 100f, 4, true, 0f), 0f)
+        assertEquals(2f, tabDragOrigin(154f, 408f, 4f, 100f, 4, false, 0f), 0f)
+    }
+
+    @Test fun grabbingInsideLensPreservesOffsetWithoutJumping() {
+        assertEquals(1f, tabDragOrigin(125f, 408f, 4f, 100f, 4, true, 1f), 0f)
+        assertEquals(1f, tabDragOrigin(283f, 408f, 4f, 100f, 4, false, 1f), 0f)
+    }
+
     // Leave render/animation jobs queued: finger events must never depend on their execution.
     private class QueuedDispatcher : CoroutineDispatcher() {
         override fun dispatch(context: CoroutineContext, block: Runnable) = Unit

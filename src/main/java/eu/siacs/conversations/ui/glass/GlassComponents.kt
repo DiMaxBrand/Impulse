@@ -672,7 +672,8 @@ fun LiquidBottomTabs(
 
         val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
         val animationScope = rememberCoroutineScope()
-        var currentIndex by remember(selectedTabIndex) { mutableIntStateOf(selectedTabIndex()) }
+        var currentIndex by remember { mutableIntStateOf(selectedTabIndex()) }
+        val dragOrigin = remember { floatArrayOf(Float.NaN) }
         val dampedDragAnimation = remember(animationScope) {
             DampedDragAnimation(
                 animationScope = animationScope,
@@ -682,7 +683,13 @@ fun LiquidBottomTabs(
                 initialScale = 1f,
                 pressedScale = 78f / 56f,
                 followFinger = true,
-                onDragStarted = {},
+                onDragStarted = { position ->
+                    val inset = with(density) { 4.dp.toPx() }
+                    // Keep the grab offset inside the lens. Elsewhere, pick up the lens on
+                    // the first movement, so a plain tap still uses the tab's click action.
+                    dragOrigin[0] = tabDragOrigin(position.x, constraints.maxWidth.toFloat(),
+                        inset, tabWidth, tabsCount, isLtr, value)
+                },
                 onDragStopped = {
                     val targetIndex = targetValue.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
                     currentIndex = targetIndex
@@ -691,9 +698,10 @@ fun LiquidBottomTabs(
                 },
                 onDrag = { _, dragAmount ->
                     updateValue(
-                        (targetValue + dragAmount.x / tabWidth * if (isLtr) 1f else -1f)
+                        ((dragOrigin[0].takeUnless { it.isNaN() } ?: targetValue) + dragAmount.x / tabWidth * if (isLtr) 1f else -1f)
                             .fastCoerceIn(0f, (tabsCount - 1).toFloat())
                     )
+                    dragOrigin[0] = Float.NaN
                     animationScope.launch { offsetAnimation.snapTo(offsetAnimation.value + dragAmount.x) }
                 },
             )
@@ -743,7 +751,8 @@ fun LiquidBottomTabs(
         }
 
         // The bar stays put while its indicator follows the finger.
-        Box(Modifier.fillMaxWidth().onGloballyPositioned { barRect = it.boundsInWindow() }.then(dampedDragAnimation.modifier), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.fillMaxWidth().onGloballyPositioned { barRect = it.boundsInWindow() }
+            .then(dampedDragAnimation.modifier).then(interactiveHighlight.gestureModifier), contentAlignment = Alignment.CenterStart) {
         Row(
             Modifier
                 .graphicsLayer { translationX = panelOffset }
@@ -785,14 +794,12 @@ fun LiquidBottomTabs(
                         backdrop = backdrop,
                         shape = { CircleShape },
                         effects = {
-                            val progress = pressProgress()
                             vibrancy()
                             blur(8f.dp.toPx())
-                            glassLens(24f.dp.toPx() * progress, 24f.dp.toPx() * progress)
+                            glassLens(24f.dp.toPx(), 24f.dp.toPx())
                         },
                         highlight = {
-                            val progress = pressProgress()
-                            Highlight.Default.copy(alpha = progress)
+                            Highlight.Default
                         },
                         onDrawSurface = { drawRect(containerColor) },
                     )
@@ -814,25 +821,20 @@ fun LiquidBottomTabs(
                         if (isLtr) dampedDragAnimation.value * tabWidth + panelOffset
                         else size.width - (dampedDragAnimation.value + 1f) * tabWidth + panelOffset
                 }
-                .then(interactiveHighlight.gestureModifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
                     shape = { CircleShape },
                     effects = {
-                        val progress = pressProgress()
-                        glassLens(10f.dp.toPx() * progress, 14f.dp.toPx() * progress, chromaticAberration = true)
+                        glassLens(10f.dp.toPx(), 14f.dp.toPx(), chromaticAberration = true)
                     },
                     highlight = {
-                        val progress = pressProgress()
-                        Highlight.Default.copy(alpha = progress)
+                        Highlight.Default
                     },
                     shadow = {
-                        val progress = pressProgress()
-                        Shadow(alpha = progress)
+                        Shadow(alpha = 1f)
                     },
                     innerShadow = {
-                        val progress = pressProgress()
-                        InnerShadow(radius = 8f.dp * progress, alpha = progress)
+                        InnerShadow(radius = 8f.dp, alpha = 1f)
                     },
                     layerBlock = {
                         scaleX = maxOf(dampedDragAnimation.scaleX, lerp(1f, 78f / 56f, forcedHold().coerceIn(0f, 1f)))
@@ -842,12 +844,9 @@ fun LiquidBottomTabs(
                         scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                     },
                     onDrawSurface = {
-                        val progress = pressProgress()
-                        drawRect(
-                            if (isDark) Color.White.copy(0.1f) else Color.Black.copy(0.1f),
-                            alpha = 1f - progress,
-                        )
-                        drawRect(Color.Black.copy(alpha = 0.03f * progress))
+                        // Holding changes geometry, not the material under the finger.
+                        drawRect(if (isDark) Color.White.copy(alpha = 0.03f)
+                            else Color.Black.copy(alpha = 0.03f))
                     },
                 )
                 .height(56f.dp)
