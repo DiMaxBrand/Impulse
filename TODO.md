@@ -1,9 +1,10 @@
 # Impulse — To-Do
 
-## Next release: tracking references
+## Tracking references — beta.326
 
-- Include `BUG-B33K` and `BUG-TVKQ` in the next release description (user request, 2026-11-06).
-  Both are duplicate reports of the Glass lab constructor crash in beta 254, already fixed
+- Include `BUG-B33K`, `BUG-TVKQ`, and the test report `BUG-2BAW` in beta.326's release description
+  (user request, 2026-11-06). This release only bumps the version and closes tracking references.
+  `BUG-B33K` and `BUG-TVKQ` are duplicate reports of the Glass lab constructor crash in beta 254, already fixed
   in beta 255 by commit `9643f2a61` under `BUG-WXZ7`. Describe this as linking older reports
   to an existing fix, not as a newly fixed crash.
 
