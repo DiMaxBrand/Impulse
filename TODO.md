@@ -222,7 +222,9 @@ not the default experience.
 
 ## Bug-report tracking ID + fix notification — same category as headphones, needs stable to exist first
 
-> **Built (1.15.0-beta.141).** `BugReportRegistry` stores the IDs; `ExceptionHelper.trackedReport()` adds the header; "Report a problem" in Help and support sends a manual report the same way; `UpdateCheckHelper.performCheck()` matches IDs in the release notes it just fetched (every release on the reporter's channel newer than the installed version, oldest first; the entry stays marked "fixed in X" until that version is installed) and posts a notification; the Updates screen card shows the waiting IDs and turns into a "ask support" wording after 14 days. Entries are dropped after 45 days.
+> **Built (1.15.0-beta.141).** `BugReportRegistry` stores the IDs; `ExceptionHelper.trackedReport()` adds the header; "Report a problem" in Help and support sends a manual report the same way; `UpdateCheckHelper.performCheck()` matches IDs in the release notes it just fetched (oldest matching release first) and posts a notification; the Updates screen card shows the waiting IDs and turns into a "ask support" wording after 14 days. Ordinary report entries are dropped after 45 days.
+>
+> **Support chat tracking (1.15.0-beta.324).** Outgoing Tracks also send a passive, bilingual announcement from the support account. The support-only Updates overview derives items from that account's stored chat history, including archived conversations and old report headers; there is no separate support item registry. Complete published release history is cached separately for matching old fixes. Hidden outgoing Tracks encountered during normal archive catch-up are preserved as deduplicated local history events, without resending anything. Recipients can rebuild tracking from authenticated support messages; support notification bookkeeping survives expiry and installation to prevent repeat notices. No recipient tracking lists are requested or sent back.
 
 Only makes sense once stable releases (and the post-stable hotfix branching
 rule in `AGENTS.md`) are real — a report's fix might land as a hotfix on the

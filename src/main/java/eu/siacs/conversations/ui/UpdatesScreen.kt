@@ -112,6 +112,8 @@ fun UpdatesScreen(
     onMinIntervalSelected: (Int) -> Unit = {},
     onNightlyInstallToggled: (Boolean) -> Unit = {},
     onAllowInstallApps: () -> Unit = {},
+    onOpenSupportChat: (String) -> Unit = {},
+    onRefreshSupportTracking: () -> Unit = {},
 ) {
     var intervalPickerVisible by remember { mutableStateOf(false) }
     // The "keep auto-updates on" card: opens instead of switching the auto-check off, on any channel
@@ -374,6 +376,11 @@ fun UpdatesScreen(
                     } else {
                         Box(Modifier.fillMaxWidth())
                     }
+                }
+
+                if (state.supportItems.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    SupportTrackingCard(state, onOpenSupportChat, onRefreshSupportTracking)
                 }
 
                 // Reports this phone has sent that have not been matched to a fix yet. After a
@@ -1701,9 +1708,54 @@ private fun TrackedItemLine(item: TrackedItemUi, suffix: String = "") {
     }
 }
 
+@Composable
+private fun SupportTrackingCard(state: UpdatesUiState, onOpenChat: (String) -> Unit, onRefresh: () -> Unit) {
+    var showReleased by remember { mutableStateOf(false) }
+    val waiting = state.supportItems.filter { it.fixedIn == null }
+    val released = state.supportItems.filter { it.fixedIn != null }
+    Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(painterResource(R.drawable.ic_chat_24dp), contentDescription = null,
+                modifier = Modifier.size(32.dp))
+            Text(stringResource(R.string.support_tracking_overview), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.support_tracking_source), style = MaterialTheme.typography.bodyMedium)
+            if (state.supportHistoryFailed || !state.supportHistoryKnown) {
+                Text(stringResource(if (state.supportHistoryFailed) R.string.support_tracking_check_failed
+                    else R.string.support_tracking_not_checked), style = MaterialTheme.typography.bodyMedium)
+            }
+            (waiting + if (showReleased) released else emptyList()).forEach { entry ->
+                Column(Modifier.fillMaxWidth().clickable { onOpenChat(entry.conversationUuid) }.padding(vertical = 8.dp)) {
+                    val item = entry.details
+                    TrackedItemLine(TrackedItemUi(item.id, item.kind,
+                        item.title(eu.siacs.conversations.update.SupportTracking.isRussian())))
+                    Text(entry.contact, style = MaterialTheme.typography.bodySmall)
+                    Text(if (entry.fixedIn != null) stringResource(R.string.support_tracking_released_in, entry.fixedIn)
+                        else stringResource(if (state.supportHistoryKnown) R.string.support_tracking_waiting
+                            else R.string.support_tracking_status_unknown), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            if (released.isNotEmpty()) {
+                androidx.compose.material3.TextButton(onClick = { showReleased = !showReleased }) {
+                    Text(stringResource(if (showReleased) R.string.support_tracking_hide_released
+                        else R.string.support_tracking_show_released, released.size))
+                }
+            }
+            FilledTonalButton(onClick = onRefresh, enabled = !state.supportHistoryRefreshing) {
+                Text(stringResource(if (state.supportHistoryRefreshing) R.string.support_tracking_refreshing
+                    else R.string.support_tracking_refresh))
+            }
+        }
+    }
+}
+
 enum class DownloadPhase { IDLE, NO_WIFI_PENDING, DOWNLOADING, PROCESSING, READY, CANCELING }
 
 data class UpdatesUiState(
+    val supportItems: List<eu.siacs.conversations.update.SupportChatTracking.Entry> = emptyList(),
+    val supportHistoryKnown: Boolean = false,
+    val supportHistoryRefreshing: Boolean = false,
+    val supportHistoryFailed: Boolean = false,
     val currentVersion: String = "",
     val selectedChannel: UpdateChannel = UpdateChannel.STABLE,
     val autoCheck: Boolean = true,

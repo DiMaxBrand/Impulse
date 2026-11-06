@@ -48,6 +48,7 @@ class UpdatesActivity : ActionBarActivity() {
 
     private val prefs by lazy { UpdatePreferences(this) }
     private var uiState by mutableStateOf(UpdatesUiState())
+    private var trackingJob: kotlinx.coroutines.Job? = null
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,6 +85,12 @@ class UpdatesActivity : ActionBarActivity() {
                                 uiState = uiState.copy(autoCheck = enabled)
                             },
                             onCheckNow = { triggerManualCheck() },
+                            onRefreshSupportTracking = { refreshChatTracking(force = true) },
+                            onOpenSupportChat = { uuid ->
+                                startActivity(android.content.Intent(this@UpdatesActivity, eu.siacs.conversations.ui.ConversationsActivity::class.java)
+                                    .setAction(eu.siacs.conversations.ui.ConversationsActivity.ACTION_VIEW_CONVERSATION)
+                                    .putExtra(eu.siacs.conversations.ui.ConversationsActivity.EXTRA_CONVERSATION, uuid))
+                            },
                             onMinIntervalSelected = { hours ->
                                 prefs.minUpdateIntervalHours = hours
                                 uiState = uiState.copy(minUpdateIntervalHours = hours)
@@ -129,6 +136,36 @@ class UpdatesActivity : ActionBarActivity() {
         // available" line (mainStatusText in UpdatesScreen.kt) from going stale after returning
         // here, e.g. from the sheet itself, or from the background.
         initState()
+        refreshChatTracking()
+    }
+
+    private fun refreshChatTracking(force: Boolean = false) {
+        if (trackingJob?.isActive == true) return
+        trackingJob = lifecycleScope.launch {
+            val support = eu.siacs.conversations.utils.SupportAccounts.hasSupportAccount(this@UpdatesActivity)
+            val entries = withContext(Dispatchers.IO) {
+                eu.siacs.conversations.update.SupportChatTracking.restoreRecipient(this@UpdatesActivity)
+                eu.siacs.conversations.update.SupportChatTracking.read(this@UpdatesActivity)
+            }
+            uiState = uiState.copy(waitingItems = trackedWaiting(), fixedItems = trackedFixed(),
+                supportItems = entries, supportHistoryFailed = false)
+            if (!support || entries.isEmpty()) return@launch
+            val cache = eu.siacs.conversations.update.SupportReleaseCache(this@UpdatesActivity)
+            val cached = withContext(Dispatchers.IO) { cache.read() }
+            uiState = uiState.copy(supportItems = withContext(Dispatchers.Default) {
+                eu.siacs.conversations.update.SupportChatTracking.match(entries, cached.orEmpty()) },
+                supportHistoryKnown = cached != null)
+            if (!force && withContext(Dispatchers.IO) { cache.isFresh() }) return@launch
+            uiState = uiState.copy(supportHistoryRefreshing = true)
+            val releases = withContext(Dispatchers.IO) {
+                UpdateChecker(OkHttpClient()).trackingHistory()?.also { cache.write(it) }
+            }
+            uiState = uiState.copy(
+                supportItems = withContext(Dispatchers.Default) {
+                    eu.siacs.conversations.update.SupportChatTracking.match(entries, releases ?: cached.orEmpty()) },
+                supportHistoryKnown = releases != null || cached != null,
+                supportHistoryRefreshing = false, supportHistoryFailed = releases == null)
+        }
     }
 
     // The titles support typed for an item, in the phone's language.
@@ -201,6 +238,7 @@ class UpdatesActivity : ActionBarActivity() {
                     bugReportsStale = bugRegistry.hasStale(),
                 )
             }
+            refreshChatTracking(force = true)
             when (result) {
                 is UpdateChecker.CheckResult.UpToDate ->
                     uiState = uiState.copy(checkStatus = CheckStatus.UP_TO_DATE)

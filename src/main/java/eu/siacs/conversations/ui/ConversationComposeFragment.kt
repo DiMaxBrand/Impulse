@@ -1482,9 +1482,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         HelpSupportSheetFragment().show(parentFragmentManager, HelpSupportSheetFragment.TAG)
     }
 
-    /** Support only: files something support tracks for this person. Sent as a stanza with no body
-     * (see SupportCommandManager): nothing appears in the chat, the server keeps it for a phone
-     * that is offline, and the phone only accepts it from the support address. */
+    /** Support only: sends the tracking command and a normal, durable chat announcement. */
     override fun onTrackForContact(
         kind: String,
         titleEn: String,
@@ -1500,6 +1498,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             Toast.makeText(context, R.string.support_not_connected, Toast.LENGTH_LONG).show()
             return
         }
+        val service = getXmppConnectionService() ?: return
+        val supportAccount = service.accounts.firstOrNull {
+            eu.siacs.conversations.utils.SupportAccounts.isSupportAddress(it.jid) && it.isOnlineAndConnected
+        } ?: return
+        val supportChat = service.findOrCreateConversation(supportAccount, c.getAddress().asBareJid(), false, false)
+        service.sendMessage(Message(supportChat,
+            eu.siacs.conversations.update.SupportChatTracking.announcement(item), supportChat.nextEncryption))
         val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
         clipboard?.setPrimaryClip(android.content.ClipData.newPlainText(id, id))
         Toast.makeText(context, getString(R.string.track_sent_copied, id), Toast.LENGTH_LONG).show()

@@ -18,6 +18,8 @@ import org.json.JSONObject
  * [DROP_AFTER_DAYS]). Staying around until the fix is actually installed -- by the overnight
  * update or the Install button -- is what keeps the Updates screen saying "fixed in X, update to
  * get it" for as long as that is true.
+ * Support-origin entries retain their notification bookkeeping after installation/expiry:
+ * their chat messages may be restored again, and must not generate repeated fix notices.
  */
 class BugReportRegistry(context: Context) {
 
@@ -106,7 +108,11 @@ class BugReportRegistry(context: Context) {
 
     /** Reports a newer release already fixes, not yet installed. */
     fun fixed(now: Long = System.currentTimeMillis()): List<Entry> =
-        pending(now).filter { it.fixedIn != null }
+        pending(now).filter { entry ->
+            val fixed = entry.fixedIn?.let { UpdateChecker.parseVersion(it) }
+            val installed = UpdateChecker.parseVersion(UpdateChecker.stripBuildMeta(eu.siacs.conversations.BuildConfig.VERSION_NAME))
+            fixed != null && (installed == null || UpdateChecker.compareSemver(installed, fixed) < 0)
+        }
 
     /** True when a waiting report is old enough that the card should point at support instead of
      * promising an automatic notice. */
@@ -153,7 +159,7 @@ class BugReportRegistry(context: Context) {
             .replace(Regex("[\\u2010-\\u2015\\u2212\\u00AD]"), "-")
             .contains(id, ignoreCase = true)
 
-    /** Forgets the reports whose fix is now installed (running version >= the fixing one). */
+    /** Hides installed fixes; retains support bookkeeping to deduplicate restored history. */
     @Synchronized
     fun dropInstalled(currentVersionRaw: String, now: Long = System.currentTimeMillis()) {
         val current =
@@ -162,7 +168,9 @@ class BugReportRegistry(context: Context) {
         val kept =
             all.filter { entry ->
                 val fixed = entry.fixedIn?.let { UpdateChecker.parseVersion(it) }
-                fixed == null || UpdateChecker.compareSemver(current, fixed) < 0
+                // Keep support notification bookkeeping: history can rebuild the same item on
+                // another catch-up, and must not announce an installed fix repeatedly.
+                entry.fromSupport || fixed == null || UpdateChecker.compareSemver(current, fixed) < 0
             }
         if (kept.size != all.size) write(kept)
     }
@@ -188,7 +196,7 @@ class BugReportRegistry(context: Context) {
             emptyList()
         }
         val cutoff = now - TimeUnit.DAYS.toMillis(DROP_AFTER_DAYS)
-        val kept = parsed.filter { it.sentAt >= cutoff }
+        val kept = parsed.filter { it.fromSupport || it.sentAt >= cutoff }
         if (kept.size != parsed.size) write(kept)
         return kept
     }

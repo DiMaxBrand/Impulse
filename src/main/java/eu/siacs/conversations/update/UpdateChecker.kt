@@ -139,6 +139,33 @@ class UpdateChecker(private val client: OkHttpClient) {
         }
     }
 
+    /** Complete history for support's chat-derived overview, including fixes older than this APK.
+     * A partial/failed history is not an authoritative "still waiting" answer. */
+    fun trackingHistory(): List<NewerRelease>? {
+        val notes = mutableListOf<NewerRelease>()
+        var page = 1
+        while (true) {
+            val request = Request.Builder()
+                .url("https://api.github.com/repos/DiMaxBrand/Impulse/releases?per_page=100&page=$page")
+                .header("Accept", "application/vnd.github+json").build()
+            val array = try {
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return null
+                    JSONArray(response.body?.string() ?: return null)
+                }
+            } catch (_: Exception) { return null }
+            for (i in 0 until array.length()) {
+                val release = array.getJSONObject(i)
+                val tag = release.optString("tag_name")
+                if (!release.optBoolean("draft") && parseVersion(tag) != null && findApkAsset(release) != null) {
+                    notes += NewerRelease(tag, release.optString("body"))
+                }
+            }
+            if (array.length() < 100) return notes
+            page++
+        }
+    }
+
     private fun findApkAsset(release: JSONObject): String? {
         val assets = release.optJSONArray("assets") ?: return null
         for (i in 0 until assets.length()) {

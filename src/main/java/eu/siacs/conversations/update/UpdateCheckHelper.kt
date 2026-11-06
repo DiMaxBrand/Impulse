@@ -64,6 +64,7 @@ object UpdateCheckHelper {
      */
     @JvmStatic
     fun matchBugReports(context: Context, releaseNotes: List<UpdateChecker.NewerRelease>) {
+        SupportChatTracking.restoreRecipient(context)
         val registry = BugReportRegistry(context)
         val fixed = registry.matchFixed(releaseNotes)
         if (fixed.isNotEmpty()) {

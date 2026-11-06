@@ -93,7 +93,15 @@ class SupportCommandManager(
         timestamp: Long,
     ) {
         val kind = if (packet.hasExtension(Track::class.java)) "track" else "check"
-        if (packet.fromAccount(getAccount())) return
+        if (packet.fromAccount(getAccount())) {
+            // Normal archive/carbons catch-up may contain old hidden outgoing Tracks. Keep a
+            // local history event, never resend it or replay its check-now instruction.
+            if (packet.getType() == im.conversations.android.xmpp.model.stanza.Message.Type.CHAT &&
+                SupportAccounts.isSupportAddress(getAccount().jid)) {
+                packet.getExtension(Track::class.java)?.let { recoverOutgoing(it, counterpart, timestamp) }
+            }
+            return
+        }
         if (packet.getType() != im.conversations.android.xmpp.model.stanza.Message.Type.CHAT) {
             SupportDiagnostics.record(service, "$kind from $counterpart ignored: type ${packet.getType()}")
             return
@@ -118,5 +126,33 @@ class SupportCommandManager(
                 SupportDiagnostics.record(service, "check from $counterpart not answered: too old (${age / 1000}s)")
             }
         }
+    }
+
+    @Synchronized
+    private fun recoverOutgoing(track: Track, counterpart: Jid, timestamp: Long) {
+        val id = track.id ?: return
+        if (!Regex("^(BUG|IMP|NEW|CHG)-[A-Z0-9]{4}$").matches(id) ||
+            track.titleEn.isBlank() && track.titleRu.isBlank() ||
+            counterpart.asBareJid() == getAccount().jid.asBareJid()) return
+        val conversation = service.findOrCreateConversation(getAccount(), counterpart.asBareJid(), false, true)
+        val uuid = java.util.UUID.nameUUIDFromBytes(
+            "support-track:${getAccount().getUuid()}:${counterpart.asBareJid()}:$id".toByteArray(Charsets.UTF_8)).toString()
+        if (service.databaseBackend.getMessage(conversation, uuid) != null) return
+        service.databaseBackend.readableDatabase.rawQuery(
+            "SELECT 1 FROM messages WHERE conversationUuid=? AND type=0 AND status<>0 AND instr(body,?)>0 LIMIT 1",
+            arrayOf(conversation.getUuid(), "Tracking ID: $id"),
+        ).use { if (it.moveToFirst()) return }
+        val kind = track.kind?.takeIf { it in eu.siacs.conversations.update.BugReportRegistry.KINDS }
+            ?: eu.siacs.conversations.update.BugReportRegistry.KIND_CHANGE
+        val item = SupportTracking.Item(id, kind, track.titleEn.take(160), track.titleRu.take(160), false)
+        val body = service.getString(eu.siacs.conversations.R.string.support_tracking_recovered) + "\n\n" +
+            eu.siacs.conversations.update.SupportChatTracking.announcement(item)
+        val message = eu.siacs.conversations.entities.Message(conversation, body,
+            eu.siacs.conversations.entities.Message.ENCRYPTION_NONE)
+        message.replaceUuid(uuid)
+        message.setType(eu.siacs.conversations.entities.Message.TYPE_STATUS)
+        message.setStatus(eu.siacs.conversations.entities.Message.STATUS_SEND)
+        message.setTime(timestamp)
+        service.databaseBackend.createMessage(message)
     }
 }
