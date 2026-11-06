@@ -15,6 +15,17 @@ import androidx.compose.runtime.setValue
 object GlassTuning {
     private const val PREFS = "glass_tuning"
     private var prefs: SharedPreferences? = null
+    private val saveHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
+    private val saveFloats = Runnable {
+        prefs?.edit()?.putFloat("blur", blur)?.putFloat("refraction", refraction)
+            ?.putFloat("frost", frost)?.putFloat("jelly", jelly)?.apply()
+    }
+
+    private fun persistFloatsAfterDrag() {
+        if (prefs == null) return
+        saveHandler.removeCallbacks(saveFloats)
+        saveHandler.postDelayed(saveFloats, 200)
+    }
 
     /** How blurred the glass is (every piece's own blur is multiplied by this). */
     var blur by mutableFloatStateOf(1f)
@@ -57,10 +68,10 @@ object GlassTuning {
         barBlur = p.getBoolean("bar_blur", true)
     }
 
-    fun putBlur(v: Float) { blur = v; prefs?.edit()?.putFloat("blur", v)?.apply() }
-    fun putRefraction(v: Float) { refraction = v; prefs?.edit()?.putFloat("refraction", v)?.apply() }
-    fun putFrost(v: Float) { frost = v; prefs?.edit()?.putFloat("frost", v)?.apply() }
-    fun putJelly(v: Float) { jelly = v; prefs?.edit()?.putFloat("jelly", v)?.apply() }
+    fun putBlur(v: Float) { blur = v; persistFloatsAfterDrag() }
+    fun putRefraction(v: Float) { refraction = v; persistFloatsAfterDrag() }
+    fun putFrost(v: Float) { frost = v; persistFloatsAfterDrag() }
+    fun putJelly(v: Float) { jelly = v; persistFloatsAfterDrag() }
     fun putFringes(v: Boolean) { fringes = v; prefs?.edit()?.putBoolean("fringes", v)?.apply() }
     fun putLessOften(v: Boolean) { lessOften = v; prefs?.edit()?.putBoolean("less_often", v)?.apply() }
     fun putBarBlur(v: Boolean) { barBlur = v; prefs?.edit()?.putBoolean("bar_blur", v)?.apply() }

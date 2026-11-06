@@ -1216,7 +1216,7 @@ fun GlassFluidField(
                 FluidGlassLayer(
                     backdrop = behind,
                     scene = state,
-                    look = remember { FluidLook(refractionHeight = 14.dp, refractionAmount = 20.dp, shadow = true) },
+                    look = remember { FluidLook(refractionHeight = 14.dp, refractionAmount = 20.dp) },
                     modifier = Modifier.fillMaxSize(),
                 )
                 // The laser, over the glass and under the pieces' own content.

@@ -1,5 +1,17 @@
 # Impulse — To-Do
 
+## Surface glass and sampling cost — beta.322
+
+- User selected style 2, **Surface**, for playground controls: clear optics plus a translucent
+  surface, without the separate fog layer. Clear prototype objects stay clear.
+- Adaptive ink records 96×32 samples before GPU readback; readbacks are serialized and spaced,
+  and pause during control dragging and playground transitions. Initial ink follows the theme.
+- The mode overlay has its own composition scope; page opacity is applied in graphics layers.
+  Glass-lab slider preferences are debounced while the visual values remain immediate.
+- Stationary drag wrappers use CenterStart alignment: the slider track is centred behind its thumb,
+  and both navigation layers and the indicator share the bar's vertical centre (beta.321 offset fix).
+- Actual frame pacing still needs phone verification; desktop compilation is not a GPU benchmark.
+
 ## Glass playground and dragging — beta.321
 
 - Slider/tab gestures live on stationary parents, with synchronous drag targets and direct position

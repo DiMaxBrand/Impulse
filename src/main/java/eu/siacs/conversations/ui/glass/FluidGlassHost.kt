@@ -279,7 +279,7 @@ class FluidGlassHost(
             if (r.width < 1f || r.height < 1f) continue
             if (!ink.request.take()) continue
             with(scope) {
-                ink.layer.record(androidx.compose.ui.unit.IntSize(r.width.toInt(), r.height.toInt())) {
+                recordGlassInk(ink, Size(r.width, r.height)) {
                     // The backdrop is drawn in the layer's own coordinates: the area's, less where the layer starts.
                     translate(originX - r.left, originY - r.top) { draw() }
                 }

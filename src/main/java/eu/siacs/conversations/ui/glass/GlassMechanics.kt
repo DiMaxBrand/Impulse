@@ -245,6 +245,7 @@ class DampedDragAnimation(
     val scaleX: Float get() = scaleXAnimation.value
     val scaleY: Float get() = scaleYAnimation.value
     val velocity: Float get() = velocityAnimation.value
+    val isDragging: Boolean get() = dragging
 
     val modifier: Modifier =
         Modifier.pointerInput(Unit) {
@@ -298,6 +299,7 @@ class DampedDragAnimation(
                     .first()
             }
             if (generation != pressGeneration) return@launch
+            launch { velocityAnimation.animateTo(0f, velocityAnimationSpec) }
             launch { pressProgressAnimation.animateTo(0f, pressProgressAnimationSpec) }
             launch { scaleXAnimation.animateTo(initialScale, scaleXAnimationSpec) }
             launch { scaleYAnimation.animateTo(initialScale, scaleYAnimationSpec) }

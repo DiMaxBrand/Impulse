@@ -136,6 +136,8 @@ data class LiquidGlassStyle(
     companion object {
         /** Buttons and bubbles: clear glass with a strong rim. */
         val Button = LiquidGlassStyle()
+        /** A translucent surface over clear glass; no separate fog/frost pass. */
+        val Surface = Button.copy(surfaceAlpha = 0.2f)
 
         /** The chat's top bar: the demo's button glass. Its legibility comes from the brightness
          * adjustment (see rememberGlassInk), not from smearing the backdrop with blur. */

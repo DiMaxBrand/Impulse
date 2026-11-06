@@ -1369,7 +1369,7 @@ internal fun FluidPrototype(
         eu.siacs.conversations.ui.glass.LiquidGlassButton(
             onClick = { fluid.add() },
             glass = glass,
-            style = eu.siacs.conversations.ui.glass.LiquidGlassStyle.Panel,
+            style = eu.siacs.conversations.ui.glass.LiquidGlassStyle.Surface,
             shape = RoundedCornerShape(20.dp),
             enabled = fluid.pieces.size < 16,
             modifier = Modifier.fillMaxWidth().height(48.dp).onGloballyPositioned { onButtonBounds(0, it.boundsInWindow()) },
@@ -1378,12 +1378,12 @@ internal fun FluidPrototype(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             eu.siacs.conversations.ui.glass.LiquidGlassButton(onClick = { fluid.removeLast() }, glass = glass,
-                style = eu.siacs.conversations.ui.glass.LiquidGlassStyle.Panel, shape = RoundedCornerShape(20.dp),
+                style = eu.siacs.conversations.ui.glass.LiquidGlassStyle.Surface, shape = RoundedCornerShape(20.dp),
                 enabled = fluid.pieces.size > 1, modifier = Modifier.weight(1f).height(48.dp).onGloballyPositioned { onButtonBounds(1, it.boundsInWindow()) }) {
                 Text(stringResource(R.string.glass_lab_merge_remove), maxLines = 1, style = MaterialTheme.typography.labelLarge)
             }
             eu.siacs.conversations.ui.glass.LiquidGlassButton(onClick = { fluid.reset() }, glass = glass,
-                style = eu.siacs.conversations.ui.glass.LiquidGlassStyle.Panel, shape = RoundedCornerShape(20.dp),
+                style = eu.siacs.conversations.ui.glass.LiquidGlassStyle.Surface, shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.weight(1f).height(48.dp).onGloballyPositioned { onButtonBounds(2, it.boundsInWindow()) }) {
                 Text(stringResource(R.string.glass_lab_reset), maxLines = 1, style = MaterialTheme.typography.labelLarge)
             }

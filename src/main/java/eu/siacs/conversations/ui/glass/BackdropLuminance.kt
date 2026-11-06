@@ -9,24 +9,34 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.sign
 
 /*
@@ -82,12 +92,48 @@ internal class LumaGrid(val cols: Int, val rows: Int, val data: FloatArray) {
 private const val GRID_COLS = 24
 private const val GRID_ROWS = 8
 
+internal class GlassReadbackBudget(private val intervalMs: Long = 32L) {
+    private var lastStart = Long.MIN_VALUE / 2
+    fun waitMillis(now: Long): Long = (lastStart + intervalMs - now).coerceAtLeast(0L)
+    fun started(now: Long) { lastStart = now }
+}
+
+private object InkSampling {
+    var moving by mutableIntStateOf(0)
+    val mutex = Mutex()
+    val budget = GlassReadbackBudget()
+}
+
+/** Keep GPU readbacks away from finger tracking and from the mode morph's render work. */
+@Composable
+internal fun pauseGlassInkWhile(moving: () -> Boolean) {
+    val current by rememberUpdatedState(moving)
+    LaunchedEffect(Unit) {
+        snapshotFlow { current() }.collectLatest { active ->
+            if (active) {
+                InkSampling.moving++
+                try { awaitCancellation() } finally { InkSampling.moving-- }
+            }
+        }
+    }
+}
+
+/** Downsample on the GPU before readback, instead of copying a full-size control to the CPU. */
+internal fun DrawScope.recordGlassInk(ink: GlassInk, sourceSize: Size = size, draw: DrawScope.() -> Unit) {
+    if (sourceSize.width <= 0f || sourceSize.height <= 0f) return
+    val capture = IntSize(GRID_COLS * 4, GRID_ROWS * 4)
+    ink.layer.record(capture) {
+        scale(capture.width / sourceSize.width, capture.height / sourceSize.height, Offset.Zero) { draw() }
+    }
+}
+
 @Composable
 fun rememberGlassInk(adaptive: Boolean): GlassInk {
     val layer = rememberGraphicsLayer()
     val request = remember { RecordRequest() }
     val level = remember { Animatable(0.5f) }
-    var lightInk by remember { mutableStateOf(true) }
+    val themedLightInk = MaterialTheme.colorScheme.onSurface.luminance() > 0.5f
+    var lightInk by remember { mutableStateOf(themedLightInk) }
     var measured by remember { mutableStateOf<Float?>(null) }
     var grid by remember { mutableStateOf<LumaGrid?>(null) }
     // A transparent part of what is behind counts as the theme's background, not as black.
@@ -96,7 +142,7 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
         if (!adaptive) return@LaunchedEffect
         while (isActive) {
             // While the list flies past nobody reads the text; skip the readback and catch up after.
-            if (GlassPerformance.lite) {
+            if (GlassPerformance.lite || InkSampling.moving > 0) {
                 delay(300)
                 continue
             }
@@ -104,7 +150,14 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
             request.due = true
             delay(60)
             val l = try {
-                sampleLuma(layer, baseLuma) { grid = it }
+                InkSampling.mutex.withLock {
+                    val wait = InkSampling.budget.waitMillis(android.os.SystemClock.uptimeMillis())
+                    if (wait > 0L) delay(wait)
+                    if (GlassPerformance.lite || InkSampling.moving > 0) null else {
+                        InkSampling.budget.started(android.os.SystemClock.uptimeMillis())
+                        sampleLuma(layer, baseLuma) { grid = it }
+                    }
+                }
             } catch (e: Exception) {
                 lastSampleError = e.javaClass.simpleName + ": " + e.message
                 null
@@ -192,15 +245,6 @@ fun GlassInkBox(
         androidx.compose.runtime.CompositionLocalProvider(LocalInkField provides field) {
         Box(modifier.onGloballyPositioned { field.coords = it }, contentAlignment = alignment) {
             content()
-            // DEBUG: only while no brightness has been measured; disappears once it works.
-            if (ink.adaptive && ink.measured == null) {
-                Text(
-                    text = "--" + (lastSampleError?.let { " E:" + it.take(60) } ?: ""),
-                    fontSize = 7.sp,
-                    color = Color.Red,
-                    modifier = Modifier.align(Alignment.TopEnd),
-                )
-            }
         }
         }
     }

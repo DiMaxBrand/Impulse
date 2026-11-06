@@ -187,7 +187,7 @@ fun LiquidGlassButton(
                 onDrawBackdrop = { drawBackdrop ->
                     drawBackdrop()
                     // What is behind this piece, for its adaptive glass and text (see rememberGlassInk).
-                    if (ink.adaptive && ink.request.take()) ink.layer.record { drawBackdrop() }
+                    if (ink.adaptive && ink.request.take()) recordGlassInk(ink) { drawBackdrop() }
                 },
                 onDrawSurface = {
                     if (tint.isSpecified) {
@@ -308,7 +308,7 @@ fun LiquidGlassPanel(
                     onDrawBackdrop = { drawBackdrop ->
                         drawBackdrop()
                         // What is behind this piece, for its adaptive glass and text (see rememberGlassInk).
-                        if (ink.adaptive && ink.request.take()) ink.layer.record { drawBackdrop() }
+                        if (ink.adaptive && ink.request.take()) recordGlassInk(ink) { drawBackdrop() }
                     },
                 onDrawSurface = {
                         if (tint.isSpecified) {
@@ -383,6 +383,7 @@ fun LiquidToggle(
             },
         )
     }
+    pauseGlassInkWhile { dampedDragAnimation.isDragging }
     LaunchedEffect(dampedDragAnimation) {
         snapshotFlow { fraction }.collectLatest { dampedDragAnimation.updateValue(it) }
     }
@@ -509,6 +510,7 @@ fun LiquidSlider(
                 },
             )
         }
+        pauseGlassInkWhile { dampedDragAnimation.isDragging }
         LaunchedEffect(dampedDragAnimation) {
             snapshotFlow { value() }.collectLatest { value ->
                 if (dampedDragAnimation.targetValue != value) {
@@ -518,7 +520,7 @@ fun LiquidSlider(
         }
 
         // Gestures belong to the stationary track, not the thumb moving under the finger.
-        Box(Modifier.fillMaxWidth().then(dampedDragAnimation.modifier)) {
+        Box(Modifier.fillMaxWidth().then(dampedDragAnimation.modifier), contentAlignment = Alignment.CenterStart) {
         Box(Modifier.layerBackdrop(trackBackdrop)) {
             Box(
                 Modifier
@@ -700,6 +702,7 @@ fun LiquidBottomTabs(
         val reportIndicator by rememberUpdatedState(onIndicatorBounds)
         var barRect by remember { mutableStateOf(Rect.Zero) }
         fun pressProgress() = maxOf(dampedDragAnimation.pressProgress, forcedHold().coerceIn(0f, 1f))
+        pauseGlassInkWhile { dampedDragAnimation.isDragging }
         LaunchedEffect(dampedDragAnimation) {
             snapshotFlow {
                 val held = forcedHold().coerceIn(0f, 1f)
@@ -740,7 +743,7 @@ fun LiquidBottomTabs(
         }
 
         // The bar stays put while its indicator follows the finger.
-        Box(Modifier.fillMaxWidth().onGloballyPositioned { barRect = it.boundsInWindow() }.then(dampedDragAnimation.modifier)) {
+        Box(Modifier.fillMaxWidth().onGloballyPositioned { barRect = it.boundsInWindow() }.then(dampedDragAnimation.modifier), contentAlignment = Alignment.CenterStart) {
         Row(
             Modifier
                 .graphicsLayer { translationX = panelOffset }
