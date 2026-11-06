@@ -1,5 +1,12 @@
 # Impulse — To-Do
 
+## Next release: tracking references
+
+- Include `BUG-B33K` and `BUG-TVKQ` in the next release description (user request, 2026-11-06).
+  Both are duplicate reports of the Glass lab constructor crash in beta 254, already fixed
+  in beta 255 by commit `9643f2a61` under `BUG-WXZ7`. Describe this as linking older reports
+  to an existing fix, not as a newly fixed crash.
+
 ## Surface glass and sampling cost — beta.322
 
 - User selected style 2, **Surface**, for playground controls: clear optics plus a translucent
