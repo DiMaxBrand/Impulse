@@ -7845,6 +7845,7 @@ private fun RecordingBar(
         }
         FilledIconButton(
             onClick = { listener.onSendRecording() },
+            enabled = VoiceRecordingPolicy.canSend(recording.elapsedMs),
             shape = RoundedCornerShape(16.dp),
             colors =
                 IconButtonDefaults.filledIconButtonColors(

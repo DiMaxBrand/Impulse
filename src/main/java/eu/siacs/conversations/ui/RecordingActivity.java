@@ -102,6 +102,7 @@ public class RecordingActivity extends BaseActivity implements View.OnClickListe
     @Override
     public void onStart() {
         super.onStart();
+        this.binding.shareButton.setEnabled(false);
         if (!startRecording()) {
             this.binding.shareButton.setEnabled(false);
             this.binding.timer.setTextAppearance(
@@ -263,6 +264,7 @@ public class RecordingActivity extends BaseActivity implements View.OnClickListe
     }
 
     private void tick() {
+        this.binding.shareButton.setEnabled(VoiceRecordingPolicy.canSend(stopwatch.elapsed(TimeUnit.MILLISECONDS)));
         this.binding.timer.setText(
                 TimeFrameUtils.formatElapsedTime(stopwatch.elapsed(TimeUnit.MILLISECONDS), true));
     }
@@ -277,10 +279,6 @@ public class RecordingActivity extends BaseActivity implements View.OnClickListe
         } else if (view.getId() == R.id.share_button) {
             // Decide at the tap, before the delayed stop adds another 500 ms.
             if (stopwatch == null || !VoiceRecordingPolicy.canSend(stopwatch.elapsed(TimeUnit.MILLISECONDS))) {
-                mHandler.removeCallbacks(mTickExecutor);
-                stopRecording(false);
-                setResult(RESULT_CANCELED);
-                finish();
                 return;
             }
             this.binding.timer.setOnClickListener(null);

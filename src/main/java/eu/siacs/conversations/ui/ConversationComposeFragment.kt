@@ -732,7 +732,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             } catch (_: IllegalStateException) {
                 return
             }
-            state.recordingState.value = RecordingUiState.Active(recording.elapsedMs, paused = true)
+            val elapsed = VoiceRecordingPolicy.activeDuration(recordingStartMs,
+                android.os.SystemClock.elapsedRealtime(), totalPausedMs, pauseStartMs)
+            state.recordingState.value = RecordingUiState.Active(elapsed, paused = true)
         } else {
             try {
                 recorder.resume()
@@ -755,7 +757,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         if (state.recordingState.value !is RecordingUiState.Active) return
         val duration = VoiceRecordingPolicy.activeDuration(recordingStartMs,
             android.os.SystemClock.elapsedRealtime(), totalPausedMs, pauseStartMs)
-        val saved = stopRecordingSession(save = VoiceRecordingPolicy.canSend(duration))
+        // An early second tap is ignored: keep the microphone and recording session alive.
+        if (!VoiceRecordingPolicy.canSend(duration)) return
+        val saved = stopRecordingSession(save = true)
         state.recordingState.value = RecordingUiState.Idle
         if (!saved) return
         val file = recordingFile ?: run {

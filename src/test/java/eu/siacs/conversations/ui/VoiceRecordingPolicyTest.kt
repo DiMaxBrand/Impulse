@@ -4,7 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class VoiceRecordingPolicyTest {
-    @Test fun tapsUnderOneFullSecondAreDiscarded() {
+    @Test fun sendRemainsInactiveUnderOneFullSecond() {
         listOf(-1L, 0L, 80L, 500L, 999L).forEach {
             assertFalse("$it ms must not be sent", VoiceRecordingPolicy.canSend(it))
         }

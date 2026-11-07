@@ -1,6 +1,6 @@
 package eu.siacs.conversations.ui
 
-/** Short taps are cancelled recordings, not outgoing attachments. */
+/** Sending becomes available after one full second of active recording. */
 object VoiceRecordingPolicy {
     const val MIN_DURATION_MS = 1_000L
 

@@ -1,9 +1,10 @@
 # Impulse — To-Do
 
-## Accidental voice recordings — beta.328
+## Accidental voice recording taps — beta.328
 
-- Recordings shorter than 1,000 ms of active recording time are discarded without sending an
-  attachment. Pause time does not count. Compose recording uses a monotonic clock and stops
+- The send button is inactive for the first 1,000 ms of active recording time. Early send taps
+  are ignored and the recording continues; nothing is discarded. Pause time does not count.
+  Compose recording uses a monotonic clock and stops
   failed/empty files from being committed. The legacy recorder applies the threshold at the send
   tap, before its delayed stop, and releases the recorder even if stopping fails.
 
