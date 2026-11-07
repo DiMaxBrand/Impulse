@@ -169,7 +169,6 @@ public class RecordingActivity extends BaseActivity implements View.OnClickListe
     protected void stopRecording(final boolean saveFile) {
         try {
             mRecorder.stop();
-            mRecorder.release();
             if (stopwatch.isRunning()) {
                 stopwatch.stop();
             }
@@ -180,6 +179,9 @@ public class RecordingActivity extends BaseActivity implements View.OnClickListe
                 return;
             }
         } finally {
+            if (mRecorder != null) {
+                mRecorder.release();
+            }
             mRecorder = null;
         }
         if (!saveFile && mOutputFile != null) {
@@ -273,6 +275,14 @@ public class RecordingActivity extends BaseActivity implements View.OnClickListe
             setResult(RESULT_CANCELED);
             finish();
         } else if (view.getId() == R.id.share_button) {
+            // Decide at the tap, before the delayed stop adds another 500 ms.
+            if (stopwatch == null || !VoiceRecordingPolicy.canSend(stopwatch.elapsed(TimeUnit.MILLISECONDS))) {
+                mHandler.removeCallbacks(mTickExecutor);
+                stopRecording(false);
+                setResult(RESULT_CANCELED);
+                finish();
+                return;
+            }
             this.binding.timer.setOnClickListener(null);
             this.binding.shareButton.setEnabled(false);
             this.binding.shareButton.setText(R.string.please_wait);

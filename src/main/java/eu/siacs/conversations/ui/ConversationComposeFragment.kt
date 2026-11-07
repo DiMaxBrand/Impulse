@@ -727,7 +727,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         if (!recording.paused) {
             try {
                 recorder.pause()
-                pauseStartMs = System.currentTimeMillis()
+                pauseStartMs = android.os.SystemClock.elapsedRealtime()
                 timerJob?.cancel()
             } catch (_: IllegalStateException) {
                 return
@@ -736,7 +736,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         } else {
             try {
                 recorder.resume()
-                totalPausedMs += System.currentTimeMillis() - pauseStartMs
+                totalPausedMs += android.os.SystemClock.elapsedRealtime() - pauseStartMs
                 pauseStartMs = 0L
             } catch (_: IllegalStateException) {
                 return
@@ -752,8 +752,12 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onSendRecording() {
-        val currentElapsed = (state.recordingState.value as? RecordingUiState.Active)?.elapsedMs ?: 0L
-        stopRecordingSession(save = true)
+        if (state.recordingState.value !is RecordingUiState.Active) return
+        val duration = VoiceRecordingPolicy.activeDuration(recordingStartMs,
+            android.os.SystemClock.elapsedRealtime(), totalPausedMs, pauseStartMs)
+        val saved = stopRecordingSession(save = VoiceRecordingPolicy.canSend(duration))
+        state.recordingState.value = RecordingUiState.Idle
+        if (!saved) return
         val file = recordingFile ?: run {
             state.recordingState.value = RecordingUiState.Idle
             return
@@ -827,7 +831,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
 
         mediaRecorder = recorder
-        recordingStartMs = System.currentTimeMillis()
+        recordingStartMs = android.os.SystemClock.elapsedRealtime()
         totalPausedMs = 0L
         pauseStartMs = 0L
         state.recordingState.value = RecordingUiState.Active(0L, paused = false)
@@ -838,7 +842,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         timerJob?.cancel()
         timerJob = lifecycleScope.launch {
             while (true) {
-                val elapsed = System.currentTimeMillis() - recordingStartMs - totalPausedMs
+                val elapsed = VoiceRecordingPolicy.activeDuration(recordingStartMs,
+                    android.os.SystemClock.elapsedRealtime(), totalPausedMs, pauseStartMs)
                 val current = state.recordingState.value
                 if (current is RecordingUiState.Active && !current.paused) {
                     state.recordingState.value = RecordingUiState.Active(elapsed, paused = false)
@@ -848,21 +853,29 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
     }
 
-    private fun stopRecordingSession(save: Boolean) {
+    private fun stopRecordingSession(save: Boolean): Boolean {
         timerJob?.cancel()
         timerJob = null
-        val recorder = mediaRecorder ?: return
+        val recorder = mediaRecorder ?: run {
+            recordingFile?.delete()
+            recordingFile = null
+            return false
+        }
+        var stopped = false
         try {
             recorder.stop()
-            recorder.release()
+            stopped = true
         } catch (_: Exception) {
         } finally {
+            recorder.release()
             mediaRecorder = null
         }
-        if (!save) {
+        val keep = save && stopped && (recordingFile?.length() ?: 0L) > 0L
+        if (!keep) {
             recordingFile?.delete()
             recordingFile = null
         }
+        return keep
     }
 
     private fun stageUris(uris: List<Uri>, type: Attachment.Type) {
