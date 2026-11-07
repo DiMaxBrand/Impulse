@@ -1,5 +1,13 @@
 # Impulse — To-Do
 
+## Audio preparation failure — beta.327
+
+- `BUG-A5TM`, `BUG-XNXU`: handle `MediaPlayer.prepare()` failures instead of letting them crash the play/seek
+  tap. Release failed players, clear active playback, expose an EN/RU retry message, and consume
+  asynchronous media errors without marking audio listened or advancing automatically.
+- The report does not establish why the original file could not be prepared; malformed or
+  unsupported media remains unplayable, with a retryable failure instead of an app crash.
+
 ## Tracking references — beta.326
 
 - Include `BUG-B33K`, `BUG-TVKQ`, and the test report `BUG-2BAW` in beta.326's release description

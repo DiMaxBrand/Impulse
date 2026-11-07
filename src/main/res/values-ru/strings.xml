@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="audio_playback_failed">Не удалось воспроизвести аудио. Нажмите кнопку воспроизведения, чтобы повторить попытку.</string>
     <string name="call_audio_route_failed">Не удалось переключить звук звонка. Попробуйте ещё раз.</string>
     <string name="app_name">Импульс</string>
     <string name="action_settings">Настройки</string>

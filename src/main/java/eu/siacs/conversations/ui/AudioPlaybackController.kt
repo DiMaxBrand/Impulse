@@ -1,6 +1,8 @@
 package eu.siacs.conversations.ui
 
 import android.media.MediaPlayer
+import android.util.Log
+import eu.siacs.conversations.Config
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -20,9 +22,11 @@ object AudioPlaybackController {
         private set
     val positions = mutableStateMapOf<String, Int>()
     val durations = mutableStateMapOf<String, Int>()
+    val failedMessages = mutableStateMapOf<String, Boolean>()
 
     private val resumableOnReturn = mutableSetOf<String>()
     private var player: MediaPlayer? = null
+    internal var playerFactory: () -> MediaPlayer = { MediaPlayer() }
 
     /** Invoked on the main thread when a message finishes playing naturally (not paused/stopped). */
     var onCompletion: ((completedUuid: String) -> Unit)? = null
@@ -33,8 +37,14 @@ object AudioPlaybackController {
      * — this controller just reports raw transitions. */
     var onTransition: ((uuid: String, wireState: String) -> Unit)? = null
 
-    fun positionFor(uuid: String): Int =
-        if (activeUuid == uuid) player?.currentPosition ?: (positions[uuid] ?: 0) else positions[uuid] ?: 0
+    fun positionFor(uuid: String): Int {
+        val saved = positions[uuid] ?: 0
+        if (activeUuid != uuid) return saved
+        return try { player?.currentPosition ?: saved } catch (_: IllegalStateException) {
+            fail(uuid)
+            saved
+        }
+    }
 
     fun toggle(uuid: String, file: File) {
         if (activeUuid == uuid && isPlaying) {
@@ -45,36 +55,55 @@ object AudioPlaybackController {
     }
 
     fun seekTo(uuid: String, file: File, positionMs: Int) {
-        val mp = ensurePlayer(uuid, file)
-        mp.seekTo(positionMs)
-        positions[uuid] = positionMs
+        val mp = ensurePlayer(uuid, file) ?: return
+        try {
+            val target = positionMs.coerceIn(0, durations[uuid] ?: Int.MAX_VALUE)
+            mp.seekTo(target)
+            positions[uuid] = target
+        } catch (_: IllegalStateException) { fail(uuid) }
     }
 
-    private fun ensurePlayer(uuid: String, file: File): MediaPlayer {
+    private fun ensurePlayer(uuid: String, file: File): MediaPlayer? {
         if (activeUuid == uuid && player != null) {
             return player!!
         }
         if (activeUuid != null && activeUuid != uuid) {
             pause(activeUuid!!, userInitiated = true)
         }
-        player?.release()
-        val mp = MediaPlayer()
-        mp.setDataSource(file.absolutePath)
-        mp.prepare()
+        releasePlayer()
+        failedMessages.remove(uuid)
+        var candidate: MediaPlayer? = null
+        val mp = try {
+            playerFactory().also {
+                candidate = it
+                it.setDataSource(file.absolutePath)
+                it.prepare()
+                durations[uuid] = it.duration
+                val savedPosition = positions[uuid] ?: 0
+                if (savedPosition > 0) it.seekTo(savedPosition.coerceAtMost(durations[uuid]!!))
+            }
+        } catch (e: Exception) {
+            candidate?.release()
+            Log.w(Config.LOGTAG, "Unable to prepare audio playback", e)
+            failedMessages[uuid] = true
+            return null
+        }
+        mp.setOnErrorListener { failedPlayer, what, extra ->
+            Log.w(Config.LOGTAG, "Audio playback error: $what/$extra")
+            if (player === failedPlayer) fail(uuid)
+            // An error must not fall through to onCompletion/auto-advance or "listened".
+            true
+        }
         mp.setOnCompletionListener {
+            if (player !== it || activeUuid != uuid) return@setOnCompletionListener
             isPlaying = false
             positions[uuid] = 0
             // Clear activeUuid so positionFor() reads positions[uuid]=0 instead of
             // player.currentPosition (which sits at the end of the file after completion).
-            activeUuid = null
+            releasePlayer()
             onTransition?.invoke(uuid, ListenStatusManager.WIRE_LISTENED)
             onCompletion?.invoke(uuid)
         }
-        val savedPosition = positions[uuid] ?: 0
-        if (savedPosition > 0) {
-            mp.seekTo(savedPosition)
-        }
-        durations[uuid] = mp.duration
         player = mp
         activeUuid = uuid
         return mp
@@ -83,13 +112,33 @@ object AudioPlaybackController {
     fun play(uuid: String, file: File) {
         resumableOnReturn.remove(uuid)
         val wasPlayingThis = activeUuid == uuid && isPlaying
-        val mp = ensurePlayer(uuid, file)
-        mp.start()
+        val mp = ensurePlayer(uuid, file) ?: return
+        try { mp.start() } catch (_: IllegalStateException) {
+            fail(uuid)
+            return
+        }
+        if (player !== mp) return
         activeUuid = uuid
         isPlaying = true
         if (!wasPlayingThis) {
             onTransition?.invoke(uuid, ListenStatusManager.WIRE_LISTENING)
         }
+    }
+
+    private fun releasePlayer() {
+        val old = player
+        player = null
+        activeUuid = null
+        isPlaying = false
+        old?.release()
+    }
+
+    private fun fail(uuid: String) {
+        val wasPlaying = activeUuid == uuid && isPlaying
+        releasePlayer()
+        resumableOnReturn.remove(uuid)
+        failedMessages[uuid] = true
+        if (wasPlaying) onTransition?.invoke(uuid, ListenStatusManager.WIRE_PAUSED)
     }
 
     private fun pause(uuid: String, userInitiated: Boolean) {
@@ -99,7 +148,9 @@ object AudioPlaybackController {
         try {
             positions[uuid] = mp.currentPosition
             mp.pause()
-        } catch (_: Exception) {
+        } catch (_: IllegalStateException) {
+            fail(uuid)
+            return
         }
         isPlaying = false
         if (wasPlaying) {

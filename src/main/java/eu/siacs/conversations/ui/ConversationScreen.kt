@@ -5417,6 +5417,11 @@ private fun AudioMessageContent(message: Message) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+    if (AudioPlaybackController.failedMessages[uuid] == true) {
+        Text(stringResource(R.string.audio_playback_failed),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error, modifier = Modifier.width(232.dp))
+    }
 }
 
 @Composable
