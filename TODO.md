@@ -54,6 +54,12 @@
   lens effect only accepts rounded-corner shapes. The launch keeps its glass blur and continuous
   growing tail, but no longer requests the incompatible lens effect, preventing the attach crash.
 
+## Share Location resume — beta.337
+
+- `BUG-UG4P`: a cached location can arrive synchronously while Share Location resumes. Its
+  location-dot overlay intentionally has no bitmap icon, but the Kotlin conversion made that
+  optional parameter non-null and crashed the marker refresh. The icon contract is nullable again.
+
 ## Remaining chat gap after beta.329 — beta.331
 
 - `BUG-PQK4` persists on the updated phone. Padding is now limited to actual occlusion measured

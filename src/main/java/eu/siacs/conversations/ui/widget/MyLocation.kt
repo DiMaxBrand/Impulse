@@ -14,7 +14,9 @@ import org.osmdroid.util.TileSystem
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.mylocation.SimpleLocationOverlay
 
-class MyLocation(ctx: Context, icon: Bitmap, position: Location) : SimpleLocationOverlay(icon) {
+// The location dot deliberately has no bitmap marker. Java callers have always supplied null;
+// retaining that nullable contract matters when a cached location arrives during Activity resume.
+class MyLocation(ctx: Context, icon: Bitmap?, position: Location) : SimpleLocationOverlay(icon) {
 
     private val position: GeoPoint
     private val accuracy: Float
