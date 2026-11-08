@@ -56,6 +56,13 @@ jobs:
           # normal download, so this has no downside, only a potential few-minutes-per-run win.
           cache: gradle
 
+      - name: Prepare Gradle
+        run: |
+          if ! ./gradlew --version; then
+            python3 .github/scripts/prepare_gradle.py
+            ./gradlew --version
+          fi
+
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
 
