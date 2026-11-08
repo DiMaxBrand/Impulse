@@ -63,6 +63,10 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private var totalPausedMs = 0L
     private var pauseStartMs = 0L
     private var timerJob: kotlinx.coroutines.Job? = null
+    private val recordingEnvelope = RecordingWaveform()
+    private val recordingSegments = mutableListOf<java.io.File>()
+    private var recordingPreview: android.media.MediaPlayer? = null
+    private var previewJob: kotlinx.coroutines.Job? = null
     private val pendingTakePhotoUri = eu.siacs.conversations.ui.util.PendingItem<Uri>()
     private var pendingSharedUris: List<Uri> = emptyList()
     private var pendingSharedMimeType: String? = null
@@ -331,6 +335,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         super.onStop()
         if (state.recordingState.value is RecordingUiState.Active) {
             stopRecordingSession(save = false)
+            clearRecordingDraft()
             state.recordingState.value = RecordingUiState.Idle
         }
         // pauseForBackground() fires a PAUSED transition; keep the handler registered until
@@ -721,69 +726,77 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onPauseRecording() {
+        if (state.recordingDiscarding.value) return
         val recording = state.recordingState.value as? RecordingUiState.Active ?: return
-        val recorder = mediaRecorder ?: return
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
         if (!recording.paused) {
-            try {
-                recorder.pause()
-                pauseStartMs = android.os.SystemClock.elapsedRealtime()
-                timerJob?.cancel()
-            } catch (_: IllegalStateException) {
-                return
-            }
+            // Finalize a segment so preview works with both Ogg and MP4 (a paused MP4
+            // recorder has not written its index yet). Resume starts another encoded segment.
+            pauseStartMs = android.os.SystemClock.elapsedRealtime()
+            if (stopRecordingSession(save = true)) recordingFile?.let { recordingSegments += it }
+            recordingFile = null
             val elapsed = VoiceRecordingPolicy.activeDuration(recordingStartMs,
                 android.os.SystemClock.elapsedRealtime(), totalPausedMs, pauseStartMs)
             state.recordingState.value = RecordingUiState.Active(elapsed, paused = true)
         } else {
-            try {
-                recorder.resume()
-                totalPausedMs += android.os.SystemClock.elapsedRealtime() - pauseStartMs
-                pauseStartMs = 0L
-            } catch (_: IllegalStateException) {
-                return
-            }
-            state.recordingState.value = RecordingUiState.Active(recording.elapsedMs, paused = false)
-            startRecordingTimer()
+            stopRecordingPreview()
+            startNativeRecording(resuming = true)
         }
     }
 
     override fun onCancelRecording() {
+        if (state.recordingDiscarding.value) return
         stopRecordingSession(save = false)
-        state.recordingState.value = RecordingUiState.Idle
+        clearRecordingDraft()
+        state.recordingDiscarding.value = true
+        lifecycleScope.launch {
+            kotlinx.coroutines.delay(if (AppearanceState.fullEffects) 320 else 0)
+            state.recordingState.value = RecordingUiState.Idle
+            state.recordingDiscarding.value = false
+        }
     }
 
     override fun onSendRecording() {
+        if (state.recordingDiscarding.value) return
         if (state.recordingState.value !is RecordingUiState.Active) return
         val duration = VoiceRecordingPolicy.activeDuration(recordingStartMs,
             android.os.SystemClock.elapsedRealtime(), totalPausedMs, pauseStartMs)
         // An early second tap is ignored: keep the microphone and recording session alive.
         if (!VoiceRecordingPolicy.canSend(duration)) return
-        val saved = stopRecordingSession(save = true)
-        state.recordingState.value = RecordingUiState.Idle
-        if (!saved) return
-        val file = recordingFile ?: run {
-            state.recordingState.value = RecordingUiState.Idle
-            return
-        }
-        val ctx = context ?: run {
-            state.recordingState.value = RecordingUiState.Idle
-            return
-        }
-        val uri = androidx.core.content.FileProvider.getUriForFile(
-            ctx,
-            "${ctx.packageName}.files",
-            file,
-        )
-        val attachment = eu.siacs.conversations.ui.util.Attachment.of(ctx, uri, eu.siacs.conversations.ui.util.Attachment.Type.RECORDING).firstOrNull()
-        if (attachment != null) {
-            commitAttachments(listOf(attachment))
-        }
-        state.recordingState.value = RecordingUiState.Idle
+        stopRecordingPreview()
+        val paused = (state.recordingState.value as RecordingUiState.Active).paused
+        if (!paused && stopRecordingSession(save = true)) recordingFile?.let { recordingSegments += it }
         recordingFile = null
+        state.recordingState.value = RecordingUiState.Idle
+        val ctx = context ?: return
+        val targetConversation = conversation
+        val segments = recordingSegments.toList()
+        recordingSegments.clear()
+        if (segments.isEmpty()) return
+        val opus = eu.siacs.conversations.Config.USE_OPUS_VOICE_MESSAGES && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        val output = eu.siacs.conversations.persistance.FileBackend.Cache(ctx).recording(
+            if (opus) MediaRecorder.OutputFormat.OGG else MediaRecorder.OutputFormat.MPEG_4)
+        lifecycleScope.launch {
+            var retained: java.io.File? = null
+            try {
+                val file = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    VoiceDraftAudio.join(segments, output, opus)
+                }
+                if (conversation !== targetConversation || !isAdded) return@launch
+                val uri = androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.files", file)
+                val attachment = Attachment.of(ctx, uri, Attachment.Type.RECORDING).firstOrNull()
+                if (attachment != null) { commitAttachments(listOf(attachment)); retained = file }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e
+            } catch (_: Exception) {
+                Toast.makeText(ctx, R.string.unable_to_save_recording, Toast.LENGTH_SHORT).show()
+            } finally {
+                segments.filter { it != retained }.forEach { it.delete() }
+                if (output != retained) output.delete()
+            }
+        }
     }
 
-    private fun startNativeRecording() {
+    private fun startNativeRecording(resuming: Boolean = false) {
+        if (mediaRecorder != null) return
         val ctx = context ?: return
         val outputFormat =
             if (eu.siacs.conversations.Config.USE_OPUS_VOICE_MESSAGES &&
@@ -793,7 +806,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             } else {
                 MediaRecorder.OutputFormat.MPEG_4
             }
-        val file = eu.siacs.conversations.persistance.FileBackend.Cache(ctx).recording(outputFormat)
+        val file = newRecordingFile(ctx, outputFormat)
         recordingFile = file
 
         @Suppress("DEPRECATION")
@@ -835,10 +848,17 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
 
         mediaRecorder = recorder
-        recordingStartMs = android.os.SystemClock.elapsedRealtime()
-        totalPausedMs = 0L
+        if (resuming) totalPausedMs += android.os.SystemClock.elapsedRealtime() - pauseStartMs
+        else {
+            clearRecordingDraft()
+            recordingEnvelope.clear()
+            state.recordingBars.value = emptyList()
+            recordingStartMs = android.os.SystemClock.elapsedRealtime()
+            totalPausedMs = 0L
+        }
         pauseStartMs = 0L
-        state.recordingState.value = RecordingUiState.Active(0L, paused = false)
+        state.recordingState.value = RecordingUiState.Active(
+            VoiceRecordingPolicy.activeDuration(recordingStartMs, android.os.SystemClock.elapsedRealtime(), totalPausedMs, 0), paused = false)
         startRecordingTimer()
     }
 
@@ -850,11 +870,88 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                     android.os.SystemClock.elapsedRealtime(), totalPausedMs, pauseStartMs)
                 val current = state.recordingState.value
                 if (current is RecordingUiState.Active && !current.paused) {
+                    val amplitude = try { mediaRecorder?.maxAmplitude ?: 0 } catch (_: RuntimeException) { 0 }
+                    recordingEnvelope.add(amplitude)
+                    state.recordingBars.value = recordingEnvelope.bars()
                     state.recordingState.value = RecordingUiState.Active(elapsed, paused = false)
                 }
                 kotlinx.coroutines.delay(100)
             }
         }
+    }
+
+    private fun newRecordingFile(ctx: android.content.Context, format: Int): java.io.File {
+        val suggested = eu.siacs.conversations.persistance.FileBackend.Cache(ctx).recording(format)
+        return java.io.File.createTempFile("VOICE_", ".${suggested.extension}", suggested.parentFile)
+    }
+
+    private fun clearRecordingDraft() {
+        stopRecordingPreview()
+        recordingSegments.forEach { it.delete() }
+        recordingSegments.clear()
+    }
+
+    private fun stopRecordingPreview() {
+        previewJob?.cancel(); previewJob = null
+        recordingPreview?.release(); recordingPreview = null
+        state.recordingPreviewPlaying.value = false
+        state.recordingPreviewFraction.floatValue = 0f
+    }
+
+    override fun onPreviewRecording() {
+        val recording = state.recordingState.value as? RecordingUiState.Active ?: return
+        if (!recording.paused || state.recordingDiscarding.value || recordingSegments.isEmpty()) return
+        if (state.recordingPreviewPlaying.value) {
+            try { recordingPreview?.pause() } catch (_: IllegalStateException) { stopRecordingPreview(); return }
+            previewJob?.cancel()
+            state.recordingPreviewPlaying.value = false
+            return
+        }
+        fun ticker(beforeMs: Int) {
+            previewJob?.cancel()
+            previewJob = lifecycleScope.launch {
+                while (state.recordingPreviewPlaying.value) {
+                    val position = try { recordingPreview?.currentPosition ?: 0 } catch (_: IllegalStateException) { 0 }
+                    state.recordingPreviewFraction.floatValue =
+                        ((beforeMs + position).toFloat() / recording.elapsedMs.coerceAtLeast(1)).coerceIn(0f, 1f)
+                    kotlinx.coroutines.delay(50)
+                }
+            }
+        }
+        // Resume an existing preview without resetting its current segment or playhead.
+        recordingPreview?.let { player ->
+            try {
+                player.start(); state.recordingPreviewPlaying.value = true
+                val before = (state.recordingPreviewFraction.floatValue * recording.elapsedMs).toInt() - player.currentPosition
+                ticker(before.coerceAtLeast(0))
+            } catch (_: Exception) { stopRecordingPreview() }
+            return
+        }
+        fun playSegment(index: Int, beforeMs: Int) {
+            if (index >= recordingSegments.size) { stopRecordingPreview(); return }
+            val player = android.media.MediaPlayer()
+            recordingPreview = player
+            try {
+                player.setDataSource(recordingSegments[index].absolutePath)
+                player.prepare()
+                player.setOnErrorListener { _, _, _ -> stopRecordingPreview(); true }
+                player.setOnCompletionListener {
+                    if (recordingPreview === player) {
+                        val duration = player.duration
+                        player.release(); recordingPreview = null
+                        playSegment(index + 1, beforeMs + duration)
+                    }
+                }
+                player.start()
+                state.recordingPreviewPlaying.value = true
+                ticker(beforeMs)
+            } catch (_: Exception) {
+                stopRecordingPreview()
+                context?.let { Toast.makeText(it, R.string.audio_playback_failed, Toast.LENGTH_SHORT).show() }
+            }
+        }
+        AudioPlaybackController.pauseForBackground()
+        playSegment(0, 0)
     }
 
     private fun stopRecordingSession(save: Boolean): Boolean {

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="recording_preview">Preview recording</string>
+    <string name="recording_resume">Resume recording</string>
+    <string name="recording_pause">Pause recording</string>
     <string name="audio_playback_failed">This audio could not be played. Tap play to try again.</string>
     <string name="call_audio_route_failed">Couldn’t switch call audio. Please try again.</string>
     <string name="app_name" translatable="true">Impulse</string>

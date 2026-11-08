@@ -426,7 +426,7 @@ private fun RowScope.FieldBubble(
             if (shownHeight.value == 0f) shownHeight.snapTo(target)
             else shownHeight.animateTo(target, spring(dampingRatio = 0.6f, stiffness = 420f))
         }
-        val timerWidthPx = with(density) { TimerWidth.toPx() }
+        val timerWidthPx = with(density) { fullWidth.toPx() }
 
         LiquidGlassPanel(
             glass = backdrop,
@@ -470,7 +470,8 @@ private fun RowScope.FieldBubble(
                 )
             }
             if (rec.value > 0.01f) {
-                TimerContent(recording, rec)
+                eu.siacs.conversations.ui.RecordingTimeline(state, recording ?: return@LiquidGlassPanel, listener,
+                    Modifier.fillMaxWidth().graphicsLayer { alpha = rec.value }, glass = true)
             }
         }
     }
@@ -547,7 +548,7 @@ private fun PauseBubble(
             fluidPresence = { rec.value.coerceIn(0f, 1f) * (0.6f + 0.4f * rec.value.coerceIn(0f, 1f)) },
         ) {
             Icon(
-                painter = painterResource(if (paused) R.drawable.ic_play_arrow_24dp else R.drawable.ic_pause_24dp),
+                painter = painterResource(if (paused) R.drawable.ic_mic_24dp else R.drawable.ic_pause_24dp),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
             )

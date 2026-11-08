@@ -1,5 +1,18 @@
 # Impulse — To-Do
 
+## Recording waveform and paused preview — beta.332
+
+- Live recording envelope is median-binned into a fixed number of displayed bars, smoothing only
+  the visual values. It extends behind a washed-out timer/dot area. The full history is rebinned as
+  recording grows. Pausing removes the dot, moves the Expressive timer and exposes a central preview
+  play control; the adjacent control becomes a resume microphone. The glass timer panel stays wide.
+- Pauses finalize encoded segments for reliable Ogg/MP4 preview. Resuming starts another segment;
+  sending remuxes their encoded samples without re-encoding. Final recordings retain normal naming.
+- Discard animates into the bin mouth with a fixed left clip. Expressive Send retains active colors
+  while the existing one-second guard still ignores early taps. Recording send launch morphs and
+  Reply status are separate subsequent chapters, still in progress.
+- Paused preview, resumed export and physical-phone rendering require device verification.
+
 ## Reply status — planned, not implemented (brainstorm, 2026-11-08)
 
 - [ ] Add a native, conversation-specific way to acknowledge that a request is being handled:

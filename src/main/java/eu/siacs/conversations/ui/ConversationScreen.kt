@@ -218,6 +218,10 @@ class ConversationScreenState {
     internal val attachments: SnapshotStateList<eu.siacs.conversations.ui.util.Attachment> =
         mutableStateListOf()
     val recordingState = mutableStateOf<RecordingUiState>(RecordingUiState.Idle)
+    val recordingBars = mutableStateOf<List<Float>>(emptyList())
+    val recordingPreviewPlaying = mutableStateOf(false)
+    val recordingPreviewFraction = androidx.compose.runtime.mutableFloatStateOf(0f)
+    val recordingDiscarding = mutableStateOf(false)
 
     internal val pinnedMessages = mutableStateOf<List<Message>>(emptyList())
     internal val pinnedBannerVisible = mutableStateOf(false)
@@ -355,6 +359,7 @@ interface ConversationScreenListener {
     fun onStartRecording()
 
     fun onPauseRecording()
+    fun onPreviewRecording() {}
 
     fun onCancelRecording()
 
@@ -7782,82 +7787,24 @@ private fun openUrl(context: android.content.Context, url: String) {
 
 
 @Composable
-private fun RecordingBar(
-    recording: RecordingUiState.Active,
-    listener: ConversationScreenListener,
-) {
-    val minutes = (recording.elapsedMs / 60000).toInt()
-    val seconds = ((recording.elapsedMs % 60000) / 1000).toInt()
-    val timerText = String.format("%02d:%02d", minutes, seconds)
-    val infiniteTransition = rememberInfiniteTransition(label = "recDot")
-    val dotAlpha by if (!recording.paused) {
-        infiniteTransition.animateFloat(
-            initialValue = 1f,
-            targetValue = 0.2f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(600, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-            label = "recDotAlpha",
-        )
-    } else {
-        androidx.compose.runtime.remember { mutableStateOf(0.2f) }
-    }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            Modifier.fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp)
-                .height(48.dp),
-    ) {
-        IconButton(onClick = { listener.onCancelRecording() }) {
-            Icon(
-                painter = painterResource(R.drawable.ic_delete_24dp),
-                contentDescription = stringResource(R.string.cancel),
-                tint = MaterialTheme.colorScheme.error,
-            )
+private fun RecordingBar(state: ConversationScreenState, recording: RecordingUiState.Active,
+    listener: ConversationScreenListener) {
+    val available = !state.recordingDiscarding.value
+    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp).height(48.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = listener::onCancelRecording, enabled = available) {
+            Icon(painterResource(R.drawable.ic_delete_24dp), stringResource(R.string.cancel),
+                tint = MaterialTheme.colorScheme.error)
         }
-        Spacer(Modifier.width(4.dp))
-        Box(
-            modifier =
-                Modifier.size(10.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = dotAlpha))
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = timerText,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-        IconButton(onClick = { listener.onPauseRecording() }) {
-            Icon(
-                painter =
-                    painterResource(
-                        if (recording.paused) R.drawable.ic_play_arrow_24dp
-                        else R.drawable.ic_pause_24dp
-                    ),
-                contentDescription = null,
-            )
+        RecordingTimeline(state, recording, listener, Modifier.weight(1f).padding(horizontal = 4.dp))
+        IconButton(onClick = listener::onPauseRecording, enabled = available) {
+            Icon(painterResource(if (recording.paused) R.drawable.ic_mic_24dp else R.drawable.ic_pause_24dp),
+                stringResource(if (recording.paused) R.string.recording_resume else R.string.recording_pause))
         }
-        FilledIconButton(
-            onClick = { listener.onSendRecording() },
-            enabled = VoiceRecordingPolicy.canSend(recording.elapsedMs),
-            shape = RoundedCornerShape(16.dp),
-            colors =
-                IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            modifier = Modifier.size(48.dp),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_send_24dp),
-                contentDescription = stringResource(R.string.send_message),
-            )
+        // Keep the expressive send appearance active; early taps remain ignored in the handler.
+        FilledIconButton(onClick = { if (available) listener.onSendRecording() },
+            shape = RoundedCornerShape(16.dp), modifier = Modifier.size(48.dp)) {
+            Icon(painterResource(R.drawable.ic_send_24dp), stringResource(R.string.send_message))
         }
     }
 }
@@ -7979,7 +7926,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
                 ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
             lastActiveRecording?.let {
                 Box(modifier = Modifier.graphicsLayer { alpha = barAlpha }) {
-                    RecordingBar(it, listener)
+                    RecordingBar(state, it, listener)
                 }
             }
         } else {
