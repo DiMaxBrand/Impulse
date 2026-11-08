@@ -1,0 +1,9 @@
+// CI avoids Maven Central download redirects through GitHub's unavailable browser endpoint.
+// Versions and coordinates stay unchanged; Google's Maven Central mirror serves the same artifacts.
+allprojects {
+    repositories.withType(org.gradle.api.artifacts.repositories.MavenArtifactRepository).configureEach { repository ->
+        if (repository.url.host in ['repo.maven.apache.org', 'repo1.maven.org']) {
+            repository.setUrl('https://maven-central.storage-download.googleapis.com/maven2')
+        }
+    }
+}

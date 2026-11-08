@@ -75,7 +75,7 @@ jobs:
           EOF
 
       - name: Build signed release APK
-        run: ./gradlew assembleConversationsFreeRelease
+        run: ./gradlew --init-script .github/scripts/ci-repositories.init.gradle assembleConversationsFreeRelease
 
       - name: Create and push git tag
         run: |
