@@ -48,6 +48,12 @@
   wobble settling, displacement, rapid sends and cleanup. Physical-phone animation quality,
   simultaneous arrival, paused voice export and multi-device Reply status still need verification.
 
+## Tailed Liquid Glass launch — beta.336
+
+- `BUG-6FM3`: the tailed launch shape is a Compose GenericShape, while the backdrop library's
+  lens effect only accepts rounded-corner shapes. The launch keeps its glass blur and continuous
+  growing tail, but no longer requests the incompatible lens effect, preventing the attach crash.
+
 ## Remaining chat gap after beta.329 — beta.331
 
 - `BUG-PQK4` persists on the updated phone. Padding is now limited to actual occlusion measured

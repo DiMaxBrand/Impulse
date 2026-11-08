@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
 import eu.siacs.conversations.ui.glass.GlassStack
 import eu.siacs.conversations.ui.glass.pauseGlassInkWhile
 import kotlinx.coroutines.withTimeoutOrNull
@@ -180,7 +179,10 @@ private fun LaunchActor(state: SendLaunchState, flight: SendLaunchState.Flight, 
         .size(with(density) { rect.width.coerceAtLeast(1f).toDp() }, with(density) { rect.height.coerceAtLeast(1f).toDp() })
     Box(placement) {
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - material }
-            .drawBackdrop(glass.base, shape = { shape }, effects = { blur(2.dp.toPx()); lens(12.dp.toPx(), 24.dp.toPx()) }))
+            // The launch shape grows a real message tail. Backdrop's lens implementation accepts
+            // only rounded rectangles, so applying it to this GenericShape crashes on attach.
+            // Blur supports the tail and keeps the glass phase continuous into the material bubble.
+            .drawBackdrop(glass.base, shape = { shape }, effects = { blur(2.dp.toPx()) }))
         Text(flight.sourceText, Modifier.align(Alignment.Center).padding(horizontal = if (flight.voice) 0.dp else 12.dp)
             .graphicsLayer { alpha = (1f - progress / 0.55f).coerceIn(0f, 1f) },
             color = MaterialTheme.colorScheme.onSurface,
