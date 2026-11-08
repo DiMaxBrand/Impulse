@@ -13,6 +13,13 @@
   motion follows the full-animation setting. Older clients ignore the extension. End-to-end
   multi-device delivery and UI still need verification with updated phones.
 
+## Reply-status manager registration — beta.335
+
+- `BUG-ST3N`: beta.333 created the ReplyStatusManager but did not register it in the per-connection
+  manager map, so selecting a status dereferenced a null manager. It is now registered and every
+  UI/parser lookup tolerates the brief connection-starting state by showing the existing connect
+  message or skipping a transient inbound event rather than crashing.
+
 ## Recording waveform and paused preview — beta.332
 
 - Live recording envelope is median-binned into a fixed number of displayed bars, smoothing only

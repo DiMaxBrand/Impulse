@@ -38,6 +38,7 @@ import eu.siacs.conversations.xmpp.manager.PrivateStorageManager
 import eu.siacs.conversations.xmpp.manager.PubSubManager
 import eu.siacs.conversations.xmpp.manager.PushNotificationManager
 import eu.siacs.conversations.xmpp.manager.ReactionManager
+import eu.siacs.conversations.xmpp.manager.ReplyStatusManager
 import eu.siacs.conversations.xmpp.manager.RegistrationManager
 import eu.siacs.conversations.xmpp.manager.RosterManager
 import eu.siacs.conversations.xmpp.manager.StanzaIdManager
@@ -89,6 +90,9 @@ object Managers {
             .put(PubSubManager::class.java, PubSubManager(context, connection))
             .put(PushNotificationManager::class.java, PushNotificationManager(context, connection))
             .put(ReactionManager::class.java, ReactionManager(context, connection))
+            // Reply statuses are received and sent through this manager. Omitting it makes
+            // getManager() return null while the UI is otherwise ready to show the picker.
+            .put(ReplyStatusManager::class.java, ReplyStatusManager(context, connection))
             .put(RegistrationManager::class.java, RegistrationManager(context, connection))
             .put(RosterManager::class.java, RosterManager(context, connection))
             .put(StanzaIdManager::class.java, StanzaIdManager(context, connection))

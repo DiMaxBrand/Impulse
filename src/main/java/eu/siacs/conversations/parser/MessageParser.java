@@ -870,8 +870,11 @@ public class MessageParser extends AbstractParser
 
             // Commands from the support account: no body, so nothing in the chat.
             if (packet.hasExtension(im.conversations.android.xmpp.model.support.ReplyStatus.class)) {
-                getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager.class)
-                        .process(packet, counterpart);
+                final var replyStatusManager =
+                        getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager.class);
+                if (replyStatusManager != null) {
+                    replyStatusManager.process(packet, counterpart);
+                }
             }
             if (packet.hasExtension(im.conversations.android.xmpp.model.support.Track.class)
                     || packet.hasExtension(

@@ -719,8 +719,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             state.sendLaunches.enqueue(message.getUuid(), c.getUuid(), state.sendLaunches.textOrigin, body, false)
         }
         service.sendMessage(message)
-        c.getAccount().xmppConnection.getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
-            .clearAfterSend(c.getAddress())
+        c.getAccount().xmppConnection
+            .getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
+            ?.clearAfterSend(c.getAddress())
         state.replyingTo.value = null
         state.correcting.value = null
         state.setInput("")
@@ -753,8 +754,12 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     override fun onSetReplyStatus(code: String, clearOnSend: Boolean) {
         val c = conversation ?: return
         if (c.getMode() != Conversational.MODE_SINGLE) return
-        val sent = c.getAccount().xmppConnection.getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
-            .send(c.getAddress(), code, clearOnSend)
+        // A connection can still be coming up while this screen is already interactive. The
+        // manager is registered for every normal connection; this guard makes that brief state
+        // a normal "connect" outcome rather than a tap-triggered crash.
+        val sent = c.getAccount().xmppConnection
+            .getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
+            ?.send(c.getAddress(), code, clearOnSend) ?: false
         if (sent) {
             if (code != "clear" && state.getInput() == "..." && state.correcting.value == null) state.setInput("")
             state.replyStatusPickerVisible.value = false
@@ -1071,8 +1076,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 object : FutureCallback<Void?> {
                     override fun onSuccess(result: Void?) {
                         runOnUiThread {
-                            c.getAccount().xmppConnection.getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
-                                .clearAfterSend(c.getAddress())
+                            c.getAccount().xmppConnection
+                                .getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
+                                ?.clearAfterSend(c.getAddress())
                             refreshMessages()
                         }
                     }
