@@ -42,6 +42,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -113,6 +115,9 @@ fun LiquidInputBar(
         }
     }
     val attachMenu = rememberLiquidMenuState()
+    LaunchedEffect(state.replyStatusChoiceEpoch.intValue) {
+        if (state.replyStatusChoiceEpoch.intValue > 0) attachMenu.open = false
+    }
     val density = LocalDensity.current.density
     val host = remember(merging) {
         if (merging) FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 10f, responseSeconds = 0.3f) else null
@@ -143,6 +148,13 @@ fun LiquidInputBar(
             // The paperclip grows into the menu: the panel lines up with the button's left edge
             // and opens upward.
             LiquidMenuOverlay(attachMenu, backdrop, alignEnd = false, opensUp = true, fluid = host) {
+                if (conversation?.getMode() == Conversational.MODE_SINGLE) {
+                    Box(Modifier.onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() }) {
+                        LiquidMenuItem(R.drawable.ic_expand_more_24dp, stringResource(eu.siacs.conversations.R.string.reply_status_title)) {
+                            state.replyStatusPickerVisible.value = true
+                        }
+                    }
+                }
                 LiquidMenuItem(R.drawable.ic_image_24dp, stringResource(R.string.attachment_choice_gallery)) {
                     attachMenu.open = false
                     listener.onAttachImage()

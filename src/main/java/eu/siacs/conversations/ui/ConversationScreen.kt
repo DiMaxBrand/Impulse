@@ -230,6 +230,10 @@ class ConversationScreenState {
     internal val showPinnedMessagesOverlay = mutableStateOf(false)
     // The support-only "Track for this person" card (see TrackItemCard.kt).
     internal val trackCardVisible = mutableStateOf(false)
+    internal val replyStatusPickerVisible = mutableStateOf(false)
+    internal val replyStatusAnchor = mutableStateOf(androidx.compose.ui.geometry.Rect.Zero)
+    internal val replyStatusContainer = mutableStateOf(androidx.compose.ui.geometry.Rect.Zero)
+    internal val replyStatusChoiceEpoch = mutableIntStateOf(0)
     // The attach card (see AttachCard.kt): open or not, how far its expansion has got, where the
     // paperclip button is (window coordinates) and how tall the message bar is.
     internal val attachCardOpen = mutableStateOf(false)
@@ -360,6 +364,7 @@ interface ConversationScreenListener {
 
     fun onPauseRecording()
     fun onPreviewRecording() {}
+    fun onSetReplyStatus(code: String, clearOnSend: Boolean) {}
 
     fun onCancelRecording()
 
@@ -798,6 +803,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val backgroundBackdrop = rememberLayerBackdrop()
     val listBackdrop = rememberLayerBackdrop()
     val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
+    val replyStatusUnderlay = rememberLayerBackdrop()
+    val replyStatusGlass = rememberGlassStack(rememberCombinedBackdrop(glassBackdrop, replyStatusUnderlay), adaptive = true)
     // The glass pieces of the chat look through the background, the messages and each other.
     // Each glass piece adapts its glass and text to what is behind it.
     val glassStack = rememberGlassStack(glassBackdrop, adaptive = true)
@@ -1104,6 +1111,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 backdrop = glassStack,
                 onBarHeight = { glassBarHeightPx = it },
                 merging = mergingGlass,
+                modifier = Modifier.layerBackdrop(replyStatusUnderlay),
             )
             // The three dots grow into this menu; drawn over the whole screen area.
             LiquidChatMenuOverlay(topMenu, glassStack, conversation, state.revision.intValue, listener, fluid = barHost)
@@ -1153,6 +1161,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         }
         // The Material layout's attach card, grown out of the paperclip.
         AttachCardOverlay(state, listener)
+        ReplyStatusOverlay(state, listener, if (glass) replyStatusGlass else null)
         // Support only: the "Track for this person" card, from the attach menu's option.
         TrackItemOverlay(
             visible = state.trackCardVisible.value,
@@ -2288,6 +2297,9 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             } else false
         }
 
+    val peerReplyStatus = rememberReplyStatus(conversation, false)
+    val showReplyIndicator = isTyping || peerReplyStatus != null
+
     // EntityTime (XEP-0202) "it's late for them" indicator, ported from the old screen — shown
     // as a plain row at the bottom of the list (same slot as TypingBubble below), not its own
     // chat bubble. Independent of DND: DND already shows in the top bar subtitle, so it no
@@ -2322,7 +2334,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     }
     val localTimeForContact: java.time.ZonedDateTime? =
         entityTime.value?.takeIf {
-            isTyping.not() &&
+            showReplyIndicator.not() &&
                 quietLongEnough &&
                 conversation?.getMode() == Conversational.MODE_SINGLE &&
                 EntityTimeManager.isDifferentTimeZone(it) &&
@@ -2512,7 +2524,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // — which can flip independently of that — would otherwise be frozen at whatever they were
     // when the effect launched.
     val latestLeadingCount = rememberUpdatedState(
-        (if (isTyping) 1 else 0) + (if (localTimeForContact != null) 1 else 0)
+        (if (showReplyIndicator) 1 else 0) + (if (localTimeForContact != null) 1 else 0)
     )
     LaunchedEffect(conversation?.getUuid()) {
         snapshotFlow {
@@ -2641,7 +2653,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // as a key here, that shift never re-triggers this check, so the indicator can slide in
     // below the visible fold and just sit there unseen until something else happens to scroll.
     val newestKey = items.firstOrNull()?.key
-    LaunchedEffect(newestKey, isTyping) {
+    LaunchedEffect(newestKey, showReplyIndicator) {
         // A message that's also the first of a new day inserts *two* leading items — itself and
         // a fresh DatePill right after it — not just one, so the "still near the bottom"
         // tolerance needs to widen by one in that case. Without this, auto-scroll only ever
@@ -2794,12 +2806,17 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             // and the local-time row, which sit below the first message.
             val localTime = localTimeForContact
             val hasLocalTime = localTime != null && conversation != null
-            val rowsBelowMessages = (if (isTyping) 1 else 0) + (if (hasLocalTime) 1 else 0)
+            val rowsBelowMessages = (if (showReplyIndicator) 1 else 0) + (if (hasLocalTime) 1 else 0)
             fun lift(position: Int): Modifier =
                 if (experimentalAnimations) Modifier.rubberLift(state.rubber, position) else Modifier
-            if (isTyping) {
+            if (showReplyIndicator) {
                 item(key = "typing-indicator") {
-                    TypingBubble(modifier = Modifier.animateItem().then(lift(0)))
+                    if (isTyping || peerReplyStatus == null) TypingBubble(modifier = Modifier.animateItem().then(lift(0)))
+                    else Row(Modifier.animateItem().then(lift(0)).padding(horizontal = 16.dp, vertical = 6.dp)) {
+                        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                            ReplyStatusText(peerReplyStatus.code, Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+                        }
+                    }
                 }
             }
             if (localTime != null && conversation != null) {
@@ -2807,7 +2824,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                     LocalTimeForContactRow(
                         zonedDateTime = localTime,
                         contactName = conversation.getName()?.toString() ?: "",
-                        modifier = Modifier.animateItem().then(lift(if (isTyping) 1 else 0)),
+                        modifier = Modifier.animateItem().then(lift(if (showReplyIndicator) 1 else 0)),
                     )
                 }
             }
@@ -7099,6 +7116,7 @@ private fun ModerationDisclaimerDialog(
 
 @Composable
 internal fun ComposerBanner(state: ConversationScreenState, listener: ConversationScreenListener) {
+    ReplyStatusComposerChip(state, listener)
     // Revision read keeps this banner in sync with nextCounterpart changes.
     val revision = state.revision.intValue
     val conversation = state.conversation.value

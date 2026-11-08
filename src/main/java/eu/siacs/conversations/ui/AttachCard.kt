@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -162,7 +163,8 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
         val rows = (tiles.size + 2) / 3
         val supportBlock = if (supportTiles.isEmpty()) 0.dp else 12.dp + 16.dp + Gap + TileHeight
         val cardHeight =
-            Pad * 2 + HeaderHeight + 12.dp + TileHeight * rows + Gap * (rows - 1) + supportBlock
+            Pad * 2 + HeaderHeight + 12.dp + TileHeight * rows + Gap * (rows - 1) + supportBlock +
+                if (conversation?.getMode() == Conversational.MODE_SINGLE) 56.dp else 0.dp
 
         val widthPx = with(density) { cardWidth.toPx() }
         val heightPx = with(density) { cardHeight.toPx() }
@@ -198,6 +200,7 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
         Box(
             Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
                 .size(with(density) { w.toDp() }, with(density) { h.toDp() })
+                .onGloballyPositioned { state.replyStatusContainer.value = it.boundsInWindow() }
                 .shadow(6.dp * p.coerceIn(0f, 1f), shape)
                 .clip(shape)
                 .background(container)
@@ -221,6 +224,20 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
                 }
                 Spacer(Modifier.height(12.dp))
                 TileRows(tiles, tileWidth, colors.onTertiaryContainer)
+                if (conversation?.getMode() == Conversational.MODE_SINGLE) {
+                    Spacer(Modifier.height(8.dp))
+                    Surface(onClick = { state.replyStatusPickerVisible.value = true },
+                        color = colors.onTertiaryContainer.copy(alpha = 0.1f), shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                            .onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() }) {
+                        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(painterResource(R.drawable.ic_schedule_24dp), null)
+                            Spacer(Modifier.width(10.dp))
+                            Text(stringResource(R.string.reply_status_title), Modifier.weight(1f))
+                            Icon(painterResource(R.drawable.ic_expand_more_24dp), null)
+                        }
+                    }
+                }
                 if (supportTiles.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Text(

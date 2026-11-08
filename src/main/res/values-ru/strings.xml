@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="reply_status_title">Статус ответа</string>
+    <string name="reply_status_set">Установить статус ответа</string>
+    <string name="reply_status_working">Занимаюсь</string>
+    <string name="reply_status_checking">Проверяю</string>
+    <string name="reply_status_waiting">Ожидаю</string>
+    <string name="reply_status_clear">Убрать статус</string>
+    <string name="reply_status_clear_on_send">Убирать при отправке сообщения</string>
+    <string name="reply_status_expiry">Автоматически исчезает через 30 минут. Виден в обновлённых клиентах Импульса.</string>
+    <string name="reply_status_offline">Подключитесь, чтобы изменить статус ответа.</string>
     <string name="recording_preview">Прослушать запись</string>
     <string name="recording_resume">Продолжить запись</string>
     <string name="recording_pause">Приостановить запись</string>

@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="reply_status_title">Reply status</string>
+    <string name="reply_status_set">Set a reply status</string>
+    <string name="reply_status_working">Working</string>
+    <string name="reply_status_checking">Checking</string>
+    <string name="reply_status_waiting">Waiting</string>
+    <string name="reply_status_clear">Clear status</string>
+    <string name="reply_status_clear_on_send">Clear when I send a message</string>
+    <string name="reply_status_expiry">Expires automatically after 30 minutes. Visible in updated Impulse clients.</string>
+    <string name="reply_status_offline">Connect to change your reply status.</string>
     <string name="recording_preview">Preview recording</string>
     <string name="recording_resume">Resume recording</string>
     <string name="recording_pause">Pause recording</string>

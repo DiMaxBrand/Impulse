@@ -714,6 +714,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             message.setRepliedTo(replyId)
         }
         service.sendMessage(message)
+        c.getAccount().xmppConnection.getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
+            .clearAfterSend(c.getAddress())
         state.replyingTo.value = null
         state.correcting.value = null
         state.setInput("")
@@ -741,6 +743,20 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             stopRecordingPreview()
             startNativeRecording(resuming = true)
         }
+    }
+
+    override fun onSetReplyStatus(code: String, clearOnSend: Boolean) {
+        val c = conversation ?: return
+        if (c.getMode() != Conversational.MODE_SINGLE) return
+        val sent = c.getAccount().xmppConnection.getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
+            .send(c.getAddress(), code, clearOnSend)
+        if (sent) {
+            if (code != "clear" && state.getInput() == "..." && state.correcting.value == null) state.setInput("")
+            state.replyStatusPickerVisible.value = false
+            state.attachCardOpen.value = false
+            state.replyStatusChoiceEpoch.intValue++
+        }
+        else context?.let { Toast.makeText(it, R.string.reply_status_offline, Toast.LENGTH_SHORT).show() }
     }
 
     override fun onCancelRecording() {
@@ -1034,7 +1050,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 future,
                 object : FutureCallback<Void?> {
                     override fun onSuccess(result: Void?) {
-                        runOnUiThread { refreshMessages() }
+                        runOnUiThread {
+                            c.getAccount().xmppConnection.getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
+                                .clearAfterSend(c.getAddress())
+                            refreshMessages()
+                        }
                     }
 
                     override fun onFailure(t: Throwable) {

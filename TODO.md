@@ -1,5 +1,18 @@
 # Impulse — To-Do
 
+## Reply status — beta.333
+
+- Native Working/Checking/Waiting transitions, manual clear, optional clear on the next text or
+  attachment send, account/peer-scoped state and 30-minute expiry. No chat body/unread item is sent;
+  receiving a status sends no automatic reply. Updated clients advertise the protocol. Hidden
+  archive events and self-device copies use timestamps/clear tombstones to reject stale replays.
+- Attachments and exact `...` suggestion open the chooser in both styles. Material expands the
+  selected entry over its attachment container. Glass opens an independently blurred upper plane
+  sampling the attachment menu below, without merging into it, preferring room below the entry.
+- Local chip permits changing/removing the status; peer indicator shares the typing slot. Dot
+  motion follows the full-animation setting. Older clients ignore the extension. End-to-end
+  multi-device delivery and UI still need verification with updated phones.
+
 ## Recording waveform and paused preview — beta.332
 
 - Live recording envelope is median-binned into a fixed number of displayed bars, smoothing only

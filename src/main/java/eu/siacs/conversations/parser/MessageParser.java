@@ -761,6 +761,7 @@ public class MessageParser extends AbstractParser
             }
 
             mXmppConnectionService.databaseBackend.createMessage(message);
+            eu.siacs.conversations.ui.ReplyStatuses.onMessage(mXmppConnectionService, message);
             eu.siacs.conversations.update.SupportChatTracking.receiveAnnouncement(
                     mXmppConnectionService, message, query == null);
             final HttpConnectionManager manager =
@@ -868,6 +869,10 @@ public class MessageParser extends AbstractParser
             }
 
             // Commands from the support account: no body, so nothing in the chat.
+            if (packet.hasExtension(im.conversations.android.xmpp.model.support.ReplyStatus.class)) {
+                getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager.class)
+                        .process(packet, counterpart);
+            }
             if (packet.hasExtension(im.conversations.android.xmpp.model.support.Track.class)
                     || packet.hasExtension(
                             im.conversations.android.xmpp.model.support.CheckUpdates.class)) {

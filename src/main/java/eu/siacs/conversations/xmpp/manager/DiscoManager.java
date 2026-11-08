@@ -53,6 +53,7 @@ public class DiscoManager extends AbstractManager {
 
     private final List<String> STATIC_FEATURES =
             Arrays.asList(
+                    "urn:impulse:reply-status:0",
                     Namespace.JINGLE,
                     Namespace.JINGLE_APPS_FILE_TRANSFER,
                     Namespace.JINGLE_TRANSPORTS_S5B,
