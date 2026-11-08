@@ -23,6 +23,8 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
@@ -202,6 +204,7 @@ sealed class RecordingUiState {
 
 /** Observable state for the Compose conversation screen. */
 class ConversationScreenState {
+    internal val sendLaunches = SendLaunchState()
     // neverEqualPolicy: Conversation is a mutable Java object — same reference after an
     // in-place status update looks equal to structuralEqualityPolicy, so Compose would skip
     // recomposition. neverEqualPolicy treats every write as a change.
@@ -1162,6 +1165,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         // The Material layout's attach card, grown out of the paperclip.
         AttachCardOverlay(state, listener)
         ReplyStatusOverlay(state, listener, if (glass) replyStatusGlass else null)
+        SendLaunchOverlay(state.sendLaunches, if (glass) glassStack else null)
         // Support only: the "Track for this person" card, from the attach menu's option.
         TrackItemOverlay(
             visible = state.trackCardVisible.value,
@@ -2231,6 +2235,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     topInset: Dp = 0.dp,
 ) {
     val revision = state.revision.intValue
+    val trackSendGeometry = rememberLiquidGlassEnabled() && AppearanceState.fullEffects
     // Compute items in composable scope, not in derivedStateOf. derivedStateOf suppresses
     // recomposition when the result is structurally equal — same Message instances produce equal
     // ChatItem.Msg wrappers, so in-place status changes (sent→delivered→read) would be invisible.
@@ -2653,7 +2658,49 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // as a key here, that shift never re-triggers this check, so the indicator can slide in
     // below the visible fold and just sit there unseen until something else happens to scroll.
     val newestKey = items.firstOrNull()?.key
+    val launchIds = state.sendLaunches.flights.map { it.uuid }
+    val draggingMessages by listState.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(draggingMessages, jumping) {
+        if (draggingMessages || jumping) state.sendLaunches.clear(keepGeometry = true)
+    }
+    LaunchedEffect(launchIds, newestKey, conversation?.getUuid()) {
+        for (flight in state.sendLaunches.flights.toList()) {
+            if (flight.conversation != conversation?.getUuid()) {
+                state.sendLaunches.finish(flight)
+                continue
+            }
+            val visible = kotlinx.coroutines.withTimeoutOrNull(300) {
+                snapshotFlow { listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == flight.uuid } }
+                    .first { it != null }
+            }
+            if (visible == null) {
+                // A history reader keeps their position; sending never forces a long jump.
+                state.sendLaunches.finish(flight)
+                continue
+            }
+            if (!jumping && state.requestScrollToUuid.value == null &&
+                hasPositioned.value && listState.firstVisibleItemIndex <= 2 &&
+                state.sendLaunches.flights.none { it.splitReserved }) {
+                listState.scrollToItem(0)
+                androidx.compose.runtime.withFrameNanos { }
+            }
+            val current = latestItems.value
+            val index = current.indexOfFirst { it.key == flight.uuid }
+            val above = index >= 0 && current.drop(index + 1).any { it is ChatItem.Msg || it is ChatItem.MediaGroup }
+            val below = index > 0 && current.take(index).any { it is ChatItem.Msg || it is ChatItem.MediaGroup }
+            if (above && below && !flight.splitReserved) {
+                val height = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == flight.uuid }?.size ?: visible.size
+                // reverseLayout: scrolling positively moves rows down. Native insertion
+                // reserves all space above; half a row down splits that space equally.
+                listState.scrollBy(SendLaunchMotion.displacement(height.toFloat(), above, below).second)
+                flight.splitReserved = true
+            }
+            androidx.compose.runtime.withFrameNanos { }
+            flight.prepared = true
+        }
+    }
     LaunchedEffect(newestKey, showReplyIndicator) {
+        if (state.sendLaunches.flights.isNotEmpty()) return@LaunchedEffect
         // A message that's also the first of a new day inserts *two* leading items — itself and
         // a fresh DatePill right after it — not just one, so the "still near the bottom"
         // tolerance needs to widen by one in that case. Without this, auto-scroll only ever
@@ -2847,12 +2894,13 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 val riskyVideoUpload = item is ChatItem.Msg &&
                     item.message.mimeType?.startsWith("video/") == true &&
                     item.message.transferable?.getStatus() == eu.siacs.conversations.entities.Transferable.STATUS_UPLOADING
-                val baseItemModifier = if (riskyVideoUpload || jumping) {
+                val baseItemModifier = if (riskyVideoUpload || jumping || state.sendLaunches.flights.isNotEmpty()) {
                     Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
                 } else {
                     Modifier.animateItem()
                 }
                 val itemModifier = baseItemModifier.then(lift(rowsBelowMessages + index))
+                    .then(if (trackSendGeometry) launchRowModifier(state.sendLaunches, item.key) else Modifier)
                 when (item) {
                     is ChatItem.DatePill ->
                         DatePill(timestamp = item.timestamp, modifier = itemModifier)
@@ -2876,6 +2924,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                                 item.message.getUuid()?.let { uuid -> onToggleSelected(uuid) }
                             },
                             isPendingRemoval = state.pendingRemovalUuids.contains(item.message.getUuid()),
+                            launches = state.sendLaunches,
                             modifier = itemModifier,
                         )
                     is ChatItem.MediaGroup -> {
@@ -3355,7 +3404,7 @@ internal fun rememberBubbleShape(
     }
 }
 
-private fun bubbleTailShape(
+internal fun bubbleTailShape(
     outgoing: Boolean,
     groupTopCorner: Float,
     largeCorner: Float,
@@ -3452,6 +3501,7 @@ private fun MessageRow(
     // whole animation (the real retraction/local-delete call is deliberately deferred), it's just
     // rendered as gone.
     isPendingRemoval: Boolean = false,
+    launches: SendLaunchState? = null,
     modifier: Modifier = Modifier,
 ) {
     val message = item.message
@@ -3473,9 +3523,12 @@ private fun MessageRow(
     }
 
     // Expressive "pop": the newest message springs in.
-    val pop = remember(item.key) { Animatable(if (isNewest && !AppearanceState.noMotion) 0.8f else 1f) }
-    LaunchedEffect(item.key, isNewest, AppearanceState.noMotion) {
-        if (isNewest && !AppearanceState.noMotion) {
+    val launching = launches?.contains(item.key) == true
+    var launched by remember(item.key) { mutableStateOf(launching) }
+    androidx.compose.runtime.SideEffect { if (launching) launched = true }
+    val pop = remember(item.key) { Animatable(if (isNewest && !AppearanceState.noMotion && !launching) 0.8f else 1f) }
+    LaunchedEffect(item.key, isNewest, AppearanceState.noMotion, launching) {
+        if (isNewest && !AppearanceState.noMotion && !launching && !launched) {
             pop.animateTo(
                 1f,
                 animationSpec =
@@ -3639,6 +3692,7 @@ private fun MessageRow(
                 highlighted = highlighted,
                 isBeingEdited = isBeingEdited,
                 morphFromBody = morphFromBody,
+                launchModifier = launchBubbleModifier(launches, item.key, item.firstOfGroup, item.lastOfGroup, atEnd),
                 revision = revision,
                 listener = listener,
                 onLongPress = onLongPress,
@@ -4603,6 +4657,7 @@ private fun MessageBubble(
     // Non-null exactly once, right after this message was just corrected -- see MessageRow's own
     // comment on where this comes from and why. Null for every other row, always.
     morphFromBody: String?,
+    launchModifier: Modifier = Modifier,
     revision: Int,
     listener: ConversationScreenListener,
     onLongPress: (Message) -> Unit,
@@ -4684,6 +4739,7 @@ private fun MessageBubble(
         ).value
     }
     val animateSizes = rememberExperimentalAnimations()
+    val launchingMessage = launchModifier !== Modifier
     Box {
         Surface(
             shape =
@@ -4694,8 +4750,8 @@ private fun MessageBubble(
                 ),
             color = containerColor,
             contentColor = contentColor,
-            modifier = Modifier
-                .animatedSize(animateSizes)
+            modifier = launchModifier
+                .animatedSize(animateSizes && !launchingMessage)
                 .widthIn(max = if (hasTail) 320.dp + TAIL_WIDTH else 320.dp)
                 .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
         ) {

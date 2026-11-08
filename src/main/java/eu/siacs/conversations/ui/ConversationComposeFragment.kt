@@ -333,6 +333,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onStop() {
         super.onStop()
+        state.sendLaunches.clear(keepGeometry = true)
         if (state.recordingState.value is RecordingUiState.Active) {
             stopRecordingSession(save = false)
             clearRecordingDraft()
@@ -448,6 +449,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     fun reInit(conversation: Conversation, extras: Bundle) {
         if (this.conversation !== conversation) {
+            state.sendLaunches.clear()
             // Persist whatever was sitting unsent in the composer against the conversation we're
             // leaving (this.conversation, still the old one at this point) before switching away
             // from it — otherwise navigating away silently threw the draft out.
@@ -713,6 +715,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
             message.setRepliedTo(replyId)
         }
+        if (correcting == null && LiquidGlass.enabled(requireContext()) && AppearanceState.fullEffects) {
+            state.sendLaunches.enqueue(message.getUuid(), c.getUuid(), state.sendLaunches.textOrigin, body, false)
+        }
         service.sendMessage(message)
         c.getAccount().xmppConnection.getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
             .clearAfterSend(c.getAddress())
@@ -778,6 +783,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             android.os.SystemClock.elapsedRealtime(), totalPausedMs, pauseStartMs)
         // An early second tap is ignored: keep the microphone and recording session alive.
         if (!VoiceRecordingPolicy.canSend(duration)) return
+        val launchOrigin = state.sendLaunches.voiceOrigin
+        val launchTimer = java.lang.String.format(java.util.Locale.ROOT, "%02d:%02d", duration / 60_000, duration / 1000 % 60)
         stopRecordingPreview()
         val paused = (state.recordingState.value as RecordingUiState.Active).paused
         if (!paused && stopRecordingSession(save = true)) recordingFile?.let { recordingSegments += it }
@@ -800,7 +807,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 if (conversation !== targetConversation || !isAdded) return@launch
                 val uri = androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.files", file)
                 val attachment = Attachment.of(ctx, uri, Attachment.Type.RECORDING).firstOrNull()
-                if (attachment != null) { commitAttachments(listOf(attachment)); retained = file }
+                if (attachment != null) { commitAttachments(listOf(attachment), voiceOrigin = launchOrigin, voiceTimer = launchTimer); retained = file }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e
             } catch (_: Exception) {
                 Toast.makeText(ctx, R.string.unable_to_save_recording, Toast.LENGTH_SHORT).show()
@@ -1021,7 +1028,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         commitAttachments(attachments, caption)
     }
 
-    private fun commitAttachments(attachments: List<Attachment>, caption: String = "") {
+    private fun commitAttachments(attachments: List<Attachment>, caption: String = "",
+        voiceOrigin: androidx.compose.ui.geometry.Rect? = null, voiceTimer: String = "") {
         val c = conversation ?: return
         val service = getXmppConnectionService() ?: return
         val context = context ?: return
@@ -1043,7 +1051,19 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                     Attachment.Type.LOCATION -> service.attachLocationToConversation(c, attachment.uri)
                     Attachment.Type.IMAGE ->
                         service.attachImageToConversation(c, attachment.uri, attachment.mime, replyId)
-                    else -> service.attachFileToConversation(c, attachment.uri, attachment.mime, replyId)
+                    else -> service.attachFileToConversation(c, attachment.uri, attachment.mime, replyId,
+                        if (attachment.type == Attachment.Type.RECORDING && voiceOrigin != null &&
+                            LiquidGlass.enabled(context) && AppearanceState.fullEffects) {
+                            java.util.function.Consumer { prepared ->
+                                // Preparation is asynchronous. Never infer identity from whichever
+                                // message happens to be newest, and never carry a flight into a new chat.
+                                ContextCompat.getMainExecutor(context).execute {
+                                    if (conversation === c && isResumed && AppearanceState.fullEffects && LiquidGlass.enabled(context)) {
+                                        state.sendLaunches.enqueue(prepared.getUuid(), c.getUuid(), voiceOrigin, voiceTimer, true)
+                                    }
+                                }
+                            }
+                        } else null)
                 }
             futures.add(future)
             Futures.addCallback(

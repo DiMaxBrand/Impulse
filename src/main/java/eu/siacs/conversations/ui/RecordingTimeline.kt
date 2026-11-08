@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlin.math.sin
@@ -97,6 +99,7 @@ fun RecordingTimeline(state: ConversationScreenState, recording: RecordingUiStat
                 alpha = (1f - paused.value) * pulse
             }.clip(CircleShape).background(error))
             Text(String.format("%02d:%02d", recording.elapsedMs / 60000, recording.elapsedMs / 1000 % 60),
+                modifier = Modifier.onGloballyPositioned { state.sendLaunches.voiceOrigin = it.boundsInWindow() },
                 style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 1)
         }
         if (recording.paused && !state.recordingDiscarding.value) {

@@ -460,6 +460,12 @@ public class XmppConnectionService extends Service {
             final Uri uri,
             final String type,
             final String replyId) {
+        return attachFileToConversation(conversation, uri, type, replyId, null);
+    }
+
+    public ListenableFuture<Void> attachFileToConversation(
+            final Conversation conversation, final Uri uri, final String type,
+            final String replyId, final java.util.function.Consumer<Message> onPrepared) {
         final Message message;
         if (conversation.getNextEncryption() == Message.ENCRYPTION_PGP) {
             message = new Message(conversation, "", Message.ENCRYPTION_DECRYPTED);
@@ -499,7 +505,14 @@ public class XmppConnectionService extends Service {
         }
         final var future = Futures.submit(runnable, FILE_ATTACHMENT_EXECUTOR);
         return Futures.transformAsync(
-                future, v -> encryptIfNeededAndSend(message), MoreExecutors.directExecutor());
+                future, v -> {
+                    // A visual observer must never delay or prevent sending a prepared file.
+                    if (onPrepared != null) {
+                        try { onPrepared.accept(message); }
+                        catch (RuntimeException e) { Log.w(Config.LOGTAG, "Attachment observer failed", e); }
+                    }
+                    return encryptIfNeededAndSend(message);
+                }, MoreExecutors.directExecutor());
     }
 
     private ListenableFuture<Void> submitAttachToConversation(

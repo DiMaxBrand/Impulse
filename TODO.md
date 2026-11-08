@@ -22,54 +22,24 @@
 - Pauses finalize encoded segments for reliable Ogg/MP4 preview. Resuming starts another segment;
   sending remuxes their encoded samples without re-encoding. Final recordings retain normal naming.
 - Discard animates into the bin mouth with a fixed left clip. Expressive Send retains active colors
-  while the existing one-second guard still ignores early taps. Recording send launch morphs and
-  Reply status are separate subsequent chapters, still in progress.
+  while the existing one-second guard still ignores early taps. Reply status and recording send
+  launch morphs are covered in beta.333 and beta.334 respectively.
 - Paused preview, resumed export and physical-phone rendering require device verification.
 
-## Reply status — planned, not implemented (brainstorm, 2026-11-08)
+## Liquid Glass send launch — beta.334
 
-- [ ] Add a native, conversation-specific way to acknowledge that a request is being handled:
-  Working…, Checking…, Waiting…. Maintain Russian and English. Suggested Russian labels:
-  «Занимаюсь…», «Проверяю…», «Ожидаю…»; wording remains open for review.
-- [ ] Entry points in both Material Expressive and Liquid Glass: an attachment-menu option
-  «Reply status ▾» and a tappable suggestion when the composer contains exactly `...`. Never
-  replace typed punctuation or send a status without an explicit choice.
-- [ ] Material Expressive: expand the Status option into the attachment container using the
-  existing shared-bounds container transform; resize the option/container and reveal the choices.
-- [ ] Liquid Glass: intentionally use a separate elevated glass panel for these choices. This is
-  an explicit exception to the normal same-plane merging rule: the upper panel must not merge with
-  the lower attachment menu. Sample everything behind it, including that menu, and use stronger
-  blur for legibility. Prefer opening below the Status option; open upward over it if space is
-  insufficient. The entry has a downward arrow. Preserve smooth appearance and dismissal.
-- [ ] User requirement: statuses can be cleared manually; offer clearing when the next message
-  is sent. Proposed default: «Clear when I send a message» enabled. Do not clear merely when
-  switching chats. Exact expiry duration and offline behavior remain to be decided.
-- [ ] Proposed presentation, not yet approved: sender sees a changeable/dismissible chip above
-  the composer; recipient sees a compact indicator near the latest incoming message/typing area.
-  Animate the three dots sequentially, with stable layout and a static reduced-motion variant.
-  Prefer an ephemeral indicator without unread counts, delivery ticks or notification sound.
-- [ ] Exchange structured set/change/clear events understood by updated Impulse builds; older
-  clients ignore them. Design reconnect/multi-device synchronization, stale-event ordering and
-  expiry before implementation. Receiving a status must not send an automatic chat reply.
-
-## Liquid Glass send animations — planned, not implemented (2026-11-08)
-
-- [ ] Text messages: create a temporary visual copy from the glass composer and morph it out
-  toward the actual outgoing message position. It resizes, forms the bubble tail and smoothly
-  changes from glass optics into the normal non-glass message surface. Reuse the morphing
-  machinery; transition content with the surface so there are no duplicate settled messages,
-  sudden material swaps or disappearing text. Keep the actual send independent of animation.
-- [ ] Voice messages — user's final choice of origin: launch from the recording timer's
-  **minutes-and-seconds display**, rather than from the entire central recording panel. Duplicate
-  that timer visually; the copy travels to the outgoing voice-message position, resizes and
-  morphs into the full audio bubble. The original recording/status controls return to the normal
-  composer as they do today. The final bubble is a normal message, not persistent glass.
-- [ ] Implement text and voice variants as a separate animation chapter from Reply status.
-  Handle keyboard/layout changes, scrolling and off-screen destinations, rapid sends, replies,
-  message grouping, cancelled/failed recordings and failed sends. Animate only a successfully
-  accepted send; an early tap on the disabled recording send control must not launch anything.
-  Respect reduced-motion/off settings and ensure sending is never delayed by the animation.
-
+- Text launches a visual copy from the composer; voice launches a copy of the minutes/seconds
+  label. Both resize with horizontal liquid wobble over 880 ms and fade into a recording of the
+  actual destination bubble, including its contents and tail, before revealing the ordinary row.
+- Existing rows draw from their previous positions while reserving the new bubble's space. A
+  newest send moves older messages up by the full insertion height; when messages exist on both
+  sides, half of that space is reserved on each side. Rapid sends retain the current visual offsets.
+- Sending is independent of the effect. Prepared voice files supply their own exact message ID.
+  Off-screen destinations use the ordinary row; no forced history jump. Scrolling, backgrounding,
+  chat changes and disabling full effects cancel visual copies. The effect is Liquid Glass only.
+- Compile and focused geometry/state regression checks cover endpoints, finite voice geometry,
+  wobble settling, displacement, rapid sends and cleanup. Physical-phone animation quality,
+  simultaneous arrival, paused voice export and multi-device Reply status still need verification.
 
 ## Remaining chat gap after beta.329 — beta.331
 

@@ -442,7 +442,8 @@ private fun RowScope.FieldBubble(
 
         LiquidGlassPanel(
             glass = backdrop,
-            modifier = Modifier.layout { measurable, constraints ->
+            modifier = Modifier.onGloballyPositioned { state.sendLaunches.textOrigin = it.boundsInWindow() }
+                .layout { measurable, constraints ->
                 val full = constraints.maxWidth
                 val w = lerp(full.toFloat(), min(timerWidthPx, full.toFloat()), rec.value).roundToInt()
                 val h = max(shownHeight.value, minHeightPx).roundToInt()
