@@ -131,11 +131,12 @@ private fun BlurBand(
  */
 object GlassEdgeToEdge {
 
-    private fun pad(view: View, insets: WindowInsetsCompat) {
+    private fun pad(view: View, insets: WindowInsetsCompat, duringAnimation: Boolean = false) {
         val bars = insets.getInsets(
             WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
         )
-        val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+        val ime = if (duringAnimation || insets.isVisible(WindowInsetsCompat.Type.ime()))
+            insets.getInsets(WindowInsetsCompat.Type.ime()).bottom else 0
         // Under the gesture bar too, unless the keyboard is up: then clear of the keyboard, as
         // before. The screens leave room for the gesture bar themselves.
         view.setPadding(bars.left, 0, bars.right, if (ime > bars.bottom) ime else 0)
@@ -146,9 +147,26 @@ object GlassEdgeToEdge {
      * it. (Without this the system hands over the keyboard's final height at once and the screen
      * jumps there while the keyboard is still on its way.)
      */
-    private class Glide(private val frame: View) :
+    internal class Glide(private val frame: View) :
         WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
         var animating = false
+            private set
+        private var targetInsets: WindowInsetsCompat? = null
+
+        fun onInsets(insets: WindowInsetsCompat): WindowInsetsCompat {
+            targetInsets = insets
+            if (!animating) pad(frame, insets)
+            return insets
+        }
+
+        /** A backgrounded keyboard animation may never deliver onEnd. Reconcile every resume. */
+        fun refresh(insets: WindowInsetsCompat? = ViewCompat.getRootWindowInsets(frame)) {
+            animating = false
+            targetInsets = insets
+            if (insets != null) pad(frame, insets)
+            else frame.setPadding(frame.paddingLeft, 0, frame.paddingRight, 0)
+            ViewCompat.requestApplyInsets(frame)
+        }
 
         override fun onPrepare(animation: WindowInsetsAnimationCompat) {
             if (animation.typeMask and WindowInsetsCompat.Type.ime() != 0) animating = true
@@ -158,14 +176,14 @@ object GlassEdgeToEdge {
             insets: WindowInsetsCompat,
             runningAnimations: MutableList<WindowInsetsAnimationCompat>,
         ): WindowInsetsCompat {
-            if (animating) pad(frame, insets)
+            if (animating) pad(frame, insets, duringAnimation = true)
             return insets
         }
 
         override fun onEnd(animation: WindowInsetsAnimationCompat) {
             if (animation.typeMask and WindowInsetsCompat.Type.ime() != 0) {
                 animating = false
-                ViewCompat.getRootWindowInsets(frame)?.let { pad(frame, it) }
+                (ViewCompat.getRootWindowInsets(frame) ?: targetInsets)?.let { pad(frame, it) }
             }
         }
     }
@@ -173,20 +191,19 @@ object GlassEdgeToEdge {
     fun apply(activity: Activity, on: Boolean) {
         val frame = activity.findViewById<View>(R.id.main_fragment) ?: return
         val tablet = activity.findViewById<View>(R.id.secondary_fragment) != null
-        val wasOn = frame.getTag(R.id.main_fragment) == true
+        val installed = frame.getTag(R.id.main_fragment) as? Glide
+        val wasOn = installed != null
         if (on && !tablet) {
-            if (wasOn) return
             frame.fitsSystemWindows = false
-            val glide = Glide(frame)
-            ViewCompat.setWindowInsetsAnimationCallback(frame, glide)
-            ViewCompat.setOnApplyWindowInsetsListener(frame) { view, insets ->
-                // While the keyboard slides, the animation callback sets the padding.
-                if (!glide.animating) pad(view, insets)
-                // Not consumed: the screens read the status bar inset themselves.
-                insets
+            val glide = installed ?: Glide(frame).also { callback ->
+                ViewCompat.setWindowInsetsAnimationCallback(frame, callback)
+                ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
+                    // Not consumed: the screens read the status bar inset themselves.
+                    callback.onInsets(insets)
+                }
+                frame.setTag(R.id.main_fragment, callback)
             }
-            frame.setTag(R.id.main_fragment, true)
-            ViewCompat.requestApplyInsets(frame)
+            glide.refresh()
         } else if (wasOn) {
             ViewCompat.setOnApplyWindowInsetsListener(frame, null)
             ViewCompat.setWindowInsetsAnimationCallback(frame, null)

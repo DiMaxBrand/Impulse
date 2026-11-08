@@ -1,5 +1,14 @@
 # Impulse — To-Do
 
+## Chat shifted after returning to the app — beta.329
+
+- `BUG-PQK4`: reconcile Liquid Glass keyboard padding on every activity resume, including when
+  the glass handler is already installed. Clear interrupted animation state and request fresh insets.
+  Settled hidden-keyboard insets reserve no space, even if a stale height is supplied; animation
+  frames still interpolate normally. Material/tablet layouts retain their existing handling.
+- Regression checks cover interrupted animation recovery, hide animation, repeat setup/resume,
+  and unaffected Material/tablet frames. The reported Xiaomi resume sequence needs phone testing.
+
 ## Accidental voice recording taps — beta.328
 
 - The send button is inactive for the first 1,000 ms of active recording time. Early send taps
