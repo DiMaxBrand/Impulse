@@ -1,6 +1,7 @@
 package eu.siacs.conversations.ui.glass
 
 import android.app.Activity
+import android.graphics.Rect
 import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -137,9 +138,24 @@ object GlassEdgeToEdge {
         )
         val ime = if (duringAnimation || insets.isVisible(WindowInsetsCompat.Type.ime()))
             insets.getInsets(WindowInsetsCompat.Type.ime()).bottom else 0
-        // Under the gesture bar too, unless the keyboard is up: then clear of the keyboard, as
-        // before. The screens leave room for the gesture bar themselves.
-        view.setPadding(bars.left, 0, bars.right, if (ime > bars.bottom) ime else 0)
+        // adjustResize may already have removed the keyboard area. OEMs can also retain a
+        // nonzero IME inset after hiding it. Only reserve space actually covering this frame.
+        val visible = Rect()
+        val location = IntArray(2)
+        view.getWindowVisibleDisplayFrame(visible)
+        view.getLocationOnScreen(location)
+        val overlap = if (view.height > 0 && visible.height() > 0)
+            (location[1] + view.height - visible.bottom).coerceAtLeast(0) else 0
+        val bottom = if (ime > bars.bottom && overlap > bars.bottom) minOf(ime, overlap) else 0
+        if (!duringAnimation) (view.getTag(R.id.main_fragment) as? Glide)?.lastLayout =
+            "frameHeight=${view.height}, frameBottom=${location[1] + view.height}, " +
+            "rootHeight=${view.rootView.height}, visibleBottom=${visible.bottom}, " +
+            "ime=$ime, imeVisible=${insets.isVisible(WindowInsetsCompat.Type.ime())}, " +
+            "nav=${bars.bottom}, padding=$bottom, animating=$duringAnimation"
+        if (view.paddingLeft != bars.left || view.paddingTop != 0 ||
+            view.paddingRight != bars.right || view.paddingBottom != bottom) {
+            view.setPadding(bars.left, 0, bars.right, bottom)
+        }
     }
 
     /**
@@ -148,10 +164,18 @@ object GlassEdgeToEdge {
      * jumps there while the keyboard is still on its way.)
      */
     internal class Glide(private val frame: View) :
-        WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+        WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE), View.OnLayoutChangeListener {
         var animating = false
             private set
         private var targetInsets: WindowInsetsCompat? = null
+        var lastLayout: String? = null
+
+        override fun onLayoutChange(view: View, left: Int, top: Int, right: Int, bottom: Int,
+            oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+            // A window resize can arrive after its insets. Reconcile against the new bounds,
+            // without waiting for another keyboard callback or for the activity to restart.
+            if (!animating) targetInsets?.let { pad(frame, it) }
+        }
 
         fun onInsets(insets: WindowInsetsCompat): WindowInsetsCompat {
             targetInsets = insets
@@ -188,6 +212,9 @@ object GlassEdgeToEdge {
         }
     }
 
+    fun report(activity: Activity): String? =
+        (activity.findViewById<View>(R.id.main_fragment)?.getTag(R.id.main_fragment) as? Glide)?.lastLayout
+
     fun apply(activity: Activity, on: Boolean) {
         val frame = activity.findViewById<View>(R.id.main_fragment) ?: return
         val tablet = activity.findViewById<View>(R.id.secondary_fragment) != null
@@ -197,6 +224,7 @@ object GlassEdgeToEdge {
             frame.fitsSystemWindows = false
             val glide = installed ?: Glide(frame).also { callback ->
                 ViewCompat.setWindowInsetsAnimationCallback(frame, callback)
+                frame.addOnLayoutChangeListener(callback)
                 ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
                     // Not consumed: the screens read the status bar inset themselves.
                     callback.onInsets(insets)
@@ -205,6 +233,7 @@ object GlassEdgeToEdge {
             }
             glide.refresh()
         } else if (wasOn) {
+            frame.removeOnLayoutChangeListener(installed)
             ViewCompat.setOnApplyWindowInsetsListener(frame, null)
             ViewCompat.setWindowInsetsAnimationCallback(frame, null)
             frame.setPadding(0, 0, 0, 0)

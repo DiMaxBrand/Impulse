@@ -276,6 +276,8 @@ class HelpSupportSheetFragment : BottomSheetDialogFragment() {
                 "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})" +
                 (silentReport?.let { "\n\nLast silent-update test:\n$it" } ?: "") +
                 "\n\nSound mode: ${soundModeReport(requireContext())}" +
+                (eu.siacs.conversations.ui.glass.GlassEdgeToEdge.report(requireActivity())
+                    ?.let { "\n\nGlass chat layout:\n$it" } ?: "") +
                 (eu.siacs.conversations.update.SupportDiagnostics.report(requireContext())
                     ?.let { "\n\nSupport commands received:\n$it" } ?: "")
         val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

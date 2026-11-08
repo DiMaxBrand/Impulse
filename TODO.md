@@ -1,5 +1,13 @@
 # Impulse — To-Do
 
+## Remaining chat gap after beta.329 — beta.331
+
+- `BUG-PQK4` persists on the updated phone. Padding is now limited to actual occlusion measured
+  in screen coordinates, preventing stale visible-IME reports or adjustResize from reserving
+  keyboard space twice. Layout changes recompute the remaining occlusion after a late resize.
+- Added cases for an incorrectly visible IME, an already-resized frame, and partial/late resize.
+  This needs confirmation on the affected Xiaomi; the earlier resume reset alone did not solve it.
+
 ## Fixed-item notification navigation — beta.330
 
 - Notifications that a tracked fix/change is available now open Updates and request the same

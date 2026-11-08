@@ -1,6 +1,8 @@
 package eu.siacs.conversations.ui.glass
 
 import android.app.Activity
+import android.content.Context
+import android.graphics.Rect
 import android.view.View
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
@@ -21,6 +23,17 @@ import org.robolectric.annotation.ConscryptMode
 @Config(sdk = [35], manifest = Config.NONE, application = android.app.Application::class)
 @ConscryptMode(ConscryptMode.Mode.OFF)
 class GlassEdgeToEdgeTest {
+    private class MeasuredFrame(context: Context = RuntimeEnvironment.getApplication()) : FrameLayout(context) {
+        var visibleBottom = 500
+        init { layout(0, 0, 600, 1200) }
+        override fun getWindowVisibleDisplayFrame(outRect: Rect) {
+            outRect.set(0, 0, 600, visibleBottom)
+        }
+        override fun getLocationOnScreen(location: IntArray) {
+            location[0] = 0
+            location[1] = 0
+        }
+    }
     private fun insets(height: Int, visible: Boolean) = WindowInsetsCompat.Builder()
         .setInsets(WindowInsetsCompat.Type.systemBars(), Insets.of(0, 24, 0, 48))
         .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, height))
@@ -30,7 +43,7 @@ class GlassEdgeToEdgeTest {
         WindowInsetsCompat.Type.ime(), LinearInterpolator(), 250L)
 
     @Test fun resumeClearsInterruptedAnimationAndStaleHiddenKeyboardSpace() {
-        val frame = View(RuntimeEnvironment.getApplication())
+        val frame = MeasuredFrame()
         val glide = GlassEdgeToEdge.Glide(frame)
         glide.onInsets(insets(700, true))
         assertEquals(700, frame.paddingBottom)
@@ -45,7 +58,7 @@ class GlassEdgeToEdgeTest {
     }
 
     @Test fun keyboardHideStillInterpolatesAndEndsAtZero() {
-        val frame = View(RuntimeEnvironment.getApplication())
+        val frame = MeasuredFrame()
         val glide = GlassEdgeToEdge.Glide(frame)
         glide.onInsets(insets(700, true))
         val animation = animation()
@@ -94,5 +107,32 @@ class GlassEdgeToEdgeTest {
         assertNull(frame.getTag(R.id.main_fragment))
         assertEquals(4, frame.paddingBottom)
         controller.pause().stop().destroy()
+    }
+
+    @Test fun staleVisibleImeDoesNotCreateGapWhenOnlyNavigationBarIsCovered() {
+        val frame = MeasuredFrame().apply { visibleBottom = 1152 }
+        val glide = GlassEdgeToEdge.Glide(frame)
+        glide.onInsets(insets(700, true))
+        assertEquals(0, frame.paddingBottom)
+        glide.refresh(insets(700, true))
+        assertEquals(0, frame.paddingBottom)
+    }
+
+    @Test fun adjustResizeDoesNotReserveKeyboardHeightTwice() {
+        val frame = MeasuredFrame().apply { layout(0, 0, 600, 500) }
+        GlassEdgeToEdge.Glide(frame).onInsets(insets(700, true))
+        assertEquals(0, frame.paddingBottom)
+    }
+
+    @Test fun lateWindowResizeRecomputesOnlyRemainingOcclusionWithoutNewInsets() {
+        val frame = MeasuredFrame()
+        val glide = GlassEdgeToEdge.Glide(frame)
+        frame.addOnLayoutChangeListener(glide)
+        glide.onInsets(insets(700, true))
+        assertEquals(700, frame.paddingBottom)
+        frame.layout(0, 0, 600, 900)
+        assertEquals(400, frame.paddingBottom)
+        frame.layout(0, 0, 600, 500)
+        assertEquals(0, frame.paddingBottom)
     }
 }
