@@ -46,6 +46,10 @@ import okhttp3.OkHttpClient
  */
 class UpdatesActivity : ActionBarActivity() {
 
+    companion object {
+        const val EXTRA_CHECK_NOW = "eu.siacs.conversations.updates.CHECK_NOW"
+    }
+
     private val prefs by lazy { UpdatePreferences(this) }
     private var uiState by mutableStateOf(UpdatesUiState())
     private var trackingJob: kotlinx.coroutines.Job? = null
@@ -131,6 +135,11 @@ class UpdatesActivity : ActionBarActivity() {
         }
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
     override fun onResume() {
         super.onResume()
         // Cheap prefs re-read, not a poll loop -- the sheet Fragment (when shown) owns live
@@ -139,6 +148,12 @@ class UpdatesActivity : ActionBarActivity() {
         // here, e.g. from the sheet itself, or from the background.
         initState()
         refreshChatTracking()
+        if (intent.getBooleanExtra(EXTRA_CHECK_NOW, false)) {
+            // Consume before checking: returning from an installer/settings or rotation must
+            // not repeat the notification's request. onNewIntent also feeds this resume path.
+            intent.removeExtra(EXTRA_CHECK_NOW)
+            triggerManualCheck()
+        }
     }
 
     private fun refreshChatTracking(force: Boolean = false) {

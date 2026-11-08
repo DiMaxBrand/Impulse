@@ -120,7 +120,9 @@ object UpdateNotifications {
                 )
             )
         }
-        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+        val launch = Intent(context, eu.siacs.conversations.ui.activity.UpdatesActivity::class.java)
+            .putExtra(eu.siacs.conversations.ui.activity.UpdatesActivity.EXTRA_CHECK_NOW, true)
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         val pending =
             PendingIntent.getActivity(
                 context,

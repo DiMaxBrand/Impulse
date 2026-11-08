@@ -1,5 +1,11 @@
 # Impulse — To-Do
 
+## Fixed-item notification navigation — beta.330
+
+- Notifications that a tracked fix/change is available now open Updates and request the same
+  check as "Check now". The request is consumed once; returning from an installer or ordinary
+  resume does not repeat it. Existing Updates activities receive the new intent as well.
+
 ## Chat shifted after returning to the app — beta.329
 
 - `BUG-PQK4`: reconcile Liquid Glass keyboard padding on every activity resume, including when
