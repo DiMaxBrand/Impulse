@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -111,7 +112,8 @@ internal fun ReplyStatusGlassChip(state: ConversationScreenState, listener: Conv
         glass = glass,
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
             .onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() },
-        style = LiquidGlassStyle.Bar.copy(blur = 18.dp, frost = null, surfaceAlpha = 0.18f),
+        style = LiquidGlassStyle.Frosted.copy(blur = 40.dp, surfaceAlpha = 0.94f,
+            saturation = 0.35f, contrast = 0.55f),
         shape = shape,
         clipContent = true,
     ) {
@@ -199,7 +201,8 @@ internal fun ReplyStatusOverlay(state: ConversationScreenState, listener: Conver
         val to = if (anchor.isEmpty) fallback else target
         val from = if (anchor.isEmpty) Rect(to.left, to.bottom - 48.dp.value * density.density, to.left + width, to.bottom) else anchor
         fun mix(a: Float, b: Float) = a + (b - a) * p.value
-        val modifier = Modifier.offset { IntOffset(mix(from.left, to.left).roundToInt(), mix(from.top, to.top).roundToInt()) }
+        val modifier = Modifier.zIndex(2f)
+            .offset { IntOffset(mix(from.left, to.left).roundToInt(), mix(from.top, to.top).roundToInt()) }
             .size(with(density) { mix(from.width, to.width).coerceAtLeast(1f).toDp() },
                 with(density) { mix(from.height, to.height).coerceAtLeast(1f).toDp() })
             .clickable(enabled = false) {}
@@ -219,7 +222,8 @@ internal fun ReplyStatusOverlay(state: ConversationScreenState, listener: Conver
             }
         }
         if (glass != null) LiquidGlassPanel(glass, modifier,
-            style = LiquidGlassStyle.Menu.copy(blur = 26.dp, frost = null, surfaceAlpha = 0.22f),
+            style = LiquidGlassStyle.Frosted.copy(blur = 40.dp, surfaceAlpha = 0.96f,
+                saturation = 0.32f, contrast = 0.5f),
             clipContent = true) { content() }
         else Surface(modifier = modifier, shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.tertiaryContainer, shadowElevation = 8.dp) { content() }

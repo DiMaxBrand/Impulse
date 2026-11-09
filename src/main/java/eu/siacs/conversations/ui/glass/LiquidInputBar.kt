@@ -136,15 +136,19 @@ fun LiquidInputBar(
             if (readOnly) {
                 ReadOnlyBubble(bar)
             } else {
-                eu.siacs.conversations.ui.ReplyStatusGlassChip(state, listener, bar)
                 BarPanels(state, listener, bar, conversation)
                 ComposerRow(state, listener, bar, attachMenu, conversation)
             }
         }
-        if (host != null) {
-            FluidGlassHost(backdrop.base, host, barModifier) { Column(Modifier.fillMaxWidth()) { barContent() } }
-        } else {
-            Column(barModifier) { barContent() }
+        Column(barModifier) {
+            if (!readOnly) eu.siacs.conversations.ui.ReplyStatusGlassChip(state, listener, backdrop)
+            if (host != null) {
+                FluidGlassHost(backdrop.base, host, Modifier.fillMaxWidth()) {
+                    Column(Modifier.fillMaxWidth()) { barContent() }
+                }
+            } else {
+                Column(Modifier.fillMaxWidth()) { barContent() }
+            }
         }
         if (!readOnly) {
             // The paperclip grows into the menu: the panel lines up with the button's left edge
