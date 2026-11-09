@@ -141,7 +141,7 @@ fun LiquidInputBar(
             }
         }
         Column(barModifier) {
-            if (!readOnly) eu.siacs.conversations.ui.ReplyStatusGlassChip(state, listener, backdrop)
+            if (!readOnly) ComposerBanner(state, listener)
             if (host != null) {
                 FluidGlassHost(backdrop.base, host, Modifier.fillMaxWidth()) {
                     Column(Modifier.fillMaxWidth()) { barContent() }

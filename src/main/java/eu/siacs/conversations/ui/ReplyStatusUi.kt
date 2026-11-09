@@ -85,55 +85,20 @@ internal fun ReplyStatusComposerChip(state: ConversationScreenState, listener: C
     val status = rememberReplyStatus(conversation, true)
     val hint = state.inputText.value == "..." && state.correcting.value == null
     if (status == null && !hint) return
-    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-            .onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() }) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { state.replyStatusPickerVisible.value = true }) {
-                if (status != null) ReplyStatusText(status.code)
-                else Text(stringResource(R.string.reply_status_set))
-                Icon(painterResource(R.drawable.ic_expand_more_24dp), null)
-            }
-            if (status != null) IconButton(onClick = { listener.onSetReplyStatus("clear", true) }) {
-                Icon(painterResource(R.drawable.ic_close_24dp), stringResource(R.string.reply_status_clear))
-            }
-        }
-    }
-}
-
-@Composable
-internal fun ReplyStatusGlassChip(state: ConversationScreenState, listener: ConversationScreenListener, glass: GlassStack) {
-    val conversation = state.conversation.value ?: return
-    if (conversation.getMode() != 0) return
-    val status = rememberReplyStatus(conversation, true) ?: return
-    val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(22.dp)
-    LiquidGlassPanel(
-        glass = glass,
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-            .onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() },
-        style = LiquidGlassStyle.Frosted.copy(blur = 40.dp, surfaceAlpha = 0.94f,
-            saturation = 0.35f, contrast = 0.55f),
-        shape = shape,
-        clipContent = true,
-    ) {
-        Row(
-            modifier = Modifier.heightIn(min = 40.dp).padding(start = 14.dp, end = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                Modifier.weight(1f).clickable(
-                    interactionSource = interaction,
-                    indication = null,
-                ) { state.replyStatusPickerVisible.value = true },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ReplyStatusText(status.code)
-                Icon(painterResource(R.drawable.ic_expand_more_24dp), null,
-                    modifier = Modifier.padding(start = 6.dp).size(18.dp))
-            }
-            IconButton(onClick = { listener.onSetReplyStatus("clear", true) }) {
-                Icon(painterResource(R.drawable.ic_close_24dp), stringResource(R.string.reply_status_clear))
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 3.dp), horizontalArrangement = Arrangement.End) {
+        Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.widthIn(max = 280.dp)
+                .onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() }) {
+            Row(Modifier.heightIn(min = 40.dp).padding(start = 14.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).clickable(
+                    interactionSource = remember { MutableInteractionSource() }, indication = null,
+                ) { state.replyStatusPickerVisible.value = true }, verticalAlignment = Alignment.CenterVertically) {
+                    ReplyStatusText(status?.code ?: "working")
+                    Icon(painterResource(R.drawable.ic_expand_more_24dp), null, Modifier.padding(start = 6.dp).size(18.dp))
+                }
+                if (status != null) IconButton(onClick = { listener.onSetReplyStatus("clear", true) }) {
+                    Icon(painterResource(R.drawable.ic_close_24dp), stringResource(R.string.reply_status_clear))
+                }
             }
         }
     }
