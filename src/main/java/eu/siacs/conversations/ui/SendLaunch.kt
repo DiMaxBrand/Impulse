@@ -187,7 +187,7 @@ internal fun SendLaunchOverlay(state: SendLaunchState, glass: GlassStack?) {
     if (glass == null || !AppearanceState.fullEffects || state.flights.isEmpty()) return
     pauseGlassInkWhile { state.flights.isNotEmpty() }
     var origin by remember { mutableStateOf(Offset.Zero) }
-    Box(Modifier.fillMaxSize().onGloballyPositioned { origin = it.positionInWindow() }) {
+    Box(Modifier.fillMaxSize().onGloballyPositioned { origin = it.boundsInWindow(clipBounds = false).topLeft }) {
         state.flights.toList().forEach { flight ->
             key(flight.uuid) { LaunchActor(state, flight, glass, origin) }
         }
