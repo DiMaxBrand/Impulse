@@ -224,11 +224,11 @@ private fun LaunchActor(state: SendLaunchState, flight: SendLaunchState.Flight, 
     val placement = Modifier.offset { IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) }
         .size(with(density) { rect.width.coerceAtLeast(1f).toDp() }, with(density) { rect.height.coerceAtLeast(1f).toDp() })
     Box(placement) {
-        val sourceAlpha = (1f - SendLaunchMotion.ease(progress / 0.60f)).coerceIn(0f, 1f)
-        // The captured panel is exact at progress 0. Its gently scaled pixels make the source
-        // visibly leave the composer before the separately drawn tail and normal bubble take over.
+        // Keep the captured composer fully opaque while it is the launch object. Its real pixels,
+        // including the glass surface and text, morph as one piece; don't fade it away underneath
+        // a separately appearing backdrop layer.
         flight.sourceLayer?.let { sourceLayer ->
-            Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = sourceAlpha }) {
+            Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = if (flight.sourceLayer != null) 1f - material else 0f }) {
                 if (sourceLayer.size.width > 0 && sourceLayer.size.height > 0) {
                     scale(size.width / sourceLayer.size.width, size.height / sourceLayer.size.height, pivot = Offset.Zero) {
                         drawLayer(sourceLayer)
@@ -236,7 +236,7 @@ private fun LaunchActor(state: SendLaunchState, flight: SendLaunchState.Flight, 
                 }
             }
         }
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = (1f - material) * (1f - sourceAlpha * 0.75f) }
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - material }
             // The launch shape grows a real message tail. Backdrop's lens implementation accepts
             // only rounded rectangles, so applying it to this GenericShape crashes on attach.
             // Blur supports the tail and keeps the glass phase continuous into the material bubble.
