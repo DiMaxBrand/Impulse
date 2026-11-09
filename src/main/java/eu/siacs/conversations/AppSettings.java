@@ -83,6 +83,10 @@ public class AppSettings {
     public static final String ALIGN_START = "align_start";
     public static final String BACKUP_LOCATION = "backup_location";
     public static final String AUTO_ACCEPT_FILE_SIZE = "auto_accept_file_size";
+    public static final String AUTO_DOWNLOAD_WIFI = "auto_download_wifi";
+    public static final String AUTO_DOWNLOAD_WIFI_FILE_SIZE = "auto_download_wifi_file_size";
+    public static final String AUTO_DOWNLOAD_MOBILE = "auto_download_mobile";
+    public static final String AUTO_DOWNLOAD_MOBILE_FILE_SIZE = "auto_download_mobile_file_size";
     public static final String VIDEO_COMPRESSION = "video_compression";
     public static final String PICTURE_COMPRESSION = "picture_compression";
     public static final String AUTO_SEND_RECORDING = "auto_send_recording";
@@ -456,8 +460,15 @@ public class AppSettings {
     }
 
     public Optional<Long> getAutoAcceptFileSize() {
-        final long autoAcceptFileSize =
-                getLongPreference(AUTO_ACCEPT_FILE_SIZE, R.integer.auto_accept_filesize);
+        final var connectivityManager = context.getSystemService(ConnectivityManager.class);
+        final boolean metered = connectivityManager == null
+                || Compatibility.isActiveNetworkMetered(connectivityManager);
+        final boolean enabled = getBooleanPreference(
+                metered ? AUTO_DOWNLOAD_MOBILE : AUTO_DOWNLOAD_WIFI, true);
+        if (!enabled) return Optional.empty();
+        final String key = metered ? AUTO_DOWNLOAD_MOBILE_FILE_SIZE : AUTO_DOWNLOAD_WIFI_FILE_SIZE;
+        final int defaultSize = metered ? 5 * 1024 * 1024 : 50 * 1024 * 1024;
+        final long autoAcceptFileSize = getLongPreference(key, defaultSize);
         return autoAcceptFileSize <= 0 ? Optional.empty() : Optional.of(autoAcceptFileSize);
     }
 

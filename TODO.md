@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Separate automatic media download networks — beta.347
+
+- Incoming automatic downloads have independent Wi-Fi and mobile-data switches and size limits. Both switches default on; Wi-Fi defaults to 50 MiB, mobile data to 5 MiB. The size choices no longer include Never; the network switch controls whether downloads are automatic.
+
 ## Reply status message row — beta.346
 
 - Show the active local reply status as a clear-glass chip above the composer with animated dots, a picker control and a clear action. The status picker overlay no longer captures taps across its full area or shows Android’s default gray tap indication outside the actual choices.

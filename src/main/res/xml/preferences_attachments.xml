@@ -8,11 +8,27 @@
         android:summary="@string/pref_save_to_gallery_summary"
         android:title="@string/pref_save_to_gallery" />
     <PreferenceCategory android:title="@string/pref_category_receiving">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="auto_download_wifi"
+            android:title="@string/pref_auto_download_wifi" />
         <ListPreference
-            android:defaultValue="@integer/auto_accept_filesize"
-            android:icon="@drawable/ic_download_24dp"
-            android:key="auto_accept_file_size"
-            android:title="@string/pref_automatic_download"
+            android:defaultValue="52428800"
+            android:entries="@array/file_size_entries"
+            android:entryValues="@array/file_size_values"
+            android:key="auto_download_wifi_file_size"
+            android:title="@string/pref_automatic_download_size"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="auto_download_mobile"
+            android:title="@string/pref_auto_download_mobile" />
+        <ListPreference
+            android:defaultValue="5242880"
+            android:entries="@array/file_size_entries"
+            android:entryValues="@array/file_size_values"
+            android:key="auto_download_mobile_file_size"
+            android:title="@string/pref_automatic_download_size"
             app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/pref_category_sending">

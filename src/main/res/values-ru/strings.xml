@@ -1151,6 +1151,9 @@
     <string name="pref_category_sending">Отправка</string>
     <string name="pref_category_receiving">Получение</string>
     <string name="pref_automatic_download">Автоматическое скачивание</string>
+    <string name="pref_auto_download_wifi">Скачивать медиа по Wi-Fi</string>
+    <string name="pref_auto_download_mobile">Скачивать медиа через мобильную сеть</string>
+    <string name="pref_automatic_download_size">Максимальный размер файла</string>
     <string name="appearance">Внешний вид</string>
     <string name="pref_title_interface">Внешний вид</string>
     <string name="pref_light_dark_mode">Светлая/тёмная тема</string>

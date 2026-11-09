@@ -1173,6 +1173,9 @@
     <string name="pref_category_sending">Sending</string>
     <string name="pref_category_receiving">Receiving</string>
     <string name="pref_automatic_download">Automatic download</string>
+    <string name="pref_auto_download_wifi">Download media on Wi-Fi</string>
+    <string name="pref_auto_download_mobile">Download media on mobile data</string>
+    <string name="pref_automatic_download_size">Maximum file size</string>
     <string name="appearance">Appearance</string>
     <string name="pref_light_dark_mode">Light/dark mode</string>
     <string name="pref_allow_screenshots">Allow screenshots</string>
