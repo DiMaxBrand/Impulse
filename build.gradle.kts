@@ -13,7 +13,7 @@ repositories {
     maven { url = uri("https://jitpack.io") }
 }
 
-val abiCodes = mapOf("armeabi-v7a" to 1, "x86" to 2, "x86_64" to 3, "arm64-v8a" to 4)
+val abiCodes = mapOf("arm64-v8a" to 4)
 
 val signingProps = Properties()
 val signingPropsFile = rootProject.file("signing.properties")
@@ -28,8 +28,8 @@ spotless {
 }
 
 // ---- Release version — edit here ----
-val baseVersionCode = 42801
-val appVersion = "1.15.0-beta.338+2.20.0"
+val baseVersionCode = 42802
+val appVersion = "1.15.0-beta.339+2.20.0"
 
 base {
     archivesName.set("Impulse")
@@ -57,10 +57,12 @@ android {
 
     splits {
         abi {
-            isUniversalApk = true
+            // GitHub distribution targets current physical Android devices. The previous
+            // workflow already published only ARM64, so this removes unused split packaging
+            // without stranding a published arm32/x86 updater path.
+            isUniversalApk = false
             isEnable = true
             reset()
-            //noinspection ChromeOsAbiSupport
             include(*abiCodes.keys.toTypedArray())
         }
     }

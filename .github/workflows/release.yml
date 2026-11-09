@@ -98,13 +98,17 @@ jobs:
             TITLE="Impulse ${{ env.VERSION }}"
           fi
 
-          NOTES_ARGS=(--generate-notes)
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          : > "$NOTES_FILE"
           if [ -n "$INPUT_DESCRIPTION" ]; then
-            NOTES_ARGS=(--notes "$INPUT_DESCRIPTION" --generate-notes)
+            printf '%s\n' "$INPUT_DESCRIPTION" >> "$NOTES_FILE"
           fi
+
+          APK_ASSETS=("build/outputs/apk/conversationsFree/release/Impulse_arm64.apk")
 
           gh release create "${{ env.VERSION }}" \
             $PRERELEASE_FLAG \
             --title "$TITLE" \
-            "${NOTES_ARGS[@]}" \
-            "build/outputs/apk/conversationsFree/release/Impulse_arm64.apk"
+            --notes-file "$NOTES_FILE" \
+            --generate-notes \
+            "${APK_ASSETS[@]}"

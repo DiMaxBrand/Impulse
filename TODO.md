@@ -1,5 +1,12 @@
 # Impulse — To-Do
 
+## ARM64-only distribution — beta.339
+
+- GitHub releases now produce and attach only `Impulse_arm64.apk`. Android 8 did not guarantee
+  ARM64, but the unsupported 32-bit ARM and x86/ChromeOS paths would otherwise add native-library
+  packaging work and large downloads for devices Impulse is no longer intended to support.
+- The updater remains a single-asset downloader; no universal or split-APK fallback is retained.
+
 ## Reply status — beta.333
 
 - Native Working/Checking/Waiting transitions, manual clear, optional clear on the next text or
