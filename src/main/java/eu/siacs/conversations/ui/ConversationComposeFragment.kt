@@ -770,6 +770,10 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             state.replyStatusPickerVisible.value = false
             state.attachCardOpen.value = false
             state.replyStatusChoiceEpoch.intValue++
+            // Explicitly invalidate both composer implementations after the manager persists
+            // the local status. This also covers hosts whose backdrop/menu composition is not
+            // observing the ReplyStatuses snapshot map while its menu is open.
+            state.revision.intValue++
         }
         else context?.let { Toast.makeText(it, R.string.reply_status_offline, Toast.LENGTH_SHORT).show() }
     }
