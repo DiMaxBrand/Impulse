@@ -55,7 +55,7 @@
   wobble settling, displacement, rapid sends and cleanup. Physical-phone animation quality,
   simultaneous arrival, paused voice export and multi-device Reply status still need verification.
 
-## Composer-origin Liquid Glass launch — beta.338
+## Composer-origin Liquid Glass launch — beta.340
 
 - The first launch implementation recreated the source as centered text after the composer had
   already been cleared, so it could visibly pop in beneath an empty field. The glass composer is
