@@ -68,6 +68,19 @@ class SendLaunchTest {
         assertEquals(1, state.flights.size)
     }
 
+    @Test fun composerClearsOnceWhenTheFlightStartsAndEachQueuedSendGetsANewCaptureEpoch() {
+        val state = SendLaunchState()
+        var clears = 0
+        assertTrue(state.enqueue("one", "chat", composer, "one", false) { clears++ })
+        val first = state.flights.single()
+        assertEquals(1, state.composerCaptureEpoch)
+        state.start(first)
+        state.start(first)
+        assertEquals(1, clears)
+        assertTrue(state.enqueue("two", "chat", composer, "two", false))
+        assertEquals(2, state.composerCaptureEpoch)
+    }
+
     private fun assertRect(expected: Rect, actual: Rect) {
         assertEquals(expected.left, actual.left, 0.001f)
         assertEquals(expected.top, actual.top, 0.001f)

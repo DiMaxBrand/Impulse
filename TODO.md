@@ -48,6 +48,14 @@
   wobble settling, displacement, rapid sends and cleanup. Physical-phone animation quality,
   simultaneous arrival, paused voice export and multi-device Reply status still need verification.
 
+## Composer-origin Liquid Glass launch — beta.338
+
+- The first launch implementation recreated the source as centered text after the composer had
+  already been cleared, so it could visibly pop in beneath an empty field. The glass composer is
+  now captured as rendered pixels before send and held as an independent layer for each launch.
+  The input clears only when that exact source copy starts moving; rapid sends rotate their capture
+  layers so a later typed message cannot overwrite an earlier launch.
+
 ## Tailed Liquid Glass launch — beta.336
 
 - `BUG-6FM3`: the tailed launch shape is a Compose GenericShape, while the backdrop library's

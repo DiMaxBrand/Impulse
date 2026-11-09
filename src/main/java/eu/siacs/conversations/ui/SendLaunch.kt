@@ -64,8 +64,11 @@ internal object SendLaunchMotion {
 }
 
 internal class SendLaunchState {
-    class Flight(val uuid: String, val conversation: String, val source: Rect, val sourceText: String, val voice: Boolean) {
+    class Flight(val uuid: String, val conversation: String, val source: Rect, val sourceText: String, val voice: Boolean,
+        val onStart: (() -> Unit)? = null) {
         val progress = Animatable(0f)
+        /** The actual composer/timer pixels captured before its state is cleared. */
+        var sourceLayer: GraphicsLayer? = null
         var target by mutableStateOf(Rect.Zero)
         var layer by mutableStateOf<GraphicsLayer?>(null)
         var recorded by mutableStateOf(false)
@@ -74,21 +77,32 @@ internal class SendLaunchState {
         var lastOfGroup = true
         var alignEnd = true
         var splitReserved = false
+        var started = false
     }
     val flights = mutableStateListOf<Flight>()
     val rows = mutableStateMapOf<String, Rect>()
     var textOrigin by mutableStateOf(Rect.Zero)
     var voiceOrigin by mutableStateOf(Rect.Zero)
+    var composerLayer by mutableStateOf<GraphicsLayer?>(null)
+    var composerCaptureEpoch by mutableIntStateOf(0)
     private var before: Map<String, Rect> = emptyMap()
     private var rowDriver by mutableStateOf<Flight?>(null)
 
     fun contains(uuid: String) = flights.any { it.uuid == uuid }
-    fun enqueue(uuid: String?, conversation: String?, source: Rect, text: String, voice: Boolean) {
-        if (uuid == null || conversation == null || source.isEmpty || contains(uuid)) return
+    fun enqueue(uuid: String?, conversation: String?, source: Rect, text: String, voice: Boolean,
+        onStart: (() -> Unit)? = null): Boolean {
+        if (uuid == null || conversation == null || source.isEmpty || contains(uuid)) return false
         before = rows.mapValues { (key, rect) -> rect.translate(Offset(0f, offset(key))) }
-        val flight = Flight(uuid, conversation, source, text, voice)
+        val flight = Flight(uuid, conversation, source, text, voice, onStart).also {
+            // This layer was drawn while the composer still contained [text]. It must be held
+            // rather than recreated from Text after state.setInput("") has run.
+            it.sourceLayer = composerLayer
+        }
+        // A second send gets a new live layer so it cannot overwrite the first flight's pixels.
+        composerCaptureEpoch++
         rowDriver = flight
         flights += flight
+        return true
     }
     fun offset(key: String): Float {
         val driver = rowDriver ?: return 0f
@@ -100,9 +114,40 @@ internal class SendLaunchState {
         flights.remove(flight)
         if (rowDriver === flight || flights.isEmpty()) { rowDriver = null; before = emptyMap() }
     }
+    fun start(flight: Flight) {
+        if (flight.started) return
+        flight.started = true
+        flight.onStart?.invoke()
+    }
     fun clear(keepGeometry: Boolean = false) {
         flights.clear(); if (!keepGeometry) rows.clear()
         rowDriver = null; before = emptyMap()
+    }
+}
+
+/**
+ * Keep an exact rendered copy of the glass composer. Once a send is pending we deliberately stop
+ * recording into this layer: the next composition has already cleared the typed text, but the
+ * launch still needs the preceding field, shape and contents as its first frame.
+ */
+@Composable
+internal fun launchComposerSourceModifier(state: SendLaunchState): Modifier {
+    var keyedLayer: GraphicsLayer? = null
+    key(state.composerCaptureEpoch) {
+        keyedLayer = rememberGraphicsLayer()
+    }
+    val layer = requireNotNull(keyedLayer)
+    DisposableEffect(state, layer) {
+        state.composerLayer = layer
+        onDispose { if (state.composerLayer === layer) state.composerLayer = null }
+    }
+    return Modifier.drawWithContent {
+        if (state.composerLayer === layer) {
+            layer.record(IntSize(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1))) {
+                this@drawWithContent.drawContent()
+            }
+        }
+        drawContent()
     }
 }
 
@@ -155,7 +200,8 @@ private fun LaunchActor(state: SendLaunchState, flight: SendLaunchState.Flight, 
         val ready = withTimeoutOrNull(700) {
             snapshotFlow { flight.prepared && flight.recorded && !flight.target.isEmpty && flight.layer != null }.first { it }
         }
-        if (ready == null) { state.finish(flight); return@LaunchedEffect }
+        if (ready == null) { state.start(flight); state.finish(flight); return@LaunchedEffect }
+        state.start(flight)
         withFrameNanos { }
         flight.progress.animateTo(1f, tween(SendLaunchMotion.DURATION_MS, easing = LinearEasing))
         state.finish(flight)
@@ -178,16 +224,32 @@ private fun LaunchActor(state: SendLaunchState, flight: SendLaunchState.Flight, 
     val placement = Modifier.offset { IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) }
         .size(with(density) { rect.width.coerceAtLeast(1f).toDp() }, with(density) { rect.height.coerceAtLeast(1f).toDp() })
     Box(placement) {
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - material }
+        val sourceAlpha = (1f - SendLaunchMotion.ease(progress / 0.60f)).coerceIn(0f, 1f)
+        // The captured panel is exact at progress 0. Its gently scaled pixels make the source
+        // visibly leave the composer before the separately drawn tail and normal bubble take over.
+        flight.sourceLayer?.let { sourceLayer ->
+            Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = sourceAlpha }) {
+                if (sourceLayer.size.width > 0 && sourceLayer.size.height > 0) {
+                    scale(size.width / sourceLayer.size.width, size.height / sourceLayer.size.height, pivot = Offset.Zero) {
+                        drawLayer(sourceLayer)
+                    }
+                }
+            }
+        }
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = (1f - material) * (1f - sourceAlpha * 0.75f) }
             // The launch shape grows a real message tail. Backdrop's lens implementation accepts
             // only rounded rectangles, so applying it to this GenericShape crashes on attach.
             // Blur supports the tail and keeps the glass phase continuous into the material bubble.
             .drawBackdrop(glass.base, shape = { shape }, effects = { blur(2.dp.toPx()) }))
-        Text(flight.sourceText, Modifier.align(Alignment.Center).padding(horizontal = if (flight.voice) 0.dp else 12.dp)
-            .graphicsLayer { alpha = (1f - progress / 0.55f).coerceIn(0f, 1f) },
-            color = MaterialTheme.colorScheme.onSurface,
-            style = if (flight.voice) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyLarge,
-            maxLines = if (flight.voice) 1 else 4, overflow = TextOverflow.Ellipsis)
+        if (flight.sourceLayer == null) {
+            // A freshly attached screen can send before its first draw. Keep a safe fallback;
+            // ordinary interaction takes the captured-layer path above.
+            Text(flight.sourceText, Modifier.align(Alignment.Center).padding(horizontal = if (flight.voice) 0.dp else 12.dp)
+                .graphicsLayer { alpha = (1f - progress / 0.55f).coerceIn(0f, 1f) },
+                color = MaterialTheme.colorScheme.onSurface,
+                style = if (flight.voice) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyLarge,
+                maxLines = if (flight.voice) 1 else 4, overflow = TextOverflow.Ellipsis)
+        }
         Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = material }) {
             if (layer.size.width > 0 && layer.size.height > 0) {
                 scale(size.width / layer.size.width, size.height / layer.size.height, pivot = Offset.Zero) { drawLayer(layer) }

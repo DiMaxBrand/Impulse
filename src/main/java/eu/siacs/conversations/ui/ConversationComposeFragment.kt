@@ -715,16 +715,21 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
             message.setRepliedTo(replyId)
         }
-        if (correcting == null && LiquidGlass.enabled(requireContext()) && AppearanceState.fullEffects) {
-            state.sendLaunches.enqueue(message.getUuid(), c.getUuid(), state.sendLaunches.textOrigin, body, false)
-        }
+        val canLaunchFromComposer = correcting == null && LiquidGlass.enabled(requireContext()) && AppearanceState.fullEffects
+        val launchFromComposer = if (canLaunchFromComposer) {
+            state.sendLaunches.enqueue(message.getUuid(), c.getUuid(), state.sendLaunches.textOrigin, body, false) {
+                // Keep the real typed field visible until its frozen visual copy begins moving.
+                // The identity check prevents an old launch clearing a new conversation's draft.
+                if (conversation === c) state.setInput("")
+            }
+        } else false
         service.sendMessage(message)
         c.getAccount().xmppConnection
             .getManager(eu.siacs.conversations.xmpp.manager.ReplyStatusManager::class.java)
             ?.clearAfterSend(c.getAddress())
         state.replyingTo.value = null
         state.correcting.value = null
-        state.setInput("")
+        if (!launchFromComposer) state.setInput("")
         refreshMessages()
         markRead()
     }

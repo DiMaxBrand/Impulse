@@ -66,6 +66,7 @@ import eu.siacs.conversations.ui.ComposerTextField
 import eu.siacs.conversations.ui.ConversationScreenListener
 import eu.siacs.conversations.ui.ConversationScreenState
 import eu.siacs.conversations.ui.RecordingUiState
+import eu.siacs.conversations.ui.launchComposerSourceModifier
 import eu.siacs.conversations.utils.UIHelper
 import kotlin.math.abs
 import kotlin.math.max
@@ -443,6 +444,7 @@ private fun RowScope.FieldBubble(
         LiquidGlassPanel(
             glass = backdrop,
             modifier = Modifier.onGloballyPositioned { state.sendLaunches.textOrigin = it.boundsInWindow() }
+                .then(launchComposerSourceModifier(state.sendLaunches))
                 .layout { measurable, constraints ->
                 val full = constraints.maxWidth
                 val w = lerp(full.toFloat(), min(timerWidthPx, full.toFloat()), rec.value).roundToInt()
