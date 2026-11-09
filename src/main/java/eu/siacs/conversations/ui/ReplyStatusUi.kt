@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -99,6 +101,43 @@ internal fun ReplyStatusComposerChip(state: ConversationScreenState, listener: C
 }
 
 @Composable
+internal fun ReplyStatusGlassChip(state: ConversationScreenState, listener: ConversationScreenListener, glass: GlassStack) {
+    val conversation = state.conversation.value ?: return
+    if (conversation.getMode() != 0) return
+    val status = rememberReplyStatus(conversation, true) ?: return
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(22.dp)
+    LiquidGlassPanel(
+        glass = glass,
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            .onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() },
+        style = LiquidGlassStyle.Bar.copy(blur = 18.dp, frost = null, surfaceAlpha = 0.18f),
+        shape = shape,
+        clipContent = true,
+    ) {
+        Row(
+            modifier = Modifier.heightIn(min = 40.dp).padding(start = 14.dp, end = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                Modifier.weight(1f).clickable(
+                    interactionSource = interaction,
+                    indication = null,
+                ) { state.replyStatusPickerVisible.value = true },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ReplyStatusText(status.code)
+                Icon(painterResource(R.drawable.ic_expand_more_24dp), null,
+                    modifier = Modifier.padding(start = 6.dp).size(18.dp))
+            }
+            IconButton(onClick = { listener.onSetReplyStatus("clear", true) }) {
+                Icon(painterResource(R.drawable.ic_close_24dp), stringResource(R.string.reply_status_clear))
+            }
+        }
+    }
+}
+
+@Composable
 internal fun ReplyStatusChoices(state: ConversationScreenState, listener: ConversationScreenListener) {
     val current = rememberReplyStatus(state.conversation.value, true)
     var clear by remember { mutableStateOf(current?.clearOnSend ?: true) }
@@ -138,8 +177,10 @@ internal fun ReplyStatusOverlay(state: ConversationScreenState, listener: Conver
     if (!open && p.value < 0.001f) return
     val density = LocalDensity.current
     var origin by remember { mutableStateOf(Offset.Zero) }
-    BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { origin = it.positionInWindow() }
-        .clickable { state.replyStatusPickerVisible.value = false }) {
+    BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { origin = it.positionInWindow() }) {
+        Box(Modifier.fillMaxSize().clickable(
+            interactionSource = remember { MutableInteractionSource() }, indication = null,
+        ) { state.replyStatusPickerVisible.value = false })
         val margin = with(density) { 8.dp.toPx() }
         val width = with(density) { minOf(maxWidth - 16.dp, 330.dp).toPx() }
         val height = with(density) { 340.dp.toPx() }.coerceAtMost(constraints.maxHeight - margin * 2)

@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Liquid Glass reply status — beta.342
+
+- Show the active local reply status as a clear-glass chip above the composer with animated dots, a picker control and a clear action. The status picker overlay no longer captures taps across its full area or shows Android’s default gray tap indication outside the actual choices.
+
 ## ARM64-only distribution — beta.339
 
 - GitHub releases now produce and attach only `Impulse_arm64.apk`. Android 8 did not guarantee

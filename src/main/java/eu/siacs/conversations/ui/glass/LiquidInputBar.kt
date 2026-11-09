@@ -136,6 +136,7 @@ fun LiquidInputBar(
             if (readOnly) {
                 ReadOnlyBubble(bar)
             } else {
+                eu.siacs.conversations.ui.ReplyStatusGlassChip(state, listener, bar)
                 BarPanels(state, listener, bar, conversation)
                 ComposerRow(state, listener, bar, attachMenu, conversation)
             }
