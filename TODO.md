@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Automatic download preference compilation — beta.349
+
+- `BUG` release build failure: the network-specific preference defaults are literal booleans and byte counts, while existing helpers interpret arguments as Android resource IDs. Add literal-default overloads and use long byte-count defaults.
+
 ## Automatic download compile fix — beta.348
 
 - Add the missing Android ConnectivityManager import used by the separate Wi-Fi/mobile download policy. Beta 347 failed Java compilation before release creation.

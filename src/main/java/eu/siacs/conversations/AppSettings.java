@@ -355,8 +355,24 @@ public class AppSettings {
         return sharedPreferences.getBoolean(name, context.getResources().getBoolean(res));
     }
 
+    private boolean getBooleanPreference(@NonNull final String name, final boolean defaultValue) {
+        final SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(context);
+        return sharedPreferences.getBoolean(name, defaultValue);
+    }
+
     private long getLongPreference(final String name, @IntegerRes final int res) {
         final long defaultValue = context.getResources().getInteger(res);
+        final SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(context);
+        try {
+            return Long.parseLong(sharedPreferences.getString(name, String.valueOf(defaultValue)));
+        } catch (final NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private long getLongPreference(final String name, final long defaultValue) {
         final SharedPreferences sharedPreferences =
                 PreferenceManager.getDefaultSharedPreferences(context);
         try {
@@ -468,7 +484,7 @@ public class AppSettings {
                 metered ? AUTO_DOWNLOAD_MOBILE : AUTO_DOWNLOAD_WIFI, true);
         if (!enabled) return Optional.empty();
         final String key = metered ? AUTO_DOWNLOAD_MOBILE_FILE_SIZE : AUTO_DOWNLOAD_WIFI_FILE_SIZE;
-        final int defaultSize = metered ? 5 * 1024 * 1024 : 50 * 1024 * 1024;
+        final long defaultSize = metered ? 5L * 1024 * 1024 : 50L * 1024 * 1024;
         final long autoAcceptFileSize = getLongPreference(key, defaultSize);
         return autoAcceptFileSize <= 0 ? Optional.empty() : Optional.of(autoAcceptFileSize);
     }
