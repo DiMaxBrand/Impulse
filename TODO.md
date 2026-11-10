@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Automatic download compile fix — beta.348
+
+- Add the missing Android ConnectivityManager import used by the separate Wi-Fi/mobile download policy. Beta 347 failed Java compilation before release creation.
+
 ## Separate automatic media download networks — beta.347
 
 - Incoming automatic downloads have independent Wi-Fi and mobile-data switches and size limits. Both switches default on; Wi-Fi defaults to 50 MiB, mobile data to 5 MiB. The size choices no longer include Never; the network switch controls whether downloads are automatic.
