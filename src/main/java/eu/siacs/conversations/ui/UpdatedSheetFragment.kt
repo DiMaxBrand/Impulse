@@ -98,8 +98,10 @@ class UpdatedSheetFragment : DialogFragment() {
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            if (!title.isNullOrBlank()) {
-                                Text(text = title, style = MaterialTheme.typography.titleLarge)
+                            val language = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
+                            val displayedTitle = eu.siacs.conversations.update.ReleaseText.title(title, language)
+                            if (!displayedTitle.isNullOrBlank()) {
+                                Text(text = displayedTitle, style = MaterialTheme.typography.titleLarge)
                             }
                             ReleaseNotesSection(notes)
                             androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 16.dp))

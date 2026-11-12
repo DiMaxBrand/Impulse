@@ -828,6 +828,8 @@ fun UpdateSheetContent(
     onConfirmInstall: () -> Unit,
     onDownloadCircleTapped: () -> Unit = {},
 ) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val language = configuration.locales[0].language
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -851,7 +853,7 @@ fun UpdateSheetContent(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = state.releaseTitle?.takeIf { it.isNotBlank() } ?: stringResource(R.string.app_name),
+            text = eu.siacs.conversations.update.ReleaseText.title(state.releaseTitle, language)?.takeIf { it.isNotBlank() } ?: stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
         )
@@ -900,8 +902,13 @@ fun UpdateSheetContent(
 // merged shape) — the *panel* is what's being revealed here, not something inside the button.
 @Composable
 internal fun ReleaseNotesSection(releaseNotes: String?, modifier: Modifier = Modifier) {
-    if (releaseNotes.isNullOrBlank()) return
-    var expanded by remember(releaseNotes) { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val language = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
+    val displayedNotes = eu.siacs.conversations.update.ReleaseText.notes(
+        releaseNotes, language, eu.siacs.conversations.utils.SupportAccounts.hasSupportAccount(context),
+    )
+    if (displayedNotes.isNullOrBlank()) return
+    var expanded by remember(displayedNotes) { mutableStateOf(false) }
     val spatialSpring = spring<Float>(stiffness = 380f, dampingRatio = 0.8f)
     val bottomCorner by animateDpAsState(
         targetValue = if (expanded) 8.dp else 28.dp,
@@ -967,8 +974,8 @@ internal fun ReleaseNotesSection(releaseNotes: String?, modifier: Modifier = Mod
                 val codeColor = MaterialTheme.colorScheme.primary
                 val codeBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 Text(
-                    text = remember(releaseNotes, bodyStyle.fontSize, codeColor, codeBackground) {
-                        markdownToAnnotatedString(releaseNotes, bodyStyle.fontSize, codeColor, codeBackground)
+                    text = remember(displayedNotes, bodyStyle.fontSize, codeColor, codeBackground) {
+                        markdownToAnnotatedString(displayedNotes, bodyStyle.fontSize, codeColor, codeBackground)
                     },
                     style = bodyStyle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

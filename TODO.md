@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Localized release notes — beta.352
+
+- Select Russian or English release titles and notes for the app language, and show developer notes in the app only to support accounts. Keep the full GitHub release body for tracking IDs and public access.
+
 ## Add contact help sizing — beta.351
 
 - Give the address help card an explicit screen-aware width and more vertical room for its instructions and actions.
