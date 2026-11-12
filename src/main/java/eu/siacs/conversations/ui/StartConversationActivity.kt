@@ -25,6 +25,7 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -46,6 +47,7 @@ import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.ListItem
 import eu.siacs.conversations.services.QuickConversationsService
 import eu.siacs.conversations.services.XmppConnectionService
+import eu.siacs.conversations.ui.activity.result.ScanQrCode
 import eu.siacs.conversations.ui.interfaces.OnBackendConnected
 import eu.siacs.conversations.ui.util.JidDialog
 import eu.siacs.conversations.ui.util.MenuDoubleTabUtil
@@ -54,6 +56,7 @@ import eu.siacs.conversations.ui.util.SoftKeyboardUtils
 import eu.siacs.conversations.utils.AccountUtils
 import eu.siacs.conversations.utils.CharSequences
 import eu.siacs.conversations.utils.FeatureFlagPreferences
+import eu.siacs.conversations.utils.ScanResultProcessor
 import eu.siacs.conversations.xmpp.Jid
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist
 import eu.siacs.conversations.xmpp.manager.BookmarkManager
@@ -82,6 +85,59 @@ class StartConversationActivity :
 
     override fun openInvite() {
         composeState.inviteRequested.value = true
+    }
+
+    private val contactQrScanner = registerForActivityResult(ScanQrCode()) { scanned ->
+        if (scanned.isNullOrBlank()) return@registerForActivityResult
+        val future = ScanResultProcessor(this).process(scanned)
+        Futures.addCallback(
+            future,
+            object : FutureCallback<MiniUri> {
+                override fun onSuccess(result: MiniUri) {
+                    if (result is MiniUri.Xmpp && result.isAddress()) {
+                        handleJid(Invite(result, null, true, false))
+                    } else {
+                        Toast.makeText(
+                            this@StartConversationActivity,
+                            R.string.invalid_barcode,
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+
+                override fun onFailure(t: Throwable) {
+                    Toast.makeText(
+                        this@StartConversationActivity,
+                        R.string.invalid_barcode,
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            ContextCompat.getMainExecutor(this),
+        )
+    }
+
+    private val requestCameraPermissionForContactQr =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) contactQrScanner.launch(null)
+            else {
+                Toast.makeText(
+                    this,
+                    R.string.qr_code_scanner_needs_access_to_camera,
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+
+    override fun canScanQrCode(): Boolean =
+        packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+
+    override fun scanQrCode() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            contactQrScanner.launch(null)
+        } else {
+            requestCameraPermissionForContactQr.launch(Manifest.permission.CAMERA)
+        }
     }
 
     data class Invite(

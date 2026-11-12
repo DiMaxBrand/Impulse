@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Add contact help — beta.350
+
+- Explain where to find an Impulse address and provide shortcuts to scan a contact QR code, invite someone, or enter an address.
+
 ## Automatic download preference compilation — beta.349
 
 - `BUG` release build failure: the network-specific preference defaults are literal booleans and byte counts, while existing helpers interpret arguments as Android resource IDs. Add literal-default overloads and use long byte-count defaults.

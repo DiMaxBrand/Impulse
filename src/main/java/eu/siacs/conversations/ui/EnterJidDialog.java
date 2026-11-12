@@ -207,17 +207,30 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         popupWindow.setOutsideTouchable(true);
         content.findViewById(R.id.xmpp_address_help_dismiss)
                 .setOnClickListener(v -> popupWindow.dismiss());
+        content.findViewById(R.id.xmpp_address_help_scan_qr).setOnClickListener(
+                v -> {
+                    if (getActivity() instanceof InviteHost host && host.canScanQrCode()) {
+                        popupWindow.dismiss();
+                        dismissAllowingStateLoss();
+                        host.scanQrCode();
+                    }
+                });
+        content.findViewById(R.id.xmpp_address_help_enter_address)
+                .setOnClickListener(v -> popupWindow.dismiss());
         // "Friend not on Impulse yet? Invite them": closes this help card and the Add dialog and
         // brings the Invite card forward. Only offered where the host can actually show it.
         if (getActivity() instanceof InviteHost host && host.canOpenInvite()) {
+            content.findViewById(R.id.xmpp_address_help_invite_section).setVisibility(View.VISIBLE);
             final View inviteLink = content.findViewById(R.id.xmpp_address_help_invite_link);
-            inviteLink.setVisibility(View.VISIBLE);
             inviteLink.setOnClickListener(
                     v -> {
                         popupWindow.dismiss();
                         dismissAllowingStateLoss();
                         host.openInvite();
                     });
+        }
+        if (!(getActivity() instanceof InviteHost host) || !host.canScanQrCode()) {
+            content.findViewById(R.id.xmpp_address_help_scan_qr).setVisibility(View.GONE);
         }
         popupWindow.showAsDropDown(binding.jidLayout);
     }
@@ -230,6 +243,10 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         boolean canOpenInvite();
 
         void openInvite();
+
+        boolean canScanQrCode();
+
+        void scanQrCode();
     }
 
     private void handleEnter(final DialogEnterJidBinding binding, final String account) {
