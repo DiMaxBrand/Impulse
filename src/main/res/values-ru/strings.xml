@@ -2,7 +2,7 @@
 <resources>
     <string name="reply_status_title">Статус ответа</string>
     <string name="reply_status_set">Установить статус ответа</string>
-    <string name="reply_status_working">Занимаюсь</string>
+    <string name="reply_status_working">Делаю</string>
     <string name="reply_status_checking">Проверяю</string>
     <string name="reply_status_waiting">Ожидаю</string>
     <string name="reply_status_clear">Убрать статус</string>

@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Reply status wording — beta.353
+
+- Use «Делаю» for the Russian Working reply status.
+
 ## Localized release notes — beta.352
 
 - Select Russian or English release titles and notes for the app language, and show developer notes in the app only to support accounts. Keep the full GitHub release body for tracking IDs and public access.
