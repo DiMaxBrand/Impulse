@@ -41,7 +41,11 @@ object ReleaseText {
         val structured = sections.containsKey("ru") || sections.containsKey("en")
         val preferred = if (language.equals("ru", ignoreCase = true)) "ru" else "en"
         val main = if (structured) sections[preferred]?.toString().orEmpty() else sections["preamble"]?.toString().orEmpty()
+        val mainWithHeading = main.trim().takeIf { it.isNotEmpty() }?.let {
+            val heading = if (preferred == "ru") "Что нового" else "What's new"
+            "## $heading\n\n$it"
+        }.orEmpty()
         val developer = if (support) listOfNotNull(sections["dev"], sections["generated"]).joinToString("\n") else ""
-        return listOf(main.trim(), developer.trim()).filter { it.isNotEmpty() }.joinToString("\n\n")
+        return listOf(mainWithHeading, developer.trim()).filter { it.isNotEmpty() }.joinToString("\n\n")
     }
 }

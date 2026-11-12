@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Release note headings — beta.354
+
+- Show the localized What's new heading in displayed release notes, while keeping developer notes labeled and visible only for support accounts.
+
 ## Reply status wording — beta.353
 
 - Use «Делаю» for the Russian Working reply status.

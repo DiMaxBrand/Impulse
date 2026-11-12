@@ -6,7 +6,7 @@ These repository instructions apply to Codex and other coding agents working on 
 
 - After completing user-facing fixes or features, compile-check them, bump the beta version and version code, commit and push the changes, then publish the beta through `.github/workflows/release.yml`. Do not leave a completed fix unpublished or ask the user to repeat the release request.
 - Documentation-only changes do not need an APK release. They may accompany a pending user-facing release.
-- Supply the bilingual release title and Russian/English description before dispatching the workflow. Monitor it to completion and verify the published tag and APK asset before reporting success.
+- Supply the bilingual release title and Russian/English description before dispatching the workflow. Do not continuously monitor the run; the user will report a failure. After dispatch, say the release is queued or started as appropriate. Only say it is published when the tag and APK asset have been verified; do not describe an already-started release as "not published yet".
 - Stable releases still require the explicit approval described below. Never treat beta-release authorization as approval for a stable release.
 - At session start and after context compaction, read this file and `TODO.md`. Check the current Git branch, build version and latest published release before making delivery decisions.
 

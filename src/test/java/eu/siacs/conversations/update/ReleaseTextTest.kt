@@ -24,17 +24,18 @@ class ReleaseTextTest {
             ## What's Changed
             Generated changes
         """.trimIndent()
-        assertEquals("Русский текст BUG-1234", ReleaseText.notes(notes, "ru", false))
-        assertEquals("English text BUG-1234", ReleaseText.notes(notes, "de", false))
+        assertEquals("## Что нового\n\nРусский текст BUG-1234", ReleaseText.notes(notes, "ru", false))
+        assertEquals("## What's new\n\nEnglish text BUG-1234", ReleaseText.notes(notes, "de", false))
         val support = ReleaseText.notes(notes, "en", true)!!
         assertTrue(support.contains("Internal detail") && support.contains("Generated changes"))
+        assertTrue(support.contains("## Developer notes"))
         assertFalse(support.contains("Русский текст"))
     }
 
     @Test fun handlesLegacyHeadingsAndUnstructuredBodies() {
         val legacy = "**RU**\nРусский\n\n**EN**\nEnglish\n\n**Developer notes**\nTechnical"
-        assertEquals("English", ReleaseText.notes(legacy, "en", false))
-        assertEquals("Русский", ReleaseText.notes(legacy, "ru", false))
-        assertEquals("Plain notes", ReleaseText.notes("Plain notes\n## Developer notes\nTechnical", "en", false))
+        assertEquals("## What's new\n\nEnglish", ReleaseText.notes(legacy, "en", false))
+        assertEquals("## Что нового\n\nРусский", ReleaseText.notes(legacy, "ru", false))
+        assertEquals("## What's new\n\nPlain notes", ReleaseText.notes("Plain notes\n## Developer notes\nTechnical", "en", false))
     }
 }
