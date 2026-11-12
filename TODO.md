@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Add contact help sizing — beta.351
+
+- Give the address help card an explicit screen-aware width and more vertical room for its instructions and actions.
+
 ## Add contact help — beta.350
 
 - Explain where to find an Impulse address and provide shortcuts to scan a contact QR code, invite someone, or enter an address.

@@ -2,11 +2,13 @@ package eu.siacs.conversations.ui;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -195,10 +197,19 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         final View content =
                 LayoutInflater.from(anchor.getContext())
                         .inflate(R.layout.popup_xmpp_address_help, null);
+        final Rect visibleFrame = new Rect();
+        anchor.getWindowVisibleDisplayFrame(visibleFrame);
+        final float density = anchor.getResources().getDisplayMetrics().density;
+        final int margin = (int) (16 * density);
+        final int width = Math.max(1, Math.min((int) (480 * density), visibleFrame.width() - 2 * margin));
+        final View scroll = content.findViewById(R.id.xmpp_address_help_scroll);
+        final ViewGroup.LayoutParams scrollParams = scroll.getLayoutParams();
+        scrollParams.height = Math.max(1, Math.min((int) (400 * density), visibleFrame.height() - (int) (140 * density)));
+        scroll.setLayoutParams(scrollParams);
         final PopupWindow popupWindow =
                 new PopupWindow(
                         content,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        width,
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                         true);
         // Transparent popup background so the card's own rounded corners and elevation shadow
@@ -232,7 +243,7 @@ public class EnterJidDialog extends DialogFragment implements OnBackendConnected
         if (!(getActivity() instanceof InviteHost host) || !host.canScanQrCode()) {
             content.findViewById(R.id.xmpp_address_help_scan_qr).setVisibility(View.GONE);
         }
-        popupWindow.showAsDropDown(binding.jidLayout);
+        popupWindow.showAtLocation(anchor, Gravity.CENTER, 0, 0);
     }
 
     /**
