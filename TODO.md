@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Message layout comparison — beta.362
+
+- Slightly mute timestamps and neutral metadata. Add an off-by-default developer flag for the pre-beta-357 message and reaction layout.
+
 ## Multiline edit animation — beta.361
 
 - Preserve per-character edit animation while keeping multiline text in one paragraph for word wrapping and explicit line breaks.

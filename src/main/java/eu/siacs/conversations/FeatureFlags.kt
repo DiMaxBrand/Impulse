@@ -18,6 +18,12 @@ enum class FeatureFlag(
     /** Who has the flag on while nobody has set it by hand: see [FlagAudience]. */
     val audience: FlagAudience,
 ) {
+    LEGACY_MESSAGE_LAYOUT(
+        key = "legacy_message_layout",
+        titleRes = R.string.feature_flag_legacy_message_layout_title,
+        descriptionRes = R.string.feature_flag_legacy_message_layout_description,
+        audience = FlagAudience.Nobody,
+    ),
     /** Gates the "Invite" entry in Start Chat's "+" menu (invite a contact by sharing a direct
      * download link to the latest stable release's arm64 APK). Graduated to ON by default now that
      * a stable release exists for the link to resolve against -- see

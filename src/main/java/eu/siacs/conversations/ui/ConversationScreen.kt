@@ -2237,6 +2237,19 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     topInset: Dp = 0.dp,
 ) {
     val revision = state.revision.intValue
+    val legacyFlagContext = LocalContext.current
+    val flagPreferences = remember(legacyFlagContext) { eu.siacs.conversations.utils.FeatureFlagPreferences(legacyFlagContext) }
+    val flag = eu.siacs.conversations.FeatureFlag.LEGACY_MESSAGE_LAYOUT
+    var legacyMessageLayout by remember(flagPreferences) { mutableStateOf(flagPreferences.isEnabled(flag)) }
+    DisposableEffect(flagPreferences, legacyFlagContext) {
+        val store = legacyFlagContext.getSharedPreferences("feature_flag_prefs", android.content.Context.MODE_PRIVATE)
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == null || key == flag.key) legacyMessageLayout = flagPreferences.isEnabled(flag)
+        }
+        store.registerOnSharedPreferenceChangeListener(listener)
+        legacyMessageLayout = flagPreferences.isEnabled(flag)
+        onDispose { store.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     val trackSendGeometry = rememberLiquidGlassEnabled() && AppearanceState.fullEffects
     // Compute items in composable scope, not in derivedStateOf. derivedStateOf suppresses
     // recomposition when the result is structurally equal — same Message instances produce equal
@@ -2926,6 +2939,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                     is ChatItem.Msg ->
                         MessageRow(
                             item = item,
+                            legacyMessageLayout = legacyMessageLayout,
                             isNewest = !jumping && index == 0,
                             highlighted = item.key == highlightKey,
                             isBeingEdited = state.correcting.value?.getUuid() == item.message.getUuid()
@@ -2948,6 +2962,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                         val groupUuids = item.messages.mapNotNull { it.getUuid() }
                         MediaGroupRow(
                             item = item,
+                            legacyMessageLayout = legacyMessageLayout,
                             revision = revision,
                             highlighted = highlightKey != null && groupUuids.contains(highlightKey),
                             listener = listener,
@@ -3500,6 +3515,7 @@ private object NoRippleIndicationNodeFactory : androidx.compose.foundation.Indic
 @Composable
 private fun MessageRow(
     item: ChatItem.Msg,
+    legacyMessageLayout: Boolean,
     isNewest: Boolean,
     highlighted: Boolean,
     isBeingEdited: Boolean,
@@ -3708,6 +3724,7 @@ private fun MessageRow(
             }
             MessageBubble(
                 item = item,
+                legacyMessageLayout = legacyMessageLayout,
                 onFooterBounds = { footerBounds = it },
                 rowModifier = if (showOwnAvatar) Modifier.weight(1f, fill = false) else Modifier,
                 outgoing = outgoing,
@@ -3745,13 +3762,22 @@ private fun MessageRow(
             listener = listener,
             modifier = Modifier
                 .fillMaxWidth()
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    val lift = reactionLift.roundToPx()
-                    layout(placeable.width, (placeable.height - lift).coerceAtLeast(0)) {
-                        placeable.placeRelative(0, -lift)
+                .then(
+                    if (legacyMessageLayout && atEnd) Modifier.offset(y = (-8).dp)
+                    else if (legacyMessageLayout) Modifier.layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        val lift = 18.dp.roundToPx()
+                        layout(placeable.width, (placeable.height - lift).coerceAtLeast(0)) {
+                            placeable.placeRelative(0, -lift)
+                        }
+                    } else Modifier.layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        val lift = reactionLift.roundToPx()
+                        layout(placeable.width, (placeable.height - lift).coerceAtLeast(0)) {
+                            placeable.placeRelative(0, -lift)
+                        }
                     }
-                }
+                )
                 .padding(
                     start = if (atEnd) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 15.dp,
                     end = if (atEnd) (if (showOwnAvatar) 10.dp + 38.dp else 10.dp) else 48.dp,
@@ -3829,6 +3855,7 @@ internal fun groupStatusRepresentative(messages: List<Message>): Message {
 @Composable
 private fun MediaGroupRow(
     item: ChatItem.MediaGroup,
+    legacyMessageLayout: Boolean,
     revision: Int,
     highlighted: Boolean = false,
     listener: ConversationScreenListener,
@@ -4010,6 +4037,7 @@ private fun MediaGroupRow(
                         }
                         MessageFooter(
                             message = caption ?: messages.last(),
+                            legacyMessageLayout = legacyMessageLayout,
                             outgoing = outgoing,
                             revision = revision,
                             statusMessage = remember(revision) { groupStatusRepresentative(messages) },
@@ -4659,6 +4687,7 @@ private fun ReactionChips(
 @Composable
 private fun MessageBubble(
     item: ChatItem.Msg,
+    legacyMessageLayout: Boolean,
     rowModifier: Modifier = Modifier,
     onFooterBounds: (Pair<Float, Float>) -> Unit = {},
     outgoing: Boolean,
@@ -4725,7 +4754,7 @@ private fun MessageBubble(
     }
     var morphSettled by remember(item.key) { mutableStateOf(false) }
     val showMorph = morphEligible && !morphSettled
-    val inlineStatus = !showMorph && !isBeingEdited && !message.isFileOrImage &&
+    val inlineStatus = !legacyMessageLayout && !showMorph && !isBeingEdited && !message.isFileOrImage &&
         !message.isDeleted && !message.isGeoUri && !message.treatAsDownloadable() &&
         !message.bodyIsOnlyEmojis() && message.transferable == null &&
         message.encryption != Message.ENCRYPTION_PGP &&
@@ -4792,7 +4821,7 @@ private fun MessageBubble(
                             start = (if (fittedMedia) 4.dp else 12.dp) + if (hasTail && !alignEnd) TAIL_WIDTH else 0.dp,
                             end = (if (fittedMedia) 4.dp else 12.dp) + if (hasTail && alignEnd) TAIL_WIDTH else 0.dp,
                             top = if (fittedMedia) 4.dp else 8.dp,
-                            bottom = 8.dp,
+                            bottom = if (legacyMessageLayout && message.reactions.isNotEmpty()) 20.dp else 8.dp,
                         )
             ) {
                 val repliedToId = message.getRepliedTo()
@@ -4820,7 +4849,7 @@ private fun MessageBubble(
                 } else if (inlineStatus) {
                     TextWithMessageStatus(
                         message, revision, contentColor, { onLongPress(message) },
-                        footer = { Column { MessageFooter(message, outgoing, revision, onHorizontalBounds = onFooterBounds) } },
+                        footer = { Column { MessageFooter(message, outgoing, revision, legacyMessageLayout = legacyMessageLayout, onHorizontalBounds = onFooterBounds) } },
                     )
                 } else {
                     MessageContent(
@@ -4862,6 +4891,7 @@ private fun MessageBubble(
                     if (!isBeingEdited && !inlineStatus) {
                         MessageFooter(
                             message = caption ?: message,
+                            legacyMessageLayout = legacyMessageLayout,
                             outgoing = outgoing,
                             revision = revision,
                             statusMessage = message,
@@ -5892,6 +5922,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     message: Message,
     outgoing: Boolean,
     revision: Int,
+    legacyMessageLayout: Boolean = false,
     // Drives the status icon/checkmark only — [message] itself still drives the time/size text.
     // Defaults to [message] so every single-message call site is unaffected; a grid tile passes
     // in its own "weakest link" representative instead (see groupStatusRepresentative) so the
@@ -6044,7 +6075,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
         Text(
             text = footerText,
             style = MaterialTheme.typography.labelSmall,
-            color = onSurfaceVariant,
+            color = if (legacyMessageLayout) onSurfaceVariant else onSurfaceVariant.copy(alpha = 0.8f),
         )
         if (message.edited()) {
             Spacer(Modifier.width(4.dp))

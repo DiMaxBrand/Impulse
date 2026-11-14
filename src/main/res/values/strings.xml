@@ -1474,6 +1474,8 @@
     <string name="feature_flag_emergency_mode_forced_title">Force emergency mode</string>
     <string name="feature_flag_emergency_mode_forced_description">For experiments: keeps emergency mode on whatever the connection is doing (needs Emergency mode on too). Applies at the next account status change, e.g. a reconnect.</string>
     <string name="feature_flag_emergency_mode_title">Emergency mode</string>
+    <string name="feature_flag_legacy_message_layout_title">Previous message layout</string>
+    <string name="feature_flag_legacy_message_layout_description">Experimental comparison with the pre-beta-357 message and reaction layout. Off by default.</string>
     <string name="feature_flag_emergency_mode_description">On a bad connection (server not found / connection timeout), automatically stops fetching new avatars and auto-downloading media — text messages keep working</string>
     <string name="invite_title">Invite</string>
     <string name="invite_play_protect_note">Play Protect will pop up asking to verify the app before installing — that\'s expected, not a warning. It scans the file, confirms it\'s safe, and lets the install continue.</string>
