@@ -909,12 +909,13 @@ public class MessageParser extends AbstractParser
                 // reflection happens to be processed too, which isn't guaranteed — e.g. abandoning
                 // an edit by navigating away instead of explicitly cancelling never sends one.
                 final boolean isOwnReflection =
-                        conv != null
+                        from.asBareJid().equals(account.getJid().asBareJid())
+                                || (conv != null
                                 && conv.getMode()
                                         == eu.siacs.conversations.entities.Conversation.MODE_MULTI
                                 && getManager(MultiUserChatManager.class)
                                         .getOrCreateState(conv)
-                                        .isSelf(from);
+                                        .isSelf(from));
                 if (!isOwnReflection) {
                     // editingId is the sender's remoteMsgId. Resolve it to the local UUID so the
                     // receiver's UI can look it up by its own message UUID.

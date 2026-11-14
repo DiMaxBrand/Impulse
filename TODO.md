@@ -1,5 +1,10 @@
 # Impulse — To-Do
 
+## Multiline edit animation — beta.361
+
+- Preserve per-character edit animation while keeping multiline text in one paragraph for word wrapping and explicit line breaks.
+- Ignore reflected self-account editing indicators and clear stale Saved Messages editing flags.
+
 ## Single-line status placement — beta.360
 
 - Allow a taller status footer to share a single text line while retaining the multiline overlap guard.

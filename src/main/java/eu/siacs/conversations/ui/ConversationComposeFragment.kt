@@ -644,10 +644,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         // Sync remote-editing indicators: in-memory map (live) OR persisted DB flag (survives navigation)
         val service = getXmppConnectionService()
         val indicators = service?.remoteEditingIndicators
+        val selfChat = c.getMode() == Conversational.MODE_SINGLE &&
+            c.getAddress().asBareJid() == c.getAccount().jid.asBareJid()
         for (msg in list) {
             val uuid = msg.getUuid() ?: continue
             val active = indicators?.get(uuid) == true || msg.isRemoteEditing()
-            state.setRemoteEditing(uuid, active)
+            if (selfChat && active) service?.updateRemoteEditingIndicator(uuid, false)
+            state.setRemoteEditing(uuid, active && !selfChat)
         }
         refreshPinned()
     }
@@ -1956,6 +1959,8 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private fun sendEditingStanza(message: Message, action: String) {
         val service = getXmppConnectionService() ?: return
         val c = message.conversation as? Conversation ?: return
+        if (c.getMode() == Conversational.MODE_SINGLE &&
+            c.getAddress().asBareJid() == c.getAccount().jid.asBareJid()) return
         val packet = im.conversations.android.xmpp.model.stanza.Message()
         packet.setFrom(c.getAccount().jid)
         if (c.getMode() == eu.siacs.conversations.entities.Conversational.MODE_SINGLE) {

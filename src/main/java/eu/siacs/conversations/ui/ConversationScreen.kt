@@ -7589,6 +7589,55 @@ private fun MorphingMessageText(
         onSettled()
     }
     val canBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints {
+    val textStyle = androidx.compose.ui.text.TextStyle(fontSize = (16f * AppearanceState.textScale).sp, color = contentColor)
+    val maxWidthPx = with(density) { maxWidth.roundToPx() }.coerceAtLeast(1)
+    val textConstraints = androidx.compose.ui.unit.Constraints(maxWidth = maxWidthPx)
+    val multiline = remember(old, new, textStyle, maxWidthPx) {
+        textMeasurer.measure(old, style = textStyle, constraints = textConstraints).lineCount > 1 ||
+            textMeasurer.measure(new, style = textStyle, constraints = textConstraints).lineCount > 1
+    }
+    if (multiline) {
+        // Keep one paragraph so the text engine owns wrapping, shaping and explicit newlines.
+        // Animate the inserted/removed spans instead of placing each character in a FlowRow.
+        val progress = ops.mapIndexed { index, op ->
+            when (op) {
+                is MorphOp.Keep -> 1f
+                else -> androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = when (op) {
+                        is MorphOp.Insert -> if (revealedStates[index].value) 1f else 0f
+                        is MorphOp.Remove -> if (revealedStates[index].value) 0f else 1f
+                        else -> 1f
+                    },
+                    animationSpec = tween(durationMs),
+                    label = "multilineEditCharacter$index",
+                ).value
+            }
+        }
+        val paragraph = androidx.compose.ui.text.buildAnnotatedString {
+            ops.forEachIndexed { index, op ->
+                val cp = when (op) {
+                    is MorphOp.Keep -> op.codePoint
+                    is MorphOp.Insert -> op.codePoint
+                    is MorphOp.Remove -> op.codePoint
+                }
+                val fraction = progress[index].coerceIn(0f, 1f)
+                if (cp != '\n'.code || op is MorphOp.Keep || fraction >= 0.5f) {
+                    if (op !is MorphOp.Keep && cp != '\n'.code) {
+                        pushStyle(androidx.compose.ui.text.SpanStyle(
+                            fontSize = (16f * AppearanceState.textScale * fraction.coerceAtLeast(0.001f)).sp,
+                            color = contentColor.copy(alpha = contentColor.alpha * fraction),
+                        ))
+                    }
+                    append(String(Character.toChars(cp)))
+                    if (op !is MorphOp.Keep && cp != '\n'.code) pop()
+                }
+            }
+        }
+        androidx.compose.foundation.text.BasicText(text = paragraph, style = textStyle)
+    } else {
     androidx.compose.foundation.layout.FlowRow(
         horizontalArrangement = Arrangement.spacedBy(0.dp),
     ) {
@@ -7598,7 +7647,7 @@ private fun MorphingMessageText(
                     Text(
                         text = String(Character.toChars(op.codePoint)),
                         color = contentColor,
-                        fontSize = 16.sp,
+                        fontSize = (16f * AppearanceState.textScale).sp,
                     )
                 }
                 is MorphOp.Remove -> {
@@ -7635,7 +7684,7 @@ private fun MorphingMessageText(
                         Text(
                             text = String(Character.toChars(op.codePoint)),
                             color = contentColor,
-                            fontSize = 16.sp,
+                            fontSize = (16f * AppearanceState.textScale).sp,
                         )
                     }
                 }
@@ -7669,13 +7718,15 @@ private fun MorphingMessageText(
                         Text(
                             text = String(Character.toChars(op.codePoint)),
                             color = contentColor,
-                            fontSize = 16.sp,
+                            fontSize = (16f * AppearanceState.textScale).sp,
                             modifier = if (canBlur && insertBlur > 0.dp) Modifier.blur(insertBlur) else Modifier,
                         )
                     }
                 }
             }
         }
+    }
+    }
     }
 }
 
