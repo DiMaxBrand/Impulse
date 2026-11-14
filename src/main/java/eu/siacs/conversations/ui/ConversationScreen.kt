@@ -5639,14 +5639,17 @@ private fun MediaThumbnailBubble(
         }
     } else null
 
-    val cachedBitmap = ThumbnailCache.get(uuid)
+    val rawRatio = aspectRatio.coerceAtLeast(0.01f)
+    val cropScale = if (message.mimeType == "application/pdf") 1f else maxOf(1f, 0.75f / rawRatio)
+    val sizePx = with(LocalDensity.current) { (280.dp.toPx() * cropScale).toInt().coerceAtMost(2048) }
+    val thumbnailKey = uuid?.let { "$it#bubble#$sizePx" }
+    val cachedBitmap = ThumbnailCache.get(thumbnailKey)
     if (cachedBitmap == null && fileBackend != null) {
-        val sizePx = with(LocalDensity.current) { 280.dp.toPx() }.toInt()
         // For video, this bubble draws its own animated play affordance below, so the baked-in
         // overlay FileBackend normally adds would double up — suppressed. PDFs have no Compose-
         // native overlay of their own here, so they still need the baked-in "open PDF" watermark
         // to read as a document rather than a photo; only video opts out.
-        LaunchedEffect(uuid) {
+        LaunchedEffect(thumbnailKey) {
             val bm = withContext(Dispatchers.IO) {
                 try {
                     fileBackend.getThumbnail(message, sizePx, false, !isVideo)
@@ -5654,7 +5657,7 @@ private fun MediaThumbnailBubble(
                     null
                 }
             }
-            if (bm != null) ThumbnailCache.put(uuid, bm.asImageBitmap())
+            if (bm != null) ThumbnailCache.put(thumbnailKey, bm.asImageBitmap())
         }
     }
 
@@ -7685,18 +7688,18 @@ private fun TextWithMessageStatus(
     footer: @Composable () -> Unit,
 ) {
     // Keep the latest actual text layout without scheduling a second composition/visible jump.
-    val textLayout = remember(message.getUuid()) { arrayOfNulls<androidx.compose.ui.text.TextLayoutResult>(1) }
+    val textLayout = remember(message.getUuid()) { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
     androidx.compose.ui.layout.Layout(
         content = {
             LinkifiedMessageText(message, revision, contentColor, onLongPress,
-                onTextLayout = { textLayout[0] = it })
+                onTextLayout = { textLayout.value = it })
             Box { footer() }
         },
     ) { measurables, constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
         val text = measurables[0].measure(loose)
         val status = measurables[1].measure(loose)
-        val result = textLayout[0]
+        val result = textLayout.value
         val last = (result?.lineCount ?: 1) - 1
         val lastRight = result?.getLineRight(last) ?: text.width.toFloat()
         val lastBottom = result?.getLineBottom(last) ?: text.height.toFloat()

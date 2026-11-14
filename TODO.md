@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Thumbnail clarity and text status — beta.359
+
+- Decode cropped previews at a suitable resolution with a separate cache key, and remeasure message status placement when the text layout becomes available. Long-distance navigation still needs a fully prepared viewport transition.
+
 ## Scroll transition overlap — beta.358
 
 - Suppress message placement animations during button-driven navigation, scrolling, and the first settled frames after a history-window swap.
