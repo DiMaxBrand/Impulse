@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Single-line status placement — beta.360
+
+- Allow a taller status footer to share a single text line while retaining the multiline overlap guard.
+
 ## Thumbnail clarity and text status — beta.359
 
 - Decode cropped previews at a suitable resolution with a separate cache key, and remeasure message status placement when the text layout becomes available. Long-distance navigation still needs a fully prepared viewport transition.

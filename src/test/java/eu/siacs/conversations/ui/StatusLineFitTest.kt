@@ -11,6 +11,13 @@ class StatusLineFitTest {
         assertEquals(6, fit.statusY)
     }
 
+    @Test fun singleLineCanShareWithATallerFooter() {
+        val fit = fitStatusLine(15, 18, 15f, 0f, 18f, 60, 24, 300, 8, false, 0f)
+        assertEquals(83, fit.width)
+        assertEquals(0, fit.statusY)
+        assertEquals(6, fit.textY)
+    }
+
     @Test fun shortLastLineSharesButAnEditedLabelCanPushTheFooterBelow() {
         val fits = fitStatusLine(300, 48, 210f, 24f, 48f, 82, 18, 300, 8, false, 0f)
         val edited = fitStatusLine(300, 48, 210f, 24f, 48f, 83, 18, 300, 8, false, 0f)

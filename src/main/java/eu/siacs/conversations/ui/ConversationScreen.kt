@@ -7710,9 +7710,9 @@ private fun TextWithMessageStatus(
             status.width, status.height, constraints.maxWidth, gap, rtl, 2.dp.toPx())
         val width = constraints.constrainWidth(fit.width)
         val statusY = fit.statusY
-        val height = constraints.constrainHeight(maxOf(text.height, statusY + status.height))
+        val height = constraints.constrainHeight(maxOf(text.height + fit.textY, statusY + status.height))
         layout(width, height) {
-            text.placeRelative(0, 0)
+            text.placeRelative(0, fit.textY)
             status.placeRelative(width - status.width, statusY)
         }
     }
