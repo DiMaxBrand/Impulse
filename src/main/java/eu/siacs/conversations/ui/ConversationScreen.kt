@@ -4689,6 +4689,10 @@ private fun MessageBubble(
             else -> MaterialTheme.colorScheme.onSurface
         }
 
+    val fittedMedia = hasBubbleThumbnailPreview(message) &&
+        (message.mimeType?.startsWith("image/") == true || message.mimeType?.startsWith("video/") == true)
+    val previewRatio = (message.fileParams.width.toFloat() / message.fileParams.height.coerceAtLeast(1)).coerceIn(0.75f, 4f)
+    val mediaWidth = minOf(280f, 310f * previewRatio).dp
     val hasTail = item.lastOfGroup
     val newBody = message.body ?: ""
     // Plain text only, both sides short enough to bound computeMorphOps' O(n*m) table, and
@@ -4755,7 +4759,8 @@ private fun MessageBubble(
             contentColor = contentColor,
             modifier = launchModifier
                 .animatedSize(animateSizes && !launchingMessage)
-                .widthIn(max = if (hasTail) 320.dp + TAIL_WIDTH else 320.dp)
+                .then(if (fittedMedia) Modifier.width(mediaWidth + 8.dp + if (hasTail) TAIL_WIDTH else 0.dp)
+                    else Modifier.widthIn(max = if (hasTail) 320.dp + TAIL_WIDTH else 320.dp))
                 .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius) else Modifier),
         ) {
             Column(
@@ -4769,9 +4774,9 @@ private fun MessageBubble(
                             onLongClick = { onLongPress(message) },
                         )
                         .padding(
-                            start = if (hasTail && !alignEnd) 12.dp + TAIL_WIDTH else 12.dp,
-                            end = if (hasTail && alignEnd) 12.dp + TAIL_WIDTH else 12.dp,
-                            top = 8.dp,
+                            start = (if (fittedMedia) 4.dp else 12.dp) + if (hasTail && !alignEnd) TAIL_WIDTH else 0.dp,
+                            end = (if (fittedMedia) 4.dp else 12.dp) + if (hasTail && alignEnd) TAIL_WIDTH else 0.dp,
+                            top = if (fittedMedia) 4.dp else 8.dp,
                             // Reaction chips are drawn over the bubble's lower edge; this extra room
                             // keeps them off the time/status line (the chip may cover bubble, never
                             // content).
@@ -4827,24 +4832,26 @@ private fun MessageBubble(
                         }
                     }
                 }
-                val caption = item.caption
-                if (caption != null) {
-                    CaptionBlock(
-                        caption = caption,
-                        revision = revision,
-                        contentColor = contentColor,
-                        onLongPress = { onLongPress(caption) },
-                    )
-                }
-                if (!isBeingEdited) {
-                    MessageFooter(
-                        message = caption ?: message,
-                        outgoing = outgoing,
-                        revision = revision,
-                        statusMessage = message,
-                        groupMessages = if (caption != null) listOf(message) else null,
-                        caption = caption,
-                    )
+                Column(modifier = Modifier.align(Alignment.End).then(if (fittedMedia) Modifier.fillMaxWidth().padding(horizontal = 8.dp) else Modifier)) {
+                    val caption = item.caption
+                    if (caption != null) {
+                        CaptionBlock(
+                            caption = caption,
+                            revision = revision,
+                            contentColor = contentColor,
+                            onLongPress = { onLongPress(caption) },
+                        )
+                    }
+                    if (!isBeingEdited) {
+                        MessageFooter(
+                            message = caption ?: message,
+                            outgoing = outgoing,
+                            revision = revision,
+                            statusMessage = message,
+                            groupMessages = if (caption != null) listOf(message) else null,
+                            caption = caption,
+                        )
+                    }
                 }
             }
         }
@@ -4995,6 +5002,7 @@ private fun MessageContent(
                 DownloadingMediaPlaceholder(
                     progress = animatedProgress,
                     aspectRatio = fp.width.toFloat() / fp.height.toFloat(),
+                    cropPreview = message.mimeType?.startsWith("image/") == true || message.mimeType?.startsWith("video/") == true,
                 )
             } else {
                 Column(modifier = Modifier.widthIn(min = 160.dp, max = 240.dp)) {
@@ -5567,12 +5575,12 @@ private fun CompressingVideoPlaceholder(progress: Float) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DownloadingMediaPlaceholder(progress: Float, aspectRatio: Float) {
+private fun DownloadingMediaPlaceholder(progress: Float, aspectRatio: Float, cropPreview: Boolean = false) {
     val primary = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
-            .widthIn(max = 280.dp)
-            .aspectRatio(aspectRatio.coerceIn(0.25f, 4f))
+            .then(if (cropPreview) Modifier.fillMaxWidth() else Modifier.widthIn(max = 280.dp))
+            .aspectRatio(aspectRatio.coerceIn(if (cropPreview) 0.75f else 0.25f, 4f))
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
@@ -5650,9 +5658,9 @@ private fun MediaThumbnailBubble(
 
     Box(
         modifier = Modifier
-            .widthIn(max = 280.dp)
-            .heightIn(max = 310.dp)
-            .aspectRatio(aspectRatio.coerceIn(0.25f, 4f))
+            .then(if (message.mimeType == "application/pdf") Modifier.widthIn(max = 280.dp).heightIn(max = 310.dp)
+                else Modifier.fillMaxWidth())
+            .aspectRatio(aspectRatio.coerceIn(if (message.mimeType == "application/pdf") 0.25f else 0.75f, 4f))
             .clip(RoundedCornerShape(12.dp))
             .let { base ->
                 if (onOpen != null) {
@@ -5665,6 +5673,14 @@ private fun MediaThumbnailBubble(
             AndroidView(
                 factory = { ctx ->
                     TextureView(ctx).apply {
+                        fun updatePreviewCrop(mp: MediaPlayer) {
+                            if (width <= 0 || height <= 0 || mp.videoWidth <= 0 || mp.videoHeight <= 0) return
+                            val scale = maxOf(width.toFloat() / mp.videoWidth, height.toFloat() / mp.videoHeight)
+                            setTransform(android.graphics.Matrix().apply {
+                                setScale(scale * mp.videoWidth / width, scale * mp.videoHeight / height,
+                                    width / 2f, height / 2f)
+                            })
+                        }
                         surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                             override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
                                 val mp = MediaPlayer()
@@ -5674,13 +5690,15 @@ private fun MediaThumbnailBubble(
                                     mp.setVolume(0f, 0f)
                                     mp.isLooping = true
                                     mp.prepareAsync()
-                                    mp.setOnPreparedListener { it.start() }
+                                    mp.setOnPreparedListener { updatePreviewCrop(it); it.start() }
                                     playerRef.value = mp
                                 } catch (_: Exception) {
                                     mp.release()
                                 }
                             }
-                            override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {}
+                            override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {
+                                playerRef.value?.let { updatePreviewCrop(it) }
+                            }
                             override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
                                 val mp = playerRef.value
                                 playerRef.value = null

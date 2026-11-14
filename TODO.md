@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Captioned media sizing — beta.356
+
+- Size single photo/video bubbles from the preview and wrap captions inside that width. Use a centered crop for very tall previews, a narrow media frame and consistent downloading proportions; retain the full image in the viewer.
+
 ## Message avatars — beta.355
 
 - Reserve space for outgoing avatars beside wide message bubbles and media groups, and clarify the incoming/outgoing avatar switches.
