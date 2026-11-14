@@ -2282,6 +2282,17 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     val items = jumpWindow ?: fullItems
     val jumping = jumpWindow != null
     val listState = androidx.compose.runtime.key(conversation?.getUuid()) { rememberLazyListState() }
+    var rowAnimationsReady by remember(conversation?.getUuid()) { mutableStateOf(false) }
+    var navigationEpoch by remember(conversation?.getUuid()) { mutableIntStateOf(0) }
+    val listScrolling by remember(listState) { androidx.compose.runtime.derivedStateOf { listState.isScrollInProgress } }
+    LaunchedEffect(jumping, listScrolling, state.requestScrollToUuid.value, navigationEpoch) {
+        rowAnimationsReady = false
+        if (!jumping && !listScrolling && state.requestScrollToUuid.value == null) {
+            androidx.compose.runtime.withFrameNanos { }
+            androidx.compose.runtime.withFrameNanos { }
+            rowAnimationsReady = true
+        }
+    }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     // Declared here (not down by the effect that actually sets it) so the onScrolledToBottom
     // effect below can gate on it too -- see that effect's own comment for why it has to.
@@ -2569,6 +2580,8 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     var scrollRequest by remember { mutableStateOf<Pair<Int, Float>?>(null) }
     var scrollNonce by remember { mutableIntStateOf(0) }
     fun requestScroll(index: Int, offsetFraction: Float) {
+        rowAnimationsReady = false
+        navigationEpoch++
         scrollRequest = index to offsetFraction
         scrollNonce++
     }
@@ -2791,6 +2804,8 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         val preview = navigationWindowIndices(fullItems.size, origin, target).map { fullItems[it] }
         val compactTarget = preview.indexOfFirst { contains(it, scrollToUuid) }
         try {
+            rowAnimationsReady = false
+            navigationEpoch++
             jumpWindow = preview
             // Match item keys, not just counts: a same-size list may still be the old layout.
             snapshotFlow {
@@ -2896,7 +2911,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 val riskyVideoUpload = item is ChatItem.Msg &&
                     item.message.mimeType?.startsWith("video/") == true &&
                     item.message.transferable?.getStatus() == eu.siacs.conversations.entities.Transferable.STATUS_UPLOADING
-                val baseItemModifier = if (riskyVideoUpload || jumping || state.sendLaunches.flights.isNotEmpty()) {
+                val baseItemModifier = if (riskyVideoUpload || jumping || listScrolling || !rowAnimationsReady || state.requestScrollToUuid.value != null || state.sendLaunches.flights.isNotEmpty()) {
                     Modifier.animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
                 } else {
                     Modifier.animateItem()

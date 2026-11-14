@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Scroll transition overlap — beta.358
+
+- Suppress message placement animations during button-driven navigation, scrolling, and the first settled frames after a history-window swap.
+
 ## Dynamic text/status layout — beta.357
 
 - Measure the final line and complete status footer together: share the final line when possible, widen short bubbles within their limit, and use a separate footer line when needed. Specialized content retains its existing footer layout.
