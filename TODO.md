@@ -1,5 +1,10 @@
 # Impulse — To-Do
 
+## Dynamic text/status layout — beta.357
+
+- Measure the final line and complete status footer together: share the final line when possible, widen short bubbles within their limit, and use a separate footer line when needed. Specialized content retains its existing footer layout.
+- Remove unconditional extra bubble padding for reactions. Measure the reaction row against the footer's horizontal bounds to choose attachment or separate placement.
+
 ## Captioned media sizing — beta.356
 
 - Size single photo/video bubbles from the preview and wrap captions inside that width. Use a centered crop for very tall previews, a narrow media frame and consistent downloading proportions; retain the full image in the viewer.

@@ -53,6 +53,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.unit.constrainWidth
+import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -3504,6 +3506,10 @@ private fun MessageRow(
     launches: SendLaunchState? = null,
     modifier: Modifier = Modifier,
 ) {
+    var footerBounds by remember(item.key) { mutableStateOf<Pair<Float, Float>?>(null) }
+    var reactionBounds by remember(item.key) { mutableStateOf<Pair<Float, Float>?>(null) }
+    val reactionLift = if (footerBounds != null && reactionBounds != null &&
+        (reactionBounds!!.second + 6 < footerBounds!!.first || reactionBounds!!.first > footerBounds!!.second + 6)) 6.dp else (-4).dp
     val message = item.message
     val outgoing = message.status != Message.STATUS_RECEIVED
     val isGroupChat = message.getConversation().getMode() == Conversational.MODE_MULTI
@@ -3687,6 +3693,7 @@ private fun MessageRow(
             }
             MessageBubble(
                 item = item,
+                onFooterBounds = { footerBounds = it },
                 rowModifier = if (showOwnAvatar) Modifier.weight(1f, fill = false) else Modifier,
                 outgoing = outgoing,
                 alignEnd = atEnd,
@@ -3715,6 +3722,7 @@ private fun MessageRow(
             }
         }
         ReactionChips(
+            onHorizontalBounds = { reactionBounds = it },
             message = message,
             outgoing = outgoing,
             alignEnd = atEnd,
@@ -3722,36 +3730,13 @@ private fun MessageRow(
             listener = listener,
             modifier = Modifier
                 .fillMaxWidth()
-                // Outgoing is untouched — pulled up closer to the bubble (colors are distinct
-                // enough — tertiaryContainer/secondaryContainer vs. the bubble's own
-                // primaryContainer — that the breathing room isn't needed), plain offset(),
-                // exactly as it was before this file's other reaction-chip changes. Only
-                // incoming gets the layout-reclaim treatment: a plain offset() shifts where
-                // something is drawn without shrinking the space it reserves in the parent
-                // Column, so pulling it up into the bubble above just relocates the gap to
-                // below the chip instead of removing it. Reporting a shorter measured height
-                // while still placing the content at the shifted position reclaims that space.
-                //
-                // Incoming also needs to lift further than outgoing for a real (not just
-                // magnitude) reason: MessageFooter is unconditionally right-aligned regardless
-                // of direction. Outgoing's End-aligned chips land right on/next to that footer
-                // content, so the overlap reads as clearly attached. Incoming's Start-aligned
-                // chips overlap the bubble's bottom-left corner instead, which has no content
-                // in it at all — the same geometric overlap looks emptier there because there's
-                // nothing to visually anchor it to.
-                .then(
-                    if (atEnd) {
-                        Modifier.offset(y = (-8).dp)
-                    } else {
-                        Modifier.layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints)
-                            val liftPx = (-18).dp.roundToPx()
-                            layout(placeable.width, (placeable.height + liftPx).coerceAtLeast(0)) {
-                                placeable.placeRelative(0, liftPx)
-                            }
-                        }
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    val lift = reactionLift.roundToPx()
+                    layout(placeable.width, (placeable.height - lift).coerceAtLeast(0)) {
+                        placeable.placeRelative(0, -lift)
                     }
-                )
+                }
                 .padding(
                     start = if (atEnd) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 15.dp,
                     end = if (atEnd) (if (showOwnAvatar) 10.dp + 38.dp else 10.dp) else 48.dp,
@@ -4472,14 +4457,20 @@ private fun ReactionChips(
     revision: Int,
     listener: ConversationScreenListener,
     modifier: Modifier = Modifier,
+    onHorizontalBounds: (Pair<Float, Float>) -> Unit = {},
 ) {
     val aggregated = remember(revision) { message.getAggregatedReactions() }
     val canAdd = !outgoing && Restrictions.reactionsPerUserRemaining(message)
     // Only render the row when there are actual reactions. The + button is shown inline when
     // reactions exist; for messages with no reactions the long-press sheet has "Add reaction".
     if (aggregated.reactions.isEmpty()) return
+    Box(modifier = modifier) {
     Row(
-        modifier = modifier,
+        modifier = Modifier.align(if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart)
+            .onGloballyPositioned {
+                val bounds = it.boundsInWindow()
+                onHorizontalBounds(bounds.left to bounds.right)
+            },
         horizontalArrangement = Arrangement.spacedBy(4.dp, if (alignEnd) Alignment.End else Alignment.Start),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -4647,12 +4638,14 @@ private fun ReactionChips(
             }
         }
     }
+    }
 }
 
 @Composable
 private fun MessageBubble(
     item: ChatItem.Msg,
     rowModifier: Modifier = Modifier,
+    onFooterBounds: (Pair<Float, Float>) -> Unit = {},
     outgoing: Boolean,
     alignEnd: Boolean,
     highlighted: Boolean,
@@ -4717,6 +4710,13 @@ private fun MessageBubble(
     }
     var morphSettled by remember(item.key) { mutableStateOf(false) }
     val showMorph = morphEligible && !morphSettled
+    val inlineStatus = !showMorph && !isBeingEdited && !message.isFileOrImage &&
+        !message.isDeleted && !message.isGeoUri && !message.treatAsDownloadable() &&
+        !message.bodyIsOnlyEmojis() && message.transferable == null &&
+        message.encryption != Message.ENCRYPTION_PGP &&
+        message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
+        message.encryption != Message.ENCRYPTION_AXOLOTL_FAILED &&
+        message.type != Message.TYPE_RTP_SESSION && parseImpulseContact(message.body) == null && item.caption == null
     // Two pacings, picked by whose edit this is:
     //  - YOUR OWN edit (outgoing): blur clears fully first, then a slower 1s morph runs. The old
     //    wording is yours, so seeing it sharp for a moment gives nothing away and the longer,
@@ -4777,10 +4777,7 @@ private fun MessageBubble(
                             start = (if (fittedMedia) 4.dp else 12.dp) + if (hasTail && !alignEnd) TAIL_WIDTH else 0.dp,
                             end = (if (fittedMedia) 4.dp else 12.dp) + if (hasTail && alignEnd) TAIL_WIDTH else 0.dp,
                             top = if (fittedMedia) 4.dp else 8.dp,
-                            // Reaction chips are drawn over the bubble's lower edge; this extra room
-                            // keeps them off the time/status line (the chip may cover bubble, never
-                            // content).
-                            bottom = if (message.reactions.isNotEmpty()) 20.dp else 8.dp,
+                            bottom = 8.dp,
                         )
             ) {
                 val repliedToId = message.getRepliedTo()
@@ -4804,6 +4801,11 @@ private fun MessageBubble(
                         durationMs = morphDurationMs,
                         startDelayMs = morphStartDelayMs,
                         onSettled = { morphSettled = true },
+                    )
+                } else if (inlineStatus) {
+                    TextWithMessageStatus(
+                        message, revision, contentColor, { onLongPress(message) },
+                        footer = { Column { MessageFooter(message, outgoing, revision, onHorizontalBounds = onFooterBounds) } },
                     )
                 } else {
                     MessageContent(
@@ -4842,7 +4844,7 @@ private fun MessageBubble(
                             onLongPress = { onLongPress(caption) },
                         )
                     }
-                    if (!isBeingEdited) {
+                    if (!isBeingEdited && !inlineStatus) {
                         MessageFooter(
                             message = caption ?: message,
                             outgoing = outgoing,
@@ -4850,6 +4852,7 @@ private fun MessageBubble(
                             statusMessage = message,
                             groupMessages = if (caption != null) listOf(message) else null,
                             caption = caption,
+                            onHorizontalBounds = onFooterBounds,
                         )
                     }
                 }
@@ -5886,6 +5889,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     groupMessages: List<Message>? = null,
     // The text sent with the photos (shown inside their bubble): its status is the bubble's.
     caption: Message? = null,
+    onHorizontalBounds: (Pair<Float, Float>) -> Unit = {},
 ) {
     // Message is a mutated-in-place Java entity; reading `revision` here is what
     // makes Compose re-read message.status after an in-place status change.
@@ -5989,7 +5993,10 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
+        modifier = Modifier.align(Alignment.End).padding(top = 2.dp).onGloballyPositioned {
+            val bounds = it.boundsInWindow()
+            onHorizontalBounds(bounds.left to bounds.right)
+        },
     ) {
         val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
         val footerText = remember(
@@ -7655,6 +7662,45 @@ private fun MorphingMessageText(
 }
 
 @Composable
+private fun TextWithMessageStatus(
+    message: Message,
+    revision: Int,
+    contentColor: Color,
+    onLongPress: () -> Unit,
+    footer: @Composable () -> Unit,
+) {
+    // Keep the latest actual text layout without scheduling a second composition/visible jump.
+    val textLayout = remember(message.getUuid()) { arrayOfNulls<androidx.compose.ui.text.TextLayoutResult>(1) }
+    androidx.compose.ui.layout.Layout(
+        content = {
+            LinkifiedMessageText(message, revision, contentColor, onLongPress,
+                onTextLayout = { textLayout[0] = it })
+            Box { footer() }
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val text = measurables[0].measure(loose)
+        val status = measurables[1].measure(loose)
+        val result = textLayout[0]
+        val last = (result?.lineCount ?: 1) - 1
+        val lastRight = result?.getLineRight(last) ?: text.width.toFloat()
+        val lastBottom = result?.getLineBottom(last) ?: text.height.toFloat()
+        val lastTop = result?.getLineTop(last) ?: 0f
+        val rtl = result?.getParagraphDirection(result.getLineStart(last)) == androidx.compose.ui.text.style.ResolvedTextDirection.Rtl
+        val gap = 8.dp.roundToPx()
+        val fit = fitStatusLine(text.width, text.height, lastRight, lastTop, lastBottom,
+            status.width, status.height, constraints.maxWidth, gap, rtl, 2.dp.toPx())
+        val width = constraints.constrainWidth(fit.width)
+        val statusY = fit.statusY
+        val height = constraints.constrainHeight(maxOf(text.height, statusY + status.height))
+        layout(width, height) {
+            text.placeRelative(0, 0)
+            status.placeRelative(width - status.width, statusY)
+        }
+    }
+}
+
+@Composable
 internal fun LinkifiedMessageText(
     message: Message,
     revision: Int,
@@ -7662,6 +7708,7 @@ internal fun LinkifiedMessageText(
     onLongPress: () -> Unit,
     // Words to mark as search hits (message search results); null in a normal chat.
     highlightTerms: List<String>? = null,
+    onTextLayout: (androidx.compose.ui.text.TextLayoutResult) -> Unit = {},
 ) {
     val hitBg = MaterialTheme.colorScheme.primaryFixedDim
     val hitFg = MaterialTheme.colorScheme.onPrimaryFixed
@@ -7675,6 +7722,7 @@ internal fun LinkifiedMessageText(
     }
     androidx.compose.foundation.text.BasicText(
         text = annotated,
+        onTextLayout = onTextLayout,
         style = androidx.compose.ui.text.TextStyle(
             fontSize = (16f * AppearanceState.textScale).sp,
             color = contentColor,
