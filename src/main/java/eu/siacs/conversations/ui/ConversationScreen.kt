@@ -3687,6 +3687,7 @@ private fun MessageRow(
             }
             MessageBubble(
                 item = item,
+                rowModifier = if (showOwnAvatar) Modifier.weight(1f, fill = false) else Modifier,
                 outgoing = outgoing,
                 alignEnd = atEnd,
                 highlighted = highlighted,
@@ -3932,6 +3933,7 @@ private fun MediaGroupRow(
                 // the Surface itself was still the plain fixed width, so the tail curl was
                 // carving into (and clipping) the grid content instead of extending past it.
                 modifier = Modifier
+                    .then(if (showOwnAvatar) Modifier.weight(1f, fill = false) else Modifier)
                     .animatedSize(rememberExperimentalAnimations())
                     .width(if (item.lastOfGroup) MEDIA_GRID_WIDTH + TAIL_WIDTH else MEDIA_GRID_WIDTH),
             ) {
@@ -4650,6 +4652,7 @@ private fun ReactionChips(
 @Composable
 private fun MessageBubble(
     item: ChatItem.Msg,
+    rowModifier: Modifier = Modifier,
     outgoing: Boolean,
     alignEnd: Boolean,
     highlighted: Boolean,
@@ -4740,7 +4743,7 @@ private fun MessageBubble(
     }
     val animateSizes = rememberExperimentalAnimations()
     val launchingMessage = launchModifier !== Modifier
-    Box {
+    Box(modifier = rowModifier) {
         Surface(
             shape =
                 rememberBubbleShape(

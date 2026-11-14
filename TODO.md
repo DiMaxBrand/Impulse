@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Message avatars — beta.355
+
+- Reserve space for outgoing avatars beside wide message bubbles and media groups, and clarify the incoming/outgoing avatar switches.
+
 ## Release note headings — beta.354
 
 - Show the localized What's new heading in displayed release notes, while keeping developer notes labeled and visible only for support accounts.

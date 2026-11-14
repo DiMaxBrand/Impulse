@@ -1247,6 +1247,10 @@
     <string name="save_to_contact">Сохранить в контакты</string>
     <string name="show_in_contacts">Показать в контактах</string>
     <string name="pref_account_avatar">Аккаунты</string>
+    <string name="pref_incoming_message_avatars">Входящие сообщения</string>
+    <string name="pref_incoming_message_avatars_summary">Показывать аватары собеседников в личных чатах. В групповых чатах аватары отправителей отображаются всегда.</string>
+    <string name="pref_outgoing_message_avatars">Исходящие сообщения</string>
+    <string name="pref_outgoing_message_avatars_summary">Показывать аватар своего аккаунта рядом с отправленными сообщениями.</string>
     <string name="pref_account_avatar_summary">Показывать аватары аккаунтов в исходящих сообщениях для упрощения идентификации и управления</string>
     <string name="pref_category_avatars">Аватары</string>
     <string name="pref_show_11_chats">Беседы 1:1</string>

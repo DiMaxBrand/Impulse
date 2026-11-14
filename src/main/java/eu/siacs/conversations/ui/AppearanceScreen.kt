@@ -1074,14 +1074,14 @@ private fun BubblesPage(s: AppearanceSettings) {
         SectionTitle(stringResource(R.string.pref_category_avatars))
         SwitchRow(
             GroupPosition.TOP, R.drawable.ic_face_right_24dp,
-            stringResource(R.string.pref_show_11_chats),
-            stringResource(R.string.pref_show_11_chats_summary),
+            stringResource(R.string.pref_incoming_message_avatars),
+            stringResource(R.string.pref_incoming_message_avatars_summary),
             s.avatars11.value,
         ) { s.avatars11.set(it) }
         SwitchRow(
             GroupPosition.BOTTOM, R.drawable.ic_face_left_24dp,
-            stringResource(R.string.pref_account_avatar),
-            stringResource(R.string.pref_account_avatar_summary),
+            stringResource(R.string.pref_outgoing_message_avatars),
+            stringResource(R.string.pref_outgoing_message_avatars_summary),
             s.avatarsAccounts.value && !s.alignStart.value,
             enabled = !s.alignStart.value,
         ) { s.avatarsAccounts.set(it) }
