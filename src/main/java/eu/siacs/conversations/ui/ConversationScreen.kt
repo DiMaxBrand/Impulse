@@ -2690,7 +2690,9 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // (added/removed above), which shifts every real message's index by one — without `isTyping`
     // as a key here, that shift never re-triggers this check, so the indicator can slide in
     // below the visible fold and just sit there unseen until something else happens to scroll.
-    val newestKey = items.firstOrNull()?.key
+    // A shortened navigation window is not a new incoming message. Using its first row here
+    // restarts the bottom-follow effect when the window is installed or removed.
+    val newestKey = fullItems.firstOrNull()?.key
     val launchIds = state.sendLaunches.flights.map { it.uuid }
     val draggingMessages by listState.interactionSource.collectIsDraggedAsState()
     LaunchedEffect(draggingMessages, jumping) {
@@ -2816,7 +2818,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         }
         // Only the UI projection is shortened. The conversation model remains complete.
         val originKey = listState.layoutInfo.visibleItemsInfo.firstOrNull {
-            fullItems.any { item -> item.key == it.key }
+            it.index == listState.firstVisibleItemIndex && fullItems.any { item -> item.key == it.key }
         }?.key
         val origin = fullItems.indexOfFirst { it.key == originKey }.coerceAtLeast(0)
         val preview = navigationWindowIndices(fullItems.size, origin, target).map { fullItems[it] }
@@ -2824,11 +2826,15 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         try {
             rowAnimationsReady = false
             navigationEpoch++
+            val compactOrigin = preview.indexOfFirst { it.key == originKey }
+            if (compactOrigin >= 0) {
+                listState.requestScrollToItem(compactOrigin + latestLeadingCount.value, listState.firstVisibleItemScrollOffset)
+            }
             jumpWindow = preview
             // Match item keys, not just counts: a same-size list may still be the old layout.
             snapshotFlow {
                 val layout = listState.layoutInfo
-                layout.totalItemsCount == preview.size + latestLeadingCount.value &&
+                layout.visibleItemsInfo.isNotEmpty() && layout.totalItemsCount == preview.size + latestLeadingCount.value &&
                     layout.visibleItemsInfo.all { row ->
                         row.key == "typing-indicator" || row.key == "local-time-indicator" ||
                             preview.any { it.key == row.key }
@@ -2845,7 +2851,15 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 }
             }
         } finally {
-            // Stable row keys preserve the landed viewport when all intervening rows return.
+            // Restore the full list at the same visible key and pixel offset, in the same layout
+            // pass as the swap. Otherwise the compact index can briefly select an unrelated row.
+            val anchorKey = listState.layoutInfo.visibleItemsInfo.firstOrNull {
+                it.index == listState.firstVisibleItemIndex
+            }?.key
+            val fullIndex = fullItems.indexOfFirst { it.key == anchorKey }
+            if (fullIndex >= 0) {
+                listState.requestScrollToItem(fullIndex + latestLeadingCount.value, listState.firstVisibleItemScrollOffset)
+            }
             jumpWindow = null
             if (state.requestScrollToUuid.value == scrollToUuid) state.requestScrollToUuid.value = null
         }
