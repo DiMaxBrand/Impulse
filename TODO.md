@@ -1,5 +1,9 @@
 # Impulse — To-Do
 
+## Custom predictive-back transitions
+
+- [ ] Add and device-test custom predictive-back animations across screens, starting with the conversation list and chat. This is not a 1.15 stable-release blocker.
+
 ## Message activity indicators — after 1.15 stable
 
 - [ ] Plan a subsequent point release with transient chat indicators for more than typing: recording audio or video, choosing images or videos, and sending images, videos, audio and other attachments. Show the recipient the relevant activity and clear or update it as the activity changes or ends.

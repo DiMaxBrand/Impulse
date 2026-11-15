@@ -194,12 +194,8 @@ Stable is at `1.14.1`. Nothing pending in CI.
   (exposes live gesture progress without any navigation library) — no `NavHost`, no
   Navigation3 migration needed. Proposed starting point: the conversation list ↔ chat
   transition.
-- **Release sequencing decision**: hold off on promoting to stable until the custom
-  transitions actually land and are device-tested — beta.1/beta.2 alone are low-visibility
-  (5 secondary screens, an error-message wording fix). Land the custom-transition work as
-  further betas in the *same* `1.15.0` cycle, then cut one coherent stable release for the
-  whole predictive-back story, rather than a barely-noticeable stable bump now plus another
-  one later.
+- **Updated release decision (2026-11-15)**: custom predictive-back transitions are a future
+  improvement, not a blocker for the 1.15 stable release. See TODO.md.
 - **Deferred, explicitly not bundled into this work**: the "Bug-report tracking ID + fix
   notification" TODO.md item (unblocked now that stable releases are real, but unrelated
   to predictive back — full spec already in TODO.md, do it as its own dedicated session).
