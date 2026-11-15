@@ -82,7 +82,7 @@ fun LiquidConversationsSearchHost(
     val textFieldState = rememberTextFieldState()
     val backdrop = rememberLayerBackdrop()
     // The glass pieces of this screen look through the list and through each other.
-    val glass = rememberGlassStack(backdrop)
+    val glass = rememberGlassStack(backdrop, adaptive = true)
     val qrMenu = rememberLiquidMenuState()
     val fluidHost = eu.siacs.conversations.ui.glass.rememberFluidHost(eu.siacs.conversations.ui.glass.rememberMergingGlass(), reachDp = 6f)
     val focusManager = LocalFocusManager.current

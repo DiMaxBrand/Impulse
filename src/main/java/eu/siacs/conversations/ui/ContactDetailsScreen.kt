@@ -151,7 +151,7 @@ fun ContactDetailsScreen(state: ContactDetailsState, actions: ContactDetailsActi
     }
 
     val backdrop = rememberLayerBackdrop()
-    val glassStack = rememberGlassStack(backdrop)
+    val glassStack = rememberGlassStack(backdrop, adaptive = true)
     val tilt = rememberTilt(glass)
 
     BoxWithConstraints(

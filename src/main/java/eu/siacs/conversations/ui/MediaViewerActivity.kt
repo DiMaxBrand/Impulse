@@ -724,12 +724,14 @@ private fun MediaViewerScreen(
                     surfaceColor = Color.Transparent,
                     modifier = Modifier.size(78.dp),
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_play_arrow_24dp),
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(38.dp),
-                    )
+                    eu.siacs.conversations.ui.glass.InkRegion {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_play_arrow_24dp),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(38.dp),
+                        )
+                    }
                 }
             }
             LiquidViewerMenuOverlay(

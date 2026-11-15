@@ -5719,7 +5719,7 @@ private fun MediaThumbnailBubble(
     // beside the picture, not inside it, so it never looks at itself).
     val glassPlay = isVideo && rememberLiquidGlassEnabled() && cachedBitmap != null && videoFile == null
     val thumbBackdrop = if (glassPlay) rememberLayerBackdrop() else null
-    val thumbStack = thumbBackdrop?.let { rememberGlassStack(it) }
+    val thumbStack = thumbBackdrop?.let { rememberGlassStack(it, adaptive = true) }
 
     Box(
         modifier = Modifier
@@ -5845,12 +5845,14 @@ private fun MediaThumbnailBubble(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.size(56.dp),
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_play_arrow_24dp),
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp),
-                    )
+                    eu.siacs.conversations.ui.glass.InkRegion {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_play_arrow_24dp),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
                 }
             } else {
                 Box(
