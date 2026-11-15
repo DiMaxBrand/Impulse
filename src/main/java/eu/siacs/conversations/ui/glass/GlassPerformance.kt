@@ -28,12 +28,16 @@ import kotlin.math.abs
  */
 object GlassPerformance {
     internal var scrollFast by mutableStateOf(false)
+    private var programmaticJumps by androidx.compose.runtime.mutableIntStateOf(0)
+    internal val programmaticScroll: Boolean get() = programmaticJumps > 0
+    fun beginProgrammaticScroll() { programmaticJumps++ }
+    fun endProgrammaticScroll() { programmaticJumps = (programmaticJumps - 1).coerceAtLeast(0) }
 
     /** True while the keyboard slides in or out: every frame resizes the screen and the glass over it. */
     internal var keyboardMoving by mutableStateOf(false)
 
     /** True while the list flies past or the keyboard moves: nothing needs measuring then. */
-    val lite: Boolean get() = scrollFast || keyboardMoving
+    val lite: Boolean get() = scrollFast || programmaticScroll || keyboardMoving
 
     /** 0..1, eased: how far the glass has blurred out because the list is flying past. */
     internal var scrollBlur by androidx.compose.runtime.mutableFloatStateOf(0f)
@@ -76,7 +80,7 @@ fun rememberGlassScrollMeter(): Modifier {
     }
     // The glass blurs out and back on an ease instead of switching: it is never off.
     LaunchedEffect(Unit) {
-        snapshotFlow { GlassPerformance.scrollFast }.collectLatest { fast ->
+        snapshotFlow { GlassPerformance.scrollFast || GlassPerformance.programmaticScroll }.collectLatest { fast ->
             androidx.compose.animation.core.animate(
                 initialValue = GlassPerformance.scrollBlur,
                 targetValue = if (fast) 1f else 0f,

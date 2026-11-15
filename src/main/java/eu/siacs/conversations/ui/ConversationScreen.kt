@@ -2255,7 +2255,8 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         legacyMessageLayout = flagPreferences.isEnabled(flag)
         onDispose { store.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    val trackSendGeometry = rememberLiquidGlassEnabled() && AppearanceState.fullEffects
+    val rememberLiquidGlassForJump = rememberLiquidGlassEnabled()
+    val trackSendGeometry = rememberLiquidGlassForJump && AppearanceState.fullEffects
     // Compute items in composable scope, not in derivedStateOf. derivedStateOf suppresses
     // recomposition when the result is structurally equal — same Message instances produce equal
     // ChatItem.Msg wrappers, so in-place status changes (sent→delivered→read) would be invisible.
@@ -2823,9 +2824,12 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         val origin = fullItems.indexOfFirst { it.key == originKey }.coerceAtLeast(0)
         val preview = navigationWindowIndices(fullItems.size, origin, target).map { fullItems[it] }
         val compactTarget = preview.indexOfFirst { contains(it, scrollToUuid) }
+        val frostJump = rememberLiquidGlassForJump
+        if (frostJump) eu.siacs.conversations.ui.glass.GlassPerformance.beginProgrammaticScroll()
         try {
             rowAnimationsReady = false
             navigationEpoch++
+            if (frostJump) kotlinx.coroutines.delay(260)
             val compactOrigin = preview.indexOfFirst { it.key == originKey }
             if (compactOrigin >= 0) {
                 listState.requestScrollToItem(compactOrigin + latestLeadingCount.value, listState.firstVisibleItemScrollOffset)
@@ -2862,6 +2866,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             }
             jumpWindow = null
             if (state.requestScrollToUuid.value == scrollToUuid) state.requestScrollToUuid.value = null
+            if (frostJump) eu.siacs.conversations.ui.glass.GlassPerformance.endProgrammaticScroll()
         }
     }
 
