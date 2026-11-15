@@ -1,5 +1,10 @@
 # Impulse — To-Do
 
+## Message activity indicators — after 1.15 stable
+
+- [ ] Plan a subsequent point release with transient chat indicators for more than typing: recording audio or video, choosing images or videos, and sending images, videos, audio and other attachments. Show the recipient the relevant activity and clear or update it as the activity changes or ends.
+- [ ] Work out interoperability with other XMPP clients, privacy controls, expiration and multi-device behavior before implementing the indicators.
+
 ## Message layout comparison — beta.362
 
 - Slightly mute timestamps and neutral metadata. Add an off-by-default developer flag for the pre-beta-357 message and reaction layout.

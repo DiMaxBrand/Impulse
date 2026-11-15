@@ -3391,6 +3391,13 @@ private fun NewMessagesPill(count: Int, modifier: Modifier = Modifier) {
 private val CORNER_LARGE: Dp = 20.dp
 private val CORNER_SMALL: Dp = 5.dp
 private val TAIL_WIDTH: Dp = 8.dp
+
+// With an avatar the row cannot move to accommodate the tail. Split that space evenly across
+// grouped rows so their content edges stay aligned and the avatar keeps its position.
+private fun avatarTailAlignment(lastOfGroup: Boolean, atEnd: Boolean): Dp {
+    val shift = if (lastOfGroup) -TAIL_WIDTH / 2 else TAIL_WIDTH / 2
+    return if (atEnd) -shift else shift
+}
 // Window for the non-consuming double-tap-for-reaction watcher in MessageRow -- matches the
 // platform's own ViewConfiguration.getDoubleTapTimeout() ballpark (typically ~300ms).
 private const val DOUBLE_TAP_TIMEOUT_MS = 300L
@@ -3731,7 +3738,8 @@ private fun MessageRow(
                 item = item,
                 legacyMessageLayout = legacyMessageLayout,
                 onFooterBounds = { footerBounds = it },
-                rowModifier = if (showOwnAvatar) Modifier.weight(1f, fill = false) else Modifier,
+                rowModifier = (if (showOwnAvatar) Modifier.weight(1f, fill = false) else Modifier)
+                    .then(if (showOwnAvatar || showAvatarSlot) Modifier.offset(x = avatarTailAlignment(item.lastOfGroup, atEnd)) else Modifier),
                 outgoing = outgoing,
                 alignEnd = atEnd,
                 highlighted = highlighted,
@@ -3966,6 +3974,7 @@ private fun MediaGroupRow(
                 // carving into (and clipping) the grid content instead of extending past it.
                 modifier = Modifier
                     .then(if (showOwnAvatar) Modifier.weight(1f, fill = false) else Modifier)
+                    .then(if (showOwnAvatar || showAvatarSlot) Modifier.offset(x = avatarTailAlignment(item.lastOfGroup, atEnd)) else Modifier)
                     .animatedSize(rememberExperimentalAnimations())
                     .width(if (item.lastOfGroup) MEDIA_GRID_WIDTH + TAIL_WIDTH else MEDIA_GRID_WIDTH),
             ) {
@@ -5708,7 +5717,7 @@ private fun MediaThumbnailBubble(
     // Liquid glass experiment: the play affordance of a video is a glass circle that bends the
     // thumbnail under it. Only the picture is recorded as what it looks through (the button is
     // beside the picture, not inside it, so it never looks at itself).
-    val glassPlay = isVideo && rememberLiquidGlassEnabled()
+    val glassPlay = isVideo && rememberLiquidGlassEnabled() && cachedBitmap != null && videoFile == null
     val thumbBackdrop = if (glassPlay) rememberLayerBackdrop() else null
     val thumbStack = thumbBackdrop?.let { rememberGlassStack(it) }
 
@@ -5773,7 +5782,7 @@ private fun MediaThumbnailBubble(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
-                    .then(if (thumbBackdrop != null) Modifier.layerBackdrop(thumbBackdrop) else Modifier),
+                    .then(if (thumbBackdrop != null) Modifier.layerBackdrop(thumbBackdrop).background(MaterialTheme.colorScheme.surfaceContainerHigh) else Modifier),
             )
         } else {
             Box(

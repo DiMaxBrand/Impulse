@@ -126,7 +126,7 @@ fun LiquidConversationsSearchHost(
             },
     ) {
         // The list is what shows through the glass.
-        Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) { content() }
+        Box(Modifier.fillMaxSize().layerBackdrop(backdrop).background(MaterialTheme.colorScheme.surface)) { content() }
 
         // The list runs up under the status bar, blurred there.
         eu.siacs.conversations.ui.glass.GlassStatusBarBlur(backdrop, Modifier.align(Alignment.TopCenter))

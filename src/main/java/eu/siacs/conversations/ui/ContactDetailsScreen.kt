@@ -202,7 +202,7 @@ fun ContactDetailsScreen(state: ContactDetailsState, actions: ContactDetailsActi
             }
         }
 
-        Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
+        Box(Modifier.fillMaxSize().layerBackdrop(backdrop).background(MaterialTheme.colorScheme.surface)) {
             if (ui != null) {
                 Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                     Spacer(Modifier.height(with(density) { bigHeight.toDp() }))

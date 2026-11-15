@@ -197,7 +197,7 @@ internal fun AppearanceScreen(
     // The playground arrives over the lab, which stays where it is underneath.
     val shownPage = if (page == AppearancePage.PLAYGROUND) AppearancePage.LAB else page
     AnimatedContent(
-        modifier = Modifier.fillMaxSize().layerBackdrop(labBackdrop),
+        modifier = Modifier.fillMaxSize().layerBackdrop(labBackdrop).background(MaterialTheme.colorScheme.surface),
         targetState = shownPage,
         transitionSpec = {
             if (targetState != AppearancePage.MAIN) {
