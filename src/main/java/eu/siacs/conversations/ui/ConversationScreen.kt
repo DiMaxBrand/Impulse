@@ -882,10 +882,15 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         var glassBarHeightPx by remember { mutableIntStateOf(0) }
         var glassTopHeightPx by remember { mutableIntStateOf(0) }
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-        ChatBackgroundLayer(
-            Modifier.matchParentSize()
-                .then(if (glass) Modifier.layerBackdrop(backgroundBackdrop) else Modifier),
-        )
+        if (glass) {
+            // Capture the Scaffold surface as well as the chosen background. Without it, a plain
+            // chat leaves transparent holes in the lens input and the live list shows through.
+            Box(Modifier.matchParentSize().layerBackdrop(backgroundBackdrop).background(MaterialTheme.colorScheme.surface)) {
+                ChatBackgroundLayer(Modifier.matchParentSize())
+            }
+        } else {
+            ChatBackgroundLayer(Modifier.matchParentSize())
+        }
         // The banners above the messages are the same in both layouts; only how everything is
         // arranged differs (below). A ColumnScope lambda, so they animate as column children.
         val banners: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = {
