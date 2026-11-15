@@ -40,7 +40,8 @@ internal fun rememberReplyStatus(conversation: Conversation?, own: Boolean): Rep
     val context = LocalContext.current
     if (conversation == null || conversation.getMode() != 0) return null
     val account = conversation.getAccount().getUuid() ?: return null
-    val status = ReplyStatuses.get(context, account, conversation.getAddress().asBareJid().toString(), own)
+    val status = if (conversation is DemoConversation) conversation.demoStatuses[own]
+        else ReplyStatuses.get(context, account, conversation.getAddress().asBareJid().toString(), own)
     var now by remember(status?.stamp) { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(status?.stamp) {
         now = System.currentTimeMillis()

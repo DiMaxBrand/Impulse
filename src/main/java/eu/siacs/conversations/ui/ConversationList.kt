@@ -200,8 +200,28 @@ object ConversationListHelper {
         )
         composeView.setContent {
             ImpulseTheme {
-                LaunchedEffect(searchHost.expanded) {
-                    if (searchHost.expanded) fab.hide() else fab.show()
+                val demoContext = LocalContext.current
+                val demoPrefs = remember(demoContext) { eu.siacs.conversations.utils.FeatureFlagPreferences(demoContext) }
+                var demoEnabled by remember { mutableStateOf(demoPrefs.isEnabled(eu.siacs.conversations.FeatureFlag.DEMO_MODE)) }
+                androidx.compose.runtime.DisposableEffect(demoContext) {
+                    val prefs = demoContext.getSharedPreferences("feature_flag_prefs", android.content.Context.MODE_PRIVATE)
+                    val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                        if (key == null || key == eu.siacs.conversations.FeatureFlag.DEMO_MODE.key)
+                            demoEnabled = demoPrefs.isEnabled(eu.siacs.conversations.FeatureFlag.DEMO_MODE)
+                    }
+                    prefs.registerOnSharedPreferenceChangeListener(listener)
+                    onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+                }
+                val demoSession = remember(demoEnabled) {
+                    if (demoEnabled) DemoMemory.get() else { DemoMemory.clear(); null }
+                }
+                var demoChat by remember(demoSession) { mutableStateOf<DemoConversation?>(null) }
+                LaunchedEffect(searchHost.expanded, demoEnabled, demoChat) {
+                    if (searchHost.expanded || demoEnabled) fab.hide() else fab.show()
+                }
+                if (demoSession != null && demoChat != null) {
+                    DemoChatHost(demoSession, demoChat!!) { demoChat = null }
+                    return@ImpulseTheme
                 }
                 // Liquid glass experiment: the search row floats over the list, so the list starts
                 // below it instead of the (then absent) search bar pushing it down.
@@ -218,9 +238,11 @@ object ConversationListHelper {
                     }
                 }
                 Box(modifier = Modifier.fillMaxSize()) {
-                    ConversationsSearchHost(host = searchHost, actions = searchActions) {
+                    val demoSearch = remember { SearchHostActions({ emptyList() }, {}, {}, {}, {}, {}, {}) }
+                    val demoSearchHost = remember { SearchHostState() }
+                    ConversationsSearchHost(host = if (demoSession == null) searchHost else demoSearchHost, actions = if (demoSession == null) searchActions else demoSearch) {
                         Column {
-                            ConnectingStrip(isConnecting = state.isConnecting.value)
+                            if (demoSession == null) ConnectingStrip(isConnecting = state.isConnecting.value)
                             // The glass top row floats over the list, so the list's first row (and the
                             // emergency banner) start below it; the banner takes room from the list
                             // instead of covering its first chats.
@@ -231,23 +253,29 @@ object ConversationListHelper {
                             val bannerDp = with(LocalDensity.current) { bannerPx.toDp() }
                             Box(Modifier.weight(1f).fillMaxWidth()) {
                                 ConversationList(
-                                    conversations = state.list,
+                                    conversations = demoSession?.chats ?: state.list,
                                     revision = state.revision.intValue,
-                                    onConversationClick = { onConversationClick.onClick(it) },
-                                    actions = listActions,
+                                    onConversationClick = { if (demoSession != null) demoChat = it as? DemoConversation else onConversationClick.onClick(it) },
+                                    actions = if (demoSession == null) listActions else NoConversationListActions,
                                     contentPadding = PaddingValues(top = base + bannerDp, bottom = if (glass) navInset else 0.dp),
                                     onFirstVisibleIndexChanged = { index ->
-                                        composeView.post { if (index > 0) fab.shrink() else fab.extend() }
+                                        if (demoSession == null) composeView.post { if (index > 0) fab.shrink() else fab.extend() }
                                     },
                                 )
-                                EmergencyBanner(Modifier.padding(top = base).onSizeChanged { bannerPx = it.height })
+                                if (demoSession == null) EmergencyBanner(Modifier.padding(top = base).onSizeChanged { bannerPx = it.height })
                             }
                         }
                     }
-                    DownloadProgressBar(
+                    if (demoSession == null) DownloadProgressBar(
                         onComplete = onDownloadComplete,
                         modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
                     )
+                    if (demoSession != null) {
+                        androidx.compose.material3.TextButton(
+                            onClick = { demoPrefs.setOverride(eu.siacs.conversations.FeatureFlag.DEMO_MODE, false) },
+                            modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 16.dp + navInset),
+                        ) { Text(stringResource(R.string.demo_mode_exit), style = MaterialTheme.typography.labelSmall) }
+                    }
                 }
             }
         }

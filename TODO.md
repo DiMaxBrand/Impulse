@@ -1,5 +1,10 @@
 # Impulse — To-Do
 
+## Demo conversations
+
+- [x] Add an isolated, opt-in demo using the real list and chat screens, temporary conversations, a bottom-left exit control, and local-only message and status actions.
+- [ ] Device-test the demo, including real Liquid Glass animations, grouped photos, status changes, and recovery to the real list. Add safe simulation for voice messages, calls, reactions, and remaining actions; these currently report that they are unavailable.
+
 ## Custom predictive-back transitions
 
 - [ ] Add and device-test custom predictive-back animations across screens, starting with the conversation list and chat. This is not a 1.15 stable-release blocker.

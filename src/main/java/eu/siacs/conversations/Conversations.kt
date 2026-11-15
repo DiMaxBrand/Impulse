@@ -35,6 +35,9 @@ class Conversations : Application() {
         super.onCreate()
         installSecurityProvider()
         CONTEXT = this.applicationContext
+        // A crash or process restart must always recover the real conversation list.
+        val flags = eu.siacs.conversations.utils.FeatureFlagPreferences(this)
+        if (flags.getOverride(FeatureFlag.DEMO_MODE) == true) flags.setOverride(FeatureFlag.DEMO_MODE, false)
         AppSettings.migratePreferences(applicationContext)
         EmojiInitializationService.execute(applicationContext)
         ExceptionHelper.init(applicationContext)

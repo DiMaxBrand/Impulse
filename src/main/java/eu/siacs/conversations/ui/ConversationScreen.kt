@@ -4346,10 +4346,13 @@ private fun MediaGridCell(
 ) {
     val context = LocalContext.current
     val activity = context as? XmppActivity
-    val fileBackend = activity?.xmppConnectionService?.fileBackend
+    val fileBackend = if (message.conversation is DemoConversation) null else activity?.xmppConnectionService?.fileBackend
     val uuid = message.getUuid()
     val isVideo = message.mimeType?.startsWith("video/") == true
-    val cachedBitmap = ThumbnailCache.get(uuid)
+    val demoBitmap = if (message.conversation is DemoConversation) remember {
+        android.graphics.BitmapFactory.decodeResource(context.resources, R.drawable.demo_example_photo).asImageBitmap()
+    } else null
+    val cachedBitmap = demoBitmap ?: ThumbnailCache.get(uuid)
     if (cachedBitmap == null && fileBackend != null) {
         val sizePx = with(LocalDensity.current) { MEDIA_GRID_WIDTH.toPx() / 2 }.toInt()
         // Keyed on revision too, not just uuid -- this composable stays mounted (same LazyColumn
@@ -5694,7 +5697,7 @@ private fun MediaThumbnailBubble(
 ) {
     val context = LocalContext.current
     val activity = context as? XmppActivity
-    val fileBackend = activity?.xmppConnectionService?.fileBackend
+    val fileBackend = if (message.conversation is DemoConversation) null else activity?.xmppConnectionService?.fileBackend
     val uuid = message.getUuid()
 
     val videoFile = if (uploading && isVideo) {
@@ -5707,7 +5710,10 @@ private fun MediaThumbnailBubble(
     val cropScale = if (message.mimeType == "application/pdf") 1f else maxOf(1f, 0.75f / rawRatio)
     val sizePx = with(LocalDensity.current) { (280.dp.toPx() * cropScale).toInt().coerceAtMost(2048) }
     val thumbnailKey = uuid?.let { "$it#bubble#$sizePx" }
-    val cachedBitmap = ThumbnailCache.get(thumbnailKey)
+    val demoBitmap = if (message.conversation is DemoConversation) remember {
+        android.graphics.BitmapFactory.decodeResource(context.resources, R.drawable.demo_example_photo).asImageBitmap()
+    } else null
+    val cachedBitmap = demoBitmap ?: ThumbnailCache.get(thumbnailKey)
     if (cachedBitmap == null && fileBackend != null) {
         // For video, this bubble draws its own animated play affordance below, so the baked-in
         // overlay FileBackend normally adds would double up — suppressed. PDFs have no Compose-

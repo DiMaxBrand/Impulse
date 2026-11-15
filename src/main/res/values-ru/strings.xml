@@ -1904,4 +1904,8 @@
     <string name="glass_lab_merge_rotation_off">Выкл</string>
     <string name="glass_lab_merge_rotation_stiff">Жёсткое</string>
     <string name="glass_lab_merge_rotation_free">Свободное</string>
+    <string name="demo_mode_title">Демонстрационный режим</string>
+    <string name="demo_mode_description">Ранняя версия с временными чатами; некоторые действия недоступны. По умолчанию выключена, после перезапуска сбрасывается.</string>
+    <string name="demo_mode_exit">Демонстрационный режим · Нажмите, чтобы выключить</string>
+    <string name="demo_mode_unavailable">Недоступно в демонстрационном режиме</string>
 </resources>

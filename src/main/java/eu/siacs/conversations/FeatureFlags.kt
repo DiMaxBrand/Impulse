@@ -18,6 +18,7 @@ enum class FeatureFlag(
     /** Who has the flag on while nobody has set it by hand: see [FlagAudience]. */
     val audience: FlagAudience,
 ) {
+    DEMO_MODE("demo_mode", R.string.demo_mode_title, R.string.demo_mode_description, FlagAudience.Nobody),
     LEGACY_MESSAGE_LAYOUT(
         key = "legacy_message_layout",
         titleRes = R.string.feature_flag_legacy_message_layout_title,
