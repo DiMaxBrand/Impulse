@@ -4745,7 +4745,8 @@ private fun MessageBubble(
     val previewRatio = (message.fileParams.width.toFloat() / message.fileParams.height.coerceAtLeast(1)).coerceIn(0.75f, 4f)
     val mediaWidth = minOf(280f, 310f * previewRatio).dp
     val hasTail = item.lastOfGroup
-    val newBody = message.body ?: ""
+    val messageContext = LocalContext.current
+    val newBody = NewsMessageText.display(messageContext, message)
     // Plain text only, both sides short enough to bound computeMorphOps' O(n*m) table, and
     // nothing this per-character renderer doesn't understand (a link, /me, emoji-only sizing) --
     // an ineligible edit just falls through to the plain instant-swap rendering below, same as
@@ -4753,7 +4754,7 @@ private fun MessageBubble(
     // recomposition mid-morph (e.g. revision bumping for an unrelated reason) can't re-derive a
     // different answer partway through.
     val morphEligible = remember(item.key) {
-        morphFromBody != null &&
+        morphFromBody != null && newBody == (message.body ?: "") &&
             !message.isDeleted &&
             message.encryption != Message.ENCRYPTION_AXOLOTL_FAILED &&
             message.encryption != Message.ENCRYPTION_DECRYPTION_FAILED &&
@@ -7833,7 +7834,8 @@ internal fun LinkifiedMessageText(
     val xmppFg = MaterialTheme.colorScheme.onTertiaryContainer
     val context = LocalContext.current
     val msgKey = message.getUuid() ?: System.identityHashCode(message)
-    val annotated = remember(msgKey, revision, contentColor.value, linkColor.value, xmppBg.value, xmppFg.value, highlightTerms) {
+    val displayedBody = NewsMessageText.display(context, message)
+    val annotated = remember(msgKey, revision, displayedBody, contentColor.value, linkColor.value, xmppBg.value, xmppFg.value, highlightTerms) {
         buildAnnotatedBody(context, message, contentColor, linkColor, xmppBg, xmppFg, highlightTerms, hitBg, hitFg)
     }
     androidx.compose.foundation.text.BasicText(
@@ -7860,7 +7862,7 @@ private fun buildAnnotatedBody(
     hitBg: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
     hitFg: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
 ): androidx.compose.ui.text.AnnotatedString {
-    val rawBody = message.body?.trim() ?: ""
+    val rawBody = NewsMessageText.display(context, message).trim()
     return try {
         val body = android.text.SpannableStringBuilder()
         val displayName = eu.siacs.conversations.utils.UIHelper.getMessageDisplayName(message)

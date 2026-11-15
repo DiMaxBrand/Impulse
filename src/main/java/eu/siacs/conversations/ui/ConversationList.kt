@@ -314,6 +314,10 @@ fun ConversationList(
         conversations.partition { birthdayToday(store, it, today) }
     }
     val ordered = celebrating + others
+    val onlyNews = ordered.all {
+        it.getMode() == Conversational.MODE_MULTI &&
+            it.getAddress().asBareJid() == eu.siacs.conversations.Config.NEWS_CHANNEL.asBareJid()
+    }
     // The chat a long-press opened the sheet for; null when no sheet is up.
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
 
@@ -332,6 +336,11 @@ fun ConversationList(
                 isBirthday = index < celebrating.size,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             )
+        }
+        if (onlyNews) {
+            item(key = "first-contact-hint") {
+                EmptyConversationsHint(actions = actions, modifier = Modifier.fillParentMaxWidth().fillParentMaxHeight(0.75f))
+            }
         }
     }
 

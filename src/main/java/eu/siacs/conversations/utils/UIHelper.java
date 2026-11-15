@@ -260,7 +260,8 @@ public class UIHelper {
                         true);
             }
         } else {
-            final String body = MessageUtils.filterLtrRtl(message.getBody());
+            final String body = MessageUtils.filterLtrRtl(
+                    eu.siacs.conversations.ui.NewsMessageText.display(context, message));
             if (body.startsWith(Message.ME_COMMAND)) {
                 return new Pair<>(
                         body.replaceAll(
