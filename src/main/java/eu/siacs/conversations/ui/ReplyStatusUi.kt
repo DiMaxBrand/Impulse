@@ -105,14 +105,16 @@ internal fun ReplyStatusComposerChip(state: ConversationScreenState, listener: C
 }
 
 @Composable
-internal fun ReplyStatusChoices(state: ConversationScreenState, listener: ConversationScreenListener) {
+internal fun ReplyStatusChoices(state: ConversationScreenState, listener: ConversationScreenListener, showTitle: Boolean = true) {
     val current = rememberReplyStatus(state.conversation.value, true)
     var clear by remember { mutableStateOf(current?.clearOnSend ?: true) }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(painterResource(R.drawable.ic_schedule_24dp), null, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.reply_status_title), style = MaterialTheme.typography.titleLarge)
+        if (showTitle) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(painterResource(R.drawable.ic_schedule_24dp), null, modifier = Modifier.size(28.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(stringResource(R.string.reply_status_title), style = MaterialTheme.typography.titleLarge)
+            }
         }
         listOf("working", "checking", "waiting").forEach { code ->
             TextButton(onClick = { listener.onSetReplyStatus(code, clear) }, modifier = Modifier.fillMaxWidth()) {
@@ -134,6 +136,7 @@ internal fun ReplyStatusChoices(state: ConversationScreenState, listener: Conver
 /** Material expands the selected attachment entry; glass is a separate non-merging upper plane. */
 @Composable
 internal fun ReplyStatusOverlay(state: ConversationScreenState, listener: ConversationScreenListener, glass: GlassStack?) {
+    if (glass == null && state.attachCardOpen.value) return
     val open = state.replyStatusPickerVisible.value
     val p = remember { Animatable(0f) }
     LaunchedEffect(open, AppearanceState.fullEffects) {

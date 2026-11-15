@@ -5,8 +5,11 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -106,7 +109,13 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
             }
         }
     }
-    BackHandler(enabled = open) { state.attachCardOpen.value = false }
+    BackHandler(enabled = open) {
+        if (state.replyStatusPickerVisible.value) state.replyStatusPickerVisible.value = false
+        else state.attachCardOpen.value = false
+    }
+    LaunchedEffect(open) {
+        if (!open) state.replyStatusPickerVisible.value = false
+    }
     if (progress.value <= 0.002f && !open) return
 
     val context = LocalContext.current
@@ -118,7 +127,7 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
                 conversation.getMode() == Conversational.MODE_SINGLE &&
                 SupportAccounts.hasSupportAccount(context)
         }
-    val close = { state.attachCardOpen.value = false }
+    val close = { state.attachCardOpen.value = false; state.replyStatusPickerVisible.value = false }
     fun act(action: () -> Unit): () -> Unit = {
         state.attachCardOpen.value = false
         action()
@@ -144,6 +153,11 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
         } else emptyList()
 
     var origin by remember { mutableStateOf(Offset.Zero) }
+    val statusHeight by animateDpAsState(
+        targetValue = if (state.replyStatusPickerVisible.value) 340.dp else 48.dp,
+        animationSpec = spring(dampingRatio = 0.9f, stiffness = 380f),
+        label = "attachmentStatusHeight",
+    )
     BoxWithConstraints(
         Modifier.fillMaxSize()
             .onGloballyPositioned { origin = it.positionInWindow() }
@@ -162,9 +176,11 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
         val tileWidth = (cardWidth - Pad * 2 - Gap * 2) / 3
         val rows = (tiles.size + 2) / 3
         val supportBlock = if (supportTiles.isEmpty()) 0.dp else 12.dp + 16.dp + Gap + TileHeight
-        val cardHeight =
+        val desiredHeight =
             Pad * 2 + HeaderHeight + 12.dp + TileHeight * rows + Gap * (rows - 1) + supportBlock +
-                if (conversation?.getMode() == Conversational.MODE_SINGLE) 56.dp else 0.dp
+                if (conversation?.getMode() == Conversational.MODE_SINGLE) 8.dp + statusHeight else 0.dp
+        val availableHeight = (maxHeight - with(density) { state.inputBarHeightPx.intValue.toDp() } - 16.dp).coerceAtLeast(1.dp)
+        val cardHeight = minOf(desiredHeight, availableHeight)
 
         val widthPx = with(density) { cardWidth.toPx() }
         val heightPx = with(density) { cardHeight.toPx() }
@@ -211,6 +227,7 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
             Column(
                 Modifier.requiredSize(cardWidth, cardHeight)
                     .graphicsLayer { alpha = ((p - 0.45f) / 0.55f).coerceIn(0f, 1f) }
+                    .verticalScroll(rememberScrollState())
                     .padding(Pad)
             ) {
                 Row(Modifier.height(HeaderHeight), verticalAlignment = Alignment.CenterVertically) {
@@ -226,15 +243,20 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
                 TileRows(tiles, tileWidth, colors.onTertiaryContainer)
                 if (conversation?.getMode() == Conversational.MODE_SINGLE) {
                     Spacer(Modifier.height(8.dp))
-                    Surface(onClick = { state.replyStatusPickerVisible.value = true },
+                    Surface(
                         color = colors.onTertiaryContainer.copy(alpha = 0.1f), shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                        modifier = Modifier.fillMaxWidth().height(statusHeight)
                             .onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() }) {
-                        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(painterResource(R.drawable.ic_schedule_24dp), null)
-                            Spacer(Modifier.width(10.dp))
-                            Text(stringResource(R.string.reply_status_title), Modifier.weight(1f))
-                            Icon(painterResource(R.drawable.ic_expand_more_24dp), null)
+                        Column {
+                            Row(Modifier.fillMaxWidth().height(48.dp).clickable {
+                                state.replyStatusPickerVisible.value = !state.replyStatusPickerVisible.value
+                            }.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(painterResource(R.drawable.ic_schedule_24dp), null)
+                                Spacer(Modifier.width(10.dp))
+                                Text(stringResource(R.string.reply_status_title), Modifier.weight(1f))
+                                Icon(painterResource(R.drawable.ic_expand_more_24dp), null)
+                            }
+                            if (state.replyStatusPickerVisible.value) ReplyStatusChoices(state, listener, showTitle = false)
                         }
                     }
                 }
