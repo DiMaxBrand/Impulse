@@ -2353,7 +2353,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         remember(conversation?.getUuid()) { mutableStateOf<java.time.ZonedDateTime?>(null) }
     LaunchedEffect(conversation?.getUuid(), isTyping, quietLongEnough) {
         val c = conversation
-        if (c == null || c.getMode() != Conversational.MODE_SINGLE || isTyping || !quietLongEnough) {
+        if (c == null || c is DemoConversation || c.getMode() != Conversational.MODE_SINGLE || isTyping || !quietLongEnough) {
             return@LaunchedEffect
         }
         val connection = try {
@@ -2769,7 +2769,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 .lastOrNull { it.message.mimeType?.startsWith("audio/") == true }
             if (next != null) {
                 val activity = context as? eu.siacs.conversations.ui.XmppActivity
-                val file = try { activity?.xmppConnectionService?.fileBackend?.getFile(next.message) } catch (_: Exception) { null }
+                val file = try { if (next.message.conversation is DemoConversation) next.message.relativeFilePath?.file() else activity?.xmppConnectionService?.fileBackend?.getFile(next.message) } catch (_: Exception) { null }
                 if (file != null && file.exists()) {
                     val nextIdx = items.indexOf(next)
                     autoAdvanceJob?.cancel()
@@ -5375,7 +5375,8 @@ private fun AudioMessageContent(message: Message) {
     val file =
         remember(message.getUuid()) {
             try {
-                activity?.xmppConnectionService?.fileBackend?.getFile(message)
+                if (message.conversation is DemoConversation) message.relativeFilePath?.file()
+                else activity?.xmppConnectionService?.fileBackend?.getFile(message)
             } catch (_: Exception) {
                 null
             }

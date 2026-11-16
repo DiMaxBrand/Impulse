@@ -212,8 +212,10 @@ object ConversationListHelper {
                     prefs.registerOnSharedPreferenceChangeListener(listener)
                     onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
                 }
-                val demoSession = remember(demoEnabled) {
-                    if (demoEnabled) DemoMemory.get() else { DemoMemory.clear(); null }
+                val account = (demoContext as? XmppActivity)?.xmppConnectionService?.accounts
+                    ?.let { accounts -> accounts.firstOrNull { it.isEnabled } ?: accounts.firstOrNull() }
+                val demoSession = remember(demoEnabled, account) {
+                    if (demoEnabled && account != null) DemoMemory.get(account) else { DemoMemory.clear(); null }
                 }
                 var demoChat by remember(demoSession) { mutableStateOf<DemoConversation?>(null) }
                 LaunchedEffect(searchHost.expanded, demoEnabled, demoChat) {
@@ -238,9 +240,8 @@ object ConversationListHelper {
                     }
                 }
                 Box(modifier = Modifier.fillMaxSize()) {
-                    val demoSearch = remember { SearchHostActions({ emptyList() }, {}, {}, {}, {}, {}, {}) }
-                    val demoSearchHost = remember { SearchHostState() }
-                    ConversationsSearchHost(host = if (demoSession == null) searchHost else demoSearchHost, actions = if (demoSession == null) searchActions else demoSearch) {
+                    val demoSearch = remember(searchActions) { SearchHostActions({ emptyList() }, {}, {}, searchActions.onScanQr, searchActions.onShowQr, searchActions.onEasyInvite, searchActions.onManageAccount) }
+                    ConversationsSearchHost(host = searchHost, actions = if (demoSession == null) searchActions else demoSearch) {
                         Column {
                             if (demoSession == null) ConnectingStrip(isConnecting = state.isConnecting.value)
                             // The glass top row floats over the list, so the list's first row (and the

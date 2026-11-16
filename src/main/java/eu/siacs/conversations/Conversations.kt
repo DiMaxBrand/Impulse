@@ -38,6 +38,10 @@ class Conversations : Application() {
         // A crash or process restart must always recover the real conversation list.
         val flags = eu.siacs.conversations.utils.FeatureFlagPreferences(this)
         if (flags.getOverride(FeatureFlag.DEMO_MODE) == true) flags.setOverride(FeatureFlag.DEMO_MODE, false)
+        // Only transient demo recordings live here; real conversation media is elsewhere.
+        java.io.File(cacheDir, "impulse_demo_recordings").listFiles()?.forEach { file ->
+            if (file.isFile && file.name.startsWith("voice_")) file.delete()
+        }
         AppSettings.migratePreferences(applicationContext)
         EmojiInitializationService.execute(applicationContext)
         ExceptionHelper.init(applicationContext)

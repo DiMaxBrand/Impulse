@@ -1,20 +1,12 @@
 package eu.siacs.conversations.ui
 
-import eu.siacs.conversations.android.AbstractPhoneContact
 import eu.siacs.conversations.entities.Account
 import eu.siacs.conversations.entities.Contact
 import eu.siacs.conversations.entities.Conversation
 import eu.siacs.conversations.entities.Conversational
 import eu.siacs.conversations.entities.Message
-import eu.siacs.conversations.entities.Roster
 import eu.siacs.conversations.xmpp.Jid
 import im.conversations.android.xmpp.model.stanza.Presence
-
-/** Fake model objects: no service, connection, database, or persistent storage. */
-internal class DemoAccount : Account(Jid.of("demo@example.invalid"), "") {
-    private val demoRoster = DemoRoster(this)
-    override fun getRoster(): Roster = demoRoster
-}
 
 private class DemoContact(jid: Jid, account: Account) : Contact(jid) {
     init { setAccount(account); setServerName(jid.local ?: "Demo") }
@@ -23,25 +15,29 @@ private class DemoContact(jid: Jid, account: Account) : Contact(jid) {
     override fun isDomainBlocked(): Boolean = false
 }
 
-private class DemoRoster(private val account: Account) : Roster {
-    private val contacts = mutableMapOf<Jid, Contact>()
-    override fun getContacts(): List<Contact> = contacts.values.toList()
-    override fun getWithSystemAccounts(clazz: Class<out AbstractPhoneContact>): List<Contact> = emptyList()
-    override fun getContact(jid: Jid): Contact = contacts.getOrPut(jid.asBareJid()) { DemoContact(jid.asBareJid(), account) }
-    override fun getContactFromContactList(jid: Jid): Contact = getContact(jid)
-}
-
 internal class DemoConversation(account: Account, name: String, jid: Jid) :
     Conversation(name, account, jid, Conversational.MODE_SINGLE) {
     private val demoName = name
+    private val demoContact = DemoContact(jid, account)
+    override fun getContact(): Contact = demoContact
     val demoStatuses = androidx.compose.runtime.mutableStateMapOf<Boolean, ReplyStatuses.Status>()
     override fun getName(): CharSequence = demoName
     override fun isWithStranger(): Boolean = false
 }
 
 /** All state disappears when this object is discarded. Never pass these entities to app services. */
-internal class DemoSession {
-    private val account = DemoAccount()
+internal class DemoSession(internal val account: Account) {
+    internal val work = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
+    private val files = mutableSetOf<java.io.File>()
+    fun own(file: java.io.File): java.io.File = file.also { files.add(it) }
+    fun discard(file: java.io.File) { files.remove(file); file.delete() }
+    fun close() { work.coroutineContext[kotlinx.coroutines.Job]?.cancel(); files.forEach { it.delete() }; files.clear() }
+    fun audio(chat: DemoConversation, file: java.io.File, duration: Long): Message =
+        Message(chat, "https://example.invalid/audio|${file.length()}|0|0|$duration", Message.ENCRYPTION_NONE, Message.STATUS_SEND_RECEIVED).also {
+            it.setType(Message.TYPE_FILE)
+            it.setRelativeFilePath(Message.StorageLocation(file, false))
+            chat.add(it)
+        }
     val chats: List<DemoConversation> = listOf(
         DemoConversation(account, "Alex", Jid.of("alex@example.invalid")),
         DemoConversation(account, "Sam", Jid.of("sam@example.invalid")),
@@ -90,6 +86,9 @@ internal class DemoSession {
 /** Lives only in the process; no Activity, Context, or persistent storage is retained. */
 internal object DemoMemory {
     private var session: DemoSession? = null
-    fun get(): DemoSession = session ?: DemoSession().also { session = it }
-    fun clear() { session = null }
+    fun get(account: Account): DemoSession {
+        if (session?.account !== account) { clear(); session = DemoSession(account) }
+        return requireNotNull(session)
+    }
+    fun clear() { session?.close(); session = null }
 }
