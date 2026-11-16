@@ -26,7 +26,7 @@ internal class DemoConversation(account: Account, name: String, jid: Jid) :
 }
 
 /** All state disappears when this object is discarded. Never pass these entities to app services. */
-internal class DemoSession(internal val account: Account, internal val language: String = java.util.Locale.getDefault().language) {
+internal class DemoSession(internal var account: Account, internal val language: String = java.util.Locale.getDefault().language) {
     internal val work = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
     private val files = mutableSetOf<java.io.File>()
     fun own(file: java.io.File): java.io.File = file.also { files.add(it) }
@@ -133,15 +133,31 @@ internal class DemoSession(internal val account: Account, internal val language:
             chat.add(it)
         }
 
+    fun rebindAccount(account: Account) {
+        this.account = account
+        chats.forEach { chat ->
+            chat.setAccount(account)
+            chat.getContact().setAccount(account)
+        }
+    }
+
     fun remove(chat: DemoConversation, message: Message) { chat.remove(message) }
 }
 
 /** Lives only in the process; no Activity, Context, or persistent storage is retained. */
 internal object DemoMemory {
     private var session: DemoSession? = null
-    fun get(account: Account, language: String): DemoSession {
-        if (session?.account !== account || session?.language != language) { clear(); session = DemoSession(account, language) }
-        return requireNotNull(session)
+    fun get(account: Account?, language: String): DemoSession? {
+        // The service can be briefly unavailable during Activity recreation. Keep the session
+        // and its messages until an account is available again; never switch to real chats.
+        if (account == null) return session
+        val current = session
+        if (current == null || current.account.getUuid() != account.getUuid() || current.language != language) {
+            clear()
+            return DemoSession(account, language).also { session = it }
+        }
+        if (current.account !== account) current.rebindAccount(account)
+        return current
     }
     fun clear() { session?.close(); session = null }
 }

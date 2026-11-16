@@ -212,11 +212,25 @@ object ConversationListHelper {
                     prefs.registerOnSharedPreferenceChangeListener(listener)
                     onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
                 }
+                // refresh() advances this when the service binds, including after a theme change.
+                val backendRevision = state.revision.intValue
                 val account = (demoContext as? XmppActivity)?.xmppConnectionService?.accounts
                     ?.let { accounts -> accounts.firstOrNull { it.isEnabled } ?: accounts.firstOrNull() }
                 val language = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
-                val demoSession = remember(demoEnabled, account, language) {
-                    if (demoEnabled && account != null) DemoMemory.get(account, language) else { DemoMemory.clear(); null }
+                val demoSession = remember(demoEnabled, account, language, backendRevision) {
+                    if (demoEnabled) DemoMemory.get(account, language) else { DemoMemory.clear(); null }
+                }
+                if (demoEnabled && demoSession == null) {
+                    // Never expose the real list while demo mode is waiting for the backend.
+                    Box(Modifier.fillMaxSize()) {
+                        androidx.compose.material3.CircularProgressIndicator(Modifier.align(Alignment.Center))
+                        androidx.compose.material3.TextButton(
+                            onClick = { demoPrefs.setOverride(eu.siacs.conversations.FeatureFlag.DEMO_MODE, false) },
+                            modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
+                        ) { Text(stringResource(R.string.demo_mode_exit)) }
+                    }
+                    LaunchedEffect(Unit) { fab.hide() }
+                    return@ImpulseTheme
                 }
                 var demoChat by remember(demoSession) { mutableStateOf<DemoConversation?>(null) }
                 LaunchedEffect(searchHost.expanded, demoEnabled, demoChat) {
