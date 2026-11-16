@@ -7,6 +7,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LinearWavyProgressIndicator
@@ -84,7 +85,7 @@ internal fun DownloadProgressBar(onComplete: () -> Unit, modifier: Modifier = Mo
         exit = fadeOut(),
         modifier = modifier,
     ) {
-        Column {
+        Column(modifier = Modifier.fillMaxWidth()) {
             statusText?.let {
                 Text(
                     text = it,
@@ -104,9 +105,12 @@ internal fun DownloadProgressBar(onComplete: () -> Unit, modifier: Modifier = Mo
                     animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
                     label = "updateDownloadProgress",
                 )
-                LinearWavyProgressIndicator(progress = { animatedFraction.coerceIn(0f, 1f) })
+                LinearWavyProgressIndicator(
+                    progress = { animatedFraction.coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             } else {
-                LinearWavyProgressIndicator()
+                LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     }
