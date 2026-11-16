@@ -214,8 +214,9 @@ object ConversationListHelper {
                 }
                 val account = (demoContext as? XmppActivity)?.xmppConnectionService?.accounts
                     ?.let { accounts -> accounts.firstOrNull { it.isEnabled } ?: accounts.firstOrNull() }
-                val demoSession = remember(demoEnabled, account) {
-                    if (demoEnabled && account != null) DemoMemory.get(account) else { DemoMemory.clear(); null }
+                val language = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
+                val demoSession = remember(demoEnabled, account, language) {
+                    if (demoEnabled && account != null) DemoMemory.get(account, language) else { DemoMemory.clear(); null }
                 }
                 var demoChat by remember(demoSession) { mutableStateOf<DemoConversation?>(null) }
                 LaunchedEffect(searchHost.expanded, demoEnabled, demoChat) {
