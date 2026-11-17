@@ -1084,7 +1084,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 // The meter flips the glass to its cheap look while the list flies past.
                 Modifier.fillMaxSize().layerBackdrop(listBackdrop).then(rememberGlassScrollMeter()),
                 with(density) { glassTopHeightPx.toDp() },
-                with(density) { glassBarHeightPx.toDp() },
+                // Keep a stable resting gap above the floating composer. This is intentionally
+                // separate from the gesture inset: the latter can change under a held chat and
+                // must never make the reversed message list reanchor.
+                with(density) { glassBarHeightPx.toDp() } + 16.dp,
             )
             // The messages run up under the status bar, blurred there.
             eu.siacs.conversations.ui.glass.GlassStatusBarBlur(glassBackdrop, Modifier.align(Alignment.TopCenter))
