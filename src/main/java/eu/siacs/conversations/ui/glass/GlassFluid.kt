@@ -453,8 +453,11 @@ class GlassFluidState(private val density: Float) : FluidScene {
             p.vel = Offset.Zero
         }
         // The squash is a bouncy spring: pressed, it follows the pressure; free, it rings out.
-        val tx = if (wallsOn) (max(penX, 0f) / p.baseW).coerceAtMost(MAX_SQUASH) else 0f
-        val ty = if (wallsOn) (max(penY, 0f) / p.baseH).coerceAtMost(MAX_SQUASH) else 0f
+        // Solid piece collisions are contact surfaces just like field walls. They should squash
+        // directionally even when the independent wall toggle is off.
+        val squashOnContact = wallsOn || solidOn
+        val tx = if (squashOnContact) (max(penX, 0f) / p.baseW).coerceAtMost(MAX_SQUASH) else 0f
+        val ty = if (squashOnContact) (max(penY, 0f) / p.baseH).coerceAtMost(MAX_SQUASH) else 0f
         val oldW = p.width
         val oldH = p.height
         var left = dt
