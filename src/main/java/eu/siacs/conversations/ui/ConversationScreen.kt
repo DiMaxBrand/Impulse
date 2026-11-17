@@ -4889,6 +4889,7 @@ private fun MessageBubble(
                 } else if (inlineStatus) {
                     TextWithMessageStatus(
                         message, revision, contentColor, { onLongPress(message) },
+                        matchBubbleWidth = repliedToId != null,
                         footer = { Column { MessageFooter(message, outgoing, revision, legacyMessageLayout = legacyMessageLayout, onHorizontalBounds = onFooterBounds) } },
                     )
                 } else {
@@ -7813,11 +7814,13 @@ private fun TextWithMessageStatus(
     revision: Int,
     contentColor: Color,
     onLongPress: () -> Unit,
+    matchBubbleWidth: Boolean,
     footer: @Composable () -> Unit,
 ) {
     // Keep the latest actual text layout without scheduling a second composition/visible jump.
     val textLayout = remember(message.getUuid()) { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
     androidx.compose.ui.layout.Layout(
+        modifier = if (matchBubbleWidth) Modifier.fillMaxWidth() else Modifier,
         content = {
             LinkifiedMessageText(message, revision, contentColor, onLongPress,
                 onTextLayout = { textLayout.value = it })
