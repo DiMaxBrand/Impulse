@@ -1,10 +1,11 @@
 # Impulse — To-Do
 
-## Rigid-body contact deformation — 1.15.1-rc.5
+## Rigid-body contact deformation — 1.15.1-rc.6
 
 - `BUG-8RSC`: keep deformation active while rigid playground pieces press against each other,
-  and resize their Box2D fixtures with the visible bounds so compressed pieces can move closer.
-- Verify the deformation and spacing on the reporter's device after updating.
+  resize their Box2D fixtures with the visible bounds, and stop idle contacts from repeatedly
+  squashing and expanding bodies. Deformation now latches during the drag and releases on lift.
+- Verify the deformation, spacing, and idle stability on the reporter's device after updating.
 
 ## Demo conversations
 

@@ -729,6 +729,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
         override fun endContact(contact: Contact) {}
         override fun preSolve(contact: Contact, oldManifold: Manifold) {}
         override fun postSolve(contact: Contact, impulse: ContactImpulse) {
+            val activeGrab = grabbed ?: return
             var total = 0f
             for (i in 0 until impulse.count) total += impulse.normalImpulses[i]
             if (total <= 0f) return
@@ -737,10 +738,10 @@ class GlassFluidState(private val density: Float) : FluidScene {
             val n = wm.normal
             val pieceA = contact.fixtureA.body.userData as? FluidPiece
             val pieceB = contact.fixtureB.body.userData as? FluidPiece
-            // The playground's rigid mode used to squash only on a sharp impact. Once an object
-            // settled against another, the solver stopped producing a big enough impact and the
-            // spring immediately relaxed, even while the finger kept pushing. Treat the solver's
-            // per-step contact impulse as sustained pressure and drive the squash toward it.
+            // Only a finger-driven contact deforms the pieces. Applying pressure to idle resting
+            // bodies made fixture resizing feed back into Box2D: shrinking removed the contact,
+            // then the expanding fixture pushed the bodies apart over and over.
+            if (pieceA !== activeGrab && pieceB !== activeGrab) return
             for (body in arrayOf(contact.fixtureA.body, contact.fixtureB.body)) {
                 val piece = body.userData as? FluidPiece ?: continue
                 if (pieceA == null || pieceB == null) continue
@@ -748,9 +749,8 @@ class GlassFluidState(private val density: Float) : FluidScene {
                 if (mass <= 0f) continue
                 val pressure = total / mass // velocity change per solver step
                 val local = body.getLocalVector(Vec2(n.x, n.y))
-                // Ignore resting solver noise, but make a dragged, sustained contact visibly
-                // deform the piece. The target is refreshed every fixed physics step and released
-                // naturally as soon as contact ends.
+                // Latch pressure for this drag. Resizing can briefly separate the bodies; keeping
+                // the target avoids a squash/expand collision loop.
                 val target = ((pressure - CONTACT_PRESSURE_DEAD_ZONE) * CONTACT_SQUASH_GAIN)
                     .coerceIn(0f, MAX_CONTACT_SQUASH)
                 if (abs(local.x) > abs(local.y)) {
@@ -979,10 +979,6 @@ class GlassFluidState(private val density: Float) : FluidScene {
         accum += dt
         var n = 0
         while (accum >= FIXED_STEP && n < 6) {
-            for (p in pieces) {
-                p.rigidContactSquashX = 0f
-                p.rigidContactSquashY = 0f
-            }
             w.step(FIXED_STEP, 10, 6)
             accum -= FIXED_STEP
             n++
@@ -1052,6 +1048,10 @@ class GlassFluidState(private val density: Float) : FluidScene {
             it.body?.linearDamping = restDamping
         }
         grabbed = null
+        for (p in pieces) {
+            p.rigidContactSquashX = 0f
+            p.rigidContactSquashY = 0f
+        }
         wake()
     }
 
