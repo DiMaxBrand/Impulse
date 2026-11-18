@@ -1070,6 +1070,12 @@ class GlassFluidState(private val density: Float) : FluidScene {
         accum += dt
         var n = 0
         while (accum >= FIXED_STEP && n < 6) {
+            // Rebuild compression from the contacts that are still under finger pressure in this
+            // solver step. Keeping a historical maximum made pieces stay flattened until release.
+            for (piece in pieces) {
+                piece.rigidContactSquashX = 0f
+                piece.rigidContactSquashY = 0f
+            }
             closingSpeedByContact.clear()
             w.step(FIXED_STEP, 10, 6)
             accum -= FIXED_STEP

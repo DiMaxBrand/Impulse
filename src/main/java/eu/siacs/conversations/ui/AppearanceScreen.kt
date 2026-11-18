@@ -1362,7 +1362,15 @@ internal fun FluidPrototype(
             add("glass_lab_merge_soft") { ProtoSlider(it, R.string.glass_lab_merge_soft, soft, 4f..48f, "dp") { v -> soft = v } }
         }
     }
-    // The field comes first (the playground), the controls under it.
+    // Keep the field-size controls first, then put the action buttons directly against the field.
+    Spacer(Modifier.height(8.dp))
+    SettingsGroup(
+        listOf(
+            SettingsRow("height") { p -> ProtoSlider(p, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { v -> fieldHeight = v } },
+            SettingsRow("width") { p -> ProtoSlider(p, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { v -> fieldWidth = v } },
+        ),
+    )
+    Spacer(Modifier.height(8.dp))
     Column(
         Modifier.padding(horizontal = 12.dp).graphicsLayer { alpha = controlsAlpha },
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1390,14 +1398,6 @@ internal fun FluidPrototype(
             }
         }
     }
-    Spacer(Modifier.height(8.dp))
-    SettingsGroup(
-        listOf(
-            SettingsRow("height") { p -> ProtoSlider(p, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { v -> fieldHeight = v } },
-            SettingsRow("width") { p -> ProtoSlider(p, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { v -> fieldWidth = v } },
-        ),
-    )
-    Spacer(Modifier.height(8.dp))
     eu.siacs.conversations.ui.glass.GlassFluidField(
         state = fluid,
         reach = reach,

@@ -1,12 +1,14 @@
 # Impulse — To-Do
 
-## Liquid Glass playground physics — 1.15.1-rc.8
+## Liquid Glass playground physics — 1.15.1-rc.9
 
 - `BUG-8RSC`: distinguish resting support from impact pressure. Real physics should squash on
-  momentum-driven impacts (including the floor), recover through the existing spring, and keep the
-  deformed visual bounds synchronized with collision fixtures. Static weight alone should not
-  squash or cause idle bouncing. Preserve drag-pressure squashing and the independent Real physics,
-  Do not squash, and rotation controls.
+  momentum-driven impacts (including the floor), while finger-driven compression follows live
+  contact pressure and releases as soon as contact pressure eases. Keep the deformed visual bounds
+  synchronized with collision fixtures. Static weight alone should not squash or cause idle
+  bouncing. Preserve the independent Real physics, Do not squash, and rotation controls. In the
+  playground layout, put field height/width before the action buttons and keep those buttons closest
+  to the field.
 - Check on device that gravity still acts with Slippery floor off, and that bodies stay still at rest.
 - Check on device that a fast swipe can launch a resting body and that impact squash/recovery settles
   without a repeated bounce loop.
