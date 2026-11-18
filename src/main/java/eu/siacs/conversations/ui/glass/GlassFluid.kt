@@ -74,6 +74,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import java.util.IdentityHashMap
 
 /*
  * PROTOTYPE: glass pieces that merge into one surface.
@@ -777,14 +778,34 @@ class GlassFluidState(private val density: Float) : FluidScene {
     private var fingerStart = Offset.Zero
 
     private val scale get() = 100f * density
+    private val closingSpeedByContact = IdentityHashMap<Contact, Float>()
 
     private val contactListener = object : ContactListener {
         override fun beginContact(contact: Contact) {}
         override fun endContact(contact: Contact) {}
-        override fun preSolve(contact: Contact, oldManifold: Manifold) {}
+        override fun preSolve(contact: Contact, oldManifold: Manifold) {
+            if (!squashOn) return
+            val manifold = contact.manifold
+            if (manifold.pointCount == 0) return
+            val worldManifold = WorldManifold()
+            contact.getWorldManifold(worldManifold)
+            val bodyA = contact.fixtureA.body
+            val bodyB = contact.fixtureB.body
+            var closingSpeed = 0f
+            for (i in 0 until manifold.pointCount) {
+                val point = worldManifold.points[i]
+                val velocityA = bodyA.getLinearVelocityFromWorldPoint(point)
+                val velocityB = bodyB.getLinearVelocityFromWorldPoint(point)
+                val relativeNormalSpeed =
+                    (velocityB.x - velocityA.x) * worldManifold.normal.x +
+                        (velocityB.y - velocityA.y) * worldManifold.normal.y
+                closingSpeed = max(closingSpeed, -relativeNormalSpeed)
+            }
+            closingSpeedByContact[contact] = closingSpeed
+        }
         override fun postSolve(contact: Contact, impulse: ContactImpulse) {
             if (!squashOn) return
-            val activeGrab = grabbed ?: return
+            val closingSpeed = closingSpeedByContact.remove(contact) ?: 0f
             var total = 0f
             for (i in 0 until impulse.count) total += impulse.normalImpulses[i]
             if (total <= 0f) return
@@ -793,25 +814,40 @@ class GlassFluidState(private val density: Float) : FluidScene {
             val n = wm.normal
             val pieceA = contact.fixtureA.body.userData as? FluidPiece
             val pieceB = contact.fixtureB.body.userData as? FluidPiece
-            // Only a finger-driven contact deforms the pieces. Applying pressure to idle resting
-            // bodies made fixture resizing feed back into Box2D: shrinking removed the contact,
-            // then the expanding fixture pushed the bodies apart over and over.
-            if (pieceA !== activeGrab && pieceB !== activeGrab) return
+            val activeGrab = grabbed
+            val grabbedContact = activeGrab != null && (pieceA === activeGrab || pieceB === activeGrab)
+            var fingerPressingIntoContact = false
+            if (grabbedContact) {
+                val joint = mouse
+                if (joint != null) {
+                    val force = Vec2()
+                    joint.getReactionForce(1f / FIXED_STEP, force)
+                    val alongNormal = force.x * n.x + force.y * n.y
+                    val pressForce = if (pieceA === activeGrab) alongNormal else -alongNormal
+                    fingerPressingIntoContact = pressForce > MIN_DRAG_PRESS_FORCE
+                }
+            }
             for (body in arrayOf(contact.fixtureA.body, contact.fixtureB.body)) {
                 val piece = body.userData as? FluidPiece ?: continue
-                if (pieceA == null || pieceB == null) continue
                 val mass = body.mass
                 if (mass <= 0f) continue
                 val pressure = total / mass // velocity change per solver step
                 val local = body.getLocalVector(Vec2(n.x, n.y))
-                // Latch pressure for this drag. Resizing can briefly separate the bodies; keeping
-                // the target avoids a squash/expand collision loop.
-                val target = ((pressure - CONTACT_PRESSURE_DEAD_ZONE) * CONTACT_SQUASH_GAIN)
-                    .coerceIn(0f, MAX_CONTACT_SQUASH)
-                if (abs(local.x) > abs(local.y)) {
-                    piece.rigidContactSquashX = max(piece.rigidContactSquashX, target)
-                } else {
-                    piece.rigidContactSquashY = max(piece.rigidContactSquashY, target)
+                if (fingerPressingIntoContact) {
+                    // A stationary body resting on the floor is supported by gravity, not by the
+                    // finger. Only the mouse-joint force directed into this surface sustains squash.
+                    val target = ((pressure - CONTACT_PRESSURE_DEAD_ZONE) * CONTACT_SQUASH_GAIN)
+                        .coerceIn(0f, MAX_CONTACT_SQUASH)
+                    if (abs(local.x) > abs(local.y)) {
+                        piece.rigidContactSquashX = max(piece.rigidContactSquashX, target)
+                    } else {
+                        piece.rigidContactSquashY = max(piece.rigidContactSquashY, target)
+                    }
+                } else if (closingSpeed >= MIN_IMPACT_SPEED) {
+                    // Momentum deforms any solid collision, including a piece landing on the floor.
+                    // Resting support impulses are excluded by the pre-solve closing-speed check.
+                    val kick = (closingSpeed * 100f * IMPACT).coerceAtMost(MAX_KICK)
+                    if (abs(local.x) > abs(local.y)) piece.sqVX += kick else piece.sqVY += kick
                 }
             }
         }
@@ -1034,6 +1070,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
         accum += dt
         var n = 0
         while (accum >= FIXED_STEP && n < 6) {
+            closingSpeedByContact.clear()
             w.step(FIXED_STEP, 10, 6)
             accum -= FIXED_STEP
             n++
@@ -1142,9 +1179,12 @@ class GlassFluidState(private val density: Float) : FluidScene {
         const val MAX_LASER_HITS = 28
         const val FIXED_STEP = 1f / 120f
         const val FIXTURE_RESIZE_EPSILON = 0.35f
+        const val MIN_IMPACT_SPEED = 0.7f
+        const val MIN_DRAG_PRESS_FORCE = 0.2f
         const val CONTACT_PRESSURE_DEAD_ZONE = 0.015f
         const val CONTACT_SQUASH_GAIN = 3.2f
         const val MAX_CONTACT_SQUASH = 0.42f
+        const val MAX_KICK = 12f
         const val REST_SPEED = 40f     // dp/s: a piece falling slower than this onto the floor lies there
         const val MIN_SPEED = 12f      // dp/s: slower than this a sliding piece stops
         const val MAX_SPEED = 5000f    // dp/s

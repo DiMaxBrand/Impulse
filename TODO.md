@@ -1,11 +1,15 @@
 # Impulse — To-Do
 
-## Liquid Glass playground controls — 1.15.1-rc.7
+## Liquid Glass playground physics — 1.15.1-rc.8
 
-- `BUG-8RSC`: keep contact deformation active only during a drag, release it on lift, and prevent
-  idle bodies from bouncing. Add independent Real physics and Do not squash controls; make rotation
-  available in either physics mode. Put field dimensions above the playground and Walls after Laser.
+- `BUG-8RSC`: distinguish resting support from impact pressure. Real physics should squash on
+  momentum-driven impacts (including the floor), recover through the existing spring, and keep the
+  deformed visual bounds synchronized with collision fixtures. Static weight alone should not
+  squash or cause idle bouncing. Preserve drag-pressure squashing and the independent Real physics,
+  Do not squash, and rotation controls.
 - Check on device that gravity still acts with Slippery floor off, and that bodies stay still at rest.
+- Check on device that a fast swipe can launch a resting body and that impact squash/recovery settles
+  without a repeated bounce loop.
 
 ## Demo conversations
 
