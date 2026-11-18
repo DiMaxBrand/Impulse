@@ -1807,7 +1807,7 @@
     <string name="glass_lab_merge_walls">Walls</string>
     <string name="glass_lab_merge_walls_summary">A cross of walls in the middle. Push an element against one and keep pulling: it squashes.</string>
     <string name="glass_lab_merge_floor">Slippery floor</string>
-    <string name="glass_lab_merge_floor_summary">Let go of an element you pulled fast and it keeps sliding, bounces off the walls and slows down.</string>
+    <string name="glass_lab_merge_floor_summary">A quick pull keeps moving after release. This also makes contacts more slippery; gravity works independently.</string>
     <string name="glass_lab_merge_friction">Friction</string>
     <string name="glass_lab_merge_height">Field height</string>
     <string name="glass_lab_merge_width">Field width (of the screen)</string>
@@ -1829,10 +1829,12 @@
     <string name="glass_lab_merge_stack_summary">Elements cannot pass through each other: they pile up and lie on each other, with gravity on or off.</string>
     <string name="glass_lab_merge_nomerge">Do not merge</string>
     <string name="glass_lab_merge_nomerge_summary">No bridges: elements never join into one glass body (turn it on with solid elements to stack them like blocks).</string>
-    <string name="glass_lab_merge_rigid">Rigid bodies</string>
-    <string name="glass_lab_merge_rigid_summary">Real physics: elements knock, stack, topple and can turn, shaped like what you see. Throw one at a tower. (Squashing through slots is only in the simple mode.)</string>
+    <string name="glass_lab_merge_rigid">Real physics</string>
+    <string name="glass_lab_merge_rigid_summary">Use dynamic bodies for motion and turning. Solid elements controls collisions between pieces; squashing and rotation are separate.</string>
+    <string name="glass_lab_merge_nosquash">Do not squash</string>
+    <string name="glass_lab_merge_nosquash_summary">Keep pieces at their original size when pressed against walls or each other.</string>
     <string name="glass_lab_merge_rotation">Rotation</string>
-    <string name="glass_lab_merge_rotation_summary">Stiff: round and square elements turn only when knocked; long ones turn when held off-centre. Free: every element turns.</string>
+    <string name="glass_lab_merge_rotation_summary">Available in both physics modes. Stiff: long pieces turn when pulled off-centre; free: every piece can turn.</string>
     <string name="glass_lab_merge_rotation_off">Off</string>
     <string name="glass_lab_merge_rotation_stiff">Stiff</string>
     <string name="glass_lab_merge_rotation_free">Free</string>

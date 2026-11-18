@@ -1,11 +1,11 @@
 # Impulse — To-Do
 
-## Rigid-body contact deformation — 1.15.1-rc.6
+## Liquid Glass playground controls — 1.15.1-rc.7
 
-- `BUG-8RSC`: keep deformation active while rigid playground pieces press against each other,
-  resize their Box2D fixtures with the visible bounds, and stop idle contacts from repeatedly
-  squashing and expanding bodies. Deformation now latches during the drag and releases on lift.
-- Verify the deformation, spacing, and idle stability on the reporter's device after updating.
+- `BUG-8RSC`: keep contact deformation active only during a drag, release it on lift, and prevent
+  idle bodies from bouncing. Add independent Real physics and Do not squash controls; make rotation
+  available in either physics mode. Put field dimensions above the playground and Walls after Laser.
+- Check on device that gravity still acts with Slippery floor off, and that bodies stay still at rest.
 
 ## Demo conversations
 

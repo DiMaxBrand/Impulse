@@ -1875,7 +1875,7 @@
     <string name="glass_lab_merge_walls">Стены</string>
     <string name="glass_lab_merge_walls_summary">Крест из стен посередине. Упритесь элементом в стену и тяните дальше: он расплющится.</string>
     <string name="glass_lab_merge_floor">Скользкий пол</string>
-    <string name="glass_lab_merge_floor_summary">Отпустите резко потянутый элемент: он продолжит ехать, отскочит от стен и постепенно остановится.</string>
+    <string name="glass_lab_merge_floor_summary">После резкого рывка элемент продолжит двигаться после отпускания. Контакты станут скользкими; гравитация работает и без этого режима.</string>
     <string name="glass_lab_merge_friction">Трение</string>
     <string name="glass_lab_merge_height">Высота поля</string>
     <string name="glass_lab_merge_width">Ширина поля (от экрана)</string>
@@ -1897,10 +1897,12 @@
     <string name="glass_lab_merge_stack_summary">Элементы не могут проходить друг через друга: они складываются и лежат друг на друге, с гравитацией и без неё.</string>
     <string name="glass_lab_merge_nomerge">Не сливать</string>
     <string name="glass_lab_merge_nomerge_summary">Без мостиков: элементы никогда не сливаются в одно стеклянное тело (включите вместе с твёрдыми, чтобы складывать как кубики).</string>
-    <string name="glass_lab_merge_rigid">Твёрдые тела</string>
-    <string name="glass_lab_merge_rigid_summary">Настоящая физика: элементы сталкиваются, складываются, падают и могут вращаться, формой как на экране. Бросьте один в башню. (Протискивание сплющенного элемента в щели есть только в простом режиме.)</string>
+    <string name="glass_lab_merge_rigid">Реальная физика</string>
+    <string name="glass_lab_merge_rigid_summary">Движение и повороты рассчитываются как у физических тел. Столкновения элементов, сплющивание и вращение настраиваются отдельно.</string>
+    <string name="glass_lab_merge_nosquash">Не сплющивать</string>
+    <string name="glass_lab_merge_nosquash_summary">Элементы сохраняют исходный размер у стен и при столкновениях друг с другом.</string>
     <string name="glass_lab_merge_rotation">Вращение</string>
-    <string name="glass_lab_merge_rotation_summary">Жёсткое: круглые и квадратные элементы вращаются только от ударов, длинные ещё и когда их держат не за центр. Свободное: вращается каждый.</string>
+    <string name="glass_lab_merge_rotation_summary">Доступно в обоих режимах физики. Жёсткое: длинные элементы вращаются, если тянуть их не за центр. Свободное: вращаться может любой элемент.</string>
     <string name="glass_lab_merge_rotation_off">Выкл</string>
     <string name="glass_lab_merge_rotation_stiff">Жёсткое</string>
     <string name="glass_lab_merge_rotation_free">Свободное</string>

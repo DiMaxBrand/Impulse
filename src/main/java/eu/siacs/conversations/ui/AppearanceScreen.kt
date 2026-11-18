@@ -1333,6 +1333,7 @@ internal fun FluidPrototype(
     var friction by remember { mutableFloatStateOf(1.4f) }
     var bounce by remember { mutableFloatStateOf(0.7f) }
     var rigidOn by remember { mutableStateOf(false) }
+    var noSquash by remember { mutableStateOf(false) }
     var rotation by remember { mutableIntStateOf(1) }
     var solidOn by remember { mutableStateOf(false) }
     var mergeOff by remember { mutableStateOf(false) }
@@ -1390,6 +1391,13 @@ internal fun FluidPrototype(
         }
     }
     Spacer(Modifier.height(8.dp))
+    SettingsGroup(
+        listOf(
+            SettingsRow("height") { p -> ProtoSlider(p, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { v -> fieldHeight = v } },
+            SettingsRow("width") { p -> ProtoSlider(p, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { v -> fieldWidth = v } },
+        ),
+    )
+    Spacer(Modifier.height(8.dp))
     eu.siacs.conversations.ui.glass.GlassFluidField(
         state = fluid,
         reach = reach,
@@ -1400,6 +1408,7 @@ internal fun FluidPrototype(
         friction = friction,
         bounce = bounce,
         rigidOn = rigidOn,
+        squashOn = !noSquash,
         rotationLevel = rotation,
         solidOn = solidOn,
         mergeOff = mergeOff,
@@ -1431,24 +1440,25 @@ internal fun FluidPrototype(
                 it, R.drawable.ic_touch_app_24dp,
                 stringResource(R.string.glass_lab_merge_rigid), stringResource(R.string.glass_lab_merge_rigid_summary),
                 rigidOn,
-            ) { v ->
-                rigidOn = v
-                // Real physics is about pieces meeting each other: they become solid with it.
-                if (v) solidOn = true
-            }
+            ) { v -> rigidOn = v }
         }
-        if (rigidOn) {
-            add("glass_lab_merge_rotation") {
-                ChoiceRow(
-                    it, stringResource(R.string.glass_lab_merge_rotation), stringResource(R.string.glass_lab_merge_rotation_summary),
-                    listOf(
-                        stringResource(R.string.glass_lab_merge_rotation_off),
-                        stringResource(R.string.glass_lab_merge_rotation_stiff),
-                        stringResource(R.string.glass_lab_merge_rotation_free),
-                    ),
-                    rotation,
-                ) { v -> rotation = v }
-            }
+        add("glass_lab_merge_nosquash") {
+            SwitchRow(
+                it, R.drawable.ic_touch_app_24dp,
+                stringResource(R.string.glass_lab_merge_nosquash), stringResource(R.string.glass_lab_merge_nosquash_summary),
+                noSquash,
+            ) { v -> noSquash = v }
+        }
+        add("glass_lab_merge_rotation") {
+            ChoiceRow(
+                it, stringResource(R.string.glass_lab_merge_rotation), stringResource(R.string.glass_lab_merge_rotation_summary),
+                listOf(
+                    stringResource(R.string.glass_lab_merge_rotation_off),
+                    stringResource(R.string.glass_lab_merge_rotation_stiff),
+                    stringResource(R.string.glass_lab_merge_rotation_free),
+                ),
+                rotation,
+            ) { v -> rotation = v }
         }
         add("glass_lab_merge_nomerge") {
             SwitchRow(
@@ -1463,13 +1473,6 @@ internal fun FluidPrototype(
                 stringResource(R.string.glass_lab_merge_stack), stringResource(R.string.glass_lab_merge_stack_summary),
                 solidOn,
             ) { v -> solidOn = v }
-        }
-        add("glass_lab_merge_walls") {
-            SwitchRow(
-                it, R.drawable.ic_touch_app_24dp,
-                stringResource(R.string.glass_lab_merge_walls), stringResource(R.string.glass_lab_merge_walls_summary),
-                walls,
-            ) { v -> walls = v }
         }
         add("glass_lab_merge_floor") {
             SwitchRow(
@@ -1515,17 +1518,16 @@ internal fun FluidPrototype(
             add("glass_lab_merge_laser_spin") { ProtoSlider(it, R.string.glass_lab_merge_laser_spin, laserSpin, -90f..90f, "°/s") { v -> laserSpin = v } }
             add("glass_lab_merge_index") { ProtoSlider(it, R.string.glass_lab_merge_index, glassIndex, 1f..2.5f, "", decimals = 2) { v -> glassIndex = v } }
         }
+        add("glass_lab_merge_walls") {
+            SwitchRow(
+                it, R.drawable.ic_touch_app_24dp,
+                stringResource(R.string.glass_lab_merge_walls), stringResource(R.string.glass_lab_merge_walls_summary),
+                walls,
+            ) { v -> walls = v }
+        }
     }
     Spacer(Modifier.height(8.dp))
     SettingsGroup(behaviour)
-    Spacer(Modifier.height(8.dp))
-    SettingsGroup(
-        listOf(
-            SettingsRow("height") { p -> ProtoSlider(p, R.string.glass_lab_merge_height, fieldHeight, 150f..1000f, "dp") { v -> fieldHeight = v } },
-            SettingsRow("width") { p -> ProtoSlider(p, R.string.glass_lab_merge_width, fieldWidth, 50f..400f, "%") { v -> fieldWidth = v } },
-        ),
-    )
-
 }
 
 /** A row with a few choices as chips. */

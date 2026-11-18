@@ -114,12 +114,15 @@ class FluidPiece(val baseW: Float, val baseH: Float, val baseR: Float, x: Float,
 
     /** Where the finger wants the CENTRE of the body to be (it can be beyond a wall). */
     var target = Offset(x + baseW / 2f, y + baseH / 2f)
-    /** Turn of the body, radians (clockwise on screen); only the rigid-body engine turns pieces. */
+    /** Turn of the body in radians (clockwise on screen); rotation can be driven by either engine. */
     var angle by mutableFloatStateOf(0f)
     var sqX by mutableFloatStateOf(0f)
     var sqY by mutableFloatStateOf(0f)
     var sqVX = 0f
     var sqVY = 0f
+    var softAngularVelocity = 0f
+    var softDragLever = Offset.Zero
+    var softDragTimeMillis = 0L
     /** Compression requested by the last rigid-body contact solve. */
     var rigidContactSquashX = 0f
     var rigidContactSquashY = 0f
@@ -211,6 +214,47 @@ class GlassFluidState(private val density: Float) : FluidScene {
         wakeups.trySend(Unit)
     }
 
+    fun setSquashEnabled(enabled: Boolean) {
+        if (squashOn == enabled) return
+        squashOn = enabled
+        if (!enabled) for (piece in pieces) {
+            piece.sqX = 0f
+            piece.sqY = 0f
+            piece.sqVX = 0f
+            piece.sqVY = 0f
+            piece.rigidContactSquashX = 0f
+            piece.rigidContactSquashY = 0f
+        }
+        wake()
+    }
+
+    fun beginSoftDrag(piece: FluidPiece, pointer: Offset) {
+        piece.dragging = true
+        piece.vel = Offset.Zero
+        piece.target = Offset(piece.centerX, piece.centerY)
+        piece.softDragLever = pointer - Offset(piece.width / 2f, piece.height / 2f)
+        piece.softDragTimeMillis = 0L
+        piece.softAngularVelocity = 0f
+        wake()
+    }
+
+    fun dragSoft(piece: FluidPiece, delta: Offset, uptimeMillis: Long) {
+        piece.target += delta
+        val lever = piece.softDragLever
+        val radiusSquared = lever.x * lever.x + lever.y * lever.y
+        val longShape = max(piece.baseW, piece.baseH) / max(min(piece.baseW, piece.baseH), 1f) > 1.15f
+        if (rotationLevel == 2 || (rotationLevel == 1 && longShape)) {
+            if (radiusSquared > 64f) {
+                val radians = kotlin.math.atan2(lever.x * delta.y - lever.y * delta.x, radiusSquared)
+                piece.angle += radians
+                val elapsed = uptimeMillis - piece.softDragTimeMillis
+                if (rotationLevel == 2 && elapsed > 0L) piece.softAngularVelocity = radians / (elapsed / 1000f)
+            }
+        }
+        piece.softDragTimeMillis = uptimeMillis
+        wake()
+    }
+
     /** Pieces start reaching for each other from this gap (px). */
     var reach = 28f
     /** How deep a full merge is: the roundness of the join (px). */
@@ -227,6 +271,8 @@ class GlassFluidState(private val density: Float) : FluidScene {
 
     /** Pieces are solid: they cannot pass through each other, they pile up. */
     var solidOn = false
+    /** Pieces deform on pressure unless explicitly disabled. */
+    var squashOn = true
     /** No bridges: pieces never join into one body. */
     var mergeOff = false
 
@@ -408,6 +454,14 @@ class GlassFluidState(private val density: Float) : FluidScene {
     /** Moves one piece for [dt]; true while it is still in motion. */
     private fun advance(p: FluidPiece, dt: Float, walls: List<Rect>): Boolean {
         var moving = false
+        if (rotationLevel == 0) {
+            p.angle = 0f
+            p.softAngularVelocity = 0f
+        } else if (!p.dragging && rotationLevel == 2 && abs(p.softAngularVelocity) > 0.01f) {
+            p.angle += p.softAngularVelocity * dt
+            p.softAngularVelocity *= exp(-max(friction, 0.25f) * dt)
+            moving = true
+        }
         var penX = 0f
         var penY = 0f
         if (p.dragging) {
@@ -461,7 +515,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
         // The squash is a bouncy spring: pressed, it follows the pressure; free, it rings out.
         // Solid piece collisions are contact surfaces just like field walls. They should squash
         // directionally even when the independent wall toggle is off.
-        val squashOnContact = wallsOn || solidOn
+        val squashOnContact = squashOn && (wallsOn || solidOn)
         val tx = if (squashOnContact) (max(penX, 0f) / p.baseW).coerceAtMost(MAX_SQUASH) else 0f
         val ty = if (squashOnContact) (max(penY, 0f) / p.baseH).coerceAtMost(MAX_SQUASH) else 0f
         val oldW = p.width
@@ -729,6 +783,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
         override fun endContact(contact: Contact) {}
         override fun preSolve(contact: Contact, oldManifold: Manifold) {}
         override fun postSolve(contact: Contact, impulse: ContactImpulse) {
+            if (!squashOn) return
             val activeGrab = grabbed ?: return
             var total = 0f
             for (i in 0 until impulse.count) total += impulse.normalImpulses[i]
@@ -1123,6 +1178,7 @@ fun GlassFluidField(
     friction: Float,
     bounce: Float,
     rigidOn: Boolean,
+    squashOn: Boolean,
     rotationLevel: Int,
     solidOn: Boolean,
     mergeOff: Boolean,
@@ -1150,6 +1206,7 @@ fun GlassFluidField(
     state.friction = friction
     state.bounce = bounce
     state.rigidOn = rigidOn
+    state.setSquashEnabled(squashOn)
     state.rotationLevel = rotationLevel
     state.solidOn = solidOn
     state.mergeOff = mergeOff
@@ -1296,12 +1353,9 @@ fun GlassFluidField(
                                 .then(if (rigidOn) Modifier else Modifier.pointerInput(piece, state) {
                                     val tracker = VelocityTracker()
                                     detectDragGestures(
-                                        onDragStart = {
+                                        onDragStart = { pointer ->
                                             tracker.resetTracking()
-                                            piece.dragging = true
-                                            piece.vel = Offset.Zero
-                                            piece.target = Offset(piece.centerX, piece.centerY)
-                                            state.wake()
+                                            state.beginSoftDrag(piece, pointer)
                                         },
                                         onDragEnd = {
                                             val v = tracker.calculateVelocity()
@@ -1310,9 +1364,8 @@ fun GlassFluidField(
                                         onDragCancel = { state.release(piece, Offset.Zero) },
                                         onDrag = { change, drag ->
                                             change.consume()
-                                            piece.target = piece.target + drag
+                                            state.dragSoft(piece, drag, change.uptimeMillis)
                                             tracker.addPosition(change.uptimeMillis, piece.target)
-                                            state.wake()
                                         },
                                     )
                                 })
