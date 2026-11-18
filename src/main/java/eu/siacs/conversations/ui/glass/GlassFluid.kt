@@ -120,6 +120,12 @@ class FluidPiece(val baseW: Float, val baseH: Float, val baseR: Float, x: Float,
     var sqY by mutableFloatStateOf(0f)
     var sqVX = 0f
     var sqVY = 0f
+    /** Compression requested by the last rigid-body contact solve. */
+    var rigidContactSquashX = 0f
+    var rigidContactSquashY = 0f
+    /** Dimensions currently represented by this body's Box2D fixtures. */
+    var rigidFixtureWidth = 0f
+    var rigidFixtureHeight = 0f
     var contactX = 0
     var contactY = 0
 
@@ -695,7 +701,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
     // rounded rectangle made of two boxes and four circles), so pieces knock, stack, topple, slide off
     // each other where their curves say they should, and turn. The finger holds a piece with a spring
     // (a mouse joint), at the touch point when the piece may turn, so a pull off-centre spins it.
-    // Squashing is only for show here: a hard hit flattens the picture a little, then it rings out.
+    // Contact pressure squashes pieces while they press together, then the spring rings out.
 
     /** Use the rigid-body engine instead of the simple one. */
     var rigidOn = false
@@ -729,16 +735,29 @@ class GlassFluidState(private val density: Float) : FluidScene {
             val wm = WorldManifold()
             contact.getWorldManifold(wm)
             val n = wm.normal
+            val pieceA = contact.fixtureA.body.userData as? FluidPiece
+            val pieceB = contact.fixtureB.body.userData as? FluidPiece
+            // The playground's rigid mode used to squash only on a sharp impact. Once an object
+            // settled against another, the solver stopped producing a big enough impact and the
+            // spring immediately relaxed, even while the finger kept pushing. Treat the solver's
+            // per-step contact impulse as sustained pressure and drive the squash toward it.
             for (body in arrayOf(contact.fixtureA.body, contact.fixtureB.body)) {
                 val piece = body.userData as? FluidPiece ?: continue
+                if (pieceA == null || pieceB == null) continue
                 val mass = body.mass
                 if (mass <= 0f) continue
-                val hit = total / mass // m/s: how hard it was stopped
-                if (hit < HIT_MIN) continue
-                // Flatten along the body's own axis that the hit came along.
+                val pressure = total / mass // velocity change per solver step
                 val local = body.getLocalVector(Vec2(n.x, n.y))
-                val kick = (hit * 100f * IMPACT).coerceAtMost(MAX_KICK)
-                if (abs(local.x) > abs(local.y)) piece.sqVX += kick else piece.sqVY += kick
+                // Ignore resting solver noise, but make a dragged, sustained contact visibly
+                // deform the piece. The target is refreshed every fixed physics step and released
+                // naturally as soon as contact ends.
+                val target = ((pressure - CONTACT_PRESSURE_DEAD_ZONE) * CONTACT_SQUASH_GAIN)
+                    .coerceIn(0f, MAX_CONTACT_SQUASH)
+                if (abs(local.x) > abs(local.y)) {
+                    piece.rigidContactSquashX = max(piece.rigidContactSquashX, target)
+                } else {
+                    piece.rigidContactSquashY = max(piece.rigidContactSquashY, target)
+                }
             }
         }
     }
@@ -787,8 +806,8 @@ class GlassFluidState(private val density: Float) : FluidScene {
     }
 
     private fun addShapes(body: Body, p: FluidPiece) {
-        val hw = p.baseW / 2f / scale
-        val hh = p.baseH / 2f / scale
+        val hw = p.width / 2f / scale
+        val hh = p.height / 2f / scale
         val r = min(p.baseR / scale, min(hw, hh))
         fun fix(shape: org.jbox2d.collision.shapes.Shape) {
             val fd = FixtureDef()
@@ -823,7 +842,25 @@ class GlassFluidState(private val density: Float) : FluidScene {
         def.fixedRotation = rotationLevel == 0
         val body = w.createBody(def)
         addShapes(body, p)
+        p.rigidFixtureWidth = p.width
+        p.rigidFixtureHeight = p.height
         return body
+    }
+
+    private fun syncPieceFixture(p: FluidPiece, body: Body) {
+        // Squash changes the visible bounds; keep Box2D's collision shape in sync so pieces can
+        // actually move closer while compressed instead of colliding at their unsquashed bounds.
+        if (abs(p.width - p.rigidFixtureWidth) < FIXTURE_RESIZE_EPSILON &&
+            abs(p.height - p.rigidFixtureHeight) < FIXTURE_RESIZE_EPSILON) return
+        var fixture = body.fixtureList
+        while (fixture != null) {
+            val next = fixture.next
+            body.destroyFixture(fixture)
+            fixture = next
+        }
+        addShapes(body, p)
+        p.rigidFixtureWidth = p.width
+        p.rigidFixtureHeight = p.height
     }
 
     private fun rebuildStatics(w: World) {
@@ -875,7 +912,10 @@ class GlassFluidState(private val density: Float) : FluidScene {
             }
             wakeAll()
         }
-        for (p in pieces) if (p.body == null) p.body = createBody(w, p)
+        for (p in pieces) {
+            val body = p.body ?: createBody(w, p).also { p.body = it }
+            syncPieceFixture(p, body)
+        }
         val set = "$solidOn|$bounce|$inertiaOn|$rotationLevel|$friction|$gravityOn"
         if (set != settingsKey) {
             settingsKey = set
@@ -917,12 +957,12 @@ class GlassFluidState(private val density: Float) : FluidScene {
         }
     }
 
-    private fun springSquash(p: FluidPiece, dt: Float): Boolean {
+    private fun springSquash(p: FluidPiece, dt: Float, targetX: Float, targetY: Float): Boolean {
         var left = dt
         while (left > 0f) {
             val h = min(left, 1f / 240f)
-            p.sqVX += (SQ_STIFFNESS * (0f - p.sqX) - SQ_DAMPING * p.sqVX) * h
-            p.sqVY += (SQ_STIFFNESS * (0f - p.sqY) - SQ_DAMPING * p.sqVY) * h
+            p.sqVX += (SQ_STIFFNESS * (targetX - p.sqX) - SQ_DAMPING * p.sqVX) * h
+            p.sqVY += (SQ_STIFFNESS * (targetY - p.sqY) - SQ_DAMPING * p.sqVY) * h
             p.sqX = (p.sqX + p.sqVX * h).coerceIn(-0.1f, 0.7f)
             p.sqY = (p.sqY + p.sqVY * h).coerceIn(-0.1f, 0.7f)
             left -= h
@@ -939,6 +979,10 @@ class GlassFluidState(private val density: Float) : FluidScene {
         accum += dt
         var n = 0
         while (accum >= FIXED_STEP && n < 6) {
+            for (p in pieces) {
+                p.rigidContactSquashX = 0f
+                p.rigidContactSquashY = 0f
+            }
             w.step(FIXED_STEP, 10, 6)
             accum -= FIXED_STEP
             n++
@@ -948,7 +992,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
         for (p in pieces) {
             val b = p.body ?: continue
             val pos = b.position
-            if (springSquash(p, dt)) busy = true
+            if (springSquash(p, dt, p.rigidContactSquashX, p.rigidContactSquashY)) busy = true
             p.pos = Offset(pos.x * scale - p.width / 2f, pos.y * scale - p.height / 2f)
             if (rotationLevel != 0 && p.angle != b.angle) p.angle = b.angle
             if (b.isAwake) busy = true
@@ -1042,8 +1086,10 @@ class GlassFluidState(private val density: Float) : FluidScene {
     private companion object {
         const val MAX_LASER_HITS = 28
         const val FIXED_STEP = 1f / 120f
-        const val HIT_MIN = 0.7f       // m/s: a hit softer than this (a piece resting) does not flatten anything
-        const val MAX_KICK = 14f
+        const val FIXTURE_RESIZE_EPSILON = 0.35f
+        const val CONTACT_PRESSURE_DEAD_ZONE = 0.015f
+        const val CONTACT_SQUASH_GAIN = 3.2f
+        const val MAX_CONTACT_SQUASH = 0.42f
         const val REST_SPEED = 40f     // dp/s: a piece falling slower than this onto the floor lies there
         const val MIN_SPEED = 12f      // dp/s: slower than this a sliding piece stops
         const val MAX_SPEED = 5000f    // dp/s
