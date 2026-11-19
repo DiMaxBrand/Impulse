@@ -112,6 +112,9 @@ public class WelcomeActivity extends QrCodeProcessingActivity
         super.onCreate(savedInstanceState);
         ActivityWelcomeBinding binding =
                 DataBindingUtil.setContentView(this, R.layout.activity_welcome);
+        if (LauncherBrand.isImpulse(this)) {
+            binding.welcomeLogo.setImageResource(R.drawable.impulse_round_logo);
+        }
         Activities.setStatusAndNavigationBarColors(this, binding.getRoot());
         setSupportActionBar(binding.toolbar);
         configureActionBar(getSupportActionBar(), false);

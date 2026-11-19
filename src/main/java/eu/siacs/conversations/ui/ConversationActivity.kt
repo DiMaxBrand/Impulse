@@ -8,6 +8,9 @@ import eu.siacs.conversations.utils.SignupUtils
 
 open class ConversationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (LauncherBrand.isImpulse(this)) {
+            window.setBackgroundDrawableResource(eu.siacs.conversations.R.drawable.background_splash_impulse)
+        }
         super.onCreate(savedInstanceState)
         startActivity(SignupUtils.getRedirectionIntent(this))
         Handler(Looper.getMainLooper()).post { finish() }

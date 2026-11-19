@@ -1910,8 +1910,10 @@
     <string name="demo_mode_description">Ранняя версия с временными чатами; некоторые действия недоступны. По умолчанию выключена, после перезапуска сбрасывается.</string>
     <string name="demo_mode_exit">Демонстрационный режим · Нажмите, чтобы выключить</string>
     <string name="demo_mode_unavailable">Недоступно в демонстрационном режиме</string>
-    <string name="launcher_icon_title">Значок приложения</string>
+    <string name="launcher_icon_title">Значок и логотип приложения</string>
     <string name="launcher_icon_hint">Нажмите и удерживайте значок, чтобы увеличить его. Отпустите, чтобы вернуться.</string>
     <string name="launcher_icon_conversations">Conversations</string>
     <string name="launcher_icon_impulse">Импульс</string>
+    <string name="launcher_preview_icon">Значок</string>
+    <string name="launcher_preview_logo">Логотип</string>
 </resources>

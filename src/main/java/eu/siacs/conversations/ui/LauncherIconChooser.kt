@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,7 +36,7 @@ internal fun LauncherIconChooser(onPreview: (Int?) -> Unit) {
     val manager = context.packageManager
     val conversations = remember { ComponentName(context, "eu.siacs.conversations.ui.ConversationActivity") }
     val impulse = remember { ComponentName(context, "eu.siacs.conversations.ui.ImpulseLauncherIcon") }
-    var selected by remember { mutableStateOf(manager.getComponentEnabledSetting(impulse) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED) }
+    var selected by remember { mutableStateOf(LauncherBrand.isImpulse(context)) }
     fun select(useImpulse: Boolean) {
         androidx.preference.PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean("launcher_icon_explicit", true).apply()
         if (selected == useImpulse) return
@@ -55,13 +56,32 @@ internal fun LauncherIconChooser(onPreview: (Int?) -> Unit) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow).padding(16.dp)) {
         Text(stringResource(R.string.launcher_icon_hint), style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            listOf(Triple(false, R.drawable.conversations_icon_art, R.string.launcher_icon_conversations), Triple(true, R.drawable.impulse_icon_art, R.string.launcher_icon_impulse)).forEach { (isImpulse, image, label) ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.semantics { onClick { select(isImpulse); true } }.pointerInput(isImpulse) {
-                    detectTapGestures(onPress = { try { tryAwaitRelease() } finally { onPreview(null) } }, onLongPress = { onPreview(image) }, onTap = { select(isImpulse) })
-                }.padding(8.dp)) {
-                    Image(painterResource(image), contentDescription = stringResource(label), modifier = Modifier.size(80.dp))
-                    Text(stringResource(label), color = if (selected == isImpulse) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(false, true).forEach { isImpulse ->
+                val title = if (isImpulse) R.string.launcher_icon_impulse else R.string.launcher_icon_conversations
+                val icon = if (isImpulse) R.drawable.impulse_icon_art else R.drawable.conversations_icon_art
+                val logo = if (isImpulse) R.drawable.impulse_round_logo else R.drawable.main_logo
+                Column(
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                        .background(if (selected == isImpulse) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .clickable { select(isImpulse) }.padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(stringResource(title), color = if (selected == isImpulse) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        listOf(icon to R.string.launcher_preview_icon, logo to R.string.launcher_preview_logo).forEach { (image, label) ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pointerInput(isImpulse, image) {
+                                detectTapGestures(
+                                    onPress = { try { tryAwaitRelease() } finally { onPreview(null) } },
+                                    onLongPress = { onPreview(image) },
+                                    onTap = { select(isImpulse) },
+                                )
+                            }.padding(3.dp)) {
+                                Image(painterResource(image), contentDescription = stringResource(label), modifier = Modifier.size(54.dp))
+                                Text(stringResource(label), style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
                     if (selected == isImpulse) Text("✓", color = MaterialTheme.colorScheme.primary)
                 }
             }
