@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Conversations3.SplashScreen.Impulse" parent="@style/Theme.Conversations3.SplashScreen.ImpulseBase">
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/impulse_round_logo</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/impulse_splash_logo</item>
     </style>
 </resources>

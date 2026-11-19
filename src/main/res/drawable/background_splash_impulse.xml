@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="?colorSurfaceContainerHighest" />
-    <item android:width="144dp" android:height="144dp" android:gravity="center"
-        android:drawable="@drawable/impulse_round_logo" />
+    <item>
+        <bitmap android:gravity="center" android:src="@drawable/impulse_splash_logo" />
+    </item>
 </layer-list>
