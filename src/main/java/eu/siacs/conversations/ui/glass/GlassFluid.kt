@@ -127,6 +127,9 @@ class FluidPiece(val baseW: Float, val baseH: Float, val baseR: Float, x: Float,
     /** Compression requested by the last rigid-body contact solve. */
     var rigidContactSquashX = 0f
     var rigidContactSquashY = 0f
+    // Smooth short solver contact gaps caused by resizing the collision fixtures.
+    var rigidFilteredSquashX = 0f
+    var rigidFilteredSquashY = 0f
     /** Dimensions currently represented by this body's Box2D fixtures. */
     var rigidFixtureWidth = 0f
     var rigidFixtureHeight = 0f
@@ -225,6 +228,8 @@ class GlassFluidState(private val density: Float) : FluidScene {
             piece.sqVY = 0f
             piece.rigidContactSquashX = 0f
             piece.rigidContactSquashY = 0f
+            piece.rigidFilteredSquashX = 0f
+            piece.rigidFilteredSquashY = 0f
         }
         wake()
     }
@@ -1078,6 +1083,13 @@ class GlassFluidState(private val density: Float) : FluidScene {
             }
             closingSpeedByContact.clear()
             w.step(FIXED_STEP, 10, 6)
+            // Filter transient loss of contact as a fixture shrinks; the target still decays
+            // when pressure disappears, so pieces can expand before the finger is lifted.
+            val blend = 1f - exp(-FIXED_STEP / CONTACT_SMOOTH_SECONDS)
+            for (piece in pieces) {
+                piece.rigidFilteredSquashX += (piece.rigidContactSquashX - piece.rigidFilteredSquashX) * blend
+                piece.rigidFilteredSquashY += (piece.rigidContactSquashY - piece.rigidFilteredSquashY) * blend
+            }
             accum -= FIXED_STEP
             n++
         }
@@ -1086,7 +1098,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
         for (p in pieces) {
             val b = p.body ?: continue
             val pos = b.position
-            if (springSquash(p, dt, p.rigidContactSquashX, p.rigidContactSquashY)) busy = true
+            if (springSquash(p, dt, p.rigidFilteredSquashX, p.rigidFilteredSquashY)) busy = true
             p.pos = Offset(pos.x * scale - p.width / 2f, pos.y * scale - p.height / 2f)
             if (rotationLevel != 0 && p.angle != b.angle) p.angle = b.angle
             if (b.isAwake) busy = true
@@ -1185,6 +1197,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
         const val MAX_LASER_HITS = 28
         const val FIXED_STEP = 1f / 120f
         const val FIXTURE_RESIZE_EPSILON = 0.35f
+        const val CONTACT_SMOOTH_SECONDS = 0.08f
         const val MIN_IMPACT_SPEED = 0.7f
         const val MIN_DRAG_PRESS_FORCE = 0.2f
         const val CONTACT_PRESSURE_DEAD_ZONE = 0.015f
