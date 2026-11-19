@@ -6,10 +6,13 @@ import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
 import eu.siacs.conversations.utils.SignupUtils
 
-class ConversationActivity : AppCompatActivity() {
+open class ConversationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startActivity(SignupUtils.getRedirectionIntent(this))
         Handler(Looper.getMainLooper()).post { finish() }
     }
 }
+
+/** Target for both launcher aliases; the original component name remains the default alias. */
+class LauncherHostActivity : ConversationActivity()

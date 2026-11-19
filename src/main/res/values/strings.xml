@@ -1842,4 +1842,8 @@
     <string name="demo_mode_description">Early demo using temporary conversations; some actions are unavailable. Off by default and resets on restart.</string>
     <string name="demo_mode_exit">Demo mode · Tap to turn off</string>
     <string name="demo_mode_unavailable">Not available in demo mode</string>
+    <string name="launcher_icon_title">App icon</string>
+    <string name="launcher_icon_hint">Touch and hold an icon to preview it; release to return.</string>
+    <string name="launcher_icon_conversations">Conversations</string>
+    <string name="launcher_icon_impulse">Impulse</string>
 </resources>

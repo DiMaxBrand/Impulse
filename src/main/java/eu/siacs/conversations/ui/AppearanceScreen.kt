@@ -418,6 +418,10 @@ private fun MainPage(
     onOpenLab: () -> Unit,
 ) {
     var openPicker by remember { mutableStateOf<String?>(null) }
+    var launcherPreview by remember { mutableStateOf<Int?>(null) }
+    var lastLauncherPreview by remember { mutableIntStateOf(R.drawable.conversations_icon_art) }
+    val launcherPreviewAlpha by animateFloatAsState(if (launcherPreview != null) 1f else 0f, label = "launcher_preview_alpha")
+    val launcherPreviewScale by animateFloatAsState(if (launcherPreview != null) 1f else 0.7f, label = "launcher_preview_scale")
     // The style picker's Easter egg (see StyleEgg): long-press "Liquid glass".
     val egg = remember { StyleEgg() }
     val glassHost = LocalGlassHost.current
@@ -462,6 +466,12 @@ private fun MainPage(
                             stringResource(R.string.glass_lab_summary), onOpenLab,
                         )
                     }
+                }
+
+                SectionTitle(stringResource(R.string.launcher_icon_title))
+                LauncherIconChooser { image ->
+                    if (image != null) lastLauncherPreview = image
+                    launcherPreview = image
                 }
 
                 // ── Colors ──
@@ -571,6 +581,14 @@ private fun MainPage(
                     s.allowScreenshots.value,
                 ) { s.allowScreenshots.set(it); onScreenshotsChanged() }
                 Spacer(Modifier.height(24.dp))
+            }
+
+            if (launcherPreviewAlpha > 0f) {
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = launcherPreviewAlpha }
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.65f)), contentAlignment = Alignment.Center) {
+                    androidx.compose.foundation.Image(painterResource(lastLauncherPreview), contentDescription = null,
+                        modifier = Modifier.fillMaxWidth(0.92f).graphicsLayer { scaleX = launcherPreviewScale; scaleY = launcherPreviewScale })
+                }
             }
 
             if (scrim > 0f) {

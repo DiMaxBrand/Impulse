@@ -382,7 +382,7 @@ public class ImportBackupActivity extends ActionBarActivity
     }
 
     private void onBackupRestored() {
-        final var intent = new Intent(this, ConversationActivity.class);
+        final var intent = new Intent(this, LauncherHostActivity.class);
         intent.addFlags(
                 Intent.FLAG_ACTIVITY_CLEAR_TOP
                         | Intent.FLAG_ACTIVITY_NEW_TASK

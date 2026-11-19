@@ -1,5 +1,10 @@
 # Impulse — To-Do
 
+## Launcher icon — 1.16
+
+- [ ] Migrate the default launcher icon to Impulse in 1.16, while respecting users who explicitly selected Conversations.
+
+
 ## Liquid Glass playground physics — 1.15.1-rc.9
 
 - `BUG-8RSC`: distinguish resting support from impact pressure. Real physics should squash on

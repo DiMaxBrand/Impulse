@@ -221,17 +221,32 @@
             android:name=".ui.MediaSelectionActivity"
             android:theme="@style/Theme.Conversations3" />
         <activity
-            android:name=".ui.ConversationActivity"
+            android:name=".ui.LauncherHostActivity"
             android:exported="true"
-            android:theme="@style/Theme.Conversations3.SplashScreen">
+            android:theme="@style/Theme.Conversations3.SplashScreen" />
+        <activity-alias
+            android:name=".ui.ConversationActivity"
+            android:targetActivity=".ui.LauncherHostActivity"
+            android:exported="true"
+            android:icon="@mipmap/new_launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
-        </activity>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+            android:name=".ui.ImpulseLauncherIcon"
+            android:targetActivity=".ui.LauncherHostActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/impulse_launcher">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
         <activity
             android:name=".ui.ConversationsActivity"
             android:launchMode="singleTask"
