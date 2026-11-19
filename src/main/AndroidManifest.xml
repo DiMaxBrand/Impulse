@@ -224,6 +224,10 @@
             android:name=".ui.LauncherHostActivity"
             android:exported="true"
             android:theme="@style/Theme.Conversations3.SplashScreen" />
+        <activity
+            android:name=".ui.ImpulseLauncherHostActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Conversations3.SplashScreen.Impulse" />
         <activity-alias
             android:name=".ui.ConversationActivity"
             android:targetActivity=".ui.LauncherHostActivity"
@@ -237,7 +241,7 @@
         </activity-alias>
         <activity-alias
             android:name=".ui.ImpulseLauncherIcon"
-            android:targetActivity=".ui.LauncherHostActivity"
+            android:targetActivity=".ui.ImpulseLauncherHostActivity"
             android:exported="true"
             android:enabled="false"
             android:icon="@mipmap/impulse_launcher">

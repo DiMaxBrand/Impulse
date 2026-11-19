@@ -17,5 +17,8 @@ open class ConversationActivity : AppCompatActivity() {
     }
 }
 
-/** Target for both launcher aliases; the original component name remains the default alias. */
+/** Target for the original launcher component. */
 class LauncherHostActivity : ConversationActivity()
+
+/** Separate target lets Android select the Impulse splash before the activity starts. */
+class ImpulseLauncherHostActivity : ConversationActivity()

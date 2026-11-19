@@ -17,6 +17,11 @@
         <item name="android:windowFullscreen">true</item>
     </style>
 
+    <style name="Theme.Conversations3.SplashScreen.ImpulseBase" parent="@style/Theme.Conversations3.SplashScreen">
+        <item name="android:windowBackground">@drawable/background_splash_impulse</item>
+    </style>
+    <style name="Theme.Conversations3.SplashScreen.Impulse" parent="@style/Theme.Conversations3.SplashScreen.ImpulseBase" />
+
     <style name="Theme.Conversations3.Dialog" parent="@style/Theme.Conversations3">
         <item name="android:windowIsFloating">true</item>
         <item name="android:backgroundDimEnabled">true</item>
