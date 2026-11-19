@@ -130,6 +130,9 @@ class FluidPiece(val baseW: Float, val baseH: Float, val baseR: Float, x: Float,
     // Smooth short solver contact gaps caused by resizing the collision fixtures.
     var rigidFilteredSquashX = 0f
     var rigidFilteredSquashY = 0f
+    // A rounded body has multiple fixtures; take the strongest impact per axis per solver step.
+    var rigidImpactX = 0f
+    var rigidImpactY = 0f
     /** Dimensions currently represented by this body's Box2D fixtures. */
     var rigidFixtureWidth = 0f
     var rigidFixtureHeight = 0f
@@ -852,7 +855,11 @@ class GlassFluidState(private val density: Float) : FluidScene {
                     // Momentum deforms any solid collision, including a piece landing on the floor.
                     // Resting support impulses are excluded by the pre-solve closing-speed check.
                     val kick = (closingSpeed * 100f * IMPACT).coerceAtMost(MAX_KICK)
-                    if (abs(local.x) > abs(local.y)) piece.sqVX += kick else piece.sqVY += kick
+                    if (abs(local.x) > abs(local.y)) {
+                        piece.rigidImpactX = max(piece.rigidImpactX, kick)
+                    } else {
+                        piece.rigidImpactY = max(piece.rigidImpactY, kick)
+                    }
                 }
             }
         }
@@ -1080,6 +1087,8 @@ class GlassFluidState(private val density: Float) : FluidScene {
             for (piece in pieces) {
                 piece.rigidContactSquashX = 0f
                 piece.rigidContactSquashY = 0f
+                piece.rigidImpactX = 0f
+                piece.rigidImpactY = 0f
             }
             closingSpeedByContact.clear()
             w.step(FIXED_STEP, 10, 6)
@@ -1087,6 +1096,9 @@ class GlassFluidState(private val density: Float) : FluidScene {
             // when pressure disappears, so pieces can expand before the finger is lifted.
             val blend = 1f - exp(-FIXED_STEP / CONTACT_SMOOTH_SECONDS)
             for (piece in pieces) {
+                // Overlapping fixtures can report the same collision more than once.
+                piece.sqVX += piece.rigidImpactX
+                piece.sqVY += piece.rigidImpactY
                 piece.rigidFilteredSquashX += (piece.rigidContactSquashX - piece.rigidFilteredSquashX) * blend
                 piece.rigidFilteredSquashY += (piece.rigidContactSquashY - piece.rigidFilteredSquashY) * blend
             }
