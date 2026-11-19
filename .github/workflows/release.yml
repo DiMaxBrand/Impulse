@@ -26,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     env:
       INPUT_VERSION_NAME: ${{ inputs.version_name }}
       INPUT_TITLE: ${{ inputs.title }}
@@ -112,3 +113,33 @@ jobs:
             --notes-file "$NOTES_FILE" \
             --generate-notes \
             "${APK_ASSETS[@]}"
+
+      - name: Summarize step timings
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
+            | python3 -c '
+          import json, os, sys
+          from datetime import datetime
+
+          def parse(value):
+              return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+          payload = json.load(sys.stdin)
+          lines = ["## Release workflow step timings", "", "| Step | Duration |", "|---|---:|"]
+          for job in payload.get("jobs", []):
+              for step in job.get("steps", []):
+                  start, end = step.get("started_at"), step.get("completed_at")
+                  if not start or not end:
+                      continue
+                  seconds = max(0, int((parse(end) - parse(start)).total_seconds()))
+                  name = step.get("name", "Unnamed step")
+                  lines.append(f"| {name} | {seconds // 60}m {seconds % 60}s |")
+          if len(lines) == 4:
+              lines.append("| No completed step timings available | — |")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("\n".join(lines) + "\n")
+          print("\n".join(lines))
+          '
