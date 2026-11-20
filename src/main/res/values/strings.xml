@@ -231,6 +231,7 @@
     <string name="xmpp_address_help_different_app_header">If they use another app</string>
     <string name="xmpp_address_help_different_app_body">Ask them to share their XMPP address. It is usually under New Chat or Add Contact in their app.</string>
     <string name="xmpp_address_help_enter_address">Enter an address</string>
+    <string name="xmpp_address_help_qr_body">Or scan their QR code: ask them to tap the QR icon at the top right of the chat list and choose Show QR. Then scan it here.</string>
     <string name="xmpp_address_help_scan_qr">Scan QR code</string>
     <string name="xmpp_address_help_invite_link">Friend not on Impulse yet? Invite them →</string>
     <string name="password">Password</string>

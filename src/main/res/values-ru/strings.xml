@@ -222,6 +222,7 @@
     <string name="xmpp_address_help_different_app_header">Если у него другое приложение</string>
     <string name="xmpp_address_help_different_app_body">Попросите его прислать XMPP-адрес. Обычно его можно найти в разделах «Новый чат» или «Добавить контакт».</string>
     <string name="xmpp_address_help_enter_address">Ввести адрес</string>
+    <string name="xmpp_address_help_qr_body">Или отсканируйте QR-код: попросите собеседника нажать значок QR в правом верхнем углу списка чатов и выбрать «Показать QR». Затем отсканируйте код здесь.</string>
     <string name="xmpp_address_help_scan_qr">Сканировать QR-код</string>
     <string name="xmpp_address_help_invite_link">Друга ещё нет в Импульсе? Пригласить →</string>
     <string name="password">Пароль</string>
