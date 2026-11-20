@@ -180,12 +180,24 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         }
         // Notification setup screen is not tied to any specific fragment — launch it regardless
         // of whether we're on the conversation list or inside a chat.
+        if (maybeShowWelcome()) {
+            return;
+        }
         scheduleNotificationSetupIfNeeded();
         // One-off birthday greeting: October 15 for one account, or when the feature flag is on.
         BirthdayCelebration.maybeShow(this);
         // Once after the update that brought contact birthdays: "you can now set yours".
         BirthdayPromptDialogFragment.maybeShow(this);
         showDialogsIfMainIsOverview();
+    }
+
+    private boolean maybeShowWelcome() {
+        if (!getIntent().getBooleanExtra("init", false)) return false;
+        final var onboarding = new eu.siacs.conversations.utils.OnboardingPreferences(this);
+        if (onboarding.hasCompletedWelcome()) return false;
+        onboarding.completeWelcome();
+        startActivity(new Intent(this, ImpulseWelcomeActivity.class));
+        return true;
     }
 
     private void showDialogsIfMainIsOverview() {

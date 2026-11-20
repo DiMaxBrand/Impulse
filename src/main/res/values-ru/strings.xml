@@ -1923,4 +1923,16 @@
     <string name="update_transition_wait">Дождаться канала «%1$s»</string>
     <string name="update_transition_wait_detail">Ждать, пока не выйдет более новая версия канала «%1$s».</string>
     <string name="update_transition_progress">%1$s → %2$s (постепенно)</string>
+    <string name="welcome_intro_title">Познакомьтесь с Импульсом</string>
+    <string name="welcome_intro_body">Приватный мессенджер с выразительными чатами, звонками и местом для близких людей.</string>
+    <string name="welcome_edit_title">Исправляйте без спешки</string>
+    <string name="welcome_edit_body">Пока вы редактируете сообщение, собеседник видит его размытым. После сохранения чат плавно переходит к новому тексту.</string>
+    <string name="welcome_pin_title">Держите важное рядом</string>
+    <string name="welcome_pin_body">Закрепляйте сообщения для себя, чтобы важные детали было легко найти.</string>
+    <string name="welcome_menu_title">Больше действий — по долгому нажатию</string>
+    <string name="welcome_menu_body">Ответить, скопировать, переслать, изменить, удалить и другие действия доступны в меню сообщения.</string>
+    <string name="welcome_glass_title">Настройте под себя</string>
+    <string name="welcome_glass_body">Выберите «Жидкое стекло» в разделе «Внешний вид» для более живого интерфейса с плавными многослойными элементами.</string>
+    <string name="welcome_skip">Пропустить</string>
+    <string name="welcome_get_started">Настроить связь</string>
 </resources>

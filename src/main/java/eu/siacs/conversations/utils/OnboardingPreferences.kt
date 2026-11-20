@@ -24,9 +24,16 @@ class OnboardingPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_OPENED_MORE_REACTIONS, false)
         set(value) = prefs.edit { putBoolean(KEY_OPENED_MORE_REACTIONS, value) }
 
+    fun hasCompletedWelcome(): Boolean = prefs.getBoolean(KEY_WELCOME_COMPLETE, false)
+
+    fun completeWelcome() {
+        prefs.edit { putBoolean(KEY_WELCOME_COMPLETE, true) }
+    }
+
     companion object {
         private const val KEY_SEEN_EDIT = "seen_edit_onboarding"
         private const val KEY_SEEN_DELETE = "seen_delete_onboarding"
         private const val KEY_OPENED_MORE_REACTIONS = "opened_more_reactions"
+        private const val KEY_WELCOME_COMPLETE = "welcome_complete"
     }
 }
