@@ -1,7 +1,9 @@
 package eu.siacs.conversations.ui
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.widget.VideoView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -43,6 +45,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import eu.siacs.conversations.R
 
 class ImpulseWelcomeActivity : ComponentActivity() {
@@ -67,14 +70,24 @@ class ImpulseWelcomeActivity : ComponentActivity() {
     }
 }
 
-private data class WelcomeSlide(val title: Int, val body: Int, val icon: Int)
+private data class WelcomeSlide(
+    val title: Int,
+    val body: Int,
+    val icon: Int,
+    val showEditingDemo: Boolean = false,
+)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun WelcomeScreen(onComplete: () -> Unit) {
     val slides = listOf(
         WelcomeSlide(R.string.welcome_intro_title, R.string.welcome_intro_body, R.drawable.ic_chat_24dp),
-        WelcomeSlide(R.string.welcome_edit_title, R.string.welcome_edit_body, R.drawable.ic_edit_24dp),
+        WelcomeSlide(
+            R.string.welcome_edit_title,
+            R.string.welcome_edit_body,
+            R.drawable.ic_edit_24dp,
+            showEditingDemo = true,
+        ),
         WelcomeSlide(R.string.welcome_pin_title, R.string.welcome_pin_body, R.drawable.ic_push_pin_24dp),
         WelcomeSlide(R.string.welcome_menu_title, R.string.welcome_menu_body, R.drawable.ic_more_vert_24dp),
         WelcomeSlide(R.string.welcome_glass_title, R.string.welcome_glass_body, R.drawable.ic_palette_24dp),
@@ -89,11 +102,15 @@ private fun WelcomeScreen(onComplete: () -> Unit) {
         Spacer(Modifier.height(1.dp))
         AnimatedContent(targetState = slide, label = "welcome_slide") { current ->
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier.size(112.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(painterResource(current.icon), null, modifier = Modifier.size(52.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                if (current.showEditingDemo) {
+                    LoopingEditingDemo()
+                } else {
+                    Box(
+                        modifier = Modifier.size(112.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(painterResource(current.icon), null, modifier = Modifier.size(52.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
                 }
                 Spacer(Modifier.height(32.dp))
                 Text(stringResource(current.title), style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
@@ -118,4 +135,23 @@ private fun WelcomeScreen(onComplete: () -> Unit) {
             }
         }
     }
+}
+
+/** A muted, control-free preview: it restarts automatically rather than behaving like media. */
+@Composable
+private fun LoopingEditingDemo() {
+    val context = LocalContext.current
+    AndroidView(
+        factory = { viewContext ->
+            VideoView(viewContext).apply {
+                setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.welcome_edit_demo}"))
+                setOnPreparedListener { player ->
+                    player.setVolume(0f, 0f)
+                    player.isLooping = true
+                    start()
+                }
+            }
+        },
+        modifier = Modifier.width(195.dp).height(260.dp).clip(MaterialTheme.shapes.extraLarge),
+    )
 }
