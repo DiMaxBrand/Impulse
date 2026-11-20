@@ -249,6 +249,12 @@ class UpdateChecker(private val client: OkHttpClient) {
             if (a.preType == null && b.preType != null) return 1
             if (a.preType != null && b.preType == null) return -1
             if (a.preType == null && b.preType == null) return 0
+            // From 1.16, the suffix number is shared across all unstable channels.
+            // Older versions retain their historical channel-first ordering.
+            if ((a.major > 1 || (a.major == 1 && a.minor >= 16)) &&
+                a.preType in listOf("alpha", "beta", "rc") && b.preType in listOf("alpha", "beta", "rc")) {
+                return a.preNum.compareTo(b.preNum)
+            }
             val preOrder = listOf("alpha", "beta", "rc")
             val aOrd = preOrder.indexOf(a.preType)
             val bOrd = preOrder.indexOf(b.preType)

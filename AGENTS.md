@@ -27,7 +27,7 @@ Uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
 - Git tags follow `MAJOR.MINOR.PATCH` (e.g. `1.7.1`).
 - Bump `baseVersionCode` by at least 1 for every release, more for significant jumps.
 - **When to bump**: after completing a meaningful chapter of work (feature, set of fixes), before publishing its GitHub release. Analyze commits since the last tag — new user-facing features → MINOR, fixes/polish → PATCH, breaking changes → MAJOR. Do this proactively; don't wait to be asked.
-- **Beta versioning**: while in beta (`-beta.N`), increment only the beta number (`beta.4` → `beta.5`). Do NOT jump the MINOR or PATCH component during beta — that only happens on final release.
+- **Unstable versioning from 1.16**: use one strictly increasing sequence across alpha, beta and RC for each base version (for example `1.16.0-alpha.1`, `1.16.0-beta.2`, `1.16.0-alpha.3`, `1.16.0-rc.4`). The suffix indicates stability, not ordering. Increase versionCode for every release and include the new updater in every 1.16 build. Older clients retain their channel-first ordering until updated; provide eligible bridge releases and never rely on them selecting a newer alpha over an older RC. Stable remains newer than prereleases of the same base version.
 - **Long, iterative work: ship it in parts, don't hold it for the end.** When a task is big enough to
   take around 20 minutes or more (several screens, a feature built piece by piece), and the first
   piece is a complete part that deserves a beta of its own, finish that piece, bump, push and trigger

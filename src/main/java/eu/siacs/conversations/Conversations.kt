@@ -33,6 +33,7 @@ class Conversations : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        eu.siacs.conversations.ui.LauncherBrand.migrateToImpulse(this)
         installSecurityProvider()
         CONTEXT = this.applicationContext
         // A crash or process restart must always recover the real conversation list.
