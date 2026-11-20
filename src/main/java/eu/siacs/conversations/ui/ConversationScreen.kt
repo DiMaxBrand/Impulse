@@ -17,6 +17,7 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.layout.ime
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SizeTransform
@@ -1080,6 +1081,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             val density = LocalDensity.current
             // Glass goes plain while the keyboard slides, so the keyboard opens smoothly.
             rememberGlassKeyboardMeter()
+            val keyboardVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(density) > 0
             messageList(
                 // The meter flips the glass to its cheap look while the list flies past.
                 Modifier.fillMaxSize().layerBackdrop(listBackdrop).then(rememberGlassScrollMeter()),
@@ -1087,7 +1089,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                 // Keep a stable resting gap above the floating composer. This is intentionally
                 // separate from the gesture inset: the latter can change under a held chat and
                 // must never make the reversed message list reanchor.
-                with(density) { glassBarHeightPx.toDp() } + 16.dp,
+                with(density) { glassBarHeightPx.toDp() } + if (keyboardVisible) 0.dp else 16.dp,
             )
             // The messages run up under the status bar, blurred there.
             eu.siacs.conversations.ui.glass.GlassStatusBarBlur(glassBackdrop, Modifier.align(Alignment.TopCenter))
