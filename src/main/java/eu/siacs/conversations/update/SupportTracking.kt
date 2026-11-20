@@ -94,7 +94,7 @@ object SupportTracking {
             val prefs = UpdatePreferences(service)
             val result =
                 try {
-                    UpdateChecker(OkHttpClient()).checkForUpdate(prefs.selectedChannel)
+                    UpdateChecker(OkHttpClient()).checkForUpdate(prefs.selectedChannel, prefs.transitionTarget)
                 } catch (_: Exception) {
                     UpdateChecker.CheckResult.CheckFailed
                 }

@@ -80,9 +80,20 @@ class UpdatesActivity : ActionBarActivity() {
                     Box(modifier = Modifier.padding(padding)) {
                         UpdatesScreen(
                             state = uiState,
-                            onChannelSelected = { channel ->
-                                prefs.selectedChannel = channel
-                                uiState = uiState.copy(selectedChannel = channel)
+                            onChannelSelected = { channel, gradual ->
+                                val oldChannel = prefs.selectedChannel
+                                val oldTarget = prefs.transitionTarget
+                                prefs.chooseChannel(channel, gradual, BuildConfig.VERSION_NAME)
+                                if (oldChannel != prefs.selectedChannel || oldTarget != prefs.transitionTarget) {
+                                    if (prefs.activeDownloadId != -1L) {
+                                        UpdateDownloader.cancelDownload(this@UpdatesActivity, prefs.activeDownloadId)
+                                        prefs.activeDownloadId = -1L
+                                    }
+                                    prefs.clearPending()
+                                    prefs.clearDownload()
+                                    uiState = uiState.copy(downloadPhase = DownloadPhase.IDLE, pendingVersion = null, releaseNotes = null, releaseTitle = null)
+                                }
+                                uiState = uiState.copy(selectedChannel = prefs.selectedChannel, transitionTarget = prefs.transitionTarget)
                             },
                             onAutoCheckToggled = { enabled ->
                                 prefs.autoCheck = enabled
@@ -219,6 +230,7 @@ class UpdatesActivity : ActionBarActivity() {
         uiState = uiState.copy(
             currentVersion = currentVersion,
             selectedChannel = prefs.selectedChannel,
+            transitionTarget = prefs.transitionTarget,
             autoCheck = prefs.autoCheck,
             minUpdateIntervalHours = prefs.minUpdateIntervalHours,
             nightlyInstall = prefs.nightlyInstall,
@@ -239,7 +251,7 @@ class UpdatesActivity : ActionBarActivity() {
         lifecycleScope.launch {
             val checker = UpdateChecker(OkHttpClient())
             val result = withContext(Dispatchers.IO) {
-                checker.checkForUpdate(uiState.selectedChannel).also {
+                checker.checkForUpdate(uiState.selectedChannel, prefs.transitionTarget).also {
                     // Bug-report matching after ANY outcome, same as the automatic checks.
                     eu.siacs.conversations.update.UpdateCheckHelper.matchBugReports(
                         this@UpdatesActivity,

@@ -8,7 +8,7 @@ import org.json.JSONObject
 
 class UpdateChecker(private val client: OkHttpClient) {
 
-    fun checkForUpdate(channel: UpdateChannel): CheckResult {
+    fun checkForUpdate(channel: UpdateChannel, transitionTarget: UpdateChannel? = null): CheckResult {
         // fetchReleases() returns null only on a genuine failure to check (no connectivity, a
         // timeout, GitHub erroring/rate-limiting, an unparseable response) -- never for a
         // legitimately empty release list, which parses fine as an empty List. Treating that
@@ -35,7 +35,16 @@ class UpdateChecker(private val client: OkHttpClient) {
                 val apkUrl = findApkAsset(release) ?: return@mapNotNull null
                 Triple(version, apkUrl, tag) to release
             }
-            .maxWithOrNull { (a, _), (b, _) -> compareSemver(a.first, b.first) }
+            .maxWithOrNull { (a, _), (b, _) ->
+                fun priority(version: SemVer): Int {
+                    val tier = UpdateChannel.fromVersion("${version.major}.${version.minor}.${version.patch}" +
+                        (version.preType?.let { "-$it.${version.preNum}" } ?: ""))
+                    return if (transitionTarget != null && tier != null && tier.ordinal < channel.ordinal &&
+                        compareSemver(version, current) > 0) 1 else 0
+                }
+                val rank = priority(a.first).compareTo(priority(b.first))
+                if (rank != 0) rank else compareSemver(a.first, b.first)
+            }
             ?: return CheckResult.UpToDate
         val (bestTriple, bestRelease) = best
 

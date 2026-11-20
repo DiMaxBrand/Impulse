@@ -145,8 +145,10 @@ object UpdateCheckHelper {
         // no auto-download) until enough time has passed since the app was last updated.
         if (!forced && prefs.isWithinQuietWindow(context)) return
         val checker = UpdateChecker(OkHttpClient())
+        val checkedChannel = prefs.selectedChannel
+        val checkedTarget = prefs.transitionTarget
         val result = try {
-            checker.checkForUpdate(prefs.selectedChannel)
+            checker.checkForUpdate(checkedChannel, checkedTarget)
         } catch (_: Exception) {
             null
         } ?: return
@@ -157,6 +159,7 @@ object UpdateCheckHelper {
         matchBugReports(context, checker.lastReleaseNotes)
         if (trackedOnly && BugReportRegistry(context).fixed().none { it.fromSupport }) return
         if (result !is UpdateChecker.CheckResult.UpdateAvailable) return
+        if (checkedChannel != prefs.selectedChannel || checkedTarget != prefs.transitionTarget) return
         val info = result.info
 
         prefs.pendingUpdateVersion = info.versionName
@@ -194,6 +197,7 @@ object UpdateCheckHelper {
     private fun awaitDownload(context: Context, prefs: UpdatePreferences, downloadId: Long) {
         val deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(5)
         while (System.currentTimeMillis() < deadline) {
+            if (prefs.activeDownloadId != downloadId) return
             when (val progress = UpdateDownloader.queryProgress(context, downloadId)) {
                 is UpdateDownloader.DownloadProgress.Complete -> {
                     prefs.downloadedVersion = prefs.pendingUpdateVersion

@@ -14,6 +14,22 @@ class UpdatePreferences(context: Context) {
         get() = UpdateChannel.fromId(prefs.getString(KEY_CHANNEL, UpdateChannel.STABLE.id)!!)
         set(value) = prefs.edit { putString(KEY_CHANNEL, value.id) }
 
+    var transitionTarget: UpdateChannel?
+        get() = prefs.getString("transition_target", null)?.let { UpdateChannel.fromId(it) }
+        set(value) = prefs.edit { if (value == null) remove("transition_target") else putString("transition_target", value.id) }
+
+    fun chooseChannel(channel: UpdateChannel, gradual: Boolean, installedVersion: String) {
+        val result = ChannelTransition.choose(selectedChannel, channel, gradual, UpdateChannel.fromVersion(installedVersion))
+        prefs.edit { putString(KEY_CHANNEL, result.first.id); if (result.second == null) remove("transition_target") else putString("transition_target", result.second!!.id) }
+    }
+
+    fun reconcileTransition(installedVersion: String) {
+        val target = transitionTarget ?: return
+        val installed = UpdateChannel.fromVersion(installedVersion) ?: return
+        val result = ChannelTransition.advance(selectedChannel, target, installed)
+        prefs.edit { putString(KEY_CHANNEL, result.first.id); if (result.second == null) remove("transition_target") else putString("transition_target", result.second!!.id) }
+    }
+
     var autoCheck: Boolean
         get() = prefs.getBoolean(KEY_AUTO_CHECK, true)
         set(value) = prefs.edit { putBoolean(KEY_AUTO_CHECK, value) }

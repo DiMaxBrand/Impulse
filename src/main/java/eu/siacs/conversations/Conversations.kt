@@ -51,6 +51,7 @@ class Conversations : Application() {
         // Once per process start, before any UI (or the developer-options manual version
         // picker, which deliberately stages non-newer versions) can run — see
         // UpdatePreferences.clearIfNotNewerThan() for why this exists.
+        UpdatePreferences(this).reconcileTransition(BuildConfig.VERSION_NAME)
         UpdatePreferences(this).clearIfNotNewerThan(BuildConfig.VERSION_NAME)
         UpdateCheckWorker.schedule(this)
         ApkCleanupWorker.schedule(this)

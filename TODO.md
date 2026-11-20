@@ -3,7 +3,7 @@
 ## 1.16 — in progress
 
 - [ ] Update channels: use one increasing unstable sequence across alpha, beta and RC; retain channel eligibility and historical ordering before 1.16. Publish the updated updater in every 1.16 release and provide compatible entry releases for older clients.
-- [ ] Update-channel transition option: keep receiving eligible updates while progressing toward a chosen more stable channel, never accepting older builds.
+- [x] Update-channel transition option: keep receiving eligible updates while progressing toward a chosen more stable channel, never accepting older builds. Device-check the picker and installed-update progression.
 - [ ] Onboarding: simplify the post-login setup, integrate channel selection and create expressive welcome slides explaining editing, local pins, the message menu and liquid glass; follow with notification setup. Use real app footage and preserve later standalone permission prompts.
 
 ## Launcher icon — 1.16

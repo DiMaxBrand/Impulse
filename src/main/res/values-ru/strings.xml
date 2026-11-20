@@ -1917,4 +1917,10 @@
     <string name="launcher_icon_impulse">Импульс</string>
     <string name="launcher_preview_icon">Значок</string>
     <string name="launcher_preview_logo">Логотип</string>
+    <string name="update_transition_title">Выберите способ перехода</string>
+    <string name="update_transition_keep">Продолжать обновляться</string>
+    <string name="update_transition_keep_detail">Получайте обновления текущего канала и постепенно переходите на более стабильные, пока не достигнете канала «%1$s».</string>
+    <string name="update_transition_wait">Дождаться канала «%1$s»</string>
+    <string name="update_transition_wait_detail">Ждать, пока не выйдет более новая версия канала «%1$s».</string>
+    <string name="update_transition_progress">%1$s → %2$s (постепенно)</string>
 </resources>

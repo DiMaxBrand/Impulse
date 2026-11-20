@@ -106,7 +106,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun UpdatesScreen(
     state: UpdatesUiState,
-    onChannelSelected: (UpdateChannel) -> Unit,
+    onChannelSelected: (UpdateChannel, Boolean) -> Unit,
     onAutoCheckToggled: (Boolean) -> Unit,
     onCheckNow: () -> Unit,
     onMinIntervalSelected: (Int) -> Unit = {},
@@ -121,10 +121,11 @@ fun UpdatesScreen(
     var autoOffVisible by remember { mutableStateOf(false) }
     var channelPickerVisible by remember { mutableStateOf(false) }
     var infoChannel by remember { mutableStateOf<UpdateChannel?>(null) }
+    var transitionChoice by remember { mutableStateOf<UpdateChannel?>(null) }
 
     // Reset info page whenever the picker closes
     LaunchedEffect(channelPickerVisible) {
-        if (!channelPickerVisible) infoChannel = null
+        if (!channelPickerVisible) { infoChannel = null; transitionChoice = null }
     }
 
     // Scrim animates independently of the shared-element transition
@@ -189,7 +190,7 @@ fun UpdatesScreen(
                             headlineContent = { Text(stringResource(R.string.updates_channel_label)) },
                             supportingContent = {
                                 Text(
-                                    text = stringResource(channelDisplayName(state.selectedChannel)),
+                                    text = state.transitionTarget?.let { stringResource(R.string.update_transition_progress, stringResource(channelDisplayName(state.selectedChannel)), stringResource(channelDisplayName(it))) } ?: stringResource(channelDisplayName(state.selectedChannel)),
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                             },
@@ -505,7 +506,33 @@ fun UpdatesScreen(
                     ) {
                         // Inner SharedTransitionLayout: channel list row ↔ info page
                         SharedTransitionLayout {
-                            AnimatedContent(
+                            androidx.compose.animation.Crossfade(targetState = transitionChoice, label = "channel_transition_method") { choice ->
+                            if (choice != null) {
+                                val target = choice
+                                val targetName = stringResource(channelDisplayName(target))
+                                Column(Modifier.padding(24.dp)) {
+                                    Icon(painterResource(R.drawable.ic_system_update_24dp), null, modifier = Modifier.align(Alignment.CenterHorizontally).size(48.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(stringResource(R.string.update_transition_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
+                                    Spacer(Modifier.height(16.dp))
+                                    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth().clickable { onChannelSelected(target, true); channelPickerVisible = false }) {
+                                        Column(Modifier.padding(16.dp)) {
+                                            Text(stringResource(R.string.update_transition_keep), style = MaterialTheme.typography.titleMedium)
+                                            Text(stringResource(R.string.update_transition_keep_detail, targetName), style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest, modifier = Modifier.fillMaxWidth().clickable { onChannelSelected(target, false); channelPickerVisible = false }) {
+                                        Column(Modifier.padding(16.dp)) {
+                                            Text(stringResource(R.string.update_transition_wait, targetName), style = MaterialTheme.typography.titleMedium)
+                                            Text(stringResource(R.string.update_transition_wait_detail, targetName), style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    }
+                                    androidx.compose.material3.TextButton(onClick = { transitionChoice = null }, modifier = Modifier.align(Alignment.Start)) {
+                                        Text(stringResource(R.string.back))
+                                    }
+                                }
+                            } else AnimatedContent(
                                 targetState = infoChannel,
                                 transitionSpec = {
                                     EnterTransition.None togetherWith ExitTransition.None using
@@ -519,8 +546,13 @@ fun UpdatesScreen(
                                     ChannelList(
                                         selectedChannel = state.selectedChannel,
                                         onChannelSelected = { ch ->
-                                            onChannelSelected(ch)
-                                            channelPickerVisible = false
+                                            val installed = UpdateChannel.fromVersion(state.currentVersion)
+                                            if (ch.ordinal < state.selectedChannel.ordinal && installed != null && installed.ordinal > ch.ordinal) {
+                                                transitionChoice = ch
+                                            } else {
+                                                onChannelSelected(ch, false)
+                                                channelPickerVisible = false
+                                            }
                                         },
                                         onInfoClicked = { infoChannel = it },
                                         animatedContentScope = this,
@@ -532,6 +564,7 @@ fun UpdatesScreen(
                                         animatedContentScope = this,
                                     )
                                 }
+                            }
                             }
                         }
                     }
@@ -1766,6 +1799,7 @@ data class UpdatesUiState(
     val supportHistoryFailed: Boolean = false,
     val currentVersion: String = "",
     val selectedChannel: UpdateChannel = UpdateChannel.STABLE,
+    val transitionTarget: UpdateChannel? = null,
     val autoCheck: Boolean = true,
     val minUpdateIntervalHours: Int = 0,
     val nightlyInstall: Boolean = true,

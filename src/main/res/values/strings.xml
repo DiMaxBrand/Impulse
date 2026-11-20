@@ -1849,4 +1849,10 @@
     <string name="launcher_icon_impulse">Impulse</string>
     <string name="launcher_preview_icon">Icon</string>
     <string name="launcher_preview_logo">Logo</string>
+    <string name="update_transition_title">Choose how to switch</string>
+    <string name="update_transition_keep">Keep me updated</string>
+    <string name="update_transition_keep_detail">Receive updates from your current channel and gradually move to more stable channels until you reach %1$s.</string>
+    <string name="update_transition_wait">Wait for %1$s</string>
+    <string name="update_transition_wait_detail">Wait until a newer %1$s release is available.</string>
+    <string name="update_transition_progress">%1$s → %2$s (gradual)</string>
 </resources>
