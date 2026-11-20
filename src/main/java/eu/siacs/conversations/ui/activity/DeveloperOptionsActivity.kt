@@ -63,6 +63,7 @@ import eu.siacs.conversations.ui.ActionBarActivity
 import eu.siacs.conversations.ui.ExpressiveGroupRow
 import eu.siacs.conversations.ui.GroupPosition
 import eu.siacs.conversations.ui.ImpulseExpressiveTheme
+import eu.siacs.conversations.ui.ImpulseWelcomeActivity
 import eu.siacs.conversations.ui.UpdateSheetFragment
 import eu.siacs.conversations.update.InstallStatusBus
 import eu.siacs.conversations.update.SilentInstaller
@@ -368,6 +369,28 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                                         .EXTRA_ALWAYS_SHOW_PERMISSION_CARDS,
                                                     true,
                                                 )
+                                            )
+                                        },
+                                    )
+                                }
+
+                                Spacer(Modifier.height(6.dp))
+
+                                ExpressiveGroupRow(GroupPosition.SINGLE) {
+                                    ListItem(
+                                        headlineContent = {
+                                            Text(stringResource(R.string.developer_options_show_welcome_tour))
+                                        },
+                                        supportingContent = {
+                                            Text(stringResource(R.string.developer_options_show_welcome_tour_summary))
+                                        },
+                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        modifier = Modifier.clickable {
+                                            startActivity(
+                                                Intent(
+                                                    this@DeveloperOptionsActivity,
+                                                    ImpulseWelcomeActivity::class.java,
+                                                ),
                                             )
                                         },
                                     )

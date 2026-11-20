@@ -1419,6 +1419,8 @@
     <string name="developer_options_show_update_sheet_summary">Opens the update sheet in whatever state the updater is currently in</string>
     <string name="developer_options_show_notification_setup">Show notification setup screen</string>
     <string name="developer_options_show_notification_setup_summary">Opens the notification setup screen directly, ignoring the version gate</string>
+    <string name="developer_options_show_welcome_tour">Show welcome tour</string>
+    <string name="developer_options_show_welcome_tour_summary">Opens the first-run tour again without changing its completion state</string>
     <string name="developer_options_pick_version">Pick version manually</string>
     <string name="developer_options_pick_version_summary">Bypasses downgrade restrictions — jump to any published version</string>
     <string name="developer_options_pick_version_empty">No versions found</string>
