@@ -7,6 +7,8 @@
 
 ## Liquid Glass playground physics — 1.15.1-rc.9
 
+- [ ] Some jitter remains when holding pieces squashed against another piece or the floor (observed in RC 19); accepted as a known playground issue for 1.15.1.
+
 - `BUG-8RSC`: distinguish resting support from impact pressure. Real physics should squash on
   momentum-driven impacts (including the floor), while finger-driven compression follows live
   contact pressure and releases as soon as contact pressure eases. Keep the deformed visual bounds
