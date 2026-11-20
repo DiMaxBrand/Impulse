@@ -824,7 +824,7 @@ class GlassFluidState(private val density: Float) : FluidScene {
             val pieceB = contact.fixtureB.body.userData as? FluidPiece
             val activeGrab = grabbed
             val grabbedContact = activeGrab != null && (pieceA === activeGrab || pieceB === activeGrab)
-            var fingerPressingIntoContact = false
+            var fingerPressForce = 0f
             if (grabbedContact) {
                 val joint = mouse
                 if (joint != null) {
@@ -832,19 +832,18 @@ class GlassFluidState(private val density: Float) : FluidScene {
                     joint.getReactionForce(1f / FIXED_STEP, force)
                     val alongNormal = force.x * n.x + force.y * n.y
                     val pressForce = if (pieceA === activeGrab) alongNormal else -alongNormal
-                    fingerPressingIntoContact = pressForce > MIN_DRAG_PRESS_FORCE
+                    fingerPressForce = max(0f, pressForce)
                 }
             }
             for (body in arrayOf(contact.fixtureA.body, contact.fixtureB.body)) {
                 val piece = body.userData as? FluidPiece ?: continue
                 val mass = body.mass
                 if (mass <= 0f) continue
-                val pressure = total / mass // velocity change per solver step
                 val local = body.getLocalVector(Vec2(n.x, n.y))
-                if (fingerPressingIntoContact) {
+                if (fingerPressForce > MIN_DRAG_PRESS_FORCE) {
                     // A stationary body resting on the floor is supported by gravity, not by the
                     // finger. Only the mouse-joint force directed into this surface sustains squash.
-                    val target = ((pressure - CONTACT_PRESSURE_DEAD_ZONE) * CONTACT_SQUASH_GAIN)
+                    val target = ((fingerPressForce * FIXED_STEP / mass - CONTACT_PRESSURE_DEAD_ZONE) * CONTACT_SQUASH_GAIN)
                         .coerceIn(0f, MAX_CONTACT_SQUASH)
                     if (abs(local.x) > abs(local.y)) {
                         piece.rigidContactSquashX = max(piece.rigidContactSquashX, target)
