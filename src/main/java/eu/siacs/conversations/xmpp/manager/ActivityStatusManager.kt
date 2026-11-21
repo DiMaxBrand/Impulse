@@ -98,11 +98,11 @@ class ActivityStatusManager(private val service: XmppConnectionService, private 
             val account = conversation.getAccount()
             val connection = account.getXmppConnection() ?: return
             val manager = connection.getManager(ActivityStatusManager::class.java) ?: return
-            manager.send(conversation, type, progress)
+            manager.sendInternal(conversation, type, progress)
         }
     }
 
-    private fun send(conversation: Conversation, type: Type, progress: Int?) {
+    private fun sendInternal(conversation: Conversation, type: Type, progress: Int?) {
         // Rich activity is the same category of presence signal as typing. Respect the existing
         // “send chat states” privacy switch instead of silently adding a new outbound signal.
         if (!appSettings.isSendChatStates()) return
