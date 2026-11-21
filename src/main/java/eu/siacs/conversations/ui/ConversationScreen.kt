@@ -3345,7 +3345,7 @@ private fun ActivityBubble(activity: ActivityStatusManager.Status, modifier: Mod
                         // Content leaving always travels right and fades out; replacement content
                         // enters from the right and fades in. AnimateContentSize below resizes the
                         // outer surface alongside this transition.
-                        (fadeIn(tween(220)) + slideInHorizontally { it / 3 }) togetherWith
+                        (fadeIn(tween(220)) + slideInHorizontally { -it / 3 }) togetherWith
                             (fadeOut(tween(170)) + slideOutHorizontally { it / 3 }) using
                             SizeTransform(clip = false) { _, _ -> tween(260) }
                     },
