@@ -74,7 +74,7 @@ private data class WelcomeSlide(
     val title: Int,
     val body: Int,
     val icon: Int,
-    val showEditingDemo: Boolean = false,
+    val demoVideo: Int? = null,
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -86,11 +86,16 @@ private fun WelcomeScreen(onComplete: () -> Unit) {
             R.string.welcome_edit_title,
             R.string.welcome_edit_body,
             R.drawable.ic_edit_24dp,
-            showEditingDemo = true,
+            demoVideo = R.raw.welcome_edit_demo,
         ),
         WelcomeSlide(R.string.welcome_pin_title, R.string.welcome_pin_body, R.drawable.ic_push_pin_24dp),
         WelcomeSlide(R.string.welcome_menu_title, R.string.welcome_menu_body, R.drawable.ic_more_vert_24dp),
-        WelcomeSlide(R.string.welcome_glass_title, R.string.welcome_glass_body, R.drawable.ic_palette_24dp),
+        WelcomeSlide(
+            R.string.welcome_glass_title,
+            R.string.welcome_glass_body,
+            R.drawable.ic_palette_24dp,
+            demoVideo = R.raw.welcome_glass_demo,
+        ),
     )
     var page by remember { mutableIntStateOf(0) }
     val last = page == slides.lastIndex
@@ -102,8 +107,8 @@ private fun WelcomeScreen(onComplete: () -> Unit) {
         Spacer(Modifier.height(1.dp))
         AnimatedContent(targetState = slide, label = "welcome_slide") { current ->
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                if (current.showEditingDemo) {
-                    LoopingEditingDemo()
+                if (current.demoVideo != null) {
+                    LoopingWelcomeDemo(current.demoVideo)
                 } else {
                     Box(
                         modifier = Modifier.size(112.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
@@ -139,12 +144,12 @@ private fun WelcomeScreen(onComplete: () -> Unit) {
 
 /** A muted, control-free preview: it restarts automatically rather than behaving like media. */
 @Composable
-private fun LoopingEditingDemo() {
+private fun LoopingWelcomeDemo(videoRes: Int) {
     val context = LocalContext.current
     AndroidView(
         factory = { viewContext ->
             VideoView(viewContext).apply {
-                setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.welcome_edit_demo}"))
+                setVideoURI(Uri.parse("android.resource://${context.packageName}/$videoRes"))
                 setOnPreparedListener { player ->
                     player.setVolume(0f, 0f)
                     player.isLooping = true

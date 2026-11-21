@@ -5,7 +5,7 @@
 - [ ] Update channels: use one increasing unstable sequence across alpha, beta and RC; retain channel eligibility and historical ordering before 1.16. Publish the updated updater in every 1.16 release and provide compatible entry releases for older clients.
 - [x] Update-channel transition option: keep receiving eligible updates while progressing toward a chosen more stable channel, never accepting older builds. Device-check the picker and installed-update progression.
 - [x] Onboarding: initial-account setup now opens an expressive welcome tour for editing, local pins, the message menu and Liquid Glass before notification setup.
-- [ ] Replace the remaining tour illustrations with cropped real app footage: pin and jump, context menu, and Liquid Glass switching. The edit/save slide now uses a looping real-app recording. Integrate update-channel choice into onboarding and device-test the first-run flow, including later standalone permission prompts.
+- [ ] Replace the remaining tour illustrations with cropped real app footage: pin and jump and the context menu. The edit/save and Liquid Glass slides now use looping real-app recordings. Integrate update-channel choice into onboarding and device-test the first-run flow, including later standalone permission prompts.
 
 ## Launcher icon — 1.16
 
