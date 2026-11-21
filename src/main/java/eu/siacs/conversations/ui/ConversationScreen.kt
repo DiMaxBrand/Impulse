@@ -3340,24 +3340,32 @@ private fun ActivityBubble(activity: ActivityStatusManager.Status, modifier: Mod
                 // Keep the status in one stable slot. Changing recording/picking/uploading does
                 // not insert a second row: the contents crossfade and slide inside this bubble.
                 AnimatedContent(
-                    targetState = activity.type,
+                    targetState = activity.type to (activity.progress ?: -1),
                     transitionSpec = {
-                        (fadeIn(tween(180)) + slideInHorizontally { it / 3 }) togetherWith
-                            (fadeOut(tween(120)) + slideOutHorizontally { -it / 3 }) using
-                            SizeTransform(clip = false)
+                        // Content leaving always travels right and fades out; replacement content
+                        // enters from the right and fades in. AnimateContentSize below resizes the
+                        // outer surface alongside this transition.
+                        (fadeIn(tween(220)) + slideInHorizontally { it / 3 }) togetherWith
+                            (fadeOut(tween(170)) + slideOutHorizontally { it / 3 }) using
+                            SizeTransform(clip = false) { _, _ -> tween(260) }
                     },
                     label = "activityStatusContent",
                 ) { type ->
+                    val (type, rawProgress) = targetState
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         // Use the exact rounded vector used by the rest of Impulse. Keeping it in
                         // a fixed 24dp box avoids the old canvas transform's device-dependent
                         // offset and clipping.
-                        Icon(
-                            painter = painterResource(activityIcon(type)),
-                            contentDescription = null,
-                            tint = tint,
-                            modifier = Modifier.size(24.dp),
-                        )
+                        if (type == ActivityStatusManager.Type.RECORDING_AUDIO) {
+                            AnimatedRecordingMicrophone(tint = tint, size = 24.dp)
+                        } else {
+                            Icon(
+                                painter = painterResource(activityIcon(type)),
+                                contentDescription = null,
+                                tint = tint,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
                         if (type.isUpload()) {
                             Spacer(Modifier.width(5.dp))
                             Icon(
@@ -3367,7 +3375,7 @@ private fun ActivityBubble(activity: ActivityStatusManager.Status, modifier: Mod
                                 modifier = Modifier.size(18.dp),
                             )
                             Spacer(Modifier.width(10.dp))
-                            val targetProgress = (activity.progress ?: 0).coerceIn(0, 100) / 100f
+                            val targetProgress = rawProgress.coerceAtLeast(0).coerceIn(0, 100) / 100f
                             // Network reports arrive in deliberately coarse steps. Ease between
                             // the real values so the wave never snaps, while keeping the endpoint
                             // honest.
