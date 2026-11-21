@@ -581,9 +581,9 @@ screen. Backlog:
   - [ ] Force-run `ApkCleanupWorker` immediately instead of waiting for midnight
   - [ ] Show WorkManager's next-run time for `UpdateCheckWorker`/`ApkCleanupWorker` to confirm they're actually scheduled
 - [ ] **Re-arm one-shot prompts** (currently only resettable via a full app-data wipe)
-  - [ ] Reset the battery-optimization dialog flag
+  - [x] Reset the battery-optimization dialog flag
   - [ ] Reset the notification-permission request flag
-  - [ ] Reset `hasInstalledUpdate` (the "first update" flag)
+  - [x] Reset `hasInstalledUpdate` (the "first update" flag)
 - [ ] **Crash/diagnostics**
   - [ ] Trigger a test crash, to confirm the crash-reporting pipeline reaches `support@on-chat.ru` end to end
   - [x] One-tap "copy debug info" (version name/code, DB schema version, device model, Android version) for bug reports — done: "Copy info for support" in Help and support (version, phone, Android; no DB schema yet)
