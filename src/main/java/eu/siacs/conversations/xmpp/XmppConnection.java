@@ -2365,8 +2365,8 @@ public class XmppConnection implements Runnable {
         this.changeStatusToOnline();
     }
 
-    /** How long the connection must hold before the extras are fetched in emergency mode. */
-    private static final long EMERGENCY_DEFER_MS = 20_000L;
+    /** How long the connection must hold before the extras are fetched in weak connection mode. */
+    private static final long WEAK_CONNECTION_DEFER_MS = 20_000L;
 
     private void enableAdvancedStreamFeatures() {
         final var blockingManager = getManager(BlockingManager.class);
@@ -2377,7 +2377,7 @@ public class XmppConnection implements Runnable {
                 advancedStreamFeaturesLoadedListeners) {
             listener.onAdvancedStreamFeaturesAvailable(account);
         }
-        // The rest is not needed to send and receive messages. On a weak link (emergency mode) it
+        // The rest is not needed to send and receive messages. On a weak link (weak connection mode) it
         // waits until the connection has held for a while, so messages go first: sending is
         // already done from the queue, receiving needs only presence, and history catch-up, carbons
         // and device sync come after.
@@ -2398,9 +2398,9 @@ public class XmppConnection implements Runnable {
                     }
                     getManager(eu.siacs.conversations.xmpp.manager.DevicesManager.class).sync();
                 };
-        if (mXmppConnectionService.isEmergencyModeActive()) {
+        if (mXmppConnectionService.isWeakConnectionModeActive()) {
             final long session = getLastSessionEstablished();
-            Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": emergency mode, deferring catch-up");
+            Log.d(Config.LOGTAG, account.getJid().asBareJid() + ": weak connection mode, deferring catch-up");
             new android.os.Handler(android.os.Looper.getMainLooper())
                     .postDelayed(
                             () -> {
@@ -2409,7 +2409,7 @@ public class XmppConnection implements Runnable {
                                     rest.run();
                                 }
                             },
-                            EMERGENCY_DEFER_MS);
+                            WEAK_CONNECTION_DEFER_MS);
         } else {
             rest.run();
         }
@@ -2824,8 +2824,8 @@ public class XmppConnection implements Runnable {
         } else {
             final int additionalTime =
                     account.getLastErrorStatus() == Account.State.POLICY_VIOLATION ? 3 : 0;
-            // A weak connection (emergency mode) is retried at least every minute: the link may come back at any moment.
-            final int cap = mXmppConnectionService.isEmergencyModeActive() ? 60 : 300;
+            // A weak connection (weak connection mode) is retried at least every minute: the link may come back at any moment.
+            final int cap = mXmppConnectionService.isWeakConnectionModeActive() ? 60 : 300;
             interval = Math.min((int) (25 * Math.pow(1.3, (additionalTime + attempt))), cap);
         }
         final var connectionDuration = Ints.saturatedCast(getConnectionDuration() / 1000);

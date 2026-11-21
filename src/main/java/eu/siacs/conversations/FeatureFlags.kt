@@ -38,7 +38,7 @@ enum class FeatureFlag(
         audience = FlagAudience.Everyone,
     ),
 
-    /** Switches the app to a bad-connection mode while any account is stuck at
+    /** Switches the app to a weak-connection mode while any account is stuck at
      * [eu.siacs.conversations.entities.Account.State.SERVER_NOT_FOUND] or
      * [eu.siacs.conversations.entities.Account.State.CONNECTION_TIMEOUT]: it stops the optional
      * traffic (new avatars, media auto-download) so the little the link can carry goes to messages.
@@ -48,20 +48,22 @@ enum class FeatureFlag(
      * sits in front of avatar fetching and file auto-download (the name is historical). Off by
      * default: this is the first slice only (skip new avatar fetches, disable auto-download); MAM
      * catch-up limiting, disabling carbons and longer timeouts are a follow-up, see TODO.md. */
-    EMERGENCY_MODE(
+    WEAK_CONNECTION_MODE(
+        // Kept for installed clients that already have this manual override stored.
         key = "emergency_mode",
-        titleRes = R.string.feature_flag_emergency_mode_title,
-        descriptionRes = R.string.feature_flag_emergency_mode_description,
+        titleRes = R.string.feature_flag_weak_connection_mode_title,
+        descriptionRes = R.string.feature_flag_weak_connection_mode_description,
         audience = FlagAudience.Nobody,
     ),
 
-    /** For experiments only: keeps emergency mode ON whatever the connection is doing (it still
-     * needs [EMERGENCY_MODE] on). The banner's Turn off button works as usual. Takes effect at the
+    /** For experiments only: keeps weak connection mode ON whatever the connection is doing (it still
+     * needs [WEAK_CONNECTION_MODE] on). The banner's Turn off button works as usual. Takes effect at the
      * next account status change (reconnect, or toggling the account off and on). */
-    EMERGENCY_MODE_FORCED(
+    WEAK_CONNECTION_MODE_FORCED(
+        // Legacy preference key; do not rename without migrating existing overrides.
         key = "emergency_mode_forced",
-        titleRes = R.string.feature_flag_emergency_mode_forced_title,
-        descriptionRes = R.string.feature_flag_emergency_mode_forced_description,
+        titleRes = R.string.feature_flag_weak_connection_mode_forced_title,
+        descriptionRes = R.string.feature_flag_weak_connection_mode_forced_description,
         audience = FlagAudience.Nobody,
     ),
 

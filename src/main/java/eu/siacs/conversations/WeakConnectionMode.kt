@@ -5,12 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * Emergency mode as the screens see it. The service decides (see
- * `XmppConnectionService.refreshEmergencyMode()`) and publishes here; the indicator reads [active]
- * and its button calls [dismiss]. Emergency mode is about a weak or failing connection, not about
+ * Weak connection mode as the screens see it. The service decides (see
+ * `XmppConnectionService.refreshWeakConnectionMode()`) and publishes here; the indicator reads [active]
+ * and its button calls [dismiss]. Weak connection mode is about a weak or failing connection, not about
  * saving data.
  */
-object EmergencyMode {
+object WeakConnectionMode {
     /** Whether the mode is on right now (snapshot state, so the indicator follows it). */
     var active by mutableStateOf(false)
         private set

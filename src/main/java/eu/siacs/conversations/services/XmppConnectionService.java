@@ -61,7 +61,7 @@ import de.gultsch.common.MiniUri;
 import eu.siacs.conversations.AppSettings;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.Conversations;
-import eu.siacs.conversations.EmergencyMode;
+import eu.siacs.conversations.WeakConnectionMode;
 import eu.siacs.conversations.FeatureFlag;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.android.Device;
@@ -1094,12 +1094,12 @@ public class XmppConnectionService extends Service {
     }
 
     public boolean isDataSaverDisabled() {
-        // Emergency mode (a weak or failing connection, not about saving data: it applies on an
+        // Weak connection mode (a weak or failing connection, not about saving data: it applies on an
         // unlimited plan too) reuses this exact gate rather than adding parallel checks in
         // AvatarManager/HttpDownloadConnection/JingleFileTransferConnection: while it is active the
         // optional traffic (new avatars, media auto-download) is held back, as if Android's Data
         // Saver were on.
-        if (emergencyModeActive) {
+        if (weakConnectionModeActive) {
             return false;
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
@@ -1111,37 +1111,37 @@ public class XmppConnectionService extends Service {
                         == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED;
     }
 
-    // Feature-flagged (FeatureFlag.EMERGENCY_MODE, default off) — see that flag's doc comment for
+    // Feature-flagged (FeatureFlag.WEAK_CONNECTION_MODE, default off) — see that flag's doc comment for
     // the full rationale and what's explicitly out of scope for this first slice (MAM catch-up
     // limiting, disabling carbons, longer timeouts — see TODO.md).
-    private volatile boolean emergencyModeActive = false;
+    private volatile boolean weakConnectionModeActive = false;
 
-    // How long every account must be online, without a failing state in between, before emergency
+    // How long every account must be online, without a failing state in between, before weak connection
     // mode turns itself off. Between two retries an account is "connecting", not failing, so
     // without this the mode would drop out at every retry and the longer timeouts would never apply.
-    private static final long EMERGENCY_STABLE_MS = 45_000L;
-    private long emergencyHealthySince = 0;
+    private static final long WEAK_CONNECTION_STABLE_MS = 45_000L;
+    private long weakConnectionHealthySince = 0;
 
     {
-        EmergencyMode.setOnDismiss(
+        WeakConnectionMode.setOnDismiss(
                 () -> {
-                    emergencyModeActive = false;
-                    EmergencyMode.publish(false);
+                    weakConnectionModeActive = false;
+                    WeakConnectionMode.publish(false);
                 });
     }
 
-    public boolean isEmergencyModeActive() {
-        return emergencyModeActive;
+    public boolean isWeakConnectionModeActive() {
+        return weakConnectionModeActive;
     }
 
-    /** 1 normally; how many times longer connection and ping timeouts are while emergency mode is on. */
+    /** 1 normally; how many times longer connection and ping timeouts are while weak connection mode is on. */
     public int timeoutFactor() {
-        return emergencyModeActive ? 3 : 1;
+        return weakConnectionModeActive ? 3 : 1;
     }
 
-    private void setEmergencyMode(final boolean active) {
-        emergencyModeActive = active;
-        EmergencyMode.publish(active);
+    private void setWeakConnectionMode(final boolean active) {
+        weakConnectionModeActive = active;
+        WeakConnectionMode.publish(active);
     }
 
     /**
@@ -1150,21 +1150,21 @@ public class XmppConnectionService extends Service {
      * scanning every account's status on every avatar/download decision.
      *
      * Turns on when an account is stuck at SERVER_NOT_FOUND / CONNECTION_TIMEOUT. Turns off when
-     * every enabled account has been online for EMERGENCY_STABLE_MS, or when the user turns it off
+     * every enabled account has been online for WEAK_CONNECTION_STABLE_MS, or when the user turns it off
      * by hand (it then stays off until the connection has been healthy once).
      */
-    private void refreshEmergencyMode() {
-        if (!new FeatureFlagPreferences(this).isEnabled(FeatureFlag.EMERGENCY_MODE)) {
-            emergencyHealthySince = 0;
-            EmergencyMode.setDismissed(false);
-            setEmergencyMode(false);
+    private void refreshWeakConnectionMode() {
+        if (!new FeatureFlagPreferences(this).isEnabled(FeatureFlag.WEAK_CONNECTION_MODE)) {
+            weakConnectionHealthySince = 0;
+            WeakConnectionMode.setDismissed(false);
+            setWeakConnectionMode(false);
             return;
         }
-        if (new FeatureFlagPreferences(this).isEnabled(FeatureFlag.EMERGENCY_MODE_FORCED)) {
+        if (new FeatureFlagPreferences(this).isEnabled(FeatureFlag.WEAK_CONNECTION_MODE_FORCED)) {
             // For experiments: on whatever the connection does, until the user turns it off by hand.
-            emergencyHealthySince = 0;
-            if (!emergencyModeActive && !EmergencyMode.isDismissed()) {
-                setEmergencyMode(true);
+            weakConnectionHealthySince = 0;
+            if (!weakConnectionModeActive && !WeakConnectionMode.isDismissed()) {
+                setWeakConnectionMode(true);
             }
             return;
         }
@@ -1186,33 +1186,33 @@ public class XmppConnectionService extends Service {
             }
         }
         if (failing) {
-            emergencyHealthySince = 0;
-            if (!emergencyModeActive && !EmergencyMode.isDismissed()) {
-                setEmergencyMode(true);
+            weakConnectionHealthySince = 0;
+            if (!weakConnectionModeActive && !WeakConnectionMode.isDismissed()) {
+                setWeakConnectionMode(true);
             }
             return;
         }
         final boolean healthy = any && allOnline;
-        if (!emergencyModeActive) {
+        if (!weakConnectionModeActive) {
             if (healthy) {
-                EmergencyMode.setDismissed(false);
+                WeakConnectionMode.setDismissed(false);
             }
             return;
         }
         if (!healthy) {
-            emergencyHealthySince = 0;
+            weakConnectionHealthySince = 0;
             return;
         }
         final long now = SystemClock.elapsedRealtime();
-        if (emergencyHealthySince == 0) {
-            emergencyHealthySince = now;
+        if (weakConnectionHealthySince == 0) {
+            weakConnectionHealthySince = now;
         }
-        final long remaining = EMERGENCY_STABLE_MS - (now - emergencyHealthySince);
+        final long remaining = WEAK_CONNECTION_STABLE_MS - (now - weakConnectionHealthySince);
         if (remaining <= 0) {
-            emergencyHealthySince = 0;
-            setEmergencyMode(false);
+            weakConnectionHealthySince = 0;
+            setWeakConnectionMode(false);
         } else {
-            new Handler(Looper.getMainLooper()).postDelayed(this::refreshEmergencyMode, remaining + 50);
+            new Handler(Looper.getMainLooper()).postDelayed(this::refreshWeakConnectionMode, remaining + 50);
         }
     }
 
@@ -3969,7 +3969,7 @@ public class XmppConnectionService extends Service {
         // Called on every account status transition already (see AccountStateProcessor) — the
         // one central point to re-check whether any account just entered or left a
         // SERVER_NOT_FOUND/CONNECTION_TIMEOUT state, rather than adding a second listener.
-        refreshEmergencyMode();
+        refreshWeakConnectionMode();
         for (final OnAccountUpdate listener : threadSafeList(this.mOnAccountUpdates)) {
             listener.onAccountUpdate();
         }

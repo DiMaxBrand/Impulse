@@ -260,7 +260,7 @@ object ConversationListHelper {
                         Column {
                             if (demoSession == null) ConnectingStrip(isConnecting = state.isConnecting.value)
                             // The glass top row floats over the list, so the list's first row (and the
-                            // emergency banner) start below it; the banner takes room from the list
+                            // weak-connection banner) start below it; the banner takes room from the list
                             // instead of covering its first chats.
                             val base = if (glass) LiquidTopRowHeight +
                                 androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -278,7 +278,7 @@ object ConversationListHelper {
                                         if (demoSession == null) composeView.post { if (index > 0) fab.shrink() else fab.extend() }
                                     },
                                 )
-                                if (demoSession == null) EmergencyBanner(Modifier.padding(top = base).onSizeChanged { bannerPx = it.height })
+                                if (demoSession == null) WeakConnectionBanner(Modifier.padding(top = base).onSizeChanged { bannerPx = it.height })
                             }
                         }
                     }

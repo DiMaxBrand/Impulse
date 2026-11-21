@@ -2,7 +2,7 @@
 
 ## 1.16 — in progress
 
-- [ ] Update channels: use one increasing unstable sequence across alpha, beta and RC; retain channel eligibility and historical ordering before 1.16. Publish the updated updater in every 1.16 release and provide compatible entry releases for older clients.
+- [x] Update channels: one increasing unstable sequence now spans alpha, beta and RC while preserving pre-1.16 ordering compatibility. The updater and channel-transition logic are included in every 1.16 release.
 - [x] Update-channel transition option: keep receiving eligible updates while progressing toward a chosen more stable channel, never accepting older builds. Device-check the picker and installed-update progression.
 - [x] Onboarding: initial-account setup now opens an expressive welcome tour for editing, local pins, the message menu and Liquid Glass before notification setup.
 - [ ] Replace the remaining tour illustration with cropped real app footage: pin and jump. The edit/save and Liquid Glass slides use looping real-app recordings, and the context-menu slide uses a real-app screenshot. Integrate update-channel choice into onboarding and device-test the first-run flow, including later standalone permission prompts.
@@ -14,7 +14,7 @@
 
 ## Liquid Glass playground physics — 1.15.1-rc.9
 
-- [ ] Some jitter remains when holding pieces squashed against another piece or the floor (observed in RC 19); accepted as a known playground issue for 1.15.1.
+- [x] Some jitter remains when holding pieces squashed against another piece or the floor (observed in RC 19); accepted as a known playground limitation for 1.15.1.
 
 - `BUG-8RSC`: distinguish resting support from impact pressure. Real physics should squash on
   momentum-driven impacts (including the floor), while finger-driven compression follows live
@@ -600,8 +600,8 @@ if nothing's loaded yet) while downloading, and the full/blurry version
 while uploading — same progress indicator either way, direction doesn't
 matter to the visual. Open question of a ChatGPT-image-gen-style dynamic
 reveal (sharp region growing in behind the blur) considered but not settled
-on. Decided: **not gated to Emergency Mode** — apply everywhere, since
-Emergency Mode is about reducing data use and blur-up costs nothing extra
+on. Decided: **not gated to Weak Connection Mode** — apply everywhere, since
+Weak Connection Mode is about reducing data use and blur-up costs nothing extra
 (the bytes are already streaming in; this only changes how intermediate
 frames render). Animation note: when progress arrives in big discontinuous
 jumps (e.g. 0% → 50% in one tick, not a smooth stream) the blur/reveal
@@ -638,11 +638,11 @@ same spirit as the app's other spring-based status transitions (see
     already-3-icon row, more of a problem on narrow screens.
   - Swap-on-tap with the existing attach button (long-press or a secondary state) — rejected as a
     starting idea, too undiscoverable for a first version.
-- [ ] **Emergency mode, part 2** — `FeatureFlag.EMERGENCY_MODE` (see `XmppConnectionService.refreshEmergencyMode()`/`isEmergencyModeActive()`) currently only reuses the `isDataSaverDisabled()` gate (the name is historical) to hold back optional traffic -- new avatar fetches and media auto-download -- while any account is `SERVER_NOT_FOUND`/`CONNECTION_TIMEOUT`. Confirmed-but-not-yet-built for a second pass:
+- [ ] **Weak Connection Mode, part 2** — `FeatureFlag.WEAK_CONNECTION_MODE` (legacy stored key: `emergency_mode`; see `XmppConnectionService.refreshWeakConnectionMode()`/`isWeakConnectionModeActive()`) currently only reuses the `isDataSaverDisabled()` gate (the name is historical) to hold back optional traffic -- new avatar fetches and media auto-download -- while any account is `SERVER_NOT_FOUND`/`CONNECTION_TIMEOUT`. Confirmed-but-not-yet-built for a second pass:
   - [ ] Limit/skip MAM catch-up history sync while active
   - [ ] Disable message carbons (XEP-0280) while active — less XML per message
   - [x] Longer connection/read timeouts while active (x3 for socket, connect, disco and ping; retries at most every minute) -- beta.277
-  - [x] Visible indicator with a "Turn off" button (`EmergencyBanner`, chat list); turns itself off after all accounts were online for 45 s -- beta.277
+  - [x] Visible indicator with a "Turn off" button (`WeakConnectionBanner`, chat list); turns itself off after all accounts were online for 45 s -- beta.277
   - [x] Priority order on a weak link: after bind, MAM catch-up, carbons, server commands and device sync wait until the connection has held 20 s (queued messages and presence go first) -- beta.278
   - [ ] Still open on that: cap/limit the catch-up window itself, not just delay it
   - [ ] "Send-only" light session for when a full session can't hold: connect, send queued messages (marked sent on the XEP-0198 ack), send NO presence so nothing is routed to us, disconnect; the real catch-up happens on the next full connection. Resent messages already carry their compose time (XEP-0203 delay via `resendMessage(.., delay=true)`)
