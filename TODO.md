@@ -38,8 +38,12 @@
 
 ## Message activity indicators — after 1.15 stable
 
-- [ ] Plan a subsequent point release with transient chat indicators for more than typing: recording audio or video, choosing images or videos, and sending images, videos, audio and other attachments. Show the recipient the relevant activity and clear or update it as the activity changes or ends.
-- [ ] Work out interoperability with other XMPP clients, privacy controls, expiration and multi-device behavior before implementing the indicators.
+- [ ] Plan a subsequent point release with transient chat indicators for more than typing. Use distinct states for recording audio, recording video, choosing media after opening the gallery, choosing a file, and optionally choosing a location or contact. Prefer a generic media-picking state while the gallery result could still be either a photo or video.
+- [ ] Show distinct transfer states for uploading audio, a photo, a video, and a file. Pair the upload affordance with the media-type icon so the activity is understandable at a glance. For an active upload, keep the compact activity indicator non-tappable and show a smooth, wavy linear progress indicator in the unused horizontal space to its right rather than opening a dialog.
+- [ ] Recording and choosing states may expand through the established shared-bounds container transform into a contextual explanatory card: grow the card from the indicator, use the relevant icon(s) as its hero, then show a precise title and short description. Do not use that expansion for uploads while progress is active.
+- [ ] Design the animated microphone indicator: test a restrained pulse, an audio-level waveform, or a breathing mic halo; respect reduced-motion settings and avoid implying that audio is already being sent while it is merely recording.
+- [ ] Define a lightweight, rate-limited protocol for upload progress. It must transmit the state plus media type and coarse progress only while an upload is active, expire promptly, survive multi-device ordering, and be optional so older XMPP clients simply ignore it. Decide privacy controls and whether recipients can disable these indicators.
+- [ ] Work out interoperability with other XMPP clients, expiration and multi-device behavior before implementing the indicators.
 
 ## Message layout comparison — beta.362
 
