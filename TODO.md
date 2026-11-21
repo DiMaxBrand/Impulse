@@ -717,7 +717,7 @@ rather than design:
   later vs. 6 hours later treated differently) — needs a real decision
   before implementing, not just "probably."
 
-## Automatic message resend — plan only, not started
+## Automatic message resend — shipped (1.15.0-beta.147)
 
 > **Built (1.15.0-beta.147).** `XmppConnectionService.autoResendTick()`: every 5 minutes, per online account, failed plain-text unencrypted messages younger than 24 h whose error is not permanent (forbidden / item-not-found / policy-violation / not-acceptable / not-authorized / ...) are sent again, keeping the original timestamp; at most 6 attempts each (attempt counts are in memory, so a service restart resets them). Attachments, OMEMO and cancelled uploads are never retried. No "retrying" UI.
 
@@ -753,7 +753,7 @@ Discussed design, user's stated preference:
 - [x] Cap retries at six attempts per message so a permanently failing message
   does not retry forever; counts reset when the service restarts.
 
-## Scroll-to-bottom button: multifunctional redesign — plan only, not started
+## Scroll-to-bottom button: multifunctional redesign — partially shipped
 
 > **Built (1.15.0-beta.147), resent-message part only.** While an automatically re-sent message is off screen the button becomes a neutral (tertiary) "!" in a circle; tapping it expands, as a shared-bounds container transform, into a card with a hero icon, the explanation and a highlighted "Got it", which then scrolls to and highlights the message. The wording is generic ("probably because the connection was unstable") -- it deliberately does not blame the other contact. **Still open:** the heart for a new reaction off screen, and how these states interact with the plain arrow (right now the resent state wins while the message is off screen).
 
