@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -75,6 +77,7 @@ private data class WelcomeSlide(
     val body: Int,
     val icon: Int,
     val demoVideo: Int? = null,
+    val demoImage: Int? = null,
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -89,7 +92,12 @@ private fun WelcomeScreen(onComplete: () -> Unit) {
             demoVideo = R.raw.welcome_edit_demo,
         ),
         WelcomeSlide(R.string.welcome_pin_title, R.string.welcome_pin_body, R.drawable.ic_push_pin_24dp),
-        WelcomeSlide(R.string.welcome_menu_title, R.string.welcome_menu_body, R.drawable.ic_more_vert_24dp),
+        WelcomeSlide(
+            R.string.welcome_menu_title,
+            R.string.welcome_menu_body,
+            R.drawable.ic_more_vert_24dp,
+            demoImage = R.drawable.welcome_context_menu,
+        ),
         WelcomeSlide(
             R.string.welcome_glass_title,
             R.string.welcome_glass_body,
@@ -107,14 +115,16 @@ private fun WelcomeScreen(onComplete: () -> Unit) {
         Spacer(Modifier.height(1.dp))
         AnimatedContent(targetState = slide, label = "welcome_slide") { current ->
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                if (current.demoVideo != null) {
-                    LoopingWelcomeDemo(current.demoVideo)
-                } else {
-                    Box(
-                        modifier = Modifier.size(112.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(painterResource(current.icon), null, modifier = Modifier.size(52.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                when {
+                    current.demoVideo != null -> LoopingWelcomeDemo(current.demoVideo)
+                    current.demoImage != null -> WelcomeScreenshot(current.demoImage)
+                    else -> {
+                        Box(
+                            modifier = Modifier.size(112.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(painterResource(current.icon), null, modifier = Modifier.size(52.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
                     }
                 }
                 Spacer(Modifier.height(32.dp))
@@ -140,6 +150,16 @@ private fun WelcomeScreen(onComplete: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun WelcomeScreenshot(imageRes: Int) {
+    Image(
+        painter = painterResource(imageRes),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = Modifier.width(195.dp).height(260.dp).clip(MaterialTheme.shapes.extraLarge),
+    )
 }
 
 /** A muted, control-free preview: it restarts automatically rather than behaving like media. */
