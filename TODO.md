@@ -38,12 +38,12 @@
 
 ## Message activity indicators — 1.16
 
-- [ ] Add transient chat indicators for more than typing. Use distinct states for recording audio, recording video, opening the gallery, choosing a file, and optionally choosing a location or contact. The compact gallery-selection state should speak through the existing gallery icon alone; it does not need to claim photo or video before a choice is made.
-- [ ] Show distinct transfer states for uploading audio, a photo, a video, and a file. Pair the upload affordance with the media-type icon so the activity is understandable at a glance. For an active upload, keep the compact activity indicator non-tappable and show a smooth, wavy linear progress indicator in the unused horizontal space to its right rather than opening a dialog.
-- [ ] Keep every activity indicator informational and non-tappable: no explanatory card or dialog. The icon, optional upload/media-type pairing, and upload progress must be sufficient to explain the transient state at a glance.
-- [x] Implement the animated recording-microphone geometry: `AnimatedRecordingMicrophone` keeps the Material Symbols Rounded silhouette while independently moving the capsule and the two sides of its U-shaped support. It is deterministic rather than an audio-level meter, so a recipient is never misled into thinking they are hearing live volume. It will be shown once the recording activity state is wired through the transient-status protocol.
-- [ ] Define a lightweight, rate-limited protocol for upload progress. It must transmit the state plus media type and coarse progress only while an upload is active, expire promptly, survive multi-device ordering, and be optional so older XMPP clients simply ignore it. Decide privacy controls and whether recipients can disable these indicators.
-- [ ] Work out interoperability with other XMPP clients, expiration and multi-device behavior before implementing the indicators.
+- [x] Add transient chat indicators for more than typing. Use distinct states for recording audio, recording video, opening the gallery, choosing a file, and choosing a location or contact. The compact gallery-selection state speaks through the existing gallery icon alone; it does not claim photo or video before a choice is made.
+- [x] Show distinct transfer states for uploading audio, a photo, a video, and a file. Pair the upload affordance with the media-type icon so the activity is understandable at a glance. For an active upload, keep the compact activity indicator non-tappable and show a smooth, wavy linear progress indicator in the unused horizontal space to its right rather than opening a dialog.
+- [x] Keep every activity indicator informational and non-tappable: no explanatory card or dialog. The icon, optional upload/media-type pairing, and upload progress are sufficient to explain the transient state at a glance.
+- [x] Implement the animated recording-microphone geometry: `AnimatedRecordingMicrophone` keeps the Material Symbols Rounded silhouette while independently moving the capsule and the two sides of its U-shaped support. It is deterministic rather than an audio-level meter, so a recipient is never misled into thinking they are hearing live volume, and is shown through the transient-status protocol.
+- [x] Define a lightweight, rate-limited protocol for upload progress. It transmits the state plus media type and coarse progress only while an upload is active, expires promptly, survives receiver reconnects through heartbeats, and is optional so older XMPP clients simply ignore it. It follows the existing Send chat states privacy control.
+- [ ] Device-test interoperability with other XMPP clients, expiration and multi-device behavior.
 
 ## Message layout comparison — beta.362
 
