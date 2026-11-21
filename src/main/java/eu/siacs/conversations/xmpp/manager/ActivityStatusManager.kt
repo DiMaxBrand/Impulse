@@ -87,6 +87,10 @@ class ActivityStatusManager(private val service: XmppConnectionService, private 
     companion object {
         private const val EXPIRY_MS = 12_000L
         private const val HEARTBEAT_MS = 8_000L
+        // Upload progress is deliberately coarse: enough updates to keep the receiver
+        // responsive without turning the chat-state channel into a byte-level stream.
+        private const val PROGRESS_STEP = 5
+        private const val PROGRESS_MAX_SILENCE_MS = 2_000L
 
         @JvmStatic
         fun send(conversation: Conversation, type: Type, progress: Int? = null) {
