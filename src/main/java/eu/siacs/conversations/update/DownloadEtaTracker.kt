@@ -22,9 +22,9 @@ class DownloadEstimate(
  * Tracks download throughput and a calm ETA across repeated polls of the same download.
  * (Shared by every screen that polls [UpdateDownloader.queryProgress], so they cannot drift apart.)
  *
- *  - **Nothing too early**: until a couple of seconds and a little data have gone by the speed is
- *    still ramping up; the estimate then rests on [priorBps] (what earlier downloads did), blending
- *    to the measured speed as it proves itself, or says "calculating".
+ *  - **Nothing too early**: before a usable live sample exists, the speed may use [priorBps]
+ *    (what earlier downloads did). As soon as the current transfer provides a measured rate, the
+ *    displayed speed is live-only; the prior is never blended into it.
  *  - **Two speeds**: a short one (about 4 s) for reaction and a long one (about 20 s) for steadiness,
  *    leaning on the long one when the short one swings.
  *  - **Hysteresis**: the shown countdown ticks down by itself, follows an estimate that is lower at
@@ -94,9 +94,6 @@ class DownloadEtaTracker(private val priorBps: Double? = null) {
 
         val shortBps = rateOver(now, downloadedBytes, SHORT_WINDOW_MS)
         val longBps = rateOver(now, downloadedBytes, LONG_WINDOW_MS)
-        val runSeconds = (now - startedAt) / 1000.0
-        val warm = runSeconds >= WARM_UP_SECONDS && downloadedBytes - startBytes >= WARM_UP_BYTES
-
         val measured: Double? = when {
             longBps == null -> shortBps
             shortBps == null -> longBps
@@ -110,8 +107,8 @@ class DownloadEtaTracker(private val priorBps: Double? = null) {
 
         val bps: Double
         val rough: Boolean
-        if (!warm || measured == null || measured <= 0.0) {
-            // Still ramping up: a guess from earlier downloads, or nothing at all.
+        if (measured == null || measured <= 0.0) {
+            // No usable live sample yet: a guess from earlier downloads, or nothing at all.
             val prior = priorBps
             if (prior == null || prior <= 0.0) {
                 return DownloadEstimate(0.0, 0.0, DownloadEstimate.State.CALCULATING, true)
@@ -119,11 +116,10 @@ class DownloadEtaTracker(private val priorBps: Double? = null) {
             bps = prior
             rough = true
         } else {
-            // The prior fades out over the first stretch of the run as the measurement proves itself.
-            val prior = priorBps
-            val trust = (runSeconds / PRIOR_FADE_SECONDS).coerceIn(0.0, 1.0)
-            bps = if (prior != null && prior > 0.0) trust * measured + (1 - trust) * prior else measured
-            rough = prior != null && trust < 0.5
+            // Once the transfer has supplied a live sample, never contaminate the shown speed
+            // with a previous download's prior. The ETA may still smooth this rate separately.
+            bps = measured
+            rough = false
             lastGoodBps = measured
         }
 
@@ -181,9 +177,6 @@ class DownloadEtaTracker(private val priorBps: Double? = null) {
         const val SHORT_WINDOW_MS = 4_000L
         const val LONG_WINDOW_MS = 20_000L
         const val STALL_MS = 3_000L
-        const val WARM_UP_SECONDS = 2.5
-        const val WARM_UP_BYTES = 128 * 1024L
-        const val PRIOR_FADE_SECONDS = 8.0
         const val HIGHER_POLLS_NEEDED = 4
     }
 }
