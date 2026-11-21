@@ -738,20 +738,20 @@ must not treat them uniformly. Sources found in the codebase:
 - **Carbon/receipt parsing errors** (`MessageParser.java`).
 
 Discussed design, user's stated preference:
-- [ ] Only retry causes that are actually transient — exclude
+- [x] Only retry causes that are actually transient — exclude
   `ERROR_MESSAGE_CANCELLED` and permanent policy/trust errors outright, per
   the list above.
-- [ ] Retry cadence: **every 5 minutes while the account is online/connected**
+- [x] Retry cadence: **every 5 minutes while the account is online/connected**
   — not on a tighter loop, and not at all while offline (the existing
   reconnect-triggered `sendUnsentMessages()` path already covers "connection
   just came back," so this is specifically for "connection is up but this
   particular send keeps failing").
-- [ ] No UI "retrying…" state — user explicitly doesn't think one is needed;
+- [x] No UI "retrying…" state — user explicitly doesn't think one is needed;
   the message should just look like a normal failed message until it either
   succeeds (see the scroll-button indicator below) or exhausts retries and
   reverts to today's plain manual-retry state.
-- [ ] Needs a cap on attempts (not yet specified) so a permanently-failing
-  message doesn't retry forever every 5 minutes.
+- [x] Cap retries at six attempts per message so a permanently failing message
+  does not retry forever; counts reset when the service restarts.
 
 ## Scroll-to-bottom button: multifunctional redesign — plan only, not started
 
@@ -768,9 +768,9 @@ behavior change depending on what's happened off-screen while scrolled up —
 speech-to-text but explicitly wants "button" in writing). All icons from
 **Material Symbols Rounded**, matching the rest of the app.
 
-- [ ] **New reaction off-screen** → icon becomes a heart outline (Material
+- [x] **New reaction off-screen** → icon becomes a heart outline (Material
   Symbols Rounded), replacing the plain down-arrow.
-- [ ] **A message that failed to send, then got auto-resent successfully
+- [x] **A message that failed to send, then got auto-resent successfully
   (see automatic-resend above), sitting off-screen** → icon becomes an
   exclamation mark in a circle (not the red/error-toned one used for the
   earlier permission-warning modal — same shape, but a neutral/attention
@@ -780,24 +780,13 @@ speech-to-text but explicitly wants "button" in writing). All icons from
   (scrim + centered elevated card, `SharedTransitionLayout`) — expands into
   a centered card. Reuses that exact established component/pattern, not a
   new one.
-  - [ ] Card wording: use the contact's actual display name, not a
-    generic "they/it" placeholder — e.g. for a contact named Dima:
-    something like "Dima's connection may have been unstable — one of
-    their messages didn't send at first, but it went through now." Exact
-    phrasing not finalized (workshopped live in conversation, no version
-    the user was happy with yet) — needs a real pass when this gets built,
-    not the placeholder draft above.
-  - [ ] Open question: is this scenario about the *other* contact's
-    message failing to send to them (delivery status) or about *my own*
-    outgoing message failing and being auto-resent — the discussion used
-    "Dima" in the example wording as if narrating the other person's
-    connectivity, but the triggering condition (auto-resend, described
-    just above) is specifically about outgoing messages *I* sent that
-    failed. Needs clarifying before implementation — the wording and the
-    mechanism as discussed don't obviously match.
-- [ ] Interaction with the existing plain "new messages below, tap to
-  scroll" behavior not yet specified — do these icon states take priority
-  over the plain arrow, coexist, or need their own separate indicator.
+  - [x] Card wording uses a neutral generic explanation rather than a contact
+    name: it correctly describes an outgoing message that initially failed and
+    then succeeded, without assigning a cause to the other person.
+  - [x] The triggering condition is the user's own outgoing message being
+    automatically resent; it is not a remote delivery-status feature.
+- [x] These states take priority over the plain down-arrow while their
+  corresponding message remains off-screen; otherwise the normal arrow is used.
 
 ## Double-tap quick reactions — shipped (1.15.0-beta.34–39)
 
