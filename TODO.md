@@ -36,9 +36,9 @@
 
 - [ ] Add and device-test custom predictive-back animations across screens, starting with the conversation list and chat. This is not a 1.15 stable-release blocker.
 
-## Message activity indicators — after 1.15 stable
+## Message activity indicators — 1.16
 
-- [ ] Plan a subsequent point release with transient chat indicators for more than typing. Use distinct states for recording audio, recording video, choosing media after opening the gallery, choosing a file, and optionally choosing a location or contact. Prefer a generic media-picking state while the gallery result could still be either a photo or video.
+- [ ] Add transient chat indicators for more than typing. Use distinct states for recording audio, recording video, opening the gallery, choosing a file, and optionally choosing a location or contact. The compact gallery-selection state should speak through the existing gallery icon alone; it does not need to claim photo or video before a choice is made.
 - [ ] Show distinct transfer states for uploading audio, a photo, a video, and a file. Pair the upload affordance with the media-type icon so the activity is understandable at a glance. For an active upload, keep the compact activity indicator non-tappable and show a smooth, wavy linear progress indicator in the unused horizontal space to its right rather than opening a dialog.
 - [ ] Recording and choosing states may expand through the established shared-bounds container transform into a contextual explanatory card: grow the card from the indicator, use the relevant icon(s) as its hero, then show a precise title and short description. Do not use that expansion for uploads while progress is active.
 - [ ] Design the animated microphone indicator: test a restrained pulse, an audio-level waveform, or a breathing mic halo; respect reduced-motion settings and avoid implying that audio is already being sent while it is merely recording.
