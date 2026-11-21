@@ -3337,39 +3337,53 @@ private fun ActivityBubble(activity: ActivityStatusManager.Status, modifier: Mod
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 16.dp + TAIL_WIDTH, end = 16.dp, top = 12.dp, bottom = 12.dp),
             ) {
-                if (activity.type == ActivityStatusManager.Type.RECORDING_AUDIO) {
-                    AnimatedRecordingMicrophone(tint = tint, size = 24.dp)
-                } else {
-                    Icon(
-                        painter = painterResource(activityIcon(activity.type)),
-                        contentDescription = null,
-                        tint = tint,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                if (activity.type.isUpload()) {
-                    Spacer(Modifier.width(5.dp))
-                    Icon(
-                        painter = painterResource(activityMediaIcon(activity.type)),
-                        contentDescription = null,
-                        tint = tint.copy(alpha = 0.78f),
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    val targetProgress = (activity.progress ?: 0).coerceIn(0, 100) / 100f
-                    // Network reports arrive in deliberately coarse steps. Ease between the real
-                    // values so the wave never snaps, while keeping the actual endpoint honest.
-                    val progress by animateFloatAsState(
-                        targetValue = targetProgress,
-                        animationSpec = tween(durationMillis = 420),
-                        label = "activityUploadProgress",
-                    )
-                    LinearWavyProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.width(112.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = tint.copy(alpha = 0.18f),
-                    )
+                // Keep the status in one stable slot. Changing recording/picking/uploading does
+                // not insert a second row: the contents crossfade and slide inside this bubble.
+                AnimatedContent(
+                    targetState = activity.type,
+                    transitionSpec = {
+                        (fadeIn(tween(180)) + slideInHorizontally { it / 3 }) togetherWith
+                            (fadeOut(tween(120)) + slideOutHorizontally { -it / 3 }) using
+                            SizeTransform(clip = false)
+                    },
+                    label = "activityStatusContent",
+                ) { type ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Use the exact rounded vector used by the rest of Impulse. Keeping it in
+                        // a fixed 24dp box avoids the old canvas transform's device-dependent
+                        // offset and clipping.
+                        Icon(
+                            painter = painterResource(activityIcon(type)),
+                            contentDescription = null,
+                            tint = tint,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        if (type.isUpload()) {
+                            Spacer(Modifier.width(5.dp))
+                            Icon(
+                                painter = painterResource(activityMediaIcon(type)),
+                                contentDescription = null,
+                                tint = tint.copy(alpha = 0.78f),
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            val targetProgress = (activity.progress ?: 0).coerceIn(0, 100) / 100f
+                            // Network reports arrive in deliberately coarse steps. Ease between
+                            // the real values so the wave never snaps, while keeping the endpoint
+                            // honest.
+                            val progress by animateFloatAsState(
+                                targetValue = targetProgress,
+                                animationSpec = tween(durationMillis = 420),
+                                label = "activityUploadProgress",
+                            )
+                            LinearWavyProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.width(112.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = tint.copy(alpha = 0.18f),
+                            )
+                        }
+                    }
                 }
             }
         }
