@@ -81,11 +81,12 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             } else {
                 pendingTakePhotoUri.pop()
             }
+            clearActivityStatus()
         }
 
     private val takePhotoPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) launchCameraCapture()
+            if (granted) launchCameraCapture() else clearActivityStatus()
         }
 
     private val pickMediaLauncher =
@@ -96,11 +97,13 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 val type = if (mime?.startsWith("video/") == true) Attachment.Type.FILE else Attachment.Type.IMAGE
                 stageUris(listOf(uri), type)
             }
+            clearActivityStatus()
         }
 
     private val pickFileLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             if (uri != null) stageUris(listOf(uri), Attachment.Type.FILE)
+            clearActivityStatus()
         }
 
     // Location: the old chat's logic, kept. The picker (the share-location plugin if the person uses
@@ -109,16 +112,20 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     // through attachLocationToConversation (a plain geo: message, no storage permission needed).
     private val shareLocationLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode != AppCompatActivity.RESULT_OK) return@registerForActivityResult
-            val data = result.data ?: return@registerForActivityResult
-            val ctx = context ?: return@registerForActivityResult
-            val latitude = data.getDoubleExtra("latitude", 0.0)
-            val longitude = data.getDoubleExtra("longitude", 0.0)
-            val accuracy = data.getIntExtra("accuracy", 0)
-            val geo =
-                if (accuracy > 0) Uri.parse("geo:$latitude,$longitude;u=$accuracy")
-                else Uri.parse("geo:$latitude,$longitude")
-            state.attachments.addAll(Attachment.of(ctx, geo, Attachment.Type.LOCATION))
+            if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                val data = result.data
+                val ctx = context
+                if (data != null && ctx != null) {
+                    val latitude = data.getDoubleExtra("latitude", 0.0)
+                    val longitude = data.getDoubleExtra("longitude", 0.0)
+                    val accuracy = data.getIntExtra("accuracy", 0)
+                    val geo =
+                        if (accuracy > 0) Uri.parse("geo:$latitude,$longitude;u=$accuracy")
+                        else Uri.parse("geo:$latitude,$longitude")
+                    state.attachments.addAll(Attachment.of(ctx, geo, Attachment.Type.LOCATION))
+                }
+            }
+            clearActivityStatus()
         }
 
     // A contact from the phone's address book, attached as a vCard file. Picking gives a temporary
@@ -129,6 +136,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private val pickPhoneContactLauncher =
         registerForActivityResult(ActivityResultContracts.PickContact()) { uri ->
             if (uri != null) stagePhoneContact(uri)
+            clearActivityStatus()
         }
 
     private val readContactsPermissionLauncher =
@@ -151,8 +159,15 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     // conversation with that person).
     private val pickImpulseContactLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode != AppCompatActivity.RESULT_OK) return@registerForActivityResult
-            val jid = result.data?.getStringExtra("contact") ?: return@registerForActivityResult
+            if (result.resultCode != AppCompatActivity.RESULT_OK) {
+                clearActivityStatus()
+                return@registerForActivityResult
+            }
+            val jid = result.data?.getStringExtra("contact")
+            if (jid == null) {
+                clearActivityStatus()
+                return@registerForActivityResult
+            }
             // Two lines readable in any client (name and username, then the link); Impulse shows it as a card.
             val name = try {
                 conversation?.getAccount()?.roster?.getContact(eu.siacs.conversations.xmpp.Jid.of(jid))?.getDisplayName()
@@ -160,6 +175,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 null
             }
             sendPlainMessage(contactCardBody(name, jid))
+            clearActivityStatus()
         }
 
     private val trustKeysLauncher =
@@ -287,6 +303,18 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         }
     }
 
+    private fun publishActivityStatus(
+        type: eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type,
+        progress: Int? = null,
+    ) {
+        conversation?.let {
+            eu.siacs.conversations.xmpp.manager.ActivityStatusManager.send(it, type, progress)
+        }
+    }
+
+    private fun clearActivityStatus() =
+        publishActivityStatus(eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.CLEAR)
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -335,6 +363,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         super.onStop()
         state.sendLaunches.clear(keepGeometry = true)
         if (state.recordingState.value is RecordingUiState.Active) {
+            clearActivityStatus()
             stopRecordingSession(save = false)
             clearRecordingDraft()
             state.recordingState.value = RecordingUiState.Idle
@@ -783,6 +812,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onCancelRecording() {
         if (state.recordingDiscarding.value) return
+        conversation?.let {
+            eu.siacs.conversations.xmpp.manager.ActivityStatusManager.send(
+                it, eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.CLEAR,
+            )
+        }
         stopRecordingSession(save = false)
         clearRecordingDraft()
         state.recordingDiscarding.value = true
@@ -807,6 +841,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         if (!paused && stopRecordingSession(save = true)) recordingFile?.let { recordingSegments += it }
         recordingFile = null
         state.recordingState.value = RecordingUiState.Idle
+        conversation?.let {
+            eu.siacs.conversations.xmpp.manager.ActivityStatusManager.send(
+                it, eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.UPLOADING_AUDIO, 0,
+            )
+        }
         val ctx = context ?: return
         val targetConversation = conversation
         val segments = recordingSegments.toList()
@@ -827,6 +866,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 if (attachment != null) { commitAttachments(listOf(attachment), voiceOrigin = launchOrigin, voiceTimer = launchTimer); retained = file }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e
             } catch (_: Exception) {
+                targetConversation?.let {
+                    eu.siacs.conversations.xmpp.manager.ActivityStatusManager.send(
+                        it, eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.CLEAR,
+                    )
+                }
                 Toast.makeText(ctx, R.string.unable_to_save_recording, Toast.LENGTH_SHORT).show()
             } finally {
                 segments.filter { it != retained }.forEach { it.delete() }
@@ -899,6 +943,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         pauseStartMs = 0L
         state.recordingState.value = RecordingUiState.Active(
             VoiceRecordingPolicy.activeDuration(recordingStartMs, android.os.SystemClock.elapsedRealtime(), totalPausedMs, 0), paused = false)
+        conversation?.let {
+            eu.siacs.conversations.xmpp.manager.ActivityStatusManager.send(
+                it, eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.RECORDING_AUDIO,
+            )
+        }
         startRecordingTimer()
     }
 
@@ -1059,6 +1108,17 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             }
         } else null
         state.replyingTo.value = null
+        attachments.firstOrNull()?.let { attachment ->
+            val activityType = when (attachment.type) {
+                Attachment.Type.RECORDING -> eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.UPLOADING_AUDIO
+                Attachment.Type.IMAGE -> eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.UPLOADING_PHOTO
+                Attachment.Type.FILE -> if (attachment.getMime()?.startsWith("video/") == true) {
+                    eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.UPLOADING_VIDEO
+                } else eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.UPLOADING_FILE
+                Attachment.Type.LOCATION -> null
+            }
+            if (activityType != null) publishActivityStatus(activityType, 0)
+        }
         val known = c.snapshotMessages().map { it.getUuid() }.toSet()
         val futures = ArrayList<com.google.common.util.concurrent.ListenableFuture<Void>>()
         for (attachment in attachments) {
@@ -1209,12 +1269,14 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onAttachImage() {
+        publishActivityStatus(eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.CHOOSING_MEDIA)
         pickMediaLauncher.launch(
             androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
         )
     }
 
     override fun onTakePhoto() {
+        publishActivityStatus(eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.CHOOSING_MEDIA)
         // The manifest holds android.permission.CAMERA (for calls), which means
         // ACTION_IMAGE_CAPTURE crashes with a SecurityException on many devices — notably
         // Samsung's stock Camera app — unless that permission is actually granted at runtime,
@@ -1239,19 +1301,23 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     }
 
     override fun onAttachFile() {
+        publishActivityStatus(eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.CHOOSING_FILE)
         pickFileLauncher.launch("*/*")
     }
 
     override fun onShareLocation() {
+        publishActivityStatus(eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.CHOOSING_LOCATION)
         shareLocationLauncher.launch(eu.siacs.conversations.utils.GeoHelper.getFetchIntent(requireContext()))
     }
 
     override fun onSharePhoneContact() {
+        publishActivityStatus(eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.CHOOSING_CONTACT)
         pickPhoneContactLauncher.launch(null)
     }
 
     override fun onShareImpulseContact() {
         val c = conversation ?: return
+        publishActivityStatus(eu.siacs.conversations.xmpp.manager.ActivityStatusManager.Type.CHOOSING_CONTACT)
         val intent =
             Intent(requireActivity(), ChooseContactActivity::class.java).apply {
                 putExtra(ChooseContactActivity.EXTRA_TITLE_RES_ID, R.string.attach_impulse_contact_title)

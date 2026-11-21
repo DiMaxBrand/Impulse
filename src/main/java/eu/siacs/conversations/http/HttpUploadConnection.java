@@ -11,6 +11,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.entities.Account;
+import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.Transferable;
 import eu.siacs.conversations.services.AbstractConnectionManager;
@@ -19,6 +20,7 @@ import eu.siacs.conversations.services.XmppConnectionService;
 import eu.siacs.conversations.utils.CryptoHelper;
 import eu.siacs.conversations.utils.MimeUtils;
 import eu.siacs.conversations.xmpp.manager.HttpUploadManager;
+import eu.siacs.conversations.xmpp.manager.ActivityStatusManager;
 import im.conversations.android.model.TransportSecurity;
 import java.io.File;
 import java.io.IOException;
@@ -94,6 +96,7 @@ public class HttpUploadConnection
 
     private void fail(String errorMessage) {
         finish();
+        clearActivityStatus();
         final Call call = this.mostRecentCall;
         final Future<HttpUploadManager.Slot> slotFuture = this.slotFuture;
         final boolean cancelled =
@@ -165,6 +168,7 @@ public class HttpUploadConnection
                 },
                 MoreExecutors.directExecutor());
         message.setTransferable(this);
+        publishActivityProgress();
         mXmppConnectionService.markMessage(message, Message.STATUS_UNSEND);
     }
 
@@ -216,6 +220,10 @@ public class HttpUploadConnection
                                         message.getConversation().getAddress().asBareJid());
                             }
                             mXmppConnectionService.resendMessage(message, delayed);
+                            // Queue the clear only after the completed attachment has been turned
+                            // back into its real message, so receiver-side list placement can
+                            // hand the transient row over to that bubble instead of blinking out.
+                            clearActivityStatus();
                         } else {
                             Log.d(
                                     Config.LOGTAG,
@@ -233,7 +241,37 @@ public class HttpUploadConnection
     @Override
     public void onProgress(final long progress) {
         this.transmitted = progress;
+        publishActivityProgress();
         this.debouncedInterfaceUpdater.run();
+    }
+
+    /** Sends only coarse, throttled progress — the ActivityStatusManager suppresses noisy ticks. */
+    private void publishActivityProgress() {
+        final var conversation = message.getConversation();
+        if (!(conversation instanceof Conversation)) {
+            return;
+        }
+        final String mime = message.getMimeType();
+        final ActivityStatusManager.Type type;
+        if (mime != null && mime.startsWith("audio/")) {
+            type = ActivityStatusManager.Type.UPLOADING_AUDIO;
+        } else if (mime != null && mime.startsWith("video/")) {
+            type = ActivityStatusManager.Type.UPLOADING_VIDEO;
+        } else if (message.getType() == Message.TYPE_IMAGE
+                || (mime != null && mime.startsWith("image/"))) {
+            type = ActivityStatusManager.Type.UPLOADING_PHOTO;
+        } else {
+            type = ActivityStatusManager.Type.UPLOADING_FILE;
+        }
+        ActivityStatusManager.send((Conversation) conversation, type, getProgress());
+    }
+
+    private void clearActivityStatus() {
+        final var conversation = message.getConversation();
+        if (conversation instanceof Conversation) {
+            ActivityStatusManager.send(
+                    (Conversation) conversation, ActivityStatusManager.Type.CLEAR, null);
+        }
     }
 
     public record Upload(

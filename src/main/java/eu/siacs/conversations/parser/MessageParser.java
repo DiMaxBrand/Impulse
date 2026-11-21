@@ -890,6 +890,15 @@ public class MessageParser extends AbstractParser
             getManager(ModerationManager.class).handleRetraction(original);
         }
 
+        // Rich activity packets have no message body and must never enter local history. They are
+        // handled before the other Impulse-only transient markers for exactly the same reason as
+        // editing/view/listening transitions below.
+        if (original.findChild("activity", Namespace.IMPULSE_ACTIVITY_STATUS) != null) {
+            getManager(eu.siacs.conversations.xmpp.manager.ActivityStatusManager.class)
+                    .process(packet);
+            return;
+        }
+
         final eu.siacs.conversations.xml.Element editingEl =
                 original.findChild("editing", Namespace.IMPULSE_EDITING);
         if (editingEl != null) {

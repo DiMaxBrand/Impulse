@@ -184,6 +184,7 @@ import im.conversations.android.xmpp.model.reactions.Restrictions
 import im.conversations.android.xmpp.model.stanza.Presence
 import im.conversations.android.xmpp.model.state.Composing
 import eu.siacs.conversations.xmpp.manager.ChatStateManager
+import eu.siacs.conversations.xmpp.manager.ActivityStatusManager
 import eu.siacs.conversations.xmpp.manager.EntityTimeManager
 import eu.siacs.conversations.xmpp.manager.JingleManager
 import kotlinx.coroutines.Dispatchers
@@ -2339,8 +2340,21 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             } else false
         }
 
+    val peerActivity: ActivityStatusManager.Status? =
+        remember(conversation, revision) {
+            if (conversation != null && conversation.getMode() == Conversational.MODE_SINGLE) {
+                try {
+                    conversation.getAccount().xmppConnection
+                        ?.getManager(ActivityStatusManager::class.java)
+                        ?.getIncoming(conversation.getAddress())
+                } catch (_: Exception) {
+                    null
+                }
+            } else null
+        }
+
     val peerReplyStatus = rememberReplyStatus(conversation, false)
-    val showReplyIndicator = isTyping || peerReplyStatus != null
+    val showReplyIndicator = isTyping || peerActivity != null || peerReplyStatus != null
 
     // EntityTime (XEP-0202) "it's late for them" indicator, ported from the old screen — shown
     // as a plain row at the bottom of the list (same slot as TypingBubble below), not its own
@@ -2917,10 +2931,13 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                 if (experimentalAnimations) Modifier.rubberLift(state.rubber, position) else Modifier
             if (showReplyIndicator) {
                 item(key = "typing-indicator") {
-                    if (isTyping || peerReplyStatus == null) TypingBubble(modifier = Modifier.animateItem().then(lift(0)))
-                    else Row(Modifier.animateItem().then(lift(0)).padding(horizontal = 16.dp, vertical = 6.dp)) {
-                        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                            ReplyStatusText(peerReplyStatus.code, Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+                    when {
+                        peerActivity != null -> ActivityBubble(peerActivity, Modifier.animateItem().then(lift(0)))
+                        isTyping || peerReplyStatus == null -> TypingBubble(modifier = Modifier.animateItem().then(lift(0)))
+                        else -> Row(Modifier.animateItem().then(lift(0)).padding(horizontal = 16.dp, vertical = 6.dp)) {
+                            Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                                ReplyStatusText(peerReplyStatus.code, Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+                            }
                         }
                     }
                 }
@@ -3299,6 +3316,94 @@ private fun TypingBubble(modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/**
+ * One compact, non-interactive recipient-side slot for all transient rich activities. The media
+ * icon carries the meaning; only an upload spends horizontal room on the progress wave.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ActivityBubble(activity: ActivityStatusManager.Status, modifier: Modifier = Modifier) {
+    val tint = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = modifier.fillMaxWidth().padding(start = 12.dp - TAIL_WIDTH, top = 6.dp, bottom = 1.dp),
+    ) {
+        Surface(
+            shape = rememberBubbleShape(firstOfGroup = true, lastOfGroup = true, outgoing = false),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 16.dp + TAIL_WIDTH, end = 16.dp, top = 12.dp, bottom = 12.dp),
+            ) {
+                if (activity.type == ActivityStatusManager.Type.RECORDING_AUDIO) {
+                    AnimatedRecordingMicrophone(tint = tint, size = 24.dp)
+                } else {
+                    Icon(
+                        painter = painterResource(activityIcon(activity.type)),
+                        contentDescription = null,
+                        tint = tint,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                if (activity.type.isUpload()) {
+                    Spacer(Modifier.width(5.dp))
+                    Icon(
+                        painter = painterResource(activityMediaIcon(activity.type)),
+                        contentDescription = null,
+                        tint = tint.copy(alpha = 0.78f),
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    val targetProgress = (activity.progress ?: 0).coerceIn(0, 100) / 100f
+                    // Network reports arrive in deliberately coarse steps. Ease between the real
+                    // values so the wave never snaps, while keeping the actual endpoint honest.
+                    val progress by animateFloatAsState(
+                        targetValue = targetProgress,
+                        animationSpec = tween(durationMillis = 420),
+                        label = "activityUploadProgress",
+                    )
+                    LinearWavyProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.width(112.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = tint.copy(alpha = 0.18f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun ActivityStatusManager.Type.isUpload(): Boolean = when (this) {
+    ActivityStatusManager.Type.UPLOADING_AUDIO,
+    ActivityStatusManager.Type.UPLOADING_PHOTO,
+    ActivityStatusManager.Type.UPLOADING_VIDEO,
+    ActivityStatusManager.Type.UPLOADING_FILE -> true
+    else -> false
+}
+
+private fun activityIcon(type: ActivityStatusManager.Type): Int = when (type) {
+    ActivityStatusManager.Type.RECORDING_VIDEO -> R.drawable.ic_videocam_24dp
+    ActivityStatusManager.Type.CHOOSING_MEDIA -> R.drawable.ic_image_24dp
+    ActivityStatusManager.Type.CHOOSING_FILE -> R.drawable.ic_attach_file_24dp
+    ActivityStatusManager.Type.CHOOSING_LOCATION -> R.drawable.ic_location_pin_24dp
+    ActivityStatusManager.Type.CHOOSING_CONTACT -> R.drawable.ic_contacts_24dp
+    ActivityStatusManager.Type.UPLOADING_AUDIO,
+    ActivityStatusManager.Type.UPLOADING_PHOTO,
+    ActivityStatusManager.Type.UPLOADING_VIDEO,
+    ActivityStatusManager.Type.UPLOADING_FILE -> R.drawable.ic_upload_24dp
+    ActivityStatusManager.Type.RECORDING_AUDIO -> R.drawable.ic_mic_24dp
+    ActivityStatusManager.Type.CLEAR -> R.drawable.ic_mic_24dp
+}
+
+private fun activityMediaIcon(type: ActivityStatusManager.Type): Int = when (type) {
+    ActivityStatusManager.Type.UPLOADING_AUDIO -> R.drawable.ic_mic_24dp
+    ActivityStatusManager.Type.UPLOADING_PHOTO -> R.drawable.ic_image_24dp
+    ActivityStatusManager.Type.UPLOADING_VIDEO -> R.drawable.ic_videocam_24dp
+    ActivityStatusManager.Type.UPLOADING_FILE -> R.drawable.ic_attach_file_24dp
+    else -> R.drawable.ic_attach_file_24dp
 }
 
 // Deliberately plain — no Surface/bubble shape, unlike DatePill/NewMessagesPill/TypingBubble.

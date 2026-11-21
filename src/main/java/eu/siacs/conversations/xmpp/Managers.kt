@@ -12,6 +12,7 @@ import eu.siacs.conversations.xmpp.manager.BlockingManager
 import eu.siacs.conversations.xmpp.manager.BookmarkManager
 import eu.siacs.conversations.xmpp.manager.CarbonsManager
 import eu.siacs.conversations.xmpp.manager.ChatStateManager
+import eu.siacs.conversations.xmpp.manager.ActivityStatusManager
 import eu.siacs.conversations.xmpp.manager.ClientStateIndicationManager
 import eu.siacs.conversations.xmpp.manager.DeliveryReceiptManager
 import eu.siacs.conversations.xmpp.manager.DiscoManager
@@ -64,6 +65,7 @@ object Managers {
             .put(BirthdayManager::class.java, BirthdayManager(context, connection))
             .put(CarbonsManager::class.java, CarbonsManager(context, connection))
             .put(ChatStateManager::class.java, ChatStateManager(context, connection))
+            .put(ActivityStatusManager::class.java, ActivityStatusManager(context, connection))
             .put(ClientStateIndicationManager::class.java, ClientStateIndicationManager(context, connection))
             .put(DeliveryReceiptManager::class.java, DeliveryReceiptManager(context, connection))
             .put(DiscoManager::class.java, DiscoManager(context, connection))

@@ -1,6 +1,8 @@
 package eu.siacs.conversations.xmpp.manager
 
 import android.util.Log
+import android.os.Handler
+import android.os.Looper
 import com.google.common.collect.ClassToInstanceMap
 import com.google.common.collect.ImmutableClassToInstanceMap
 import eu.siacs.conversations.AppSettings
@@ -27,8 +29,12 @@ class ChatStateManager(private val service: XmppConnectionService, connection: X
     private val appSettings = AppSettings(service.applicationContext)
     private val incoming = HashMap<Jid, Class<out ChatStateNotification>>()
     private val outgoing = HashMap<Jid, Class<out ChatStateNotification>>()
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     fun process(message: Message) {
+        // Rich activity is intentionally carried beside XEP-0085 chat states. Handle it first so
+        // an activity-only stanza never needs a fake <composing/> child to reach the UI.
+        getManager(ActivityStatusManager::class.java).process(message)
         val from = message.getFrom() ?: return
         val chatStateNotification = message.getExtension(ChatStateNotification::class.java) ?: return
         val chatState = chatStateNotification.javaClass
@@ -78,7 +84,7 @@ class ChatStateManager(private val service: XmppConnectionService, connection: X
         }
     }
 
-    private fun sendChatState(conversation: Conversation) {
+    private fun sendChatState(conversation: Conversation, scheduleHeartbeat: Boolean = true) {
         if (!appSettings.isSendChatStates()) return
 
         val address = conversation.getAddress().asBareJid()
@@ -93,6 +99,22 @@ class ChatStateManager(private val service: XmppConnectionService, connection: X
         packet.addExtension(extension)
         packet.addExtension(NoStore())
         this.connection.sendMessagePacket(packet)
+        // XEP-0085 normally sends only the transition into <composing/>. A receiver which
+        // restarts while someone keeps typing would otherwise have no way to rediscover that
+        // live state. This sparse heartbeat is still an ephemeral no-store stanza.
+        if (scheduleHeartbeat && extension is Composing) {
+            scheduleComposingHeartbeat(address)
+        }
+    }
+
+    private fun scheduleComposingHeartbeat(address: Jid) {
+        mainHandler.postDelayed({
+            val state = synchronized(outgoing) { outgoing[address] }
+            if (state != Composing::class.java) return@postDelayed
+            val conversation = service.find(getAccount(), address) ?: return@postDelayed
+            sendChatState(conversation, scheduleHeartbeat = false)
+            scheduleComposingHeartbeat(address)
+        }, COMPOSING_HEARTBEAT_MS)
     }
 
     fun getOutgoingChatStateExtension(conversation: Conversation): ChatStateNotification {
@@ -134,6 +156,7 @@ class ChatStateManager(private val service: XmppConnectionService, connection: X
     }
 
     companion object {
+        private const val COMPOSING_HEARTBEAT_MS = 8_000L
         private val CHAT_STATE_NOTIFICATIONS: ClassToInstanceMap<ChatStateNotification> =
             ImmutableClassToInstanceMap.Builder<ChatStateNotification>()
                 .put(Active::class.java, Active())
