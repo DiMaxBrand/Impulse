@@ -3350,8 +3350,8 @@ private fun ActivityBubble(activity: ActivityStatusManager.Status, modifier: Mod
                             SizeTransform(clip = false) { _, _ -> tween(260) }
                     },
                     label = "activityStatusContent",
-                ) { type ->
-                    val (type, rawProgress) = targetState
+                ) { target ->
+                    val (type, rawProgress) = target
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         // Use the exact rounded vector used by the rest of Impulse. Keeping it in
                         // a fixed 24dp box avoids the old canvas transform's device-dependent

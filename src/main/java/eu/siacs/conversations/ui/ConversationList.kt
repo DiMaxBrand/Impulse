@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -38,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
@@ -619,7 +621,7 @@ private fun ChatNavigationOverlay(
         ConversationAvatar(
             conversation = conversation,
             availability = null,
-            hasOngoingCall = com.google.common.base.Optional.absent<Any>(),
+            hasOngoingCall = false,
             isTyping = false,
             isBirthday = false,
             cardHeightPx = height.toInt(),
@@ -637,9 +639,12 @@ private fun ChatNavigationOverlay(
                 .width(220.dp)
                 .graphicsLayer { alpha = identityAlpha },
         )
-        val status = try {
-            presenceStringRes(conversation.getContact().getShownStatus(), false)?.let { stringResource(it) }
-        } catch (_: Exception) { null }
+        val statusRes = try {
+            presenceStringRes(conversation.getContact().getShownStatus(), false)
+        } catch (_: Exception) {
+            null
+        }
+        val status = statusRes?.let { stringResource(it) }
         if (status != null) {
             Text(
                 text = status,
