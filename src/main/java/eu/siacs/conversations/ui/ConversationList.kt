@@ -138,6 +138,7 @@ internal object ChatNavigationMotion {
     var returnMode: ReturnMode by mutableStateOf(ReturnMode.AUTOMATIC)
     var returnProgress: Float by mutableStateOf(0f)
     var returnTouchY: Float by mutableStateOf(Float.NaN)
+    var returnFromLeftEdge: Boolean by mutableStateOf(true)
     private var lastListOriginUuid: String? = null
 
     fun beginOpen(conversation: Conversation) {
@@ -146,13 +147,18 @@ internal object ChatNavigationMotion {
         ticket = Ticket(uuid, Direction.OPENING)
     }
 
-    fun beginReturn(conversation: Conversation, gesture: Boolean = false): Boolean {
+    fun beginReturn(
+        conversation: Conversation,
+        gesture: Boolean = false,
+        fromLeftEdge: Boolean = true,
+    ): Boolean {
         val uuid = conversation.getUuid()
         if (lastListOriginUuid != uuid) return false
         ticket = Ticket(uuid, Direction.RETURNING)
         returnMode = if (gesture) ReturnMode.GESTURE else ReturnMode.AUTOMATIC
         returnProgress = 0f
         returnTouchY = Float.NaN
+        returnFromLeftEdge = fromLeftEdge
         return true
     }
 
@@ -181,6 +187,7 @@ internal object ChatNavigationMotion {
             returnMode = ReturnMode.AUTOMATIC
             returnProgress = 0f
             returnTouchY = Float.NaN
+            returnFromLeftEdge = true
         }
     }
 }
@@ -532,6 +539,7 @@ private fun ChatNavigationOverlay(
     val returnMode = ChatNavigationMotion.returnMode
     val returnProgress = ChatNavigationMotion.returnProgress
     val returnTouchY = ChatNavigationMotion.returnTouchY
+    val returnFromLeftEdge = ChatNavigationMotion.returnFromLeftEdge
     LaunchedEffect(ticket, source, rootSize, returnMode) {
         when {
             ticket.direction == ChatNavigationMotion.Direction.OPENING -> {
@@ -587,6 +595,10 @@ private fun ChatNavigationOverlay(
         val relativeY = ((returnTouchY - rootOrigin.y) / rootSize.height - 0.5f).coerceIn(-0.5f, 0.5f)
         with(density) { 24.dp.toPx() } * relativeY * 2f * returnProgress * (1f - returnProgress)
     }
+    val edgeDirection = if (returnFromLeftEdge) 1f else -1f
+    val horizontalGestureBias = if (returnMode == ChatNavigationMotion.ReturnMode.GESTURE) {
+        with(density) { 28.dp.toPx() } * edgeDirection * returnProgress * (1f - returnProgress)
+    } else 0f
 
     Box(Modifier.fillMaxSize()) {
         Surface(
@@ -598,7 +610,7 @@ private fun ChatNavigationOverlay(
                     transformOrigin = TransformOrigin(0f, 0f)
                     this.scaleX = scaleX
                     this.scaleY = scaleY
-                    translationX = -left * p
+                    translationX = -left * p + horizontalGestureBias
                     translationY = -top * p + verticalGestureBias
                     alpha = 1f - (p - 0.78f).coerceIn(0f, 1f) / 0.22f
                 }
@@ -612,7 +624,7 @@ private fun ChatNavigationOverlay(
             isBirthday = false,
             cardHeightPx = height.toInt(),
             modifier = Modifier
-                .offset { IntOffset(travel(avatarStartX, avatarEndX).toInt(), (travel(avatarStartY, avatarEndY) + verticalGestureBias).toInt()) }
+                .offset { IntOffset((travel(avatarStartX, avatarEndX) + horizontalGestureBias).toInt(), (travel(avatarStartY, avatarEndY) + verticalGestureBias).toInt()) }
                 .graphicsLayer { alpha = identityAlpha },
         )
         Text(
@@ -621,7 +633,7 @@ private fun ChatNavigationOverlay(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .offset { IntOffset(travel(nameStartX, nameEndX).toInt(), (travel(nameStartY, nameEndY) + verticalGestureBias).toInt()) }
+                .offset { IntOffset((travel(nameStartX, nameEndX) + horizontalGestureBias).toInt(), (travel(nameStartY, nameEndY) + verticalGestureBias).toInt()) }
                 .width(220.dp)
                 .graphicsLayer { alpha = identityAlpha },
         )
@@ -635,7 +647,7 @@ private fun ChatNavigationOverlay(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 modifier = Modifier
-                    .offset { IntOffset(travel(nameStartX, nameEndX).toInt(), (travel(nameStartY + with(density) { 24.dp.toPx() }, nameEndY + with(density) { 24.dp.toPx() }) + verticalGestureBias).toInt()) }
+                    .offset { IntOffset((travel(nameStartX, nameEndX) + horizontalGestureBias).toInt(), (travel(nameStartY + with(density) { 24.dp.toPx() }, nameEndY + with(density) { 24.dp.toPx() }) + verticalGestureBias).toInt()) }
                     .graphicsLayer { alpha = identityAlpha },
             )
         }

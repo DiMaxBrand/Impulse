@@ -78,7 +78,11 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
             predictiveReturnActive = false
             val c = conversation ?: return
             if (!ConversationsActivity.isTabletView(requireActivity())) {
-                predictiveReturnActive = ChatNavigationMotion.beginReturn(c, gesture = true)
+                predictiveReturnActive = ChatNavigationMotion.beginReturn(
+                    c,
+                    gesture = true,
+                    fromLeftEdge = backEvent.swipeEdge == BackEventCompat.EDGE_LEFT,
+                )
             }
         }
 
