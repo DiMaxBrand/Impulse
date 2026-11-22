@@ -116,8 +116,11 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material3.toPath
 import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.drawBehind
@@ -847,7 +850,44 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         state.deleteGroupTarget.value =
             state.messages.value.filter { it.getUuid() in selectedUuids }
     }
+    val openingTicket = ChatNavigationMotion.ticket?.takeIf {
+        it.direction == ChatNavigationMotion.Direction.OPENING &&
+            it.conversationUuid == conversation?.getUuid()
+    }
+    val openingSource = if (openingTicket != null) ChatNavigationMotion.sourceBounds else null
+    val openingStatus = if (openingTicket != null) ChatNavigationMotion.sourceStatusBounds else null
+    val openingRootOrigin = ChatNavigationMotion.sourceRootOrigin
+    val openingProgress = ChatNavigationMotion.openingProgress
+    var screenRootSize by remember(openingTicket) { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    Box(Modifier.fillMaxSize().onSizeChanged { screenRootSize = it }) {
     Scaffold(
+        modifier = Modifier.fillMaxSize().drawWithContent {
+            if (openingTicket == null || openingSource == null) {
+                drawContent()
+            } else {
+                val left = openingSource.left - openingRootOrigin.x
+                val top = openingSource.top - openingRootOrigin.y
+                val right = left + openingSource.width
+                val bottom = top + openingSource.height
+                val p = openingProgress
+                val reveal = androidx.compose.ui.geometry.Rect(
+                    left = left + (0f - left) * p,
+                    top = top + (0f - top) * p,
+                    right = right + (size.width - right) * p,
+                    bottom = bottom + (size.height - bottom) * p,
+                )
+                val radius = 16.dp.toPx() * (1f - p)
+                val path = Path().apply {
+                    addRoundRect(
+                        androidx.compose.ui.geometry.RoundRect(
+                            reveal,
+                            androidx.compose.ui.geometry.CornerRadius(radius, radius),
+                        )
+                    )
+                }
+                clipPath(path) { this@drawWithContent.drawContent() }
+            }
+        },
         topBar = {
             if (!glass) {
                 ConversationTopBar(
@@ -1238,6 +1278,20 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         }
         }
       }
+    }
+    if (openingTicket != null && openingSource != null && screenRootSize.width > 0) {
+        ChatNavigationOverlay(
+            ticket = openingTicket,
+            conversation = conversation!!,
+            source = openingSource,
+            sourceStatus = openingStatus,
+            sourceShape = ChatNavigationMotion.sourceShape ?: RoundedCornerShape(16.dp),
+            rootOrigin = openingRootOrigin,
+            rootSize = screenRootSize,
+            drawCard = false,
+            progressOverride = openingProgress,
+        )
+    }
     }
     // A picker-screen result to merge into the ongoing chat selection — set by the hosting
     // Fragment (which can't reach this Compose-local selectedUuids list directly, since

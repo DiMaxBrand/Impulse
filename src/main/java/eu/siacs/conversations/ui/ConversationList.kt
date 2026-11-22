@@ -45,6 +45,7 @@ import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
@@ -141,12 +142,32 @@ internal object ChatNavigationMotion {
     var returnProgress: Float by mutableStateOf(0f)
     var returnTouchY: Float by mutableStateOf(Float.NaN)
     var returnFromLeftEdge: Boolean by mutableStateOf(true)
+    var openingProgress: Float by mutableStateOf(0f)
+    var sourceBounds: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
+    var sourceStatusBounds: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
+    var sourceRootOrigin: Offset by mutableStateOf(Offset.Zero)
+    var sourceShape: RoundedCornerShape? by mutableStateOf(null)
     private var lastListOriginUuid: String? = null
 
-    fun beginOpen(conversation: Conversation) {
+    fun beginOpen(
+        conversation: Conversation,
+        source: androidx.compose.ui.geometry.Rect,
+        status: androidx.compose.ui.geometry.Rect?,
+        shape: RoundedCornerShape,
+        rootOrigin: Offset,
+    ) {
         val uuid = conversation.getUuid()
         lastListOriginUuid = uuid
+        sourceBounds = source
+        sourceStatusBounds = status
+        sourceShape = shape
+        sourceRootOrigin = rootOrigin
+        openingProgress = 0f
         ticket = Ticket(uuid, Direction.OPENING)
+    }
+
+    fun updateOpeningProgress(progress: Float) {
+        if (ticket?.direction == Direction.OPENING) openingProgress = progress.coerceIn(0f, 1f)
     }
 
     fun beginReturn(
@@ -190,6 +211,11 @@ internal object ChatNavigationMotion {
             returnProgress = 0f
             returnTouchY = Float.NaN
             returnFromLeftEdge = true
+            openingProgress = 0f
+            sourceBounds = null
+            sourceStatusBounds = null
+            sourceRootOrigin = Offset.Zero
+            sourceShape = null
         }
     }
 }
@@ -443,18 +469,30 @@ fun ConversationList(
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
     val scope = rememberCoroutineScope()
     val rowBounds = remember { mutableMapOf<String, androidx.compose.ui.geometry.Rect>() }
+    val rowStatusBounds = remember { mutableMapOf<String, androidx.compose.ui.geometry.Rect>() }
     var rootOrigin by remember { mutableStateOf(Offset.Zero) }
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     val navigationTicket = ChatNavigationMotion.ticket
     val transitionConversation = navigationTicket?.let { ticket ->
         ordered.firstOrNull { it.getUuid() == ticket.conversationUuid }
     }
+    val transitionIndex = transitionConversation?.let(ordered::indexOf) ?: -1
+    val transitionShape = if (transitionIndex >= 0) conversationItemShape(transitionIndex, ordered.size)
+        else RoundedCornerShape(16.dp)
     val transitionBounds = navigationTicket?.let { rowBounds[it.conversationUuid] }
     val listFade by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (navigationTicket == null) 1f else 0.08f,
+        targetValue = if (navigationTicket?.direction == ChatNavigationMotion.Direction.OPENING) 0f else 1f,
         animationSpec = tween(150),
         label = "chatListTransitionFade",
     )
+    LaunchedEffect(navigationTicket) {
+        if (navigationTicket?.direction == ChatNavigationMotion.Direction.OPENING) {
+            val opening = Animatable(0f)
+            opening.animateTo(1f, tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing)) {
+                ChatNavigationMotion.updateOpeningProgress(value)
+            }
+        }
+    }
 
     Box(
         modifier = modifier.fillMaxSize().onGloballyPositioned {
@@ -479,11 +517,18 @@ fun ConversationList(
                         // A list-originated chat gets an expanding source card. The short delay
                         // leaves that card on screen while the fragment transaction is prepared.
                         if (ChatNavigationMotion.ticket == null) {
-                            ChatNavigationMotion.beginOpen(conversation)
+                            val source = rowBounds[conversation.getUuid()] ?: return@ConversationItem
+                            ChatNavigationMotion.beginOpen(
+                                conversation,
+                                source,
+                                rowStatusBounds[conversation.getUuid()],
+                                shape,
+                                rootOrigin,
+                            )
                             scope.launch {
-                                delay(220)
+                                delay(50)
                                 onConversationClick(conversation)
-                                delay(140)
+                                delay(260)
                                 ChatNavigationMotion.ticket?.let(ChatNavigationMotion::clear)
                             }
                         }
@@ -491,6 +536,10 @@ fun ConversationList(
                     onLongClick = { sheetFor = conversation },
                     shape = shape,
                     isBirthday = index < celebrating.size,
+                    onStatusBounds = { bounds ->
+                        if (bounds == null) rowStatusBounds.remove(conversation.getUuid())
+                        else rowStatusBounds[conversation.getUuid()] = bounds
+                    },
                     modifier = Modifier
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                         .onGloballyPositioned { coordinates ->
@@ -510,8 +559,13 @@ fun ConversationList(
                 ticket = navigationTicket,
                 conversation = transitionConversation,
                 source = transitionBounds,
+                sourceStatus = rowStatusBounds[transitionConversation.getUuid()],
+                sourceShape = transitionShape,
                 rootOrigin = rootOrigin,
                 rootSize = rootSize,
+                drawCard = navigationTicket.direction == ChatNavigationMotion.Direction.RETURNING,
+                progressOverride = if (navigationTicket.direction == ChatNavigationMotion.Direction.OPENING)
+                    ChatNavigationMotion.openingProgress else null,
             )
         }
     }
@@ -527,12 +581,16 @@ fun ConversationList(
 
 /** Visual bridge across the list and chat fragment roots. */
 @Composable
-private fun ChatNavigationOverlay(
+internal fun ChatNavigationOverlay(
     ticket: ChatNavigationMotion.Ticket,
     conversation: Conversation,
     source: androidx.compose.ui.geometry.Rect,
+    sourceStatus: androidx.compose.ui.geometry.Rect?,
+    sourceShape: RoundedCornerShape,
     rootOrigin: Offset,
     rootSize: IntSize,
+    drawCard: Boolean = true,
+    progressOverride: Float? = null,
 ) {
     val density = LocalDensity.current
     val progress = remember(ticket, source, rootSize) {
@@ -543,6 +601,7 @@ private fun ChatNavigationOverlay(
     val returnTouchY = ChatNavigationMotion.returnTouchY
     val returnFromLeftEdge = ChatNavigationMotion.returnFromLeftEdge
     LaunchedEffect(ticket, source, rootSize, returnMode) {
+        if (progressOverride != null) return@LaunchedEffect
         when {
             ticket.direction == ChatNavigationMotion.Direction.OPENING -> {
                 progress.animateTo(1f, tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing))
@@ -571,7 +630,7 @@ private fun ChatNavigationOverlay(
         }
     }
 
-    val p = progress.value
+    val p = progressOverride ?: progress.value
     val left = source.left - rootOrigin.x
     val top = source.top - rootOrigin.y
     val width = source.width.coerceAtLeast(1f)
@@ -589,7 +648,7 @@ private fun ChatNavigationOverlay(
     val avatarEndY = with(density) { 12.dp.toPx() }
     val nameEndX = with(density) { 108.dp.toPx() }
     val nameEndY = with(density) { 16.dp.toPx() }
-    val identityAlpha = 1f - (p - 0.82f).coerceIn(0f, 1f) / 0.18f
+    val identityAlpha = 1f - (headerP - 0.92f).coerceIn(0f, 1f) / 0.08f
     // Predictive back supplies the finger's vertical coordinate too. Let it bend the card's
     // path slightly in the middle of the gesture, then settle exactly into the source row at
     // either end; that makes up/down movement visible without disturbing message layout.
@@ -602,9 +661,35 @@ private fun ChatNavigationOverlay(
         with(density) { 28.dp.toPx() } * edgeDirection * returnProgress * (1f - returnProgress)
     } else 0f
 
+    val context = LocalContext.current
+    val isGroup = conversation.getMode() == Conversational.MODE_MULTI
+    val availability = remember(conversation) {
+        if (isGroup) null else runCatching { conversation.getContact().getShownStatus() }.getOrNull()
+    }
+    val hasOngoingCall = remember(conversation) {
+        if (isGroup) false else runCatching {
+            conversation.getAccount().xmppConnection.getManager(JingleManager::class.java)
+                .getOngoingRtpConnection(conversation.getContact()).isPresent
+        }.getOrDefault(false)
+    }
+    val isTyping = remember(conversation) {
+        if (isGroup) false else runCatching {
+            conversation.getAccount().xmppConnection?.getManager(ChatStateManager::class.java)
+                ?.getIncoming(conversation.getAddress()) == Composing::class.java
+        }.getOrDefault(false)
+    }
+    val isBirthday = remember(conversation) {
+        birthdayToday(BirthdayStore(context), conversation, LocalDate.now())
+    }
+    val statusRes = if (isTyping) R.string.typing_indicator else presenceStringRes(availability, false)
+    val statusText = statusRes?.let { stringResource(it) }
+    val statusStartX = sourceStatus?.left?.minus(rootOrigin.x)
+        ?: (nameStartX + with(density) { 120.dp.toPx() })
+    val statusStartY = sourceStatus?.top?.minus(rootOrigin.y) ?: nameStartY
+
     Box(Modifier.fillMaxSize()) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
+        if (drawCard) Surface(
+            shape = sourceShape,
             color = MaterialTheme.colorScheme.surfaceContainer,
             modifier = Modifier
                 .offset { sourceOffset }
@@ -614,24 +699,34 @@ private fun ChatNavigationOverlay(
                     this.scaleY = scaleY
                     translationX = -left * p + horizontalGestureBias
                     translationY = -top * p + verticalGestureBias
-                    alpha = 1f - (p - 0.78f).coerceIn(0f, 1f) / 0.22f
                 }
                 .size(with(density) { width.toDp() }, with(density) { height.toDp() }),
         ) {}
         ConversationAvatar(
             conversation = conversation,
-            availability = null,
-            hasOngoingCall = false,
-            isTyping = false,
-            isBirthday = false,
+            availability = availability,
+            hasOngoingCall = hasOngoingCall,
+            isTyping = isTyping,
+            isBirthday = isBirthday,
             cardHeightPx = height.toInt(),
+            circleMorphProgress = headerP,
             modifier = Modifier
                 .offset { IntOffset((travel(avatarStartX, avatarEndX) + horizontalGestureBias).toInt(), (travel(avatarStartY, avatarEndY) + verticalGestureBias).toInt()) }
-                .graphicsLayer { alpha = identityAlpha },
+                .graphicsLayer {
+                    alpha = identityAlpha
+                    val scale = 1f - 0.2857f * headerP
+                    this.scaleX = scale
+                    this.scaleY = scale
+                    this.transformOrigin = TransformOrigin.Center
+                },
         )
         Text(
-            text = conversation.getName()?.toString().orEmpty(),
+            text = when (val name = conversation.name) {
+                is Jid -> IrregularUnicodeDetector.style(context, name).toString()
+                else -> name?.toString().orEmpty()
+            },
             style = MaterialTheme.typography.titleMedium,
+            fontWeight = if (conversation.isRead) FontWeight.Normal else FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
@@ -639,20 +734,14 @@ private fun ChatNavigationOverlay(
                 .width(220.dp)
                 .graphicsLayer { alpha = identityAlpha },
         )
-        val statusRes = try {
-            presenceStringRes(conversation.getContact().getShownStatus(), false)
-        } catch (_: Exception) {
-            null
-        }
-        val status = statusRes?.let { stringResource(it) }
-        if (status != null) {
+        if (statusText != null) {
             Text(
-                text = status,
+                text = statusText,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 modifier = Modifier
-                    .offset { IntOffset((travel(nameStartX, nameEndX) + horizontalGestureBias).toInt(), (travel(nameStartY + with(density) { 24.dp.toPx() }, nameEndY + with(density) { 24.dp.toPx() }) + verticalGestureBias).toInt()) }
+                    .offset { IntOffset((travel(statusStartX, nameEndX) + horizontalGestureBias).toInt(), (travel(statusStartY, nameEndY + with(density) { 24.dp.toPx() }) + verticalGestureBias).toInt()) }
                     .graphicsLayer { alpha = identityAlpha },
             )
         }
@@ -756,6 +845,7 @@ private fun ConversationItem(
     onLongClick: () -> Unit,
     shape: RoundedCornerShape,
     isBirthday: Boolean,
+    onStatusBounds: (androidx.compose.ui.geometry.Rect?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -882,8 +972,13 @@ private fun ConversationItem(
                             style = MaterialTheme.typography.labelSmall,
                             color = if (isTyping) MaterialTheme.colorScheme.primary else presenceColor(availability),
                             maxLines = 1,
-                            modifier = Modifier.padding(end = 6.dp),
+                            modifier = Modifier.padding(end = 6.dp).onGloballyPositioned {
+                                onStatusBounds(it.boundsInRoot())
+                            },
                         )
+                    }
+                    SideEffect {
+                        if (presenceText == null || isBirthday) onStatusBounds(null)
                     }
                     val timestamp = draft?.timestamp ?: message.timeSent
                     Text(
@@ -1038,6 +1133,7 @@ private fun ConversationAvatar(
     isTyping: Boolean,
     isBirthday: Boolean,
     cardHeightPx: Int,
+    circleMorphProgress: Float? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -1120,6 +1216,7 @@ private fun ConversationAvatar(
 
     // On somebody's birthday the outline is a heart for the whole day; otherwise the usual shape.
     val heart = remember { MATERIAL_SHAPE_CATALOG.first { it.first == "Heart" }.second }
+    val circle = remember { MATERIAL_SHAPE_CATALOG.first { it.first == "Circle" }.second }
     val targetShape = remember(isGroup, availability, hasOngoingCall, isTyping, isBirthday) {
         if (isBirthday) heart else presenceShape(isGroup, availability, hasOngoingCall, isTyping)
     }
@@ -1154,7 +1251,9 @@ private fun ConversationAvatar(
     val morph = remember(fromShape.value, toShape.value) {
         Morph(fromShape.value, toShape.value)
     }
-    val progress = morphProgress.value
+    val circleMorph = remember(targetShape, circle) { Morph(targetShape, circle) }
+    val activeMorph = if (circleMorphProgress == null) morph else circleMorph
+    val progress = circleMorphProgress ?: morphProgress.value
 
     val reusedPath = remember { androidx.compose.ui.graphics.Path() }
     val reusedMatrix = remember { android.graphics.Matrix() }
@@ -1187,7 +1286,7 @@ private fun ConversationAvatar(
         reusedMatrix.postTranslate(0f, headOverflowPx)
         // Only the outline turns; the photo inside it stays upright.
         reusedMatrix.postRotate(spin.value, size.width / 2f, headOverflowPx + size.width / 2f)
-        morph.toPath(progress, reusedPath)
+        activeMorph.toPath(progress, reusedPath)
         reusedPath.asAndroidPath().transform(reusedMatrix)
 
         val bm = avatarBitmap
