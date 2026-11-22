@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.OnBackPressedCallback
 import androidx.annotation.IdRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.platform.ComposeView
@@ -70,6 +71,9 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private val pendingTakePhotoUri = eu.siacs.conversations.ui.util.PendingItem<Uri>()
     private var pendingSharedUris: List<Uri> = emptyList()
     private var pendingSharedMimeType: String? = null
+    private val navigationBackCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() = performConversationBack()
+    }
 
     private val takePhotoLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -327,6 +331,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requireActivity().onBackPressedDispatcher.addCallback(this, navigationBackCallback)
         if (savedInstanceState != null) {
             pendingConversationUuid = savedInstanceState.getString(STATE_CONVERSATION_UUID)
         }
@@ -702,7 +707,27 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     // ---- ConversationScreenListener ----
 
     override fun onBackPressed() {
-        requireActivity().onBackPressedDispatcher.onBackPressed()
+        performConversationBack()
+    }
+
+    private fun performConversationBack() {
+        val c = conversation
+        val activity = requireActivity()
+        if (c != null && !ConversationsActivity.isTabletView(activity) && ChatNavigationMotion.beginReturn(c)) {
+            // Let the conversation surface fade out while the list is restored. Its matching row
+            // then owns the reverse card collapse, avatar/name/status included.
+            view?.animate()
+                ?.alpha(0f)
+                ?.setDuration(130L)
+                ?.withEndAction {
+                    navigationBackCallback.isEnabled = false
+                    activity.onBackPressedDispatcher.onBackPressed()
+                }
+                ?.start()
+        } else {
+            navigationBackCallback.isEnabled = false
+            activity.onBackPressedDispatcher.onBackPressed()
+        }
     }
 
     override fun onSendTextMessage(body: String) {

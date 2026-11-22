@@ -49,14 +49,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -111,11 +117,42 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 /** How long one turn of the gradient (in the dot, the label and the row) takes. */
 private const val BIRTHDAY_GRADIENT_MS = 6000
 /** How long the heart takes to turn once while it is somebody's birthday. */
 private const val HEART_TURN_MS = 5000
+
+/**
+ * Small piece of state shared by the list and the conversation fragment. It deliberately carries
+ * only an id and a direction: notification/deep-link chats never create an entry here, so they
+ * retain the ordinary entrance with no invented source row.
+ */
+internal object ChatNavigationMotion {
+    enum class Direction { OPENING, RETURNING }
+    data class Ticket(val conversationUuid: String, val direction: Direction)
+
+    var ticket: Ticket? by mutableStateOf(null)
+    private var lastListOriginUuid: String? = null
+
+    fun beginOpen(conversation: Conversation) {
+        val uuid = conversation.getUuid()
+        lastListOriginUuid = uuid
+        ticket = Ticket(uuid, Direction.OPENING)
+    }
+
+    fun beginReturn(conversation: Conversation): Boolean {
+        val uuid = conversation.getUuid()
+        if (lastListOriginUuid != uuid) return false
+        ticket = Ticket(uuid, Direction.RETURNING)
+        return true
+    }
+
+    fun clear(ticket: Ticket) {
+        if (this.ticket == ticket) this.ticket = null
+    }
+}
 
 /** Observable list of conversations that Compose tracks for recomposition. */
 class ConversationListState {
@@ -364,27 +401,78 @@ fun ConversationList(
     }
     // The chat a long-press opened the sheet for; null when no sheet is up.
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
+    val scope = rememberCoroutineScope()
+    val rowBounds = remember { mutableMapOf<String, androidx.compose.ui.geometry.Rect>() }
+    var rootOrigin by remember { mutableStateOf(Offset.Zero) }
+    var rootSize by remember { mutableStateOf(IntSize.Zero) }
+    val navigationTicket = ChatNavigationMotion.ticket
+    val transitionConversation = navigationTicket?.let { ticket ->
+        ordered.firstOrNull { it.getUuid() == ticket.conversationUuid }
+    }
+    val transitionBounds = navigationTicket?.let { rowBounds[it.conversationUuid] }
+    val listFade by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (navigationTicket == null) 1f else 0.08f,
+        animationSpec = tween(150),
+        label = "chatListTransitionFade",
+    )
 
-    LazyColumn(state = listState, modifier = modifier, contentPadding = contentPadding) {
-        itemsIndexed(
-            ordered,
-            key = { _, c -> c.getUuid() },
-        ) { index, conversation ->
-            val shape = conversationItemShape(index, ordered.size)
-            ConversationItem(
-                conversation = conversation,
-                revision = revision,
-                onClick = { onConversationClick(conversation) },
-                onLongClick = { sheetFor = conversation },
-                shape = shape,
-                isBirthday = index < celebrating.size,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            )
-        }
-        if (onlyNews) {
-            item(key = "first-contact-hint") {
-                EmptyConversationsHint(actions = actions, modifier = Modifier.fillParentMaxWidth().fillParentMaxHeight(0.75f))
+    Box(
+        modifier = modifier.fillMaxSize().onGloballyPositioned {
+            rootOrigin = it.positionInRoot()
+            rootSize = it.size
+        },
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = listFade },
+            contentPadding = contentPadding,
+        ) {
+            itemsIndexed(
+                ordered,
+                key = { _, c -> c.getUuid() },
+            ) { index, conversation ->
+                val shape = conversationItemShape(index, ordered.size)
+                ConversationItem(
+                    conversation = conversation,
+                    revision = revision,
+                    onClick = {
+                        // A list-originated chat gets an expanding source card. The short delay
+                        // leaves that card on screen while the fragment transaction is prepared.
+                        if (ChatNavigationMotion.ticket == null) {
+                            ChatNavigationMotion.beginOpen(conversation)
+                            scope.launch {
+                                delay(220)
+                                onConversationClick(conversation)
+                                delay(140)
+                                ChatNavigationMotion.ticket?.let(ChatNavigationMotion::clear)
+                            }
+                        }
+                    },
+                    onLongClick = { sheetFor = conversation },
+                    shape = shape,
+                    isBirthday = index < celebrating.size,
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .onGloballyPositioned { coordinates ->
+                            rowBounds[conversation.getUuid()] = coordinates.boundsInRoot()
+                        },
+                )
             }
+            if (onlyNews) {
+                item(key = "first-contact-hint") {
+                    EmptyConversationsHint(actions = actions, modifier = Modifier.fillParentMaxWidth().fillParentMaxHeight(0.75f))
+                }
+            }
+        }
+
+        if (navigationTicket != null && transitionConversation != null && transitionBounds != null && rootSize.width > 0) {
+            ChatNavigationOverlay(
+                ticket = navigationTicket,
+                conversation = transitionConversation,
+                source = transitionBounds,
+                rootOrigin = rootOrigin,
+                rootSize = rootSize,
+            )
         }
     }
 
@@ -394,6 +482,101 @@ fun ConversationList(
             actions = actions,
             onDismiss = { sheetFor = null },
         )
+    }
+}
+
+/** Visual bridge across the list and chat fragment roots. */
+@Composable
+private fun ChatNavigationOverlay(
+    ticket: ChatNavigationMotion.Ticket,
+    conversation: Conversation,
+    source: androidx.compose.ui.geometry.Rect,
+    rootOrigin: Offset,
+    rootSize: IntSize,
+) {
+    val density = LocalDensity.current
+    val progress = remember(ticket, source, rootSize) {
+        Animatable(if (ticket.direction == ChatNavigationMotion.Direction.RETURNING) 1f else 0f)
+    }
+    LaunchedEffect(ticket, source, rootSize) {
+        progress.animateTo(
+            if (ticket.direction == ChatNavigationMotion.Direction.RETURNING) 0f else 1f,
+            tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        )
+        if (ticket.direction == ChatNavigationMotion.Direction.RETURNING) ChatNavigationMotion.clear(ticket)
+    }
+
+    val p = progress.value
+    val left = source.left - rootOrigin.x
+    val top = source.top - rootOrigin.y
+    val width = source.width.coerceAtLeast(1f)
+    val height = source.height.coerceAtLeast(1f)
+    val scaleX = 1f + (rootSize.width / width - 1f) * p
+    val scaleY = 1f + (rootSize.height / height - 1f) * p
+    val headerP = (p / 0.70f).coerceIn(0f, 1f)
+    fun travel(start: Float, end: Float) = start + (end - start) * headerP
+    val sourceOffset = IntOffset(left.toInt(), top.toInt())
+    val avatarStartX = left + with(density) { 8.dp.toPx() }
+    val avatarStartY = top + (height - with(density) { 56.dp.toPx() }) / 2f
+    val nameStartX = left + with(density) { 76.dp.toPx() }
+    val nameStartY = top + with(density) { 13.dp.toPx() }
+    val avatarEndX = with(density) { 56.dp.toPx() }
+    val avatarEndY = with(density) { 12.dp.toPx() }
+    val nameEndX = with(density) { 108.dp.toPx() }
+    val nameEndY = with(density) { 16.dp.toPx() }
+    val identityAlpha = 1f - (p - 0.82f).coerceIn(0f, 1f) / 0.18f
+
+    Box(Modifier.fillMaxSize()) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier
+                .offset { sourceOffset }
+                .graphicsLayer {
+                    transformOrigin = TransformOrigin(0f, 0f)
+                    this.scaleX = scaleX
+                    this.scaleY = scaleY
+                    translationX = -left * p
+                    translationY = -top * p
+                    alpha = 1f - (p - 0.78f).coerceIn(0f, 1f) / 0.22f
+                }
+                .size(with(density) { width.toDp() }, with(density) { height.toDp() }),
+        ) {}
+        ConversationAvatar(
+            conversation = conversation,
+            availability = null,
+            hasOngoingCall = com.google.common.base.Optional.absent<Any>(),
+            isTyping = false,
+            isBirthday = false,
+            cardHeightPx = height.toInt(),
+            modifier = Modifier
+                .offset { IntOffset(travel(avatarStartX, avatarEndX).toInt(), travel(avatarStartY, avatarEndY).toInt()) }
+                .graphicsLayer { alpha = identityAlpha },
+        )
+        Text(
+            text = conversation.getName()?.toString().orEmpty(),
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .offset { IntOffset(travel(nameStartX, nameEndX).toInt(), travel(nameStartY, nameEndY).toInt()) }
+                .width(220.dp)
+                .graphicsLayer { alpha = identityAlpha },
+        )
+        val status = try {
+            presenceStringRes(conversation.getContact().getShownStatus(), false)?.let { stringResource(it) }
+        } catch (_: Exception) { null }
+        if (status != null) {
+            Text(
+                text = status,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier
+                    .offset { IntOffset(travel(nameStartX, nameEndX).toInt(), travel(nameStartY + with(density) { 24.dp.toPx() }, nameEndY + with(density) { 24.dp.toPx() }).toInt()) }
+                    .graphicsLayer { alpha = identityAlpha },
+            )
+        }
     }
 }
 
