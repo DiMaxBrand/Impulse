@@ -190,14 +190,14 @@ internal object ChatNavigationMotion {
 
     fun destinationIdentityAlpha(): Float {
         val active = ticket ?: return 1f
+        // During return, the bridge overlay is the sole owner of avatar/name/status. Hiding the
+        // destination copy here prevents duplicates, while the overlay remains opaque for the
+        // entire gesture (including its first frame).
+        if (active.direction == Direction.RETURNING) return 0f
         val p = if (active.direction == Direction.OPENING) openingProgress else 1f - returnProgress
         val headerProgress = (p / 0.70f).coerceIn(0f, 1f)
         val arrival = ((headerProgress - 0.88f) / 0.12f).coerceIn(0f, 1f)
-        return when {
-            active.direction == Direction.OPENING -> arrival
-            returnMode == ReturnMode.CANCELLED -> arrival
-            else -> 0f
-        }
+        return arrival
     }
 
     fun beginReturn(
@@ -527,11 +527,6 @@ fun ConversationList(
     val transitionShape = if (transitionIndex >= 0) conversationItemShape(transitionIndex, ordered.size)
         else RoundedCornerShape(16.dp)
     val transitionBounds = navigationTicket?.let { rowBounds[it.conversationUuid] }
-    val listFade by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (navigationTicket?.direction == ChatNavigationMotion.Direction.OPENING) 0f else 1f,
-        animationSpec = tween(150),
-        label = "chatListTransitionFade",
-    )
     LaunchedEffect(navigationTicket) {
         if (navigationTicket?.direction == ChatNavigationMotion.Direction.OPENING) {
             withTimeoutOrNull(1_000L) {
@@ -576,7 +571,16 @@ fun ConversationList(
     ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = listFade },
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                // Keep the list visible at the start of the expanding-card transition, then fade
+                // it in step with the card. The chat history itself stays at full opacity behind
+                // the expanding clip; only the source list is dimmed away.
+                val progress = if (navigationTicket?.direction == ChatNavigationMotion.Direction.OPENING) {
+                    ChatNavigationMotion.openingProgress.coerceIn(0f, 1f)
+                } else 0f
+                val eased = progress * progress * (3f - 2f * progress)
+                alpha = 1f - eased
+            },
             contentPadding = contentPadding,
         ) {
             itemsIndexed(
@@ -726,12 +730,13 @@ internal fun ChatNavigationOverlay(
         ?: androidx.compose.ui.geometry.Rect(targetNameRect.left, targetNameRect.bottom, targetNameRect.right, targetNameRect.bottom + with(density) { 20.dp.toPx() })
     fun lerp(start: Float, end: Float) = start + (end - start) * headerP
     val destinationIdentityAlpha = ((headerP - 0.88f) / 0.12f).coerceIn(0f, 1f)
-    val identityAlpha = when {
-        ticket.direction == ChatNavigationMotion.Direction.OPENING -> 1f - destinationIdentityAlpha
-        returnMode == ChatNavigationMotion.ReturnMode.CANCELLED -> 1f - destinationIdentityAlpha
-        // On the way back, the list identity travels from the chat header to the row. Keep it
-        // visible as it arrives; fading it at headerP == 0 left only the pinned card at the end.
-        else -> 1f - destinationIdentityAlpha
+    val identityAlpha = if (ticket.direction == ChatNavigationMotion.Direction.RETURNING) {
+        // Keep one opaque copy in the bridge from the exact chat-header bounds through to the
+        // source row. The chat header and list-row copies are hidden for the whole return, so
+        // there is no alpha handoff that can leave the identity missing between frames.
+        1f
+    } else {
+        1f - destinationIdentityAlpha
     }
     // Predictive back supplies the finger's vertical coordinate too. Let it bend the card's
     // path slightly in the middle of the gesture, then settle exactly into the source row at
