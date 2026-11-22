@@ -869,7 +869,18 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         screenRootOrigin = it.boundsInWindow().topLeft
     }) {
     Scaffold(
-        modifier = Modifier.fillMaxSize().drawWithContent {
+        modifier = Modifier.fillMaxSize()
+            // During predictive return, let the chat content fade away as the row contracts.
+            // The avatar/name/status bridge is drawn separately above this layer and remains
+            // visible all the way into the destination row.
+            .graphicsLayer {
+                alpha = if (navigationTicket?.direction == ChatNavigationMotion.Direction.RETURNING) {
+                    (1f - ChatNavigationMotion.returnProgress).coerceIn(0f, 1f)
+                } else {
+                    1f
+                }
+            }
+            .drawWithContent {
             if (navigationTicket == null || navigationSource == null) {
                 drawContent()
             } else {

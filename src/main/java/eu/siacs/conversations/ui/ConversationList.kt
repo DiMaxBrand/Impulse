@@ -543,7 +543,27 @@ fun ConversationList(
             opening.animateTo(1f, tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing)) {
                 ChatNavigationMotion.updateOpeningProgress(value)
             }
-            delay(50)
+            // The Liquid Glass top pill can still be settling to its wrapped-height layout when
+            // the card reaches full size. Keep the measured target live until avatar/name bounds
+            // have stayed put for two frames, so clearing the bridge cannot snap them upward.
+            withTimeoutOrNull(500L) {
+                var previous: Triple<androidx.compose.ui.geometry.Rect?, androidx.compose.ui.geometry.Rect?, androidx.compose.ui.geometry.Rect?>? = null
+                var stableFrames = 0
+                while (stableFrames < 2) {
+                    androidx.compose.runtime.withFrameNanos { }
+                    val current = Triple(
+                        ChatNavigationMotion.targetAvatarBounds,
+                        ChatNavigationMotion.targetNameBounds,
+                        ChatNavigationMotion.targetStatusBounds,
+                    )
+                    if (current.first != null && current.second != null && current == previous) {
+                        stableFrames++
+                    } else {
+                        stableFrames = 0
+                    }
+                    previous = current
+                }
+            }
             ChatNavigationMotion.ticket?.let(ChatNavigationMotion::clear)
         }
     }
@@ -593,7 +613,9 @@ fun ConversationList(
                     identityAlpha = when {
                         navigationTicket?.conversationUuid != conversation.getUuid() -> 1f
                         navigationTicket.direction == ChatNavigationMotion.Direction.OPENING -> 0f
-                        else -> ((ChatNavigationMotion.returnProgress - 0.88f) / 0.12f).coerceIn(0f, 1f)
+                        // The transition overlay owns this identity through the return. Revealing
+                        // the row's copy as well makes the avatar/name double at the endpoint.
+                        else -> 0f
                     },
                     onAvatarBounds = { rowAvatarBounds[conversation.getUuid()] = it },
                     onNameBounds = { rowNameBounds[conversation.getUuid()] = it },
@@ -704,11 +726,12 @@ internal fun ChatNavigationOverlay(
         ?: androidx.compose.ui.geometry.Rect(targetNameRect.left, targetNameRect.bottom, targetNameRect.right, targetNameRect.bottom + with(density) { 20.dp.toPx() })
     fun lerp(start: Float, end: Float) = start + (end - start) * headerP
     val destinationIdentityAlpha = ((headerP - 0.88f) / 0.12f).coerceIn(0f, 1f)
-    val sourceIdentityAlpha = ((1f - headerP - 0.88f) / 0.12f).coerceIn(0f, 1f)
     val identityAlpha = when {
         ticket.direction == ChatNavigationMotion.Direction.OPENING -> 1f - destinationIdentityAlpha
         returnMode == ChatNavigationMotion.ReturnMode.CANCELLED -> 1f - destinationIdentityAlpha
-        else -> 1f - sourceIdentityAlpha
+        // On the way back, the list identity travels from the chat header to the row. Keep it
+        // visible as it arrives; fading it at headerP == 0 left only the pinned card at the end.
+        else -> 1f - destinationIdentityAlpha
     }
     // Predictive back supplies the finger's vertical coordinate too. Let it bend the card's
     // path slightly in the middle of the gesture, then settle exactly into the source row at
@@ -771,7 +794,10 @@ internal fun ChatNavigationOverlay(
             hasOngoingCall = hasOngoingCall,
             isTyping = isTyping,
             isBirthday = isBirthday,
-            cardHeightPx = height.toInt(),
+            // Shrink the avatar's internal centering reference with its destination bounds. The
+            // list row's height was otherwise kept through the entire morph, offsetting the
+            // 56dp avatar canvas from the smaller Liquid Glass header target.
+            cardHeightPx = lerp(height, targetAvatarRect.height).toInt(),
             circleMorphProgress = headerP,
             modifier = Modifier
                 .offset { IntOffset((lerp(sourceAvatarRect.left, targetAvatarRect.left) + horizontalGestureBias).toInt(), (lerp(sourceAvatarRect.top, targetAvatarRect.top) + verticalGestureBias).toInt()) }
