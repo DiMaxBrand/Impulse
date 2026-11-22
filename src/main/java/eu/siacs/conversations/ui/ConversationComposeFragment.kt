@@ -1,15 +1,19 @@
 package eu.siacs.conversations.ui
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.media.MediaRecorder
 import android.os.Build
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.OnBackPressedCallback
@@ -73,6 +77,7 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private var pendingSharedUris: List<Uri> = emptyList()
     private var pendingSharedMimeType: String? = null
     private var predictiveReturnActive = false
+    private var navigationReturnAnimator: ValueAnimator? = null
     private val navigationBackCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackStarted(backEvent: BackEventCompat) {
             predictiveReturnActive = false
@@ -89,16 +94,16 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         override fun handleOnBackProgressed(backEvent: BackEventCompat) {
             if (!predictiveReturnActive) return
             ChatNavigationMotion.updateReturnProgress(backEvent.progress, backEvent.touchY)
-            // The chat keeps its message geometry while becoming transparent, revealing the live
-            // return card and list beneath it. Only the shared identity layer travels.
-            view?.alpha = 1f - backEvent.progress
         }
 
         override fun handleOnBackCancelled() {
             if (!predictiveReturnActive) return
             ChatNavigationMotion.cancelReturn()
-            view?.animate()?.alpha(1f)?.setDuration(180L)?.start()
             predictiveReturnActive = false
+            val cancelledTicket = ChatNavigationMotion.ticket
+            animateNavigationReturn(0f, 180L) {
+                cancelledTicket?.let(ChatNavigationMotion::clear)
+            }
         }
 
         override fun handleOnBackPressed() = performConversationBack(fromPredictiveGesture = predictiveReturnActive)
@@ -416,6 +421,18 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         // remotely-being-edited forever.
         state.correcting.value?.let(::onEditingStopped)
         state.correcting.value = null
+    }
+
+    override fun onDestroyView() {
+        val navigation = ChatNavigationMotion.ticket
+        if (navigation?.direction == ChatNavigationMotion.Direction.RETURNING &&
+            ChatNavigationMotion.returnMode != ChatNavigationMotion.ReturnMode.GESTURE &&
+            ChatNavigationMotion.returnMode != ChatNavigationMotion.ReturnMode.CANCELLED) {
+            ChatNavigationMotion.showReturnOverlayInList()
+        }
+        navigationReturnAnimator?.cancel()
+        navigationReturnAnimator = null
+        super.onDestroyView()
     }
 
     /** Persists whatever's currently in the composer as this conversation's draft (XMPP
@@ -753,19 +770,39 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
                 ChatNavigationMotion.commitReturn()
                 predictiveReturnActive = false
             }
-            // Let the conversation surface fade out while the list is restored. Its matching row
-            // then owns the reverse card collapse, avatar/name/status included.
-            view?.animate()
-                ?.alpha(0f)
-                ?.setDuration(if (fromPredictiveGesture) 70L else 130L)
-                ?.withEndAction {
-                    navigationBackCallback.isEnabled = false
-                    activity.onBackPressedDispatcher.onBackPressed()
-                }
-                ?.start()
+            // Keep chat content opaque inside the shrinking row-shaped aperture. The list below
+            // remains visible outside it, and shares the same live progress for the moving identity.
+            val returnTicket = ChatNavigationMotion.ticket
+            animateNavigationReturn(1f, if (fromPredictiveGesture) 150L else 310L) {
+                navigationBackCallback.isEnabled = false
+                activity.onBackPressedDispatcher.onBackPressed()
+                Handler(Looper.getMainLooper()).postDelayed({ returnTicket?.let(ChatNavigationMotion::clear) }, 90L)
+            }
         } else {
             navigationBackCallback.isEnabled = false
             activity.onBackPressedDispatcher.onBackPressed()
+        }
+    }
+
+    private fun animateNavigationReturn(target: Float, durationMs: Long, onEnd: () -> Unit) {
+        navigationReturnAnimator?.cancel()
+        navigationReturnAnimator = ValueAnimator.ofFloat(ChatNavigationMotion.returnProgress, target).apply {
+            duration = durationMs
+            interpolator = DecelerateInterpolator(1.4f)
+            addUpdateListener { animator ->
+                ChatNavigationMotion.updateReturnProgress(animator.animatedValue as Float, Float.NaN)
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                private var cancelled = false
+                override fun onAnimationCancel(animation: android.animation.Animator) { cancelled = true }
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    if (!cancelled) {
+                        navigationReturnAnimator = null
+                        onEnd()
+                    }
+                }
+            })
+            start()
         }
     }
 

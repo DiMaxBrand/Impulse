@@ -109,6 +109,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -850,26 +851,33 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         state.deleteGroupTarget.value =
             state.messages.value.filter { it.getUuid() in selectedUuids }
     }
-    val openingTicket = ChatNavigationMotion.ticket?.takeIf {
-        it.direction == ChatNavigationMotion.Direction.OPENING &&
-            it.conversationUuid == conversation?.getUuid()
+    val navigationTicket = ChatNavigationMotion.ticket?.takeIf {
+        it.conversationUuid == conversation?.getUuid()
     }
-    val openingSource = if (openingTicket != null) ChatNavigationMotion.sourceBounds else null
-    val openingStatus = if (openingTicket != null) ChatNavigationMotion.sourceStatusBounds else null
-    val openingRootOrigin = ChatNavigationMotion.sourceRootOrigin
-    val openingProgress = ChatNavigationMotion.openingProgress
-    var screenRootSize by remember(openingTicket) { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
-    Box(Modifier.fillMaxSize().onSizeChanged { screenRootSize = it }) {
+    val navigationSource = if (navigationTicket != null) ChatNavigationMotion.sourceBounds else null
+    val navigationStatus = if (navigationTicket != null) ChatNavigationMotion.sourceStatusBounds else null
+    val sourceRootOrigin = ChatNavigationMotion.sourceRootOrigin
+    val revealProgress = when (navigationTicket?.direction) {
+        ChatNavigationMotion.Direction.OPENING -> ChatNavigationMotion.openingProgress
+        ChatNavigationMotion.Direction.RETURNING -> 1f - ChatNavigationMotion.returnProgress
+        null -> 1f
+    }
+    val identityAlpha = ChatNavigationMotion.destinationIdentityAlpha()
+    var screenRootSize by remember(navigationTicket) { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    var screenRootOrigin by remember(navigationTicket) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    Box(Modifier.fillMaxSize().onSizeChanged { screenRootSize = it }.onGloballyPositioned {
+        screenRootOrigin = it.boundsInWindow().topLeft
+    }) {
     Scaffold(
         modifier = Modifier.fillMaxSize().drawWithContent {
-            if (openingTicket == null || openingSource == null) {
+            if (navigationTicket == null || navigationSource == null) {
                 drawContent()
             } else {
-                val left = openingSource.left - openingRootOrigin.x
-                val top = openingSource.top - openingRootOrigin.y
-                val right = left + openingSource.width
-                val bottom = top + openingSource.height
-                val p = openingProgress
+                val left = navigationSource.left - screenRootOrigin.x
+                val top = navigationSource.top - screenRootOrigin.y
+                val right = navigationSource.right - screenRootOrigin.x
+                val bottom = navigationSource.bottom - screenRootOrigin.y
+                val p = revealProgress
                 val reveal = androidx.compose.ui.geometry.Rect(
                     left = left + (0f - left) * p,
                     top = top + (0f - top) * p,
@@ -900,6 +908,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     onForwardSelected = forwardSelected,
                     onCopySelected = copySelected,
                     onDeleteSelected = deleteSelected,
+                    identityAlpha = identityAlpha,
+                    onAvatarBounds = ChatNavigationMotion::updateTargetAvatar,
+                    onNameBounds = ChatNavigationMotion::updateTargetName,
+                    onStatusBounds = ChatNavigationMotion::updateTargetStatus,
                 )
             }
         },
@@ -1150,6 +1162,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
                     onForwardSelected = forwardSelected,
                     onCopySelected = copySelected,
                     onDeleteSelected = deleteSelected,
+                    identityAlpha = identityAlpha,
+                    onAvatarBounds = ChatNavigationMotion::updateTargetAvatar,
+                    onNameBounds = ChatNavigationMotion::updateTargetName,
+                    onStatusBounds = ChatNavigationMotion::updateTargetStatus,
                 )
                 banners()
             }
@@ -1279,17 +1295,19 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         }
       }
     }
-    if (openingTicket != null && openingSource != null && screenRootSize.width > 0) {
+    if (navigationTicket != null && navigationSource != null && screenRootSize.width > 0) {
         ChatNavigationOverlay(
-            ticket = openingTicket,
+            ticket = navigationTicket,
             conversation = conversation!!,
-            source = openingSource,
-            sourceStatus = openingStatus,
+            source = navigationSource,
+            sourceAvatar = ChatNavigationMotion.sourceAvatarBounds,
+            sourceName = ChatNavigationMotion.sourceNameBounds,
+            sourceStatus = navigationStatus,
             sourceShape = ChatNavigationMotion.sourceShape ?: RoundedCornerShape(16.dp),
-            rootOrigin = openingRootOrigin,
+            rootOrigin = screenRootOrigin,
             rootSize = screenRootSize,
             drawCard = false,
-            progressOverride = openingProgress,
+            progressOverride = revealProgress,
         )
     }
     }
@@ -1767,6 +1785,10 @@ private fun ConversationTopBar(
     onForwardSelected: () -> Unit,
     onCopySelected: () -> Unit,
     onDeleteSelected: () -> Unit,
+    identityAlpha: Float,
+    onAvatarBounds: (androidx.compose.ui.geometry.Rect) -> Unit,
+    onNameBounds: (androidx.compose.ui.geometry.Rect) -> Unit,
+    onStatusBounds: (androidx.compose.ui.geometry.Rect?) -> Unit,
 ) {
     val context = LocalContext.current
     // What the bar shows about the contact (presence, typing, last seen, picture) is worked out by
@@ -1830,7 +1852,9 @@ private fun ConversationTopBar(
                         bitmap = avatar,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(40.dp).clip(CircleShape),
+                        modifier = Modifier.size(40.dp).clip(CircleShape)
+                            .onGloballyPositioned { onAvatarBounds(it.boundsInWindow()) }
+                            .graphicsLayer { alpha = identityAlpha },
                     )
                 } else {
                     Box(
@@ -1838,6 +1862,8 @@ private fun ConversationTopBar(
                             Modifier.size(40.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.primaryContainer)
+                                .onGloballyPositioned { onAvatarBounds(it.boundsInWindow()) }
+                                .graphicsLayer { alpha = identityAlpha }
                     )
                 }
                 Spacer(Modifier.width(12.dp))
@@ -1851,6 +1877,8 @@ private fun ConversationTopBar(
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.onGloballyPositioned { onNameBounds(it.boundsInWindow()) }
+                            .graphicsLayer { alpha = identityAlpha },
                     )
                     val subtitle: String? = chatSubtitle(conversation, header)
                     if (subtitle != null) {
@@ -1861,8 +1889,12 @@ private fun ConversationTopBar(
                                 if (isTyping) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            modifier = Modifier.squeezeToFit(),
+                            modifier = Modifier.squeezeToFit()
+                                .onGloballyPositioned { onStatusBounds(it.boundsInWindow()) }
+                                .graphicsLayer { alpha = identityAlpha },
                         )
+                    } else {
+                        SideEffect { onStatusBounds(null) }
                     }
                 }
             }

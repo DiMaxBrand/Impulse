@@ -62,10 +62,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -121,6 +120,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** How long one turn of the gradient (in the dot, the label and the row) takes. */
 private const val BIRTHDAY_GRADIENT_MS = 6000
@@ -142,16 +143,24 @@ internal object ChatNavigationMotion {
     var returnProgress: Float by mutableStateOf(0f)
     var returnTouchY: Float by mutableStateOf(Float.NaN)
     var returnFromLeftEdge: Boolean by mutableStateOf(true)
+    var returnOverlayInList: Boolean by mutableStateOf(false)
     var openingProgress: Float by mutableStateOf(0f)
     var sourceBounds: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
+    var sourceAvatarBounds: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
+    var sourceNameBounds: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
     var sourceStatusBounds: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
     var sourceRootOrigin: Offset by mutableStateOf(Offset.Zero)
     var sourceShape: RoundedCornerShape? by mutableStateOf(null)
+    var targetAvatarBounds: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
+    var targetNameBounds: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
+    var targetStatusBounds: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
     private var lastListOriginUuid: String? = null
 
     fun beginOpen(
         conversation: Conversation,
         source: androidx.compose.ui.geometry.Rect,
+        avatar: androidx.compose.ui.geometry.Rect?,
+        name: androidx.compose.ui.geometry.Rect?,
         status: androidx.compose.ui.geometry.Rect?,
         shape: RoundedCornerShape,
         rootOrigin: Offset,
@@ -159,15 +168,36 @@ internal object ChatNavigationMotion {
         val uuid = conversation.getUuid()
         lastListOriginUuid = uuid
         sourceBounds = source
+        sourceAvatarBounds = avatar
+        sourceNameBounds = name
         sourceStatusBounds = status
         sourceShape = shape
         sourceRootOrigin = rootOrigin
+        targetAvatarBounds = null
+        targetNameBounds = null
+        targetStatusBounds = null
         openingProgress = 0f
         ticket = Ticket(uuid, Direction.OPENING)
     }
 
     fun updateOpeningProgress(progress: Float) {
         if (ticket?.direction == Direction.OPENING) openingProgress = progress.coerceIn(0f, 1f)
+    }
+
+    fun updateTargetAvatar(bounds: androidx.compose.ui.geometry.Rect) { targetAvatarBounds = bounds }
+    fun updateTargetName(bounds: androidx.compose.ui.geometry.Rect) { targetNameBounds = bounds }
+    fun updateTargetStatus(bounds: androidx.compose.ui.geometry.Rect?) { targetStatusBounds = bounds }
+
+    fun destinationIdentityAlpha(): Float {
+        val active = ticket ?: return 1f
+        val p = if (active.direction == Direction.OPENING) openingProgress else 1f - returnProgress
+        val headerProgress = (p / 0.70f).coerceIn(0f, 1f)
+        val arrival = ((headerProgress - 0.88f) / 0.12f).coerceIn(0f, 1f)
+        return when {
+            active.direction == Direction.OPENING -> arrival
+            returnMode == ReturnMode.CANCELLED -> arrival
+            else -> 0f
+        }
     }
 
     fun beginReturn(
@@ -178,6 +208,7 @@ internal object ChatNavigationMotion {
         val uuid = conversation.getUuid()
         if (lastListOriginUuid != uuid) return false
         ticket = Ticket(uuid, Direction.RETURNING)
+        returnOverlayInList = false
         returnMode = if (gesture) ReturnMode.GESTURE else ReturnMode.AUTOMATIC
         returnProgress = 0f
         returnTouchY = Float.NaN
@@ -186,9 +217,9 @@ internal object ChatNavigationMotion {
     }
 
     fun updateReturnProgress(progress: Float, touchY: Float) {
-        if (ticket?.direction == Direction.RETURNING && returnMode == ReturnMode.GESTURE) {
+        if (ticket?.direction == Direction.RETURNING) {
             returnProgress = progress.coerceIn(0f, 1f)
-            returnTouchY = touchY
+            if (!touchY.isNaN()) returnTouchY = touchY
         }
     }
 
@@ -204,6 +235,8 @@ internal object ChatNavigationMotion {
         }
     }
 
+    fun showReturnOverlayInList() { returnOverlayInList = true }
+
     fun clear(ticket: Ticket) {
         if (this.ticket == ticket) {
             this.ticket = null
@@ -211,11 +244,17 @@ internal object ChatNavigationMotion {
             returnProgress = 0f
             returnTouchY = Float.NaN
             returnFromLeftEdge = true
+            returnOverlayInList = false
             openingProgress = 0f
             sourceBounds = null
+            sourceAvatarBounds = null
+            sourceNameBounds = null
             sourceStatusBounds = null
             sourceRootOrigin = Offset.Zero
             sourceShape = null
+            targetAvatarBounds = null
+            targetNameBounds = null
+            targetStatusBounds = null
         }
     }
 }
@@ -469,6 +508,8 @@ fun ConversationList(
     var sheetFor by remember { mutableStateOf<Conversation?>(null) }
     val scope = rememberCoroutineScope()
     val rowBounds = remember { mutableMapOf<String, androidx.compose.ui.geometry.Rect>() }
+    val rowAvatarBounds = remember { mutableMapOf<String, androidx.compose.ui.geometry.Rect>() }
+    val rowNameBounds = remember { mutableMapOf<String, androidx.compose.ui.geometry.Rect>() }
     val rowStatusBounds = remember { mutableMapOf<String, androidx.compose.ui.geometry.Rect>() }
     var rootOrigin by remember { mutableStateOf(Offset.Zero) }
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
@@ -487,16 +528,23 @@ fun ConversationList(
     )
     LaunchedEffect(navigationTicket) {
         if (navigationTicket?.direction == ChatNavigationMotion.Direction.OPENING) {
+            withTimeoutOrNull(1_000L) {
+                snapshotFlow {
+                    ChatNavigationMotion.targetAvatarBounds != null && ChatNavigationMotion.targetNameBounds != null
+                }.first { it }
+            }
             val opening = Animatable(0f)
             opening.animateTo(1f, tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing)) {
                 ChatNavigationMotion.updateOpeningProgress(value)
             }
+            delay(50)
+            ChatNavigationMotion.ticket?.let(ChatNavigationMotion::clear)
         }
     }
 
     Box(
         modifier = modifier.fillMaxSize().onGloballyPositioned {
-            rootOrigin = it.positionInRoot()
+            rootOrigin = it.boundsInWindow().topLeft
             rootSize = it.size
         },
     ) {
@@ -521,6 +569,8 @@ fun ConversationList(
                             ChatNavigationMotion.beginOpen(
                                 conversation,
                                 source,
+                                rowAvatarBounds[conversation.getUuid()],
+                                rowNameBounds[conversation.getUuid()],
                                 rowStatusBounds[conversation.getUuid()],
                                 shape,
                                 rootOrigin,
@@ -528,14 +578,19 @@ fun ConversationList(
                             scope.launch {
                                 delay(50)
                                 onConversationClick(conversation)
-                                delay(260)
-                                ChatNavigationMotion.ticket?.let(ChatNavigationMotion::clear)
                             }
                         }
                     },
                     onLongClick = { sheetFor = conversation },
                     shape = shape,
                     isBirthday = index < celebrating.size,
+                    identityAlpha = when {
+                        navigationTicket?.conversationUuid != conversation.getUuid() -> 1f
+                        navigationTicket.direction == ChatNavigationMotion.Direction.OPENING -> 0f
+                        else -> ((ChatNavigationMotion.returnProgress - 0.88f) / 0.12f).coerceIn(0f, 1f)
+                    },
+                    onAvatarBounds = { rowAvatarBounds[conversation.getUuid()] = it },
+                    onNameBounds = { rowNameBounds[conversation.getUuid()] = it },
                     onStatusBounds = { bounds ->
                         if (bounds == null) rowStatusBounds.remove(conversation.getUuid())
                         else rowStatusBounds[conversation.getUuid()] = bounds
@@ -543,7 +598,7 @@ fun ConversationList(
                     modifier = Modifier
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                         .onGloballyPositioned { coordinates ->
-                            rowBounds[conversation.getUuid()] = coordinates.boundsInRoot()
+                            rowBounds[conversation.getUuid()] = coordinates.boundsInWindow()
                         },
                 )
             }
@@ -554,18 +609,19 @@ fun ConversationList(
             }
         }
 
-        if (navigationTicket != null && transitionConversation != null && transitionBounds != null && rootSize.width > 0) {
+        if (navigationTicket?.direction == ChatNavigationMotion.Direction.RETURNING && ChatNavigationMotion.returnOverlayInList && transitionConversation != null && transitionBounds != null && rootSize.width > 0) {
             ChatNavigationOverlay(
                 ticket = navigationTicket,
                 conversation = transitionConversation,
                 source = transitionBounds,
+                sourceAvatar = ChatNavigationMotion.sourceAvatarBounds,
+                sourceName = ChatNavigationMotion.sourceNameBounds,
                 sourceStatus = rowStatusBounds[transitionConversation.getUuid()],
                 sourceShape = transitionShape,
                 rootOrigin = rootOrigin,
                 rootSize = rootSize,
                 drawCard = navigationTicket.direction == ChatNavigationMotion.Direction.RETURNING,
-                progressOverride = if (navigationTicket.direction == ChatNavigationMotion.Direction.OPENING)
-                    ChatNavigationMotion.openingProgress else null,
+                progressOverride = 1f - ChatNavigationMotion.returnProgress,
             )
         }
     }
@@ -585,6 +641,8 @@ internal fun ChatNavigationOverlay(
     ticket: ChatNavigationMotion.Ticket,
     conversation: Conversation,
     source: androidx.compose.ui.geometry.Rect,
+    sourceAvatar: androidx.compose.ui.geometry.Rect?,
+    sourceName: androidx.compose.ui.geometry.Rect?,
     sourceStatus: androidx.compose.ui.geometry.Rect?,
     sourceShape: RoundedCornerShape,
     rootOrigin: Offset,
@@ -600,55 +658,52 @@ internal fun ChatNavigationOverlay(
     val returnProgress = ChatNavigationMotion.returnProgress
     val returnTouchY = ChatNavigationMotion.returnTouchY
     val returnFromLeftEdge = ChatNavigationMotion.returnFromLeftEdge
-    LaunchedEffect(ticket, source, rootSize, returnMode) {
-        if (progressOverride != null) return@LaunchedEffect
-        when {
-            ticket.direction == ChatNavigationMotion.Direction.OPENING -> {
-                progress.animateTo(1f, tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+    LaunchedEffect(ticket, source, rootSize) {
+        if (progressOverride == null && ticket.direction == ChatNavigationMotion.Direction.OPENING) {
+            progress.animateTo(1f, tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing)) {
+                ChatNavigationMotion.updateOpeningProgress(value)
             }
-            returnMode == ChatNavigationMotion.ReturnMode.AUTOMATIC -> {
-                progress.animateTo(0f, tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                ChatNavigationMotion.clear(ticket)
-            }
-            returnMode == ChatNavigationMotion.ReturnMode.GESTURE -> {
-                progress.snapTo(1f - returnProgress)
-            }
-            returnMode == ChatNavigationMotion.ReturnMode.CANCELLED -> {
-                progress.animateTo(1f, tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                ChatNavigationMotion.clear(ticket)
-            }
-            returnMode == ChatNavigationMotion.ReturnMode.COMMITTED -> {
-                progress.animateTo(0f, tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                ChatNavigationMotion.clear(ticket)
-            }
-        }
-    }
-    LaunchedEffect(ticket, returnProgress) {
-        if (ticket.direction == ChatNavigationMotion.Direction.RETURNING &&
-            ChatNavigationMotion.returnMode == ChatNavigationMotion.ReturnMode.GESTURE) {
-            progress.snapTo(1f - returnProgress)
         }
     }
 
-    val p = progressOverride ?: progress.value
-    val left = source.left - rootOrigin.x
-    val top = source.top - rootOrigin.y
+    val p = progressOverride ?: ChatNavigationMotion.openingProgress
+    fun localRect(rect: androidx.compose.ui.geometry.Rect) = androidx.compose.ui.geometry.Rect(
+        rect.left - rootOrigin.x, rect.top - rootOrigin.y,
+        rect.right - rootOrigin.x, rect.bottom - rootOrigin.y,
+    )
+    val sourceLocal = localRect(source)
+    val left = sourceLocal.left
+    val top = sourceLocal.top
     val width = source.width.coerceAtLeast(1f)
     val height = source.height.coerceAtLeast(1f)
     val scaleX = 1f + (rootSize.width / width - 1f) * p
     val scaleY = 1f + (rootSize.height / height - 1f) * p
     val headerP = (p / 0.70f).coerceIn(0f, 1f)
-    fun travel(start: Float, end: Float) = start + (end - start) * headerP
     val sourceOffset = IntOffset(left.toInt(), top.toInt())
-    val avatarStartX = left + with(density) { 8.dp.toPx() }
-    val avatarStartY = top + (height - with(density) { 56.dp.toPx() }) / 2f
-    val nameStartX = left + with(density) { 76.dp.toPx() }
-    val nameStartY = top + with(density) { 13.dp.toPx() }
-    val avatarEndX = with(density) { 56.dp.toPx() }
-    val avatarEndY = with(density) { 12.dp.toPx() }
-    val nameEndX = with(density) { 108.dp.toPx() }
-    val nameEndY = with(density) { 16.dp.toPx() }
-    val identityAlpha = 1f - (headerP - 0.92f).coerceIn(0f, 1f) / 0.08f
+    val sourceAvatarRect = sourceAvatar?.let(::localRect) ?: androidx.compose.ui.geometry.Rect(
+        left + with(density) { 8.dp.toPx() },
+        top + (height - with(density) { 56.dp.toPx() }) / 2f,
+        left + with(density) { 64.dp.toPx() },
+        top + (height + with(density) { 56.dp.toPx() }) / 2f,
+    )
+    val sourceNameRect = sourceName?.let(::localRect) ?: androidx.compose.ui.geometry.Rect(
+        left + with(density) { 76.dp.toPx() }, top + with(density) { 13.dp.toPx() },
+        left + with(density) { 256.dp.toPx() }, top + with(density) { 38.dp.toPx() },
+    )
+    val targetAvatarRect = ChatNavigationMotion.targetAvatarBounds?.let(::localRect)
+        ?: androidx.compose.ui.geometry.Rect(with(density) { 56.dp.toPx() }, with(density) { 12.dp.toPx() }, with(density) { 96.dp.toPx() }, with(density) { 52.dp.toPx() })
+    val targetNameRect = ChatNavigationMotion.targetNameBounds?.let(::localRect)
+        ?: androidx.compose.ui.geometry.Rect(with(density) { 108.dp.toPx() }, with(density) { 16.dp.toPx() }, with(density) { 300.dp.toPx() }, with(density) { 40.dp.toPx() })
+    val targetStatusRect = ChatNavigationMotion.targetStatusBounds?.let(::localRect)
+        ?: androidx.compose.ui.geometry.Rect(targetNameRect.left, targetNameRect.bottom, targetNameRect.right, targetNameRect.bottom + with(density) { 20.dp.toPx() })
+    fun lerp(start: Float, end: Float) = start + (end - start) * headerP
+    val destinationIdentityAlpha = ((headerP - 0.88f) / 0.12f).coerceIn(0f, 1f)
+    val sourceIdentityAlpha = ((1f - headerP - 0.88f) / 0.12f).coerceIn(0f, 1f)
+    val identityAlpha = when {
+        ticket.direction == ChatNavigationMotion.Direction.OPENING -> 1f - destinationIdentityAlpha
+        returnMode == ChatNavigationMotion.ReturnMode.CANCELLED -> 1f - destinationIdentityAlpha
+        else -> 1f - sourceIdentityAlpha
+    }
     // Predictive back supplies the finger's vertical coordinate too. Let it bend the card's
     // path slightly in the middle of the gesture, then settle exactly into the source row at
     // either end; that makes up/down movement visible without disturbing message layout.
@@ -682,10 +737,12 @@ internal fun ChatNavigationOverlay(
         birthdayToday(BirthdayStore(context), conversation, LocalDate.now())
     }
     val statusRes = if (isTyping) R.string.typing_indicator else presenceStringRes(availability, false)
-    val statusText = statusRes?.let { stringResource(it) }
-    val statusStartX = sourceStatus?.left?.minus(rootOrigin.x)
-        ?: (nameStartX + with(density) { 120.dp.toPx() })
-    val statusStartY = sourceStatus?.top?.minus(rootOrigin.y) ?: nameStartY
+    val statusText = statusRes?.let { stringResource(it) }.let { text ->
+        if (text != null && !isTyping) "● $text" else text
+    }
+    val statusStartX = sourceStatus?.let { localRect(it).left }
+        ?: (sourceNameRect.left + with(density) { 120.dp.toPx() })
+    val statusStartY = sourceStatus?.let { localRect(it).top } ?: sourceNameRect.top
 
     Box(Modifier.fillMaxSize()) {
         if (drawCard) Surface(
@@ -711,12 +768,13 @@ internal fun ChatNavigationOverlay(
             cardHeightPx = height.toInt(),
             circleMorphProgress = headerP,
             modifier = Modifier
-                .offset { IntOffset((travel(avatarStartX, avatarEndX) + horizontalGestureBias).toInt(), (travel(avatarStartY, avatarEndY) + verticalGestureBias).toInt()) }
+                .offset { IntOffset((lerp(sourceAvatarRect.left, targetAvatarRect.left) + horizontalGestureBias).toInt(), (lerp(sourceAvatarRect.top, targetAvatarRect.top) + verticalGestureBias).toInt()) }
+                .size(
+                    with(density) { lerp(sourceAvatarRect.width, targetAvatarRect.width).coerceAtLeast(1f).toDp() },
+                    with(density) { lerp(sourceAvatarRect.height, targetAvatarRect.height).coerceAtLeast(1f).toDp() },
+                )
                 .graphicsLayer {
                     alpha = identityAlpha
-                    val scale = 1f - 0.2857f * headerP
-                    this.scaleX = scale
-                    this.scaleY = scale
                     this.transformOrigin = TransformOrigin.Center
                 },
         )
@@ -730,18 +788,18 @@ internal fun ChatNavigationOverlay(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .offset { IntOffset((travel(nameStartX, nameEndX) + horizontalGestureBias).toInt(), (travel(nameStartY, nameEndY) + verticalGestureBias).toInt()) }
-                .width(220.dp)
+                .offset { IntOffset((lerp(sourceNameRect.left, targetNameRect.left) + horizontalGestureBias).toInt(), (lerp(sourceNameRect.top, targetNameRect.top) + verticalGestureBias).toInt()) }
+                .width(with(density) { lerp(sourceNameRect.width, targetNameRect.width).coerceAtLeast(1f).toDp() })
                 .graphicsLayer { alpha = identityAlpha },
         )
         if (statusText != null) {
             Text(
                 text = statusText,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isTyping) MaterialTheme.colorScheme.primary else presenceColor(availability),
                 maxLines = 1,
                 modifier = Modifier
-                    .offset { IntOffset((travel(statusStartX, nameEndX) + horizontalGestureBias).toInt(), (travel(statusStartY, nameEndY + with(density) { 24.dp.toPx() }) + verticalGestureBias).toInt()) }
+                    .offset { IntOffset((lerp(sourceStatus?.let { localRect(it).left } ?: statusStartX, targetStatusRect.left) + horizontalGestureBias).toInt(), (lerp(sourceStatus?.let { localRect(it).top } ?: statusStartY, targetStatusRect.top) + verticalGestureBias).toInt()) }
                     .graphicsLayer { alpha = identityAlpha },
             )
         }
@@ -845,6 +903,9 @@ private fun ConversationItem(
     onLongClick: () -> Unit,
     shape: RoundedCornerShape,
     isBirthday: Boolean,
+    identityAlpha: Float,
+    onAvatarBounds: (androidx.compose.ui.geometry.Rect) -> Unit,
+    onNameBounds: (androidx.compose.ui.geometry.Rect) -> Unit,
     onStatusBounds: (androidx.compose.ui.geometry.Rect?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -958,7 +1019,9 @@ private fun ConversationItem(
                         fontWeight = if (isRead) FontWeight.Normal else FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).padding(end = 4.dp),
+                        modifier = Modifier.weight(1f).padding(end = 4.dp)
+                            .onGloballyPositioned { onNameBounds(it.boundsInWindow()) }
+                            .graphicsLayer { alpha = identityAlpha },
                     )
                     val presenceText = when {
                         isTyping -> stringResource(R.string.typing_indicator)
@@ -973,8 +1036,8 @@ private fun ConversationItem(
                             color = if (isTyping) MaterialTheme.colorScheme.primary else presenceColor(availability),
                             maxLines = 1,
                             modifier = Modifier.padding(end = 6.dp).onGloballyPositioned {
-                                onStatusBounds(it.boundsInRoot())
-                            },
+                                onStatusBounds(it.boundsInWindow())
+                            }.graphicsLayer { alpha = identityAlpha },
                         )
                     }
                     SideEffect {
@@ -1120,7 +1183,9 @@ private fun ConversationItem(
             cardHeightPx = cardHeightPx,
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 8.dp),
+                .padding(start = 8.dp)
+                .onGloballyPositioned { onAvatarBounds(it.boundsInWindow()) }
+                .graphicsLayer { alpha = identityAlpha },
         )
     }
 }

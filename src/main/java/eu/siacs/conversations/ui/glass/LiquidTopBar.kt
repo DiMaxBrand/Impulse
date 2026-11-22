@@ -26,11 +26,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,19 +79,23 @@ fun LiquidTopBar(
     onForwardSelected: () -> Unit,
     onCopySelected: () -> Unit,
     onDeleteSelected: () -> Unit,
+    identityAlpha: Float,
+    onAvatarBounds: (androidx.compose.ui.geometry.Rect) -> Unit,
+    onNameBounds: (androidx.compose.ui.geometry.Rect) -> Unit,
+    onStatusBounds: (androidx.compose.ui.geometry.Rect?) -> Unit,
     modifier: Modifier = Modifier,
     /** Draw the bubbles as one body of fluid glass (see FluidGlass.kt) instead of one glass node each. */
     merging: Boolean = false,
 ) {
     if (!merging) {
-        LiquidTopBarBody(conversation, revision, listener, backdrop, menu, selectedCount, copyEnabled, onExitSelection, onForwardSelected, onCopySelected, onDeleteSelected, modifier)
+        LiquidTopBarBody(conversation, revision, listener, backdrop, menu, selectedCount, copyEnabled, onExitSelection, onForwardSelected, onCopySelected, onDeleteSelected, identityAlpha, onAvatarBounds, onNameBounds, onStatusBounds, modifier)
         return
     }
     val density = androidx.compose.ui.platform.LocalDensity.current.density
     val host = remember { FluidGlassHost(density, LiquidGlassStyle.Bar, reachDp = 5f, softnessDp = 10f, responseSeconds = 0.3f) }
     val stack = remember(backdrop, host) { backdrop.withFluid(host) }
     FluidGlassHost(backdrop.base, host, modifier.fillMaxWidth()) {
-        LiquidTopBarBody(conversation, revision, listener, stack, menu, selectedCount, copyEnabled, onExitSelection, onForwardSelected, onCopySelected, onDeleteSelected, Modifier)
+        LiquidTopBarBody(conversation, revision, listener, stack, menu, selectedCount, copyEnabled, onExitSelection, onForwardSelected, onCopySelected, onDeleteSelected, identityAlpha, onAvatarBounds, onNameBounds, onStatusBounds, Modifier)
     }
 }
 
@@ -105,6 +112,10 @@ private fun LiquidTopBarBody(
     onForwardSelected: () -> Unit,
     onCopySelected: () -> Unit,
     onDeleteSelected: () -> Unit,
+    identityAlpha: Float,
+    onAvatarBounds: (androidx.compose.ui.geometry.Rect) -> Unit,
+    onNameBounds: (androidx.compose.ui.geometry.Rect) -> Unit,
+    onStatusBounds: (androidx.compose.ui.geometry.Rect?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val header = rememberChatHeaderState(conversation, revision)
@@ -177,10 +188,14 @@ private fun LiquidTopBarBody(
                             bitmap = avatar,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(36.dp).clip(CircleShape),
+                            modifier = Modifier.size(36.dp).clip(CircleShape)
+                                .onGloballyPositioned { onAvatarBounds(it.boundsInWindow()) }
+                                .graphicsLayer { alpha = identityAlpha },
                         )
                     } else {
-                        Box(Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer))
+                        Box(Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer)
+                            .onGloballyPositioned { onAvatarBounds(it.boundsInWindow()) }
+                            .graphicsLayer { alpha = identityAlpha })
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -191,6 +206,8 @@ private fun LiquidTopBarBody(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.onGloballyPositioned { onNameBounds(it.boundsInWindow()) }
+                                    .graphicsLayer { alpha = identityAlpha },
                             )
                         }
                         val subtitle = chatSubtitle(conversation, header)
@@ -204,8 +221,12 @@ private fun LiquidTopBarBody(
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                     onTextLayout = { wrapped = it.lineCount > 1 },
+                                    modifier = Modifier.onGloballyPositioned { onStatusBounds(it.boundsInWindow()) }
+                                        .graphicsLayer { alpha = identityAlpha },
                                 )
                             }
+                        } else {
+                            SideEffect { onStatusBounds(null) }
                         }
                     }
                 }
