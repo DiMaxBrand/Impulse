@@ -131,9 +131,13 @@ private const val HEART_TURN_MS = 5000
  */
 internal object ChatNavigationMotion {
     enum class Direction { OPENING, RETURNING }
+    enum class ReturnMode { AUTOMATIC, GESTURE, CANCELLED, COMMITTED }
     data class Ticket(val conversationUuid: String, val direction: Direction)
 
     var ticket: Ticket? by mutableStateOf(null)
+    var returnMode: ReturnMode by mutableStateOf(ReturnMode.AUTOMATIC)
+    var returnProgress: Float by mutableStateOf(0f)
+    var returnTouchY: Float by mutableStateOf(Float.NaN)
     private var lastListOriginUuid: String? = null
 
     fun beginOpen(conversation: Conversation) {
@@ -142,15 +146,42 @@ internal object ChatNavigationMotion {
         ticket = Ticket(uuid, Direction.OPENING)
     }
 
-    fun beginReturn(conversation: Conversation): Boolean {
+    fun beginReturn(conversation: Conversation, gesture: Boolean = false): Boolean {
         val uuid = conversation.getUuid()
         if (lastListOriginUuid != uuid) return false
         ticket = Ticket(uuid, Direction.RETURNING)
+        returnMode = if (gesture) ReturnMode.GESTURE else ReturnMode.AUTOMATIC
+        returnProgress = 0f
+        returnTouchY = Float.NaN
         return true
     }
 
+    fun updateReturnProgress(progress: Float, touchY: Float) {
+        if (ticket?.direction == Direction.RETURNING && returnMode == ReturnMode.GESTURE) {
+            returnProgress = progress.coerceIn(0f, 1f)
+            returnTouchY = touchY
+        }
+    }
+
+    fun cancelReturn() {
+        if (ticket?.direction == Direction.RETURNING && returnMode == ReturnMode.GESTURE) {
+            returnMode = ReturnMode.CANCELLED
+        }
+    }
+
+    fun commitReturn() {
+        if (ticket?.direction == Direction.RETURNING && returnMode == ReturnMode.GESTURE) {
+            returnMode = ReturnMode.COMMITTED
+        }
+    }
+
     fun clear(ticket: Ticket) {
-        if (this.ticket == ticket) this.ticket = null
+        if (this.ticket == ticket) {
+            this.ticket = null
+            returnMode = ReturnMode.AUTOMATIC
+            returnProgress = 0f
+            returnTouchY = Float.NaN
+        }
     }
 }
 
@@ -498,12 +529,36 @@ private fun ChatNavigationOverlay(
     val progress = remember(ticket, source, rootSize) {
         Animatable(if (ticket.direction == ChatNavigationMotion.Direction.RETURNING) 1f else 0f)
     }
-    LaunchedEffect(ticket, source, rootSize) {
-        progress.animateTo(
-            if (ticket.direction == ChatNavigationMotion.Direction.RETURNING) 0f else 1f,
-            tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-        )
-        if (ticket.direction == ChatNavigationMotion.Direction.RETURNING) ChatNavigationMotion.clear(ticket)
+    val returnMode = ChatNavigationMotion.returnMode
+    val returnProgress = ChatNavigationMotion.returnProgress
+    val returnTouchY = ChatNavigationMotion.returnTouchY
+    LaunchedEffect(ticket, source, rootSize, returnMode) {
+        when {
+            ticket.direction == ChatNavigationMotion.Direction.OPENING -> {
+                progress.animateTo(1f, tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+            }
+            returnMode == ChatNavigationMotion.ReturnMode.AUTOMATIC -> {
+                progress.animateTo(0f, tween(310, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                ChatNavigationMotion.clear(ticket)
+            }
+            returnMode == ChatNavigationMotion.ReturnMode.GESTURE -> {
+                progress.snapTo(1f - returnProgress)
+            }
+            returnMode == ChatNavigationMotion.ReturnMode.CANCELLED -> {
+                progress.animateTo(1f, tween(180, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                ChatNavigationMotion.clear(ticket)
+            }
+            returnMode == ChatNavigationMotion.ReturnMode.COMMITTED -> {
+                progress.animateTo(0f, tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                ChatNavigationMotion.clear(ticket)
+            }
+        }
+    }
+    LaunchedEffect(ticket, returnProgress) {
+        if (ticket.direction == ChatNavigationMotion.Direction.RETURNING &&
+            ChatNavigationMotion.returnMode == ChatNavigationMotion.ReturnMode.GESTURE) {
+            progress.snapTo(1f - returnProgress)
+        }
     }
 
     val p = progress.value
@@ -525,6 +580,13 @@ private fun ChatNavigationOverlay(
     val nameEndX = with(density) { 108.dp.toPx() }
     val nameEndY = with(density) { 16.dp.toPx() }
     val identityAlpha = 1f - (p - 0.82f).coerceIn(0f, 1f) / 0.18f
+    // Predictive back supplies the finger's vertical coordinate too. Let it bend the card's
+    // path slightly in the middle of the gesture, then settle exactly into the source row at
+    // either end; that makes up/down movement visible without disturbing message layout.
+    val verticalGestureBias = if (returnTouchY.isNaN()) 0f else {
+        val relativeY = ((returnTouchY - rootOrigin.y) / rootSize.height - 0.5f).coerceIn(-0.5f, 0.5f)
+        with(density) { 24.dp.toPx() } * relativeY * 2f * returnProgress * (1f - returnProgress)
+    }
 
     Box(Modifier.fillMaxSize()) {
         Surface(
@@ -537,7 +599,7 @@ private fun ChatNavigationOverlay(
                     this.scaleX = scaleX
                     this.scaleY = scaleY
                     translationX = -left * p
-                    translationY = -top * p
+                    translationY = -top * p + verticalGestureBias
                     alpha = 1f - (p - 0.78f).coerceIn(0f, 1f) / 0.22f
                 }
                 .size(with(density) { width.toDp() }, with(density) { height.toDp() }),
@@ -550,7 +612,7 @@ private fun ChatNavigationOverlay(
             isBirthday = false,
             cardHeightPx = height.toInt(),
             modifier = Modifier
-                .offset { IntOffset(travel(avatarStartX, avatarEndX).toInt(), travel(avatarStartY, avatarEndY).toInt()) }
+                .offset { IntOffset(travel(avatarStartX, avatarEndX).toInt(), (travel(avatarStartY, avatarEndY) + verticalGestureBias).toInt()) }
                 .graphicsLayer { alpha = identityAlpha },
         )
         Text(
@@ -559,7 +621,7 @@ private fun ChatNavigationOverlay(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .offset { IntOffset(travel(nameStartX, nameEndX).toInt(), travel(nameStartY, nameEndY).toInt()) }
+                .offset { IntOffset(travel(nameStartX, nameEndX).toInt(), (travel(nameStartY, nameEndY) + verticalGestureBias).toInt()) }
                 .width(220.dp)
                 .graphicsLayer { alpha = identityAlpha },
         )
@@ -573,7 +635,7 @@ private fun ChatNavigationOverlay(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 modifier = Modifier
-                    .offset { IntOffset(travel(nameStartX, nameEndX).toInt(), travel(nameStartY + with(density) { 24.dp.toPx() }, nameEndY + with(density) { 24.dp.toPx() }).toInt()) }
+                    .offset { IntOffset(travel(nameStartX, nameEndX).toInt(), (travel(nameStartY + with(density) { 24.dp.toPx() }, nameEndY + with(density) { 24.dp.toPx() }) + verticalGestureBias).toInt()) }
                     .graphicsLayer { alpha = identityAlpha },
             )
         }

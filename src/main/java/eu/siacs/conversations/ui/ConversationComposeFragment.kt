@@ -13,6 +13,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.BackEventCompat
 import androidx.annotation.IdRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.platform.ComposeView
@@ -71,8 +72,32 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
     private val pendingTakePhotoUri = eu.siacs.conversations.ui.util.PendingItem<Uri>()
     private var pendingSharedUris: List<Uri> = emptyList()
     private var pendingSharedMimeType: String? = null
+    private var predictiveReturnActive = false
     private val navigationBackCallback = object : OnBackPressedCallback(true) {
-        override fun handleOnBackPressed() = performConversationBack()
+        override fun handleOnBackStarted(backEvent: BackEventCompat) {
+            predictiveReturnActive = false
+            val c = conversation ?: return
+            if (!ConversationsActivity.isTabletView(requireActivity())) {
+                predictiveReturnActive = ChatNavigationMotion.beginReturn(c, gesture = true)
+            }
+        }
+
+        override fun handleOnBackProgressed(backEvent: BackEventCompat) {
+            if (!predictiveReturnActive) return
+            ChatNavigationMotion.updateReturnProgress(backEvent.progress, backEvent.touchY)
+            // The chat keeps its message geometry while becoming transparent, revealing the live
+            // return card and list beneath it. Only the shared identity layer travels.
+            view?.alpha = 1f - backEvent.progress
+        }
+
+        override fun handleOnBackCancelled() {
+            if (!predictiveReturnActive) return
+            ChatNavigationMotion.cancelReturn()
+            view?.animate()?.alpha(1f)?.setDuration(180L)?.start()
+            predictiveReturnActive = false
+        }
+
+        override fun handleOnBackPressed() = performConversationBack(fromPredictiveGesture = predictiveReturnActive)
     }
 
     private val takePhotoLauncher =
@@ -710,15 +735,25 @@ class ConversationComposeFragment : XmppFragment(), ConversationScreenListener {
         performConversationBack()
     }
 
-    private fun performConversationBack() {
+    private fun performConversationBack(fromPredictiveGesture: Boolean = false) {
         val c = conversation
         val activity = requireActivity()
-        if (c != null && !ConversationsActivity.isTabletView(activity) && ChatNavigationMotion.beginReturn(c)) {
+        val returnStarted = c != null && !ConversationsActivity.isTabletView(activity) &&
+            if (fromPredictiveGesture) {
+                ChatNavigationMotion.ticket?.direction == ChatNavigationMotion.Direction.RETURNING
+            } else {
+                ChatNavigationMotion.beginReturn(c)
+            }
+        if (returnStarted) {
+            if (fromPredictiveGesture) {
+                ChatNavigationMotion.commitReturn()
+                predictiveReturnActive = false
+            }
             // Let the conversation surface fade out while the list is restored. Its matching row
             // then owns the reverse card collapse, avatar/name/status included.
             view?.animate()
                 ?.alpha(0f)
-                ?.setDuration(130L)
+                ?.setDuration(if (fromPredictiveGesture) 70L else 130L)
                 ?.withEndAction {
                     navigationBackCallback.isEnabled = false
                     activity.onBackPressedDispatcher.onBackPressed()

@@ -531,7 +531,14 @@ public class ConversationsActivity extends QrCodeProcessingActivity
             } else {
                 conversationFragment = new ConversationComposeFragment();
                 FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                fragmentTransaction.replace(R.id.main_fragment, conversationFragment);
+                // Keep the overview view beneath the chat. Besides avoiding needless list
+                // recreation, this gives predictive back a live destination that can fade in
+                // under the returning conversation card as the finger moves.
+                if (mainFragment != null) {
+                    fragmentTransaction.add(R.id.main_fragment, conversationFragment);
+                } else {
+                    fragmentTransaction.replace(R.id.main_fragment, conversationFragment);
+                }
                 fragmentTransaction.addToBackStack(null);
                 fragmentTransaction.commitAllowingStateLoss();
             }
