@@ -239,6 +239,7 @@ internal object ChatNavigationMotion {
 
     fun clear(ticket: Ticket) {
         if (this.ticket == ticket) {
+            val finishedReturn = ticket.direction == Direction.RETURNING && returnMode != ReturnMode.CANCELLED
             this.ticket = null
             returnMode = ReturnMode.AUTOMATIC
             returnProgress = 0f
@@ -246,15 +247,20 @@ internal object ChatNavigationMotion {
             returnFromLeftEdge = true
             returnOverlayInList = false
             openingProgress = 0f
-            sourceBounds = null
-            sourceAvatarBounds = null
-            sourceNameBounds = null
-            sourceStatusBounds = null
-            sourceRootOrigin = Offset.Zero
-            sourceShape = null
-            targetAvatarBounds = null
-            targetNameBounds = null
-            targetStatusBounds = null
+            // Keep the list/header geometry after opening and after a cancelled gesture: both
+            // cases leave this conversation onscreen, so the next predictive-back gesture needs
+            // the same return destination. Drop it only after an actual return to the list.
+            if (finishedReturn) {
+                sourceBounds = null
+                sourceAvatarBounds = null
+                sourceNameBounds = null
+                sourceStatusBounds = null
+                sourceRootOrigin = Offset.Zero
+                sourceShape = null
+                targetAvatarBounds = null
+                targetNameBounds = null
+                targetStatusBounds = null
+            }
         }
     }
 }
