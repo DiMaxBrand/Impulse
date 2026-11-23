@@ -1492,6 +1492,9 @@ internal fun ExpressiveDropdownMenu(
     LaunchedEffect(expanded) {
         if (expanded) collapse.snapTo(0f)
     }
+    // DropdownMenu renders in its own Popup window. Register the predictive handler from that
+    // popup's content composition so the popup window receives gesture progress itself instead
+    // of dismissing before the host-window handler can animate it.
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
@@ -1505,29 +1508,28 @@ internal fun ExpressiveDropdownMenu(
         },
         shape = RoundedCornerShape(20.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        content = content,
-    )
-    // Register after the Popup so this callback receives the predictive gesture before the
-    // dropdown's ordinary dismiss callback. On commit, continue the resisted gesture to closed;
-    // on cancel, spring the scale back to its resting size.
-    PredictiveBackHandler(enabled = expanded) { backEvents ->
-        try {
-            backEvents.collect { event ->
-                val p = event.progress.coerceIn(0f, 1f)
-                val eased = p * p * (3f - 2f * p)
-                val rubber = 0.035f * 4f * p * (1f - p)
-                collapse.snapTo((0.90f * eased + rubber).coerceAtMost(0.93f))
-            }
-            collapse.animateTo(1f, tween(120))
-            onDismissRequest()
-        } catch (_: kotlinx.coroutines.CancellationException) {
-            if (expanded) {
-                scope.launch {
-                    collapse.animateTo(0f, spring(dampingRatio = 0.72f, stiffness = 520f))
+        content = {
+            PredictiveBackHandler(enabled = expanded) { backEvents ->
+                try {
+                    backEvents.collect { event ->
+                        val p = event.progress.coerceIn(0f, 1f)
+                        val eased = p * p * (3f - 2f * p)
+                        val rubber = 0.035f * 4f * p * (1f - p)
+                        collapse.snapTo((0.90f * eased + rubber).coerceAtMost(0.93f))
+                    }
+                    collapse.animateTo(1f, tween(120))
+                    onDismissRequest()
+                } catch (_: kotlinx.coroutines.CancellationException) {
+                    if (expanded) {
+                        scope.launch {
+                            collapse.animateTo(0f, spring(dampingRatio = 0.72f, stiffness = 520f))
+                        }
+                    }
                 }
             }
-        }
-    }
+            content()
+        },
+    )
 }
 
 @Composable
