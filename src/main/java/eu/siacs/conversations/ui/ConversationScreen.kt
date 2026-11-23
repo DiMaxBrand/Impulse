@@ -141,6 +141,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -1506,6 +1507,9 @@ internal fun ExpressiveDropdownMenu(
             scaleY = 1f - 0.12f * collapse.value
             transformOrigin = TransformOrigin(1f, 0f)
         },
+        // Material's Popup normally consumes Back and closes itself immediately. Keep that
+        // built-in dismissal disabled so the handler below receives the system's progress frames.
+        properties = PopupProperties(dismissOnBackPress = false),
         shape = RoundedCornerShape(20.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         content = {
