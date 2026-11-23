@@ -1,6 +1,6 @@
 package eu.siacs.conversations.ui.glass
 
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -72,6 +72,7 @@ import kotlin.math.tanh
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 /*
  * "A button turns into a menu" (and "a search field turns into the whole search"), the way the glass
@@ -393,14 +394,34 @@ fun LiquidMenuOverlay(
         state.alignEnd = alignEnd
         state.opensUp = opensUp
     }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(state.open, state.settleRequests) { state.settle() }
-    BackHandler(enabled = state.open) { state.open = false }
+    PredictiveBackHandler(enabled = state.open) { backEvents ->
+        try {
+            backEvents.collect { event ->
+                val progress = event.progress.coerceIn(0f, 1f)
+                // Shrink width and height at different rates, preserving a little resistant
+                // movement at the gesture threshold. The LiquidMorphContainer keeps both axes
+                // attached to the recorded invoking corner, wherever that corner is on screen.
+                val eased = progress * progress * (3f - 2f * progress)
+                val rubber = 0.035f * 4f * progress * (1f - progress)
+                val closeX = (0.90f * eased + rubber).coerceAtMost(0.94f)
+                val closeY = (0.84f * eased + rubber * 0.8f).coerceAtMost(0.92f)
+                state.drag(1f - closeX, 1f - closeY)
+            }
+            // At the system commit threshold the menu is still about a tenth of its open size.
+            // The existing spring then carries it the rest of the way into its anchor.
+            state.releaseTo(false)
+        } catch (_: CancellationException) {
+            // A cancelled system gesture returns the menu to its open shape.
+            if (state.open) scope.launch { state.releaseTo(true) }
+        }
+    }
     // Derived, so the menu's items are not rebuilt on every frame of the opening animation.
     val visible by remember { derivedStateOf { state.open || state.progress > 0.001f } }
     if (!visible) return
 
     val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
     var origin by remember { mutableStateOf(Offset.Zero) }
     Box(
         modifier

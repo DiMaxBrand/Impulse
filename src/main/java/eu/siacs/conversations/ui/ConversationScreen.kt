@@ -6,6 +6,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.text.Editable
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import android.text.InputType
 import android.text.TextWatcher
 import android.text.format.DateUtils
@@ -1486,13 +1487,47 @@ internal fun ExpressiveDropdownMenu(
     onDismissRequest: () -> Unit,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
+    val collapse = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(expanded) {
+        if (expanded) collapse.snapTo(0f)
+    }
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
+        modifier = Modifier.graphicsLayer {
+            // Expressive popups retreat toward their top-right launcher (overflow or QR).
+            // The unequal axes make the menu feel like it is returning to its parent, rather
+            // than shrinking uniformly around its center.
+            scaleX = 1f - 0.07f * collapse.value
+            scaleY = 1f - 0.12f * collapse.value
+            transformOrigin = TransformOrigin(1f, 0f)
+        },
         shape = RoundedCornerShape(20.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         content = content,
     )
+    // Register after the Popup so this callback receives the predictive gesture before the
+    // dropdown's ordinary dismiss callback. On commit, continue the resisted gesture to closed;
+    // on cancel, spring the scale back to its resting size.
+    PredictiveBackHandler(enabled = expanded) { backEvents ->
+        try {
+            backEvents.collect { event ->
+                val p = event.progress.coerceIn(0f, 1f)
+                val eased = p * p * (3f - 2f * p)
+                val rubber = 0.035f * 4f * p * (1f - p)
+                collapse.snapTo((0.90f * eased + rubber).coerceAtMost(0.93f))
+            }
+            collapse.animateTo(1f, tween(120))
+            onDismissRequest()
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            if (expanded) {
+                scope.launch {
+                    collapse.animateTo(0f, spring(dampingRatio = 0.72f, stiffness = 520f))
+                }
+            }
+        }
+    }
 }
 
 @Composable
