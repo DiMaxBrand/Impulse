@@ -127,6 +127,8 @@ fun LiquidMorphContainer(
     shift: () -> Offset = { Offset.Zero },
     // The glass is an element of this fluid host's body (a menu: it can bridge to the bar around its button) instead of a node of its own.
     fluid: FluidGlassHost? = null,
+    predictiveScale: () -> Float = { 1f },
+    predictiveOrigin: () -> Offset = { Offset.Zero },
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -211,11 +213,15 @@ fun LiquidMorphContainer(
         // When one dimension swings past its target, the other gives a little: same volume.
         val squashW = if (py > 1f) 1f - 0.35f * (py - 1f) else 1f
         val squashH = if (px > 1f) 1f - 0.35f * (px - 1f) else 1f
-        val w = (lerp(a.width, b.width, px) * squashW).roundToInt().coerceAtLeast(1)
-        val h = (lerp(a.height, b.height, py) * squashH).roundToInt().coerceAtLeast(1)
+        val rawW = (lerp(a.width, b.width, px) * squashW).roundToInt().coerceAtLeast(1)
+        val rawH = (lerp(a.height, b.height, py) * squashH).roundToInt().coerceAtLeast(1)
+        val scale = predictiveScale().coerceIn(0f, 1f)
+        val w = (rawW * scale).roundToInt().coerceAtLeast(1)
+        val h = (rawH * scale).roundToInt().coerceAtLeast(1)
         val nudge = shift()
-        val x = (lerp(a.left, b.left, px) + nudge.x).roundToInt()
-        val y = (lerp(a.top, b.top, py) + nudge.y).roundToInt()
+        val origin = predictiveOrigin()
+        val x = (lerp(a.left, b.left, px) + nudge.x + (rawW - w) * origin.x).roundToInt()
+        val y = (lerp(a.top, b.top, py) + nudge.y + (rawH - h) * origin.y).roundToInt()
         val placeable = glassBox.measure(Constraints.fixed(w, h))
         layout(overlay.width, overlay.height) { placeable.place(x, y) }
     }
@@ -231,6 +237,7 @@ fun LiquidMorphContainer(
 class LiquidMenuState {
     var open by mutableStateOf(false)
     var anchor by mutableStateOf(Rect.Zero)
+    var predictiveBackScale by mutableStateOf(0f)
 
     val progressX = Animatable(0f, 0.001f)
     val progressY = Animatable(0f, 0.001f)
@@ -267,6 +274,7 @@ class LiquidMenuState {
      * pull that was let go of, the progress is somewhere in between). */
     fun releaseTo(value: Boolean) {
         open = value
+        if (value) predictiveBackScale = 0f
         settleRequests++
     }
 
@@ -400,20 +408,15 @@ fun LiquidMenuOverlay(
         try {
             backEvents.collect { event ->
                 val progress = event.progress.coerceIn(0f, 1f)
-                // Shrink width and height at different rates, preserving a little resistant
-                // movement at the gesture threshold. The LiquidMorphContainer keeps both axes
-                // attached to the recorded invoking corner, wherever that corner is on screen.
                 val eased = progress * progress * (3f - 2f * progress)
                 val rubber = 0.035f * 4f * progress * (1f - progress)
-                val closeX = (0.90f * eased + rubber).coerceAtMost(0.94f)
-                val closeY = (0.84f * eased + rubber * 0.8f).coerceAtMost(0.92f)
-                state.drag(1f - closeX, 1f - closeY)
+                // Predictive back now uses the same restrained whole-panel zoom as Expressive.
+                // The actual glass box is remeasured at that size, so its backdrop/refraction
+                // continues sampling its live position rather than freezing a stale image.
+                state.predictiveBackScale = (0.12f * eased + rubber).coerceAtMost(0.13f)
             }
-            // At the system commit threshold the menu is still about a tenth of its open size.
-            // The existing spring then carries it the rest of the way into its anchor.
             state.releaseTo(false)
         } catch (_: CancellationException) {
-            // A cancelled system gesture returns the menu to its open shape.
             if (state.open) scope.launch { state.releaseTo(true) }
         }
     }
@@ -458,6 +461,10 @@ fun LiquidMenuOverlay(
             style = style,
             shift = { Offset(state.shiftX.value, state.shiftY.value) },
             fluid = fluid,
+            predictiveScale = { 1f - state.predictiveBackScale },
+            predictiveOrigin = {
+                Offset(if (alignEnd) 1f else 0f, if (opensUp) 1f else 0f)
+            },
         ) {
             val reach = with(density) { 120.dp.toPx() }
             val menuWidthPx = with(density) { menuWidth.toPx() }

@@ -1499,19 +1499,16 @@ internal fun ExpressiveDropdownMenu(
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
-        modifier = Modifier.graphicsLayer {
-            // Expressive popups retreat toward their top-right launcher (overflow or QR).
-            // The unequal axes make the menu feel like it is returning to its parent, rather
-            // than shrinking uniformly around its center.
-            scaleX = 1f - 0.07f * collapse.value
-            scaleY = 1f - 0.12f * collapse.value
-            transformOrigin = TransformOrigin(1f, 0f)
-        },
         // Material's Popup normally consumes Back and closes itself immediately. Keep that
         // built-in dismissal disabled so the handler below receives the system's progress frames.
         properties = PopupProperties(dismissOnBackPress = false),
         shape = RoundedCornerShape(20.dp),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        // The stock menu Surface sits above the supplied modifier, which meant the previous
+        // transform scaled only the item column. Keep that surface transparent and draw our own
+        // scaled Surface inside it, so background, corners, shadow and contents move together.
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
         content = {
             PredictiveBackHandler(enabled = expanded) { backEvents ->
                 try {
@@ -1531,7 +1528,18 @@ internal fun ExpressiveDropdownMenu(
                     }
                 }
             }
-            content()
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shadowElevation = 3.dp,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = 1f - 0.07f * collapse.value
+                    scaleY = 1f - 0.12f * collapse.value
+                    transformOrigin = TransformOrigin(1f, 0f)
+                },
+            ) {
+                Column(content = content)
+            }
         },
     )
 }
