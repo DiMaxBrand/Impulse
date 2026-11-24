@@ -98,7 +98,7 @@ class SampledBackdrop internal constructor(
  * and faster displays use two thirds. Auto and manual rates both run on this fixed timer;
  * Compose redraws cannot pull a capture forward. Rounding up respects the selected cap.
  */
-private fun sampledBackdropInterval(refreshRate: Float, requestedRate: Float): Long {
+internal fun sampledBackdropInterval(refreshRate: Float, requestedRate: Float): Long {
     val rate = refreshRate.takeIf { it.isFinite() && it > 0f } ?: 60f
     val target = when {
         // Manual is a cap, never a request to sample more often than the panel presents.
