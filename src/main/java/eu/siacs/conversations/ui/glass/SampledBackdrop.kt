@@ -2,8 +2,12 @@ package eu.siacs.conversations.ui.glass
 
 import android.os.SystemClock
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.GraphicsLayerScope
@@ -19,6 +23,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import com.kyant.backdrop.Backdrop
+import kotlinx.coroutines.delay
 import kotlin.math.ceil
 
 /**
@@ -31,15 +36,27 @@ import kotlin.math.ceil
 @Stable
 class SampledBackdrop internal constructor(
     internal val layer: GraphicsLayer,
-    private val intervalMs: Long,
+    val intervalMs: Long,
 ) : Backdrop {
     private var coordinates: LayoutCoordinates? = null
     private var nextCaptureAt = 0L
+    private var captureTick by mutableIntStateOf(0)
 
     override val isCoordinatesDependent: Boolean = true
 
     internal fun updateCoordinates(value: LayoutCoordinates) {
         coordinates = value
+    }
+
+    internal fun requestCaptureFrame() {
+        captureTick++
+    }
+
+    internal fun observeCaptureCadence() {
+        // Reading snapshot state in the draw phase invalidates just this source draw when the
+        // cadence ticker advances. Without it, the cap is only consulted when unrelated UI work
+        // happens to redraw the source, so motion can still appear to sample at display rate.
+        captureTick
     }
 
     internal fun shouldCapture(width: Int, height: Int): Boolean {
@@ -94,7 +111,16 @@ fun rememberSampledBackdrop(): SampledBackdrop {
     val refreshRate = LocalView.current.display?.refreshRate ?: 60f
     val layer = rememberGraphicsLayer()
     val interval = sampledBackdropInterval(refreshRate, GlassTuning.samplingRate)
-    return remember(layer, interval) { SampledBackdrop(layer, interval) }
+    val backdrop = remember(layer, interval) { SampledBackdrop(layer, interval) }
+    LaunchedEffect(backdrop, interval) {
+        if (interval > 0L) {
+            while (true) {
+                delay(interval)
+                backdrop.requestCaptureFrame()
+            }
+        }
+    }
+    return backdrop
 }
 
 /** Records only the backing source on the selected cadence; its onscreen content is always live. */
@@ -102,6 +128,7 @@ fun Modifier.sampledBackdrop(backdrop: SampledBackdrop): Modifier =
     this
         .onGloballyPositioned { backdrop.updateCoordinates(it) }
         .drawWithContent {
+            backdrop.observeCaptureCadence()
             drawContent()
             if (backdrop.shouldCapture(size.width.toInt(), size.height.toInt())) {
                 backdrop.layer.record(IntSize(size.width.toInt(), size.height.toInt())) {
