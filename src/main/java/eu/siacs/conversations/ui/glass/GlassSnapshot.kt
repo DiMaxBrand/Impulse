@@ -16,12 +16,14 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
+import kotlin.math.ceil
 
 /*
  * Glass computed less often. Blur and refraction are worked out again on every frame for every glass
@@ -29,8 +31,12 @@ import kotlinx.coroutines.isActive
  * is going on ([GlassPerformance.lite]) each piece instead shows a picture of itself, taken about
  * three times a second, and the pictures melt into one another: the glass is still there, only
  * worked out less often. Together with the heavy blur the list scroll adds (see glassBlur), the
- * lag behind is not something the eye can find. Outside those moments nothing changes: the piece
- * draws itself as always, with no extra layer.
+ * lag behind is not something the eye can find.
+ *
+ * The regular path is capped too, but much more gently. At 60–120 Hz it samples at half the
+ * display refresh rate; below 60 Hz it stays live, and above 120 Hz it uses two thirds. The app
+ * still composes and presents at the native display rate—the cached picture is only the costly
+ * blur/refraction pass.
  */
 
 private class SnapshotState {
@@ -42,17 +48,58 @@ private class SnapshotState {
 }
 
 private val SHADOW_MARGIN = 32.dp
-private const val CAPTURE_EVERY_MS = 330L
-private const val LIVE_BEFORE_CAPTURE_MS = 70L
-private const val BLEND_MS = 140
+private const val CALM_CAPTURE_EVERY_MS = 330L
+private const val CALM_LIVE_BEFORE_CAPTURE_MS = 70L
+private const val CALM_BLEND_MS = 140
+
+private data class SnapshotCadence(
+    val captureEveryMs: Long,
+    val liveBeforeCaptureMs: Long,
+    val blendMs: Int,
+)
+
+private val CALM_CADENCE = SnapshotCadence(
+    captureEveryMs = CALM_CAPTURE_EVERY_MS,
+    liveBeforeCaptureMs = CALM_LIVE_BEFORE_CAPTURE_MS,
+    blendMs = CALM_BLEND_MS,
+)
+
+/**
+ * A single live frame is enough to record a fresh snapshot. Keeping one device frame between
+ * captures leaves the renderer a full frame to present the rest of the UI at 60–120 Hz.
+ */
+private fun liveGlassCadence(refreshRate: Float): SnapshotCadence? {
+    val rate = refreshRate.takeIf { it.isFinite() && it > 0f } ?: return null
+    val sampledRate = when {
+        rate < 60f -> return null
+        rate <= 120f -> rate / 2f
+        else -> rate * (2f / 3f)
+    }
+    // Round up: the cap must never accidentally run *faster* than the selected rate merely
+    // because a frame interval cannot be represented by an integral number of milliseconds.
+    val every = ceil(1000.0 / sampledRate).toLong().coerceAtLeast(1L)
+    val live = ceil(1000.0 / rate).toLong().coerceAtLeast(1L)
+    return SnapshotCadence(
+        captureEveryMs = every.coerceAtLeast(live + 1L),
+        liveBeforeCaptureMs = live,
+        blendMs = (every - live).toInt().coerceIn(1, 40),
+    )
+}
 
 @Composable
 fun Modifier.glassSnapshot(geometryKey: Any? = null): Modifier {
+    val displayRefreshRate = LocalView.current.display?.refreshRate ?: 60f
+    val liveCadence = remember(displayRefreshRate) { liveGlassCadence(displayRefreshRate) }
     val layer = rememberGraphicsLayer()
     val state = remember(geometryKey) { SnapshotState() }
-    LaunchedEffect(state) {
-        snapshotFlow { GlassPerformance.lite && GlassTuning.lessOften }.collectLatest { slow ->
-            if (!slow) {
+    LaunchedEffect(state, liveCadence) {
+        snapshotFlow {
+            when {
+                GlassPerformance.lite && GlassTuning.lessOften -> CALM_CADENCE
+                else -> liveCadence
+            }
+        }.collectLatest { cadence ->
+            if (cadence == null) {
                 state.current = null
                 state.previous = null
                 state.capturing = false
@@ -61,7 +108,7 @@ fun Modifier.glassSnapshot(geometryKey: Any? = null): Modifier {
             while (isActive) {
                 // A moment live, so the layer holds the piece as it is now, then a picture of it.
                 state.capturing = true
-                delay(LIVE_BEFORE_CAPTURE_MS)
+                delay(cadence.liveBeforeCaptureMs)
                 val picture = try {
                     if (layer.size.width > 0 && layer.size.height > 0) layer.toImageBitmap() else null
                 } catch (e: Throwable) {
@@ -72,16 +119,17 @@ fun Modifier.glassSnapshot(geometryKey: Any? = null): Modifier {
                     state.current = picture
                     state.blend.snapTo(0f)
                     state.capturing = false
-                    state.blend.animateTo(1f, tween(BLEND_MS))
+                    state.blend.animateTo(1f, tween(cadence.blendMs))
                 } else {
                     state.capturing = false
                 }
-                delay(CAPTURE_EVERY_MS - LIVE_BEFORE_CAPTURE_MS)
+                delay((cadence.captureEveryMs - cadence.liveBeforeCaptureMs).coerceAtLeast(1L))
             }
         }
     }
     return this.drawWithContent {
-        if (!GlassPerformance.lite || !GlassTuning.lessOften) {
+        val cadence = if (GlassPerformance.lite && GlassTuning.lessOften) CALM_CADENCE else liveCadence
+        if (cadence == null) {
             drawContent()
             return@drawWithContent
         }
