@@ -94,16 +94,18 @@ class SampledBackdrop internal constructor(
 }
 
 /**
- * Auto uses the display's reported refresh rate exactly. Both Auto and manual values become
- * fixed timer intervals, so Compose redraws cannot make the source sample faster than selected.
- * Rounding up avoids accidentally exceeding the selected rate.
+ * Auto keeps the adaptive rule: below 60 Hz it follows the panel, 60–120 Hz uses half,
+ * and faster displays use two thirds. Auto and manual rates both run on this fixed timer;
+ * Compose redraws cannot pull a capture forward. Rounding up respects the selected cap.
  */
 private fun sampledBackdropInterval(refreshRate: Float, requestedRate: Float): Long {
     val rate = refreshRate.takeIf { it.isFinite() && it > 0f } ?: 60f
     val target = when {
         // Manual is a cap, never a request to sample more often than the panel presents.
         requestedRate > 0f -> requestedRate.coerceAtMost(rate)
-        else -> rate
+        rate < 60f -> rate
+        rate <= 120f -> rate / 2f
+        else -> rate * (2f / 3f)
     }
     return ceil(1000.0 / target).toLong().coerceAtLeast(1L)
 }
