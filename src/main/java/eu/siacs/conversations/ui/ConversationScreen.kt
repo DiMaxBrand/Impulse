@@ -174,6 +174,8 @@ import eu.siacs.conversations.ui.glass.rememberGlassScrollMeter
 import eu.siacs.conversations.ui.glass.rememberGlassKeyboardMeter
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
+import eu.siacs.conversations.ui.glass.rememberSampledBackdrop
+import eu.siacs.conversations.ui.glass.sampledBackdrop
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.siacs.conversations.AppSettings
@@ -813,8 +815,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val glass = rememberLiquidGlassEnabled()
     // Developer flag: the bars' bubbles as one body of fluid glass.
     val mergingGlass = eu.siacs.conversations.ui.glass.rememberMergingGlass()
-    val backgroundBackdrop = rememberLayerBackdrop()
-    val listBackdrop = rememberLayerBackdrop()
+    val backgroundBackdrop = rememberSampledBackdrop()
+    val listBackdrop = rememberSampledBackdrop()
     val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
     val replyStatusUnderlay = rememberLayerBackdrop()
     val replyStatusGlass = rememberGlassStack(rememberCombinedBackdrop(glassBackdrop, replyStatusUnderlay), adaptive = true)
@@ -952,7 +954,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
         if (glass) {
             // Capture the Scaffold surface as well as the chosen background. Without it, a plain
             // chat leaves transparent holes in the lens input and the live list shows through.
-            Box(Modifier.matchParentSize().layerBackdrop(backgroundBackdrop).background(MaterialTheme.colorScheme.surface)) {
+            Box(Modifier.matchParentSize().sampledBackdrop(backgroundBackdrop).background(MaterialTheme.colorScheme.surface)) {
                 ChatBackgroundLayer(Modifier.matchParentSize())
             }
         } else {
@@ -1150,7 +1152,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             val keyboardVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(density) > 0
             messageList(
                 // The meter flips the glass to its cheap look while the list flies past.
-                Modifier.fillMaxSize().layerBackdrop(listBackdrop).then(rememberGlassScrollMeter()),
+                Modifier.fillMaxSize().sampledBackdrop(listBackdrop).then(rememberGlassScrollMeter()),
                 with(density) { glassTopHeightPx.toDp() },
                 // Keep a stable resting gap above the floating composer. This is intentionally
                 // separate from the gesture inset: the latter can change under a held chat and
