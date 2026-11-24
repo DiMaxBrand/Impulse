@@ -8,6 +8,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -128,6 +129,16 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
                 SupportAccounts.hasSupportAccount(context)
         }
     val close = { state.attachCardOpen.value = false; state.replyStatusPickerVisible.value = false }
+    val cardScroll = rememberScrollState()
+    var cardViewport by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+    var replyStatusBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+    // This is deliberately tied to the reply-status card, rather than the end of the complete
+    // attachment sheet. Support-only developer tools can remain below it without being exposed.
+    LaunchedEffect(state.replyStatusPickerVisible.value, replyStatusBounds, cardViewport) {
+        if (!state.replyStatusPickerVisible.value || replyStatusBounds.isEmpty || cardViewport.isEmpty) return@LaunchedEffect
+        val overflow = replyStatusBounds.bottom - cardViewport.bottom
+        if (overflow > 1f) cardScroll.animateScrollBy(overflow)
+    }
     fun act(action: () -> Unit): () -> Unit = {
         state.attachCardOpen.value = false
         action()
@@ -226,8 +237,9 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
             // The content is laid out at its final size and revealed as the card grows into it.
             Column(
                 Modifier.requiredSize(cardWidth, cardHeight)
+                    .onGloballyPositioned { cardViewport = it.boundsInWindow() }
                     .graphicsLayer { alpha = ((p - 0.45f) / 0.55f).coerceIn(0f, 1f) }
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(cardScroll)
                     .padding(Pad)
             ) {
                 Row(Modifier.height(HeaderHeight), verticalAlignment = Alignment.CenterVertically) {
@@ -246,7 +258,11 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
                     Surface(
                         color = colors.onTertiaryContainer.copy(alpha = 0.1f), shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.fillMaxWidth().height(statusHeight)
-                            .onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() }) {
+                            .onGloballyPositioned {
+                                val bounds = it.boundsInWindow()
+                                state.replyStatusAnchor.value = bounds
+                                replyStatusBounds = bounds
+                            }) {
                         Column {
                             Row(Modifier.fillMaxWidth().height(48.dp).clickable {
                                 state.replyStatusPickerVisible.value = !state.replyStatusPickerVisible.value

@@ -394,6 +394,9 @@ fun LiquidMenuOverlay(
     // opens up and to the right.
     alignEnd: Boolean = true,
     opensUp: Boolean = false,
+    // Attachment menus use their existing anchor-to-panel collapse. Other floating glass menus
+    // retain the lighter uniform predictive-back zoom.
+    predictiveCollapse: Boolean = false,
     // The menu's glass joins this fluid host's body (see FluidGlassHost.kt) instead of drawing its own.
     fluid: FluidGlassHost? = null,
     content: @Composable ColumnScope.() -> Unit,
@@ -410,10 +413,17 @@ fun LiquidMenuOverlay(
                 val progress = event.progress.coerceIn(0f, 1f)
                 val eased = progress * progress * (3f - 2f * progress)
                 val rubber = 0.035f * 4f * progress * (1f - progress)
-                // Predictive back now uses the same restrained whole-panel zoom as Expressive.
-                // The actual glass box is remeasured at that size, so its backdrop/refraction
-                // continues sampling its live position rather than freezing a stale image.
-                state.predictiveBackScale = (0.12f * eased + rubber).coerceAtMost(0.13f)
+                if (predictiveCollapse) {
+                    // Predictive back controls the first third of the menu's normal collapse;
+                    // after commit, the existing spring continues the same motion to its anchor.
+                    state.predictiveBackScale = 0f
+                    val partial = (0.33f * eased + rubber).coerceAtMost(0.35f)
+                    state.drag(1f - partial, 1f - partial)
+                } else {
+                    // The actual glass box is remeasured at that size, so its backdrop/refraction
+                    // continues sampling its live position rather than freezing a stale image.
+                    state.predictiveBackScale = (0.12f * eased + rubber).coerceAtMost(0.13f)
+                }
             }
             state.releaseTo(false)
         } catch (_: CancellationException) {

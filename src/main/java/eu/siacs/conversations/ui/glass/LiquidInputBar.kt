@@ -156,7 +156,14 @@ fun LiquidInputBar(
         if (!readOnly) {
             // The paperclip grows into the menu: the panel lines up with the button's left edge
             // and opens upward.
-            LiquidMenuOverlay(attachMenu, backdrop, alignEnd = false, opensUp = true, fluid = host) {
+            LiquidMenuOverlay(
+                attachMenu,
+                backdrop,
+                alignEnd = false,
+                opensUp = true,
+                predictiveCollapse = true,
+                fluid = host,
+            ) {
                 if (conversation?.getMode() == Conversational.MODE_SINGLE) {
                     Box(Modifier.onGloballyPositioned { state.replyStatusAnchor.value = it.boundsInWindow() }) {
                         LiquidMenuItem(R.drawable.ic_expand_more_24dp, stringResource(eu.siacs.conversations.R.string.reply_status_title)) {
