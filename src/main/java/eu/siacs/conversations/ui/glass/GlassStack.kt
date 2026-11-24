@@ -36,6 +36,9 @@ class GlassStack internal constructor(
     internal val base: Backdrop,
     // Whether each piece adapts its glass and text to what is behind it (see rememberGlassInk).
     val adaptive: Boolean = false,
+    // Some screens provide a timed backdrop. Their live layer records must not be appended to
+    // that source, or they bypass the sampling timer and make the glass appear to update live.
+    private val includeLayers: Boolean = true,
 ) {
     private val layers = mutableStateListOf<LayerBackdrop?>()
 
@@ -71,9 +74,11 @@ class GlassStack internal constructor(
                 layerBlock: (GraphicsLayerScope.() -> Unit)?,
             ) {
                 with(base) { drawBackdrop(density, coordinates, layerBlock) }
-                for (i in 0 until min(index, layers.size)) {
-                    val layer = layers[i] ?: continue
-                    with(layer) { drawBackdrop(density, coordinates, layerBlock) }
+                if (includeLayers) {
+                    for (i in 0 until min(index, layers.size)) {
+                        val layer = layers[i] ?: continue
+                        with(layer) { drawBackdrop(density, coordinates, layerBlock) }
+                    }
                 }
             }
         }
@@ -81,8 +86,11 @@ class GlassStack internal constructor(
 
 /** The stack for a screen whose content (what glass shows through itself) is recorded in [base]. */
 @Composable
-fun rememberGlassStack(base: Backdrop, adaptive: Boolean = false): GlassStack =
-    remember(base, adaptive) { GlassStack(base, adaptive) }
+fun rememberGlassStack(
+    base: Backdrop,
+    adaptive: Boolean = false,
+    includeLayers: Boolean = true,
+): GlassStack = remember(base, adaptive, includeLayers) { GlassStack(base, adaptive, includeLayers) }
 
 /** A piece's place in a [GlassStack]: what it looks through, and where it records itself. */
 @Immutable

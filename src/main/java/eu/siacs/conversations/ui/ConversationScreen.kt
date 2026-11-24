@@ -819,10 +819,10 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val listBackdrop = rememberSampledBackdrop()
     val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
     val replyStatusUnderlay = rememberLayerBackdrop()
-    val replyStatusGlass = rememberGlassStack(rememberCombinedBackdrop(glassBackdrop, replyStatusUnderlay), adaptive = true)
+    val replyStatusGlass = rememberGlassStack(rememberCombinedBackdrop(glassBackdrop, replyStatusUnderlay), adaptive = true, includeLayers = false)
     // The glass pieces of the chat look through the background, the messages and each other.
     // Each glass piece adapts its glass and text to what is behind it.
-    val glassStack = rememberGlassStack(glassBackdrop, adaptive = true)
+    val glassStack = rememberGlassStack(glassBackdrop, adaptive = true, includeLayers = false)
     val topMenu = rememberLiquidMenuState()
     // With merging glass on, the top bar and the banners under it are one body of glass (one host).
     val barDensity = LocalDensity.current.density
