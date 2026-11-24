@@ -77,9 +77,11 @@ class SampledBackdrop internal constructor(
  * 60–120 Hz displays refresh the sampled source at half rate; faster panels use two thirds.
  * Slower displays retain their full rate. Rounding up avoids accidentally exceeding the cap.
  */
-private fun sampledBackdropInterval(refreshRate: Float): Long {
+private fun sampledBackdropInterval(refreshRate: Float, requestedRate: Float): Long {
     val rate = refreshRate.takeIf { it.isFinite() && it > 0f } ?: return 0L
     val target = when {
+        // Manual is a cap, never a request to sample more often than the panel presents.
+        requestedRate > 0f -> requestedRate.coerceAtMost(rate)
         rate < 60f -> return 0L
         rate <= 120f -> rate / 2f
         else -> rate * (2f / 3f)
@@ -91,7 +93,7 @@ private fun sampledBackdropInterval(refreshRate: Float): Long {
 fun rememberSampledBackdrop(): SampledBackdrop {
     val refreshRate = LocalView.current.display?.refreshRate ?: 60f
     val layer = rememberGraphicsLayer()
-    val interval = sampledBackdropInterval(refreshRate)
+    val interval = sampledBackdropInterval(refreshRate, GlassTuning.samplingRate)
     return remember(layer, interval) { SampledBackdrop(layer, interval) }
 }
 

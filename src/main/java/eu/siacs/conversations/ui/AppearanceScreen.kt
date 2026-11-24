@@ -84,6 +84,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import eu.siacs.conversations.R
 import androidx.compose.ui.input.pointer.pointerInput
 import eu.siacs.conversations.ui.glass.LocalGlassHost
@@ -1316,6 +1317,7 @@ private fun GlassLabPage(onOpenPlayground: (androidx.compose.ui.geometry.Rect) -
             stringResource(R.string.glass_lab_less_often), stringResource(R.string.glass_lab_less_often_summary),
             GlassTuning.lessOften,
         ) { GlassTuning.putLessOften(it) }
+        LabSamplingRateSlider(GroupPosition.MIDDLE, GlassTuning.samplingRate) { GlassTuning.putSamplingRate(it) }
         SwitchRow(
             GroupPosition.BOTTOM, R.drawable.ic_touch_app_24dp,
             stringResource(R.string.glass_lab_bar_blur), stringResource(R.string.glass_lab_bar_blur_summary),
@@ -1326,6 +1328,43 @@ private fun GlassLabPage(onOpenPlayground: (androidx.compose.ui.geometry.Rect) -
             Text(stringResource(R.string.glass_lab_reset))
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** The source behind glass can be capped separately from the display presentation rate. */
+@Composable
+private fun LabSamplingRateSlider(position: GroupPosition, value: Float, onChange: (Float) -> Unit) {
+    var live by remember { mutableFloatStateOf(value) }
+    LaunchedEffect(value) { if (kotlin.math.abs(value - live) > 0.51f) live = value }
+    val rounded = live.toInt().coerceIn(0, 120)
+    val shown = if (rounded == 0) stringResource(R.string.glass_lab_sampling_auto)
+    else stringResource(R.string.glass_lab_sampling_fps, rounded)
+    ExpressiveGroupRow(position) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.glass_lab_sampling_rate))
+                    Text(
+                        stringResource(R.string.glass_lab_sampling_rate_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                EditableValue(shown, rounded.toString()) { typed ->
+                    live = typed.coerceIn(0f, 120f)
+                    onChange(live)
+                }
+            }
+            SkinSlider(
+                value = live.coerceIn(0f, 120f),
+                onValueChange = {
+                    live = it
+                    onChange(it.roundToInt().toFloat())
+                },
+                valueRange = 0f..120f,
+                steps = 119,
+            )
+        }
     }
 }
 
