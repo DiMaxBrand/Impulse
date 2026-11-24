@@ -1,6 +1,5 @@
 package eu.siacs.conversations.ui.glass
 
-import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -39,8 +38,9 @@ class SampledBackdrop internal constructor(
     val intervalMs: Long,
 ) : Backdrop {
     private var coordinates: LayoutCoordinates? = null
-    private var nextCaptureAt = 0L
     private var captureTick by mutableIntStateOf(0)
+    private var capturePending = true
+    private var hasCaptured = false
 
     override val isCoordinatesDependent: Boolean = true
 
@@ -49,6 +49,7 @@ class SampledBackdrop internal constructor(
     }
 
     internal fun requestCaptureFrame() {
+        capturePending = true
         captureTick++
     }
 
@@ -61,14 +62,16 @@ class SampledBackdrop internal constructor(
 
     internal fun shouldCapture(width: Int, height: Int): Boolean {
         if (width <= 0 || height <= 0) return false
-        if (intervalMs == 0L || layer.size.width != width || layer.size.height != height) {
-            nextCaptureAt = SystemClock.uptimeMillis() + intervalMs
+        // Auto on a sub-60 Hz panel uses every draw. Otherwise, once the initial source exists,
+        // only a cadence tick may refresh it. Ordinary scroll/layout invalidations must not pull
+        // the sample forward and silently turn a manual 1 fps cap into a higher rate.
+        if (intervalMs == 0L) return true
+        if (!hasCaptured || capturePending) {
+            capturePending = false
+            hasCaptured = true
             return true
         }
-        val now = SystemClock.uptimeMillis()
-        if (now < nextCaptureAt) return false
-        nextCaptureAt = now + intervalMs
-        return true
+        return false
     }
 
     override fun DrawScope.drawBackdrop(
