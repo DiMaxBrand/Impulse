@@ -50,7 +50,8 @@ class GlassStack internal constructor(
         private set
 
     /** The same screen as this stack, whose elements are drawn by [host]. */
-    fun withFluid(host: FluidGlassHost): GlassStack = GlassStack(base, adaptive).also { it.fluid = host }
+    fun withFluid(host: FluidGlassHost): GlassStack =
+        GlassStack(base, adaptive, includeLayers).also { it.fluid = host }
 
     internal fun allocate(layer: LayerBackdrop): Int {
         layers.add(layer)
