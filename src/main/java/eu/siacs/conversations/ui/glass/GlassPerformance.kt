@@ -22,9 +22,10 @@ import kotlin.math.abs
 
 /**
  * Glass is expensive: blur and refraction run over everything behind it every frame. While a list is
- * scrolling faster than the eye can follow the effect, they are switched off ([lite]) and glass
- * pieces draw as plain tinted bubbles; at a normal pace they are back. A single flag for the whole
- * app, because there is only ever one list scrolling under glass at a time.
+ * scrolling faster than the eye can follow the effect, [FluidGlassLayer] skips those shaders and
+ * draws rounded tinted shapes instead; adaptive-ink readback also pauses. At a normal pace, the full
+ * glass returns. A single flag for the whole app, because there is only ever one list scrolling under
+ * glass at a time.
  */
 object GlassPerformance {
     internal var scrollFast by mutableStateOf(false)

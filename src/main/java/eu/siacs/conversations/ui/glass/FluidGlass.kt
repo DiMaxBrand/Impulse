@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.layout
@@ -557,7 +560,34 @@ fun FluidGlassLayer(
     val cache = remember(scene) { FluidSnapshotCache(scene) }
     val frame = remember(scene) { LayerFrame() }
     val marginPx = with(androidx.compose.ui.platform.LocalDensity.current) { margin.roundToPx() }
+    val lite = GlassPerformance.lite
     Box(modifier) {
+        if (lite) {
+            // While scrolling quickly or moving the keyboard, retain the rounded silhouettes but
+            // skip the blur/refraction RuntimeShaders and the second frosted pass.
+            Canvas(Modifier.matchParentSize().layerBounds(scene, marginPx, frame)) {
+                scene.tick
+                val wash = look.veil.copy(alpha = max(look.veil.alpha, 0.16f))
+                for (shape in scene.shapes()) {
+                    val topLeft = Offset(shape.cx - frame.x - shape.hw, shape.cy - frame.y - shape.hh)
+                    val size = Size(shape.hw * 2f, shape.hh * 2f)
+                    drawRoundRect(
+                        color = wash,
+                        topLeft = topLeft,
+                        size = size,
+                        cornerRadius = CornerRadius(shape.radius, shape.radius),
+                    )
+                    if (shape.tintA > 0f) {
+                        drawRoundRect(
+                            color = Color(shape.tintR, shape.tintG, shape.tintB, shape.tintA),
+                            topLeft = topLeft,
+                            size = size,
+                            cornerRadius = CornerRadius(shape.radius, shape.radius),
+                        )
+                    }
+                }
+            }
+        } else {
         if (look.shadow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val shadowShader = remember { RuntimeShader(SHADOW_SRC) }
             Canvas(Modifier.matchParentSize().layerBounds(scene, marginPx, frame)) {
@@ -613,6 +643,7 @@ fun FluidGlassLayer(
                         },
                     ),
             )
+        }
         }
     }
 }
