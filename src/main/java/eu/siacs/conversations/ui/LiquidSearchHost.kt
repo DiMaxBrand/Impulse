@@ -53,8 +53,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import eu.siacs.conversations.R
 import eu.siacs.conversations.ui.glass.LiquidGlassStyle
 import eu.siacs.conversations.ui.glass.LiquidMenuItem
@@ -62,6 +60,8 @@ import eu.siacs.conversations.ui.glass.LiquidMenuOverlay
 import eu.siacs.conversations.ui.glass.LiquidMorphContainer
 import eu.siacs.conversations.ui.glass.rememberGlassStack
 import eu.siacs.conversations.ui.glass.rememberLiquidMenuState
+import eu.siacs.conversations.ui.glass.rememberSampledBackdrop
+import eu.siacs.conversations.ui.glass.sampledBackdrop
 import kotlinx.coroutines.delay
 
 /**
@@ -80,8 +80,8 @@ fun LiquidConversationsSearchHost(
     content: @Composable () -> Unit,
 ) {
     val textFieldState = rememberTextFieldState()
-    val backdrop = rememberLayerBackdrop()
-    // The glass pieces of this screen look through the list and through each other.
+    val backdrop = rememberSampledBackdrop()
+    // The search bar and menus use the same sampled source cadence as the normal chat glass.
     val glass = rememberGlassStack(backdrop, adaptive = true)
     val qrMenu = rememberLiquidMenuState()
     val fluidHost = eu.siacs.conversations.ui.glass.rememberFluidHost(eu.siacs.conversations.ui.glass.rememberMergingGlass(), reachDp = 6f)
@@ -126,7 +126,7 @@ fun LiquidConversationsSearchHost(
             },
     ) {
         // The list is what shows through the glass.
-        Box(Modifier.fillMaxSize().layerBackdrop(backdrop).background(MaterialTheme.colorScheme.surface)) { content() }
+        Box(Modifier.fillMaxSize().sampledBackdrop(backdrop).background(MaterialTheme.colorScheme.surface)) { content() }
 
         // The list runs up under the status bar, blurred there.
         eu.siacs.conversations.ui.glass.GlassStatusBarBlur(backdrop, Modifier.align(Alignment.TopCenter))
