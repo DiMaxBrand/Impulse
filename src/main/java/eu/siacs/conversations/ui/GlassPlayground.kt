@@ -77,8 +77,6 @@ import eu.siacs.conversations.ui.glass.LiquidGlassStyle
 import eu.siacs.conversations.ui.glass.LiquidSlider
 import eu.siacs.conversations.ui.glass.LiquidToggle
 import eu.siacs.conversations.ui.glass.rememberGlassStack
-import eu.siacs.conversations.ui.glass.rememberSampledBackdrop
-import eu.siacs.conversations.ui.glass.sampledBackdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateListOf
@@ -208,7 +206,7 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
     val density = LocalDensity.current
     // The playground's own page, and (when it arrives from the lab) the lab page too: the glass looks through
     // both, so on the way it bends the lab's rows as they fade out.
-    val pageBackdrop = rememberSampledBackdrop()
+    val pageBackdrop = rememberLayerBackdrop()
     val backdrop: com.kyant.backdrop.Backdrop =
         if (labBackdrop != null) com.kyant.backdrop.backdrops.rememberCombinedBackdrop(labBackdrop, pageBackdrop) else pageBackdrop
     val base = rememberGlassStack(backdrop, adaptive = true)
@@ -382,7 +380,7 @@ internal fun GlassPlayground(origin: Rect?, onBack: () -> Unit, labBackdrop: com
 
     Box(Modifier.fillMaxSize().onGloballyPositioned { rootPos = it.positionInWindow() }) {
         // What the glass looks through: the lab's own colour first, then the playground's page.
-        Box(Modifier.fillMaxSize().sampledBackdrop(pageBackdrop)) {
+        Box(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
             Box(
                 Modifier.fillMaxSize()
                     .graphicsLayer { alpha = ease(win(p.value, 0f, 0.25f)) }

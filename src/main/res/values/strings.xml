@@ -1808,8 +1808,8 @@
     <string name="glass_lab_fringes_summary">Splits the colours on the rim of buttons and bars</string>
     <string name="glass_lab_less_often">Calm glass while scrolling</string>
     <string name="glass_lab_less_often_summary">While a list flies past or the keyboard moves, glass is a picture taken a few times a second</string>
-    <string name="glass_lab_sampling_rate">Backdrop sampling rate</string>
-    <string name="glass_lab_sampling_rate_summary">How often the picture behind the glass updates. Auto follows the display; manual values are capped by it.</string>
+    <string name="glass_lab_sampling_rate">Glass refresh rate</string>
+    <string name="glass_lab_sampling_rate_summary">Controls how often the glass is rendered. Auto renders it 11 fps below the display; the rest of the UI stays at full rate. Manual values set a fixed glass rate.</string>
     <string name="glass_lab_sampling_auto">Auto</string>
     <string name="glass_lab_sampling_fps">%1$d fps</string>
     <string name="glass_lab_bar_blur">Blur under the system bars</string>
