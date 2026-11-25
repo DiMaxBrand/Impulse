@@ -4211,7 +4211,7 @@ private fun MediaGroupRow(
     val tailInset = if (item.lastOfGroup) TAIL_WIDTH else 0.dp
     val shape = rememberBubbleShape(item.firstOfGroup, item.lastOfGroup, atEnd)
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier = Modifier
@@ -4374,6 +4374,40 @@ private fun MediaGroupRow(
                     }
                 }
             }
+        }
+        // A media group is represented by one grid row, so it does not pass through MessageRow's
+        // normal reaction-chip rendering. Reactions are sent against the group's last media
+        // message (the same representative used by the group action menu); render that message's
+        // reactions beneath the shared tile so optimistic and received reactions are visible.
+        ReactionChips(
+            message = messages.last(),
+            outgoing = outgoing,
+            alignEnd = atEnd,
+            revision = revision,
+            listener = listener,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = if (atEnd) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 15.dp,
+                    end = if (atEnd) (if (showOwnAvatar) 10.dp + 38.dp else 10.dp) else 48.dp,
+                ),
+        )
+        // The caption is a separate message entity. Its own long-press menu reacts to that
+        // message rather than the media representative, so render its chips as well when present.
+        item.caption?.let { caption ->
+            ReactionChips(
+                message = caption,
+                outgoing = outgoing,
+                alignEnd = atEnd,
+                revision = revision,
+                listener = listener,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = if (atEnd) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 15.dp,
+                        end = if (atEnd) (if (showOwnAvatar) 10.dp + 38.dp else 10.dp) else 48.dp,
+                    ),
+            )
         }
     }
 }
