@@ -1,6 +1,7 @@
 package eu.siacs.conversations.ui.glass
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -17,6 +18,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+
+/** Screens with continuous glass choreography can opt out of throttling for their whole lifetime. */
+val LocalGlassRateLimitEnabled = compositionLocalOf { true }
 
 /** A rasterized glass surface that keeps RuntimeShader work off intervening display frames. */
 @Stable
@@ -62,9 +66,17 @@ fun Modifier.glassSnapshot(geometryKey: Any? = null): Modifier {
     val layer = rememberGraphicsLayer()
     val refreshRate = LocalView.current.display?.refreshRate ?: 60f
     val interval = glassSurfaceIntervalNanos(refreshRate, GlassTuning.samplingRate)
-    val sample = remember(geometryKey, layer, interval) { GlassSurfaceSample(layer, interval) }
-    LaunchedEffect(sample) { sample.freezeCapturedFrames() }
+    val rateLimitEnabled = LocalGlassRateLimitEnabled.current
+    val sample = remember(geometryKey, layer, interval, rateLimitEnabled) { GlassSurfaceSample(layer, interval) }
+    LaunchedEffect(sample, rateLimitEnabled) {
+        if (rateLimitEnabled) sample.freezeCapturedFrames()
+    }
     return drawWithContent {
+        if (!rateLimitEnabled) {
+            // Draw live throughout explicitly animated screens such as the Glass Playground.
+            drawContent()
+            return@drawWithContent
+        }
         if (sample.shouldCapture(size.width.toInt(), size.height.toInt())) {
             sample.layer.record(IntSize(size.width.toInt(), size.height.toInt())) {
                 this@drawWithContent.drawContent()

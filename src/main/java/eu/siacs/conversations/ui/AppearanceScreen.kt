@@ -5,6 +5,8 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.graphicsLayer
 import com.kyant.backdrop.backdrops.layerBackdrop
 import androidx.compose.animation.core.tween
@@ -102,6 +104,7 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import eu.siacs.conversations.ui.glass.LiquidSlider
 import eu.siacs.conversations.ui.glass.LiquidToggle
 import eu.siacs.conversations.ui.glass.LocalGlassSkin
+import eu.siacs.conversations.ui.glass.LocalGlassRateLimitEnabled
 
 /** The preference store behind the Appearance screen: every key is the one the rest of the app
  * already reads (old Interface screen) or an [AppearanceState] key. */
@@ -193,7 +196,13 @@ internal fun AppearanceScreen(
     playgroundOrigin: androidx.compose.ui.geometry.Rect? = null,
     onClosePlayground: () -> Unit = {},
 ) {
+  val playgroundVisibility = remember { MutableTransitionState(false) }
+  playgroundVisibility.targetState = page == AppearancePage.PLAYGROUND
+  // Keep every glass surface live while the playground is entering, open, or exiting. In
+  // particular, don't cache the momentary transparent shapes used at the start of its morph.
+  val playgroundOnScreen = playgroundVisibility.currentState || playgroundVisibility.targetState
   val labBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
+  CompositionLocalProvider(LocalGlassRateLimitEnabled provides !playgroundOnScreen) {
   Box(Modifier.fillMaxSize()) {
     // The playground arrives over the lab, which stays where it is underneath.
     val shownPage = if (page == AppearancePage.PLAYGROUND) AppearancePage.LAB else page
@@ -222,12 +231,13 @@ internal fun AppearanceScreen(
         }
     }
     AnimatedVisibility(
-        visible = page == AppearancePage.PLAYGROUND,
+        visibleState = playgroundVisibility,
         enter = EnterTransition.None,
         exit = fadeOut(tween(450)),
     ) {
         GlassPlayground(origin = playgroundOrigin, onBack = onClosePlayground, labBackdrop = labBackdrop)
     }
+  }
   }
 }
 
