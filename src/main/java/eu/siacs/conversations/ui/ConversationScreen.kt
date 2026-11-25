@@ -557,6 +557,19 @@ private sealed interface ChatItem {
     }
 }
 
+/** Stable identities for the messages represented by a row, independent of grouping/reordering. */
+private fun ChatItem.messageUuids(): Set<String> = when (this) {
+    is ChatItem.Msg -> buildSet {
+        message.getUuid()?.let(::add)
+        caption?.getUuid()?.let(::add)
+    }
+    is ChatItem.MediaGroup -> buildSet {
+        messages.forEach { it.getUuid()?.let(::add) }
+        caption?.getUuid()?.let(::add)
+    }
+    is ChatItem.DatePill, is ChatItem.NewMessagesPill -> emptySet()
+}
+
 /** Would render as its own photo/video thumbnail — the unit media grouping operates on, and (via
  * ConversationComposeFragment.onOpenMessage()) what decides whether a tap opens the in-app
  * MediaViewerActivity instead of handing off to an external app. PDFs get fileParams.width/height
@@ -2853,33 +2866,46 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
         hasPositioned.value = true
     }
 
-    // Keep pinned to the bottom when a new message arrives, or the typing indicator
+    // Keep pinned to the bottom when a genuinely new message arrives, or the typing indicator
     // appears/disappears, while we are (nearly) there. The typing bubble is its own list item
     // (added/removed above), which shifts every real message's index by one — without `isTyping`
     // as a key here, that shift never re-triggers this check, so the indicator can slide in
     // below the visible fold and just sit there unseen until something else happens to scroll.
-    // A shortened navigation window is not a new incoming message. Using its first row here
-    // restarts the bottom-follow effect when the window is installed or removed.
-    val newestKey = fullItems.firstOrNull()?.key
-    // The entrance pop is for a message arriving while this chat is already settled, not for
-    // whichever historical message happens to be newest when the screen first composes. Without
-    // this guard every newly-created LazyColumn item at index 0 starts at 80% scale; recreating
-    // that item can make an otherwise-idle reply bubble visibly jump.
-    var observedNewestKey by remember(conversation?.getUuid()) { mutableStateOf<String?>(null) }
+    // The nonce below is incremented only when a new message identity appears in the newest row;
+    // row-key changes from regrouping or a shortened navigation window do not start a scroll.
+    val newestItem = fullItems.firstOrNull()
+    val newestKey = newestItem?.key
+    val currentMessageUuids = fullItems.flatMapTo(linkedSetOf()) { it.messageUuids() }
+    val newestMessageUuids = newestItem?.messageUuids().orEmpty()
+    // Track message identities, not just the current first row key. Grouping can change a row's
+    // key without adding a message, which used to replay both the entrance pop and bottom follow.
+    var observedMessageUuids by remember(conversation?.getUuid()) { mutableStateOf<Set<String>?>(null) }
+    var poppedNewestRowKeys by remember(conversation?.getUuid()) { mutableStateOf<Set<String>>(emptySet()) }
     var pendingNewestPopKey by remember(conversation?.getUuid()) { mutableStateOf<String?>(null) }
-    LaunchedEffect(conversation?.getUuid(), newestKey, rowAnimationsReady) {
-        val currentKey = newestKey ?: return@LaunchedEffect
+    var newestArrivalNonce by remember(conversation?.getUuid()) { mutableIntStateOf(0) }
+    LaunchedEffect(conversation?.getUuid(), currentMessageUuids, newestMessageUuids, rowAnimationsReady, hasMessages) {
+        if (!hasMessages) return@LaunchedEffect
         if (!rowAnimationsReady) {
             // Initial restore, navigation jumps and active scrolling can all replace the visible
-            // projection. Treat their final row as the baseline; none is a new-message arrival.
-            observedNewestKey = currentKey
+            // projection. Treat its message identities as the baseline, not as new arrivals.
+            observedMessageUuids = currentMessageUuids
             pendingNewestPopKey = null
             return@LaunchedEffect
         }
-        val previousKey = observedNewestKey
-        observedNewestKey = currentKey
-        if (previousKey != null && previousKey != currentKey) {
-            pendingNewestPopKey = currentKey
+        val previousMessageUuids = observedMessageUuids
+        observedMessageUuids = currentMessageUuids
+        if (previousMessageUuids == null) return@LaunchedEffect
+
+        val newlyAddedUuids = currentMessageUuids - previousMessageUuids
+        if (newlyAddedUuids.any { it in newestMessageUuids }) {
+            // Auto-follow and the pop are tied to a real new message in the newest row, not to
+            // a row-key change caused by regrouping, read markers, or a scrolling projection.
+            newestArrivalNonce++
+            val key = newestKey
+            if (key != null && key !in poppedNewestRowKeys) {
+                poppedNewestRowKeys = poppedNewestRowKeys + key
+                pendingNewestPopKey = key
+            }
         }
     }
     val launchIds = state.sendLaunches.flights.map { it.uuid }
@@ -2923,7 +2949,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
             flight.prepared = true
         }
     }
-    LaunchedEffect(newestKey, showReplyIndicator) {
+    LaunchedEffect(newestArrivalNonce, showReplyIndicator) {
         if (state.sendLaunches.flights.isNotEmpty()) return@LaunchedEffect
         // A message that's also the first of a new day inserts *two* leading items — itself and
         // a fresh DatePill right after it — not just one, so the "still near the bottom"
@@ -3156,7 +3182,7 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                             item = item,
                             legacyMessageLayout = legacyMessageLayout,
                             isNewest = !jumping && index == 0 && item.key == pendingNewestPopKey,
-                            onNewestPopFinished = { key ->
+                            onNewestPopStarted = { key ->
                                 if (pendingNewestPopKey == key) pendingNewestPopKey = null
                             },
                             highlighted = item.key == highlightKey,
@@ -3852,7 +3878,7 @@ private fun MessageRow(
     item: ChatItem.Msg,
     legacyMessageLayout: Boolean,
     isNewest: Boolean,
-    onNewestPopFinished: (String) -> Unit,
+    onNewestPopStarted: (String) -> Unit,
     highlighted: Boolean,
     isBeingEdited: Boolean,
     // Message objects mutate internally (status, transfer progress); passing the revision
@@ -3899,9 +3925,19 @@ private fun MessageRow(
     val launching = launches?.contains(item.key) == true
     var launched by remember(item.key) { mutableStateOf(launching) }
     androidx.compose.runtime.SideEffect { if (launching) launched = true }
+    // Keep the one-shot request local after consuming it in the parent. LazyColumn can dispose a
+    // row as it crosses the viewport edge; if the parent waited for animation completion to clear
+    // the request, that row would re-enter at 80% and replay the spring on every scroll pass.
+    var newestPopRequested by remember(item.key) { mutableStateOf(isNewest) }
+    var newestPopStarted by remember(item.key) { mutableStateOf(false) }
+    LaunchedEffect(isNewest) {
+        if (isNewest && !newestPopStarted) newestPopRequested = true
+    }
     val pop = remember(item.key) { Animatable(if (isNewest && !AppearanceState.noMotion && !launching) 0.8f else 1f) }
-    LaunchedEffect(item.key, isNewest, AppearanceState.noMotion, launching) {
-        if (isNewest && !AppearanceState.noMotion && !launching && !launched) {
+    LaunchedEffect(item.key, newestPopRequested, AppearanceState.noMotion, launching) {
+        if (newestPopRequested && !newestPopStarted && !AppearanceState.noMotion && !launching && !launched) {
+            newestPopStarted = true
+            onNewestPopStarted(item.key)
             // `isNewest` can become true after this LazyColumn item is already composed. Snap
             // immediately before animating so that case gets the same entrance as a first-frame
             // composition, without showing a full-size frame and then popping backward.
@@ -3913,10 +3949,13 @@ private fun MessageRow(
                     stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
                 ),
             )
-            onNewestPopFinished(item.key)
+            newestPopRequested = false
         } else {
+            if (newestPopRequested && !newestPopStarted) {
+                newestPopStarted = true
+                onNewestPopStarted(item.key)
+            }
             pop.snapTo(1f)
-            if (isNewest) onNewestPopFinished(item.key)
         }
     }
 
