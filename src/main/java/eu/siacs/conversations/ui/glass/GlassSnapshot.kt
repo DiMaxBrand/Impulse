@@ -18,13 +18,12 @@ import kotlinx.coroutines.delay
 
 /** GPU-only cache for a rendered glass surface, refreshed by the selected cadence. */
 @Stable
-private class GlassSurfaceSample(val layer: GraphicsLayer, val intervalMs: Long) {
+private class GlassSurfaceSample(val layer: GraphicsLayer, intervalMs: Long) {
     private var tick by mutableIntStateOf(0)
-    private var pending = true
-    private var captured = false
+    private val captureGate = SampledCaptureGate(intervalMs)
 
     fun request() {
-        pending = true
+        captureGate.request()
         tick++
     }
 
@@ -32,14 +31,7 @@ private class GlassSurfaceSample(val layer: GraphicsLayer, val intervalMs: Long)
         tick
     }
 
-    fun shouldCapture(): Boolean {
-        if (!captured || pending) {
-            pending = false
-            captured = true
-            return true
-        }
-        return false
-    }
+    fun shouldCapture(): Boolean = captureGate.consumeIfRequested(android.os.SystemClock.elapsedRealtime())
 }
 
 @Composable

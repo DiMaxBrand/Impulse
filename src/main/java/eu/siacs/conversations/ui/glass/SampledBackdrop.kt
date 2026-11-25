@@ -25,6 +25,25 @@ import com.kyant.backdrop.Backdrop
 import kotlinx.coroutines.delay
 import kotlin.math.ceil
 
+/** Shared gate for timed source captures; redraws alone never make a fresh sample. */
+internal class SampledCaptureGate(private val minimumIntervalMs: Long) {
+    private var pending = true
+    private var lastCaptureAtMs: Long? = null
+
+    fun request() {
+        pending = true
+    }
+
+    fun consumeIfRequested(nowMs: Long): Boolean {
+        if (!pending) return false
+        val lastCaptureAt = lastCaptureAtMs
+        if (lastCaptureAt != null && nowMs - lastCaptureAt < minimumIntervalMs) return false
+        pending = false
+        lastCaptureAtMs = nowMs
+        return true
+    }
+}
+
 /**
  * A screen-sized backdrop that stays on the GPU and is refreshed less often than the display.
  *
@@ -39,8 +58,7 @@ class SampledBackdrop internal constructor(
 ) : Backdrop {
     private var coordinates: LayoutCoordinates? = null
     private var captureTick by mutableIntStateOf(0)
-    private var capturePending = true
-    private var hasCaptured = false
+    private val captureGate = SampledCaptureGate(intervalMs)
 
     override val isCoordinatesDependent: Boolean = true
 
@@ -49,7 +67,7 @@ class SampledBackdrop internal constructor(
     }
 
     internal fun requestCaptureFrame() {
-        capturePending = true
+        captureGate.request()
         captureTick++
     }
 
@@ -66,12 +84,7 @@ class SampledBackdrop internal constructor(
         // only a cadence tick may refresh it. Ordinary scroll/layout invalidations must not pull
         // the sample forward and silently turn a manual 1 fps cap into a higher rate.
         if (intervalMs == 0L) return true
-        if (!hasCaptured || capturePending) {
-            capturePending = false
-            hasCaptured = true
-            return true
-        }
-        return false
+        return captureGate.consumeIfRequested(android.os.SystemClock.elapsedRealtime())
     }
 
     override fun DrawScope.drawBackdrop(

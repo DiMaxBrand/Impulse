@@ -7672,7 +7672,6 @@ private fun ModerationDisclaimerDialog(
 
 @Composable
 internal fun ComposerBanner(state: ConversationScreenState, listener: ConversationScreenListener) {
-    ReplyStatusComposerChip(state, listener)
     // Revision read keeps this banner in sync with nextCounterpart changes.
     val revision = state.revision.intValue
     val conversation = state.conversation.value
@@ -8561,10 +8560,15 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         else Modifier.drawBarArch(state.rubber, archColor)
 
     SharedTransitionLayout {
+    Column(
+        Modifier.fillMaxWidth().onSizeChanged { state.inputBarHeightPx.intValue = it.height },
+    ) {
+    // Keep the selected reply status visually separate from the gray draft composer. It describes
+    // the sender's current status; it is not part of the unsent message being typed below.
+    ReplyStatusComposerChip(state, listener)
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainer,
-        // The attach card sits right above the whole bar, so it needs to know how tall that is.
-        modifier = archModifier.onSizeChanged { state.inputBarHeightPx.intValue = it.height },
+        modifier = archModifier,
     ) {
         Column {
         ComposerBanner(state, listener)
@@ -8797,6 +8801,7 @@ private fun InputBar(state: ConversationScreenState, listener: ConversationScree
         } // end else (not recording)
         } // end AnimatedContent content
         }
+    }
     }
     } // end SharedTransitionLayout
 }
