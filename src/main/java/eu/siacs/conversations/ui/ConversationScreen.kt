@@ -3899,10 +3899,10 @@ private fun MessageRow(
     launches: SendLaunchState? = null,
     modifier: Modifier = Modifier,
 ) {
-    var footerBounds by remember(item.key) { mutableStateOf<Pair<Float, Float>?>(null) }
-    var reactionBounds by remember(item.key) { mutableStateOf<Pair<Float, Float>?>(null) }
-    val reactionLift = if (footerBounds != null && reactionBounds != null &&
-        (reactionBounds!!.second + 6 < footerBounds!!.first || reactionBounds!!.first > footerBounds!!.second + 6)) 6.dp else (-4).dp
+    // Reactions intentionally overlap the bubble in every alignment. Deriving this lift from
+    // horizontal overlap with the footer made outgoing reactions move down when they lined up
+    // with the timestamp, leaving a visible gap below the bubble.
+    val reactionLift = 12.dp
     val message = item.message
     val outgoing = message.status != Message.STATUS_RECEIVED
     val isGroupChat = message.getConversation().getMode() == Conversational.MODE_MULTI
@@ -4105,7 +4105,6 @@ private fun MessageRow(
             MessageBubble(
                 item = item,
                 legacyMessageLayout = legacyMessageLayout,
-                onFooterBounds = { footerBounds = it },
                 rowModifier = (if (showOwnAvatar) Modifier.weight(1f, fill = false) else Modifier)
                     .then(if (showOwnAvatar || showAvatarSlot) Modifier.offset(x = avatarTailAlignment(item.lastOfGroup, atEnd)) else Modifier),
                 outgoing = outgoing,
@@ -4135,7 +4134,6 @@ private fun MessageRow(
             }
         }
         ReactionChips(
-            onHorizontalBounds = { reactionBounds = it },
             message = message,
             outgoing = outgoing,
             alignEnd = atEnd,
@@ -4902,7 +4900,6 @@ private fun ReactionChips(
     revision: Int,
     listener: ConversationScreenListener,
     modifier: Modifier = Modifier,
-    onHorizontalBounds: (Pair<Float, Float>) -> Unit = {},
 ) {
     val reactionTargets = remember(message, relatedMessages) {
         (listOf(message) + relatedMessages).distinctBy { it.getUuid() }
@@ -4924,11 +4921,7 @@ private fun ReactionChips(
     if (aggregated.reactions.isEmpty()) return
     Box(modifier = modifier) {
     androidx.compose.foundation.layout.FlowRow(
-        modifier = Modifier.align(if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart)
-            .onGloballyPositioned {
-                val bounds = it.boundsInWindow()
-                onHorizontalBounds(bounds.left to bounds.right)
-            },
+        modifier = Modifier.align(if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart),
         horizontalArrangement = Arrangement.spacedBy(4.dp, if (alignEnd) Alignment.End else Alignment.Start),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -5117,7 +5110,6 @@ private fun MessageBubble(
     item: ChatItem.Msg,
     legacyMessageLayout: Boolean,
     rowModifier: Modifier = Modifier,
-    onFooterBounds: (Pair<Float, Float>) -> Unit = {},
     outgoing: Boolean,
     alignEnd: Boolean,
     highlighted: Boolean,
@@ -5279,7 +5271,7 @@ private fun MessageBubble(
                     TextWithMessageStatus(
                         message, revision, contentColor, { onLongPress(message) },
                         matchBubbleWidth = repliedToId != null,
-                        footer = { Column { MessageFooter(message, outgoing, revision, legacyMessageLayout = legacyMessageLayout, onHorizontalBounds = onFooterBounds) } },
+                        footer = { Column { MessageFooter(message, outgoing, revision, legacyMessageLayout = legacyMessageLayout) } },
                     )
                 } else {
                     MessageContent(
@@ -5327,7 +5319,6 @@ private fun MessageBubble(
                             statusMessage = message,
                             groupMessages = if (caption != null) listOf(message) else null,
                             caption = caption,
-                            onHorizontalBounds = onFooterBounds,
                         )
                     }
                 }
@@ -6374,7 +6365,6 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     groupMessages: List<Message>? = null,
     // The text sent with the photos (shown inside their bubble): its status is the bubble's.
     caption: Message? = null,
-    onHorizontalBounds: (Pair<Float, Float>) -> Unit = {},
 ) {
     // Message is a mutated-in-place Java entity; reading `revision` here is what
     // makes Compose re-read message.status after an in-place status change.
@@ -6478,10 +6468,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.MessageFooter(
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.align(Alignment.End).padding(top = 2.dp).onGloballyPositioned {
-            val bounds = it.boundsInWindow()
-            onHorizontalBounds(bounds.left to bounds.right)
-        },
+        modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
     ) {
         val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
         val footerText = remember(
