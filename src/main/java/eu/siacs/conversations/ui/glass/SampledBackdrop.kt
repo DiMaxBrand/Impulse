@@ -5,11 +5,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
@@ -22,7 +24,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import com.kyant.backdrop.Backdrop
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.ceil
 
 /** Shared gate for timed source captures; redraws alone never make a fresh sample. */
@@ -59,6 +63,8 @@ class SampledBackdrop internal constructor(
     private var coordinates: LayoutCoordinates? = null
     private var captureTick by mutableIntStateOf(0)
     private val captureGate = SampledCaptureGate(intervalMs)
+    private var captureRecorded: CompletableDeferred<Unit>? = null
+    private var frozenFrame by mutableStateOf<ImageBitmap?>(null)
 
     override val isCoordinatesDependent: Boolean = true
 
@@ -68,7 +74,30 @@ class SampledBackdrop internal constructor(
 
     internal fun requestCaptureFrame() {
         captureGate.request()
+        captureRecorded = CompletableDeferred()
         captureTick++
+    }
+
+    internal suspend fun awaitCaptureRecorded(): Boolean {
+        val signal = captureRecorded ?: return false
+        return withTimeoutOrNull((intervalMs * 2).coerceAtLeast(1_000L)) {
+            signal.await()
+            true
+        } ?: false
+    }
+
+    internal fun onCaptureRecorded() {
+        captureRecorded?.complete(Unit)
+    }
+
+    internal suspend fun freezeCapturedFrame() {
+        try {
+            // GraphicsLayer can retain references to child RenderNodes. Rasterize its current contents
+            // so those child nodes cannot keep changing the supposedly sampled backdrop at display FPS.
+            frozenFrame = layer.toImageBitmap()
+        } catch (error: Exception) {
+            android.util.Log.w("SampledBackdrop", "Could not freeze sampled glass source", error)
+        }
     }
 
     internal fun observeCaptureCadence() {
@@ -97,12 +126,19 @@ class SampledBackdrop internal constructor(
         // The source is screen-sized. Its contents retain ordinary translation alignment while
         // the glass node itself applies its live transforms. The library's inverse-transform
         // helper is internal, so we deliberately do not reflect into a private API here.
+        // Observing both values invalidates the backdrop draw when a newly sampled bitmap arrives.
+        captureTick
+        val image = frozenFrame
         val offset = try {
             source.localPositionOf(target)
         } catch (_: Exception) {
             target.positionInWindow() - source.positionInWindow()
         }
-        translate(-offset.x, -offset.y) { drawLayer(layer) }
+        if (image != null) {
+            translate(-offset.x, -offset.y) { drawImage(image) }
+        } else {
+            translate(-offset.x, -offset.y) { drawLayer(layer) }
+        }
     }
 }
 
@@ -130,11 +166,10 @@ fun rememberSampledBackdrop(): SampledBackdrop {
     val interval = sampledBackdropInterval(refreshRate, GlassTuning.samplingRate)
     val backdrop = remember(layer, interval) { SampledBackdrop(layer, interval) }
     LaunchedEffect(backdrop, interval) {
-        if (interval > 0L) {
-            while (true) {
-                delay(interval)
-                backdrop.requestCaptureFrame()
-            }
+        while (true) {
+            backdrop.requestCaptureFrame()
+            if (backdrop.awaitCaptureRecorded()) backdrop.freezeCapturedFrame()
+            delay(interval.coerceAtLeast(1L))
         }
     }
     return backdrop
@@ -151,5 +186,6 @@ fun Modifier.sampledBackdrop(backdrop: SampledBackdrop): Modifier =
                 backdrop.layer.record(IntSize(size.width.toInt(), size.height.toInt())) {
                     this@drawWithContent.drawContent()
                 }
+                backdrop.onCaptureRecorded()
             }
         }
