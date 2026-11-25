@@ -130,14 +130,11 @@ fun LiquidInputBar(
     // bottom. It handles no touches of its own, the list underneath still scrolls.
     Box(modifier.fillMaxSize()) {
         val barModifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-            // Measure outside the inset padding so the list reserves the full overlay height,
-            // including the gesture-bar gap. If measured inside the padding, the final message
-            // can slide underneath the composer by exactly the omitted inset.
-            .onSizeChanged { onBarHeight(it.height) }
             // The navigation inset only places the composer above the gesture area. It must not
-            // become a changing list inset: Android may update it while the chat is idle, which
+            // become list padding: Android may change that inset while the chat is idle, which
             // reanchors a reversed LazyColumn and visibly moves the bottom message.
             .padding(bottom = rememberGlassNavInset())
+            .onSizeChanged { onBarHeight(it.height) }
         val barContent: @Composable () -> Unit = {
             if (readOnly) {
                 ReadOnlyBubble(bar)
