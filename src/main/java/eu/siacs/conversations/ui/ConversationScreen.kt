@@ -4405,12 +4405,11 @@ private fun MediaGroupRow(
                 }
             }
         }
-        // A media group is represented by one grid row, so it does not pass through MessageRow's
-        // normal reaction-chip rendering. Reactions are sent against the group's last media
-        // message (the same representative used by the group action menu); render that message's
-        // reactions beneath the shared tile so optimistic and received reactions are visible.
+        // A media group is one visual message, including its optional caption. Render one
+        // reaction flow for all of its stanzas and aggregate matching emoji across them.
         ReactionChips(
-            message = messages.last(),
+            message = item.caption ?: messages.last(),
+            relatedMessages = messages,
             outgoing = outgoing,
             alignEnd = atEnd,
             revision = revision,
@@ -4422,23 +4421,6 @@ private fun MediaGroupRow(
                     end = if (atEnd) (if (showOwnAvatar) 10.dp + 38.dp else 10.dp) else 48.dp,
                 ),
         )
-        // The caption is a separate message entity. Its own long-press menu reacts to that
-        // message rather than the media representative, so render its chips as well when present.
-        item.caption?.let { caption ->
-            ReactionChips(
-                message = caption,
-                outgoing = outgoing,
-                alignEnd = atEnd,
-                revision = revision,
-                listener = listener,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = if (atEnd) 48.dp else if (showAvatarSlot) 8.dp + 32.dp + 6.dp else 15.dp,
-                        end = if (atEnd) (if (showOwnAvatar) 10.dp + 38.dp else 10.dp) else 48.dp,
-                    ),
-            )
-        }
     }
 }
 
@@ -4875,6 +4857,7 @@ internal val LocalReactionBlink =
 @Composable
 private fun ReactionChips(
     message: Message,
+    relatedMessages: List<Message> = emptyList(),
     outgoing: Boolean,
     alignEnd: Boolean = outgoing,
     revision: Int,
@@ -4882,20 +4865,33 @@ private fun ReactionChips(
     modifier: Modifier = Modifier,
     onHorizontalBounds: (Pair<Float, Float>) -> Unit = {},
 ) {
-    val aggregated = remember(revision) { message.getAggregatedReactions() }
+    val reactionTargets = remember(message, relatedMessages) {
+        (listOf(message) + relatedMessages).distinctBy { it.getUuid() }
+    }
+    val aggregated = remember(revision, reactionTargets) {
+        val perMessage = reactionTargets.map { it.getAggregatedReactions() }
+        val counts = linkedMapOf<String, Int>()
+        perMessage.flatMap { it.reactions }.forEach { entry ->
+            counts[entry.key] = (counts[entry.key] ?: 0) + entry.value
+        }
+        val orderedReactions = counts.entries
+            .sortedByDescending { it.value }
+            .map { java.util.AbstractMap.SimpleImmutableEntry(it.key, it.value) }
+        Reaction.Aggregated(orderedReactions, perMessage.flatMap { it.ourReactions }.toSet())
+    }
     val canAdd = !outgoing && Restrictions.reactionsPerUserRemaining(message)
     // Only render the row when there are actual reactions. The + button is shown inline when
     // reactions exist; for messages with no reactions the long-press sheet has "Add reaction".
     if (aggregated.reactions.isEmpty()) return
     Box(modifier = modifier) {
-    Row(
+    androidx.compose.foundation.layout.FlowRow(
         modifier = Modifier.align(if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart)
             .onGloballyPositioned {
                 val bounds = it.boundsInWindow()
                 onHorizontalBounds(bounds.left to bounds.right)
             },
         horizontalArrangement = Arrangement.spacedBy(4.dp, if (alignEnd) Alignment.End else Alignment.Start),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         aggregated.reactions.forEach { entry ->
             val emoji = entry.key
@@ -4975,9 +4971,22 @@ private fun ReactionChips(
                         modifier =
                             Modifier.graphicsLayer { alpha = blinkAlpha.value }.combinedClickable(
                                 onClick = {
-                                    val next = aggregated.ourReactions.toMutableSet()
-                                    if (isOurs) next.remove(emoji) else next.add(emoji)
-                                    listener.onSendReactions(message, next)
+                                    if (isOurs) {
+                                        // A group is presented as one reaction target. Remove
+                                        // this user's copy wherever it currently lives in the
+                                        // group's media/caption stanzas.
+                                        reactionTargets.forEach { target ->
+                                            val own = target.getAggregatedReactions().ourReactions
+                                            if (emoji in own) {
+                                                listener.onSendReactions(target, own - emoji)
+                                            }
+                                        }
+                                    } else {
+                                        // New group reactions live on the representative stanza
+                                        // (caption when present, otherwise the final media item).
+                                        val next = message.getAggregatedReactions().ourReactions + emoji
+                                        listener.onSendReactions(message, next)
+                                    }
                                 },
                                 onLongClick = { listener.onShowReactionDetails(message, emoji) },
                             ),
