@@ -2861,6 +2861,27 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
     // A shortened navigation window is not a new incoming message. Using its first row here
     // restarts the bottom-follow effect when the window is installed or removed.
     val newestKey = fullItems.firstOrNull()?.key
+    // The entrance pop is for a message arriving while this chat is already settled, not for
+    // whichever historical message happens to be newest when the screen first composes. Without
+    // this guard every newly-created LazyColumn item at index 0 starts at 80% scale; recreating
+    // that item can make an otherwise-idle reply bubble visibly jump.
+    var observedNewestKey by remember(conversation?.getUuid()) { mutableStateOf<String?>(null) }
+    var pendingNewestPopKey by remember(conversation?.getUuid()) { mutableStateOf<String?>(null) }
+    LaunchedEffect(conversation?.getUuid(), newestKey, rowAnimationsReady) {
+        val currentKey = newestKey ?: return@LaunchedEffect
+        if (!rowAnimationsReady) {
+            // Initial restore, navigation jumps and active scrolling can all replace the visible
+            // projection. Treat their final row as the baseline; none is a new-message arrival.
+            observedNewestKey = currentKey
+            pendingNewestPopKey = null
+            return@LaunchedEffect
+        }
+        val previousKey = observedNewestKey
+        observedNewestKey = currentKey
+        if (previousKey != null && previousKey != currentKey) {
+            pendingNewestPopKey = currentKey
+        }
+    }
     val launchIds = state.sendLaunches.flights.map { it.uuid }
     val draggingMessages by listState.interactionSource.collectIsDraggedAsState()
     LaunchedEffect(draggingMessages, jumping) {
@@ -3134,7 +3155,10 @@ private fun androidx.compose.animation.SharedTransitionScope.MessageList(
                         MessageRow(
                             item = item,
                             legacyMessageLayout = legacyMessageLayout,
-                            isNewest = !jumping && index == 0,
+                            isNewest = !jumping && index == 0 && item.key == pendingNewestPopKey,
+                            onNewestPopFinished = { key ->
+                                if (pendingNewestPopKey == key) pendingNewestPopKey = null
+                            },
                             highlighted = item.key == highlightKey,
                             isBeingEdited = state.correcting.value?.getUuid() == item.message.getUuid()
                                     || state.remoteEditingIds.value.contains(item.message.getUuid()),
@@ -3828,6 +3852,7 @@ private fun MessageRow(
     item: ChatItem.Msg,
     legacyMessageLayout: Boolean,
     isNewest: Boolean,
+    onNewestPopFinished: (String) -> Unit,
     highlighted: Boolean,
     isBeingEdited: Boolean,
     // Message objects mutate internally (status, transfer progress); passing the revision
@@ -3877,16 +3902,21 @@ private fun MessageRow(
     val pop = remember(item.key) { Animatable(if (isNewest && !AppearanceState.noMotion && !launching) 0.8f else 1f) }
     LaunchedEffect(item.key, isNewest, AppearanceState.noMotion, launching) {
         if (isNewest && !AppearanceState.noMotion && !launching && !launched) {
+            // `isNewest` can become true after this LazyColumn item is already composed. Snap
+            // immediately before animating so that case gets the same entrance as a first-frame
+            // composition, without showing a full-size frame and then popping backward.
+            pop.snapTo(0.8f)
             pop.animateTo(
                 1f,
-                animationSpec =
-                    androidx.compose.animation.core.spring(
-                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
-                    ),
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                    stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+                ),
             )
+            onNewestPopFinished(item.key)
         } else {
             pop.snapTo(1f)
+            if (isNewest) onNewestPopFinished(item.key)
         }
     }
 
