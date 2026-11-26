@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.collectLatest
@@ -59,7 +60,10 @@ var lastSampleError by mutableStateOf<String?>(null)
  */
 internal class RecordRequest {
     @Volatile var due = true
+    @Volatile var recorded = 0L
+        private set
     fun take(): Boolean { val d = due; due = false; return d }
+    fun captured() { recorded++ }
 }
 
 class GlassInk internal constructor(
@@ -127,6 +131,7 @@ internal fun DrawScope.recordGlassInk(ink: GlassInk, sourceSize: Size = size, dr
     ink.layer.record(capture) {
         scale(capture.width / sourceSize.width, capture.height / sourceSize.height, Offset.Zero) { draw() }
     }
+    ink.request.captured()
 }
 
 @Composable
@@ -143,6 +148,7 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
     val baseLuma = MaterialTheme.colorScheme.background.luminance()
     LaunchedEffect(layer, enabled, baseLuma) {
         if (!enabled) return@LaunchedEffect
+        var lastRead = -1L
         while (isActive) {
             // While the list flies past nobody reads the text; skip the readback and catch up after.
             if (GlassPerformance.lite || InkSampling.moving > 0) {
@@ -152,18 +158,27 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
             // Ask for a fresh recording and give a frame time to draw it.
             request.due = true
             delay(60)
+            // The layer may not have drawn since the request. Re-reading it would stall on the
+            // GPU and recompute an identical grid; leave the request pending for the next draw.
+            if (request.recorded == lastRead || request.recorded == 0L) {
+                delay(250)
+                continue
+            }
             val l = try {
                 InkSampling.mutex.withLock {
                     val wait = InkSampling.budget.waitMillis(android.os.SystemClock.uptimeMillis())
                     if (wait > 0L) delay(wait)
                     if (GlassPerformance.lite || InkSampling.moving > 0) null else {
                         InkSampling.budget.started(android.os.SystemClock.uptimeMillis())
+                        lastRead = request.recorded
                         sampleLuma(layer, baseLuma) { next ->
                             val old = grid
                             if (old == null || !old.data.contentEquals(next.data)) grid = next
                         }
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 lastSampleError = e.javaClass.simpleName + ": " + e.message
                 null
