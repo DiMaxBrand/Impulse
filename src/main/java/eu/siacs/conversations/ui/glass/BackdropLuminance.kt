@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.collectLatest
@@ -156,7 +158,10 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
                     if (wait > 0L) delay(wait)
                     if (GlassPerformance.lite || InkSampling.moving > 0) null else {
                         InkSampling.budget.started(android.os.SystemClock.uptimeMillis())
-                        sampleLuma(layer, baseLuma) { grid = it }
+                        sampleLuma(layer, baseLuma) { next ->
+                            val old = grid
+                            if (old == null || !old.data.contentEquals(next.data)) grid = next
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -182,31 +187,37 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
 
 private suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float, onGrid: (LumaGrid) -> Unit): Float? {
     if (layer.size.width <= 0 || layer.size.height <= 0) return null
-    val src = layer.toImageBitmap().asAndroidBitmap().let {
-        if (it.config == Bitmap.Config.HARDWARE) it.copy(Bitmap.Config.ARGB_8888, false) else it
-    }
-    if (src.width <= 0 || src.height <= 0) return null
-    val small = Bitmap.createScaledBitmap(src, 5, 5, true)
-    val pixels = IntArray(25).also { small.getPixels(it, 0, 5, 0, 0, 5, 5) }
-    var sum = 0f
-    for (c in pixels) {
-        val a = ((c ushr 24) and 0xFF) / 255f
-        val r = ((c shr 16) and 0xFF) / 255f
-        val g = ((c shr 8) and 0xFF) / 255f
-        val b = (c and 0xFF) / 255f
-        val l = 0.2126f * r + 0.7152f * g + 0.0722f * b
-        sum += l * a + baseLuma * (1f - a)
-    }
-    // The same picture as a finer grid, for the text that sits on only a part of the piece.
-    val cells = Bitmap.createScaledBitmap(Bitmap.createScaledBitmap(src, GRID_COLS * 3, GRID_ROWS * 3, true), GRID_COLS, GRID_ROWS, true)
-    val raw = IntArray(GRID_COLS * GRID_ROWS).also { cells.getPixels(it, 0, GRID_COLS, 0, 0, GRID_COLS, GRID_ROWS) }
-    onGrid(LumaGrid(GRID_COLS, GRID_ROWS, FloatArray(raw.size) { i ->
-        val c = raw[i]
-        val a = ((c ushr 24) and 0xFF) / 255f
-        val l = 0.2126f * ((c shr 16) and 0xFF) / 255f + 0.7152f * ((c shr 8) and 0xFF) / 255f + 0.0722f * (c and 0xFF) / 255f
-        l * a + baseLuma * (1f - a)
-    }))
-    return sum / pixels.size
+    // Capture on the owning context; pixel conversion and grid math run off the UI thread.
+    val captured = layer.toImageBitmap().asAndroidBitmap()
+    val result = withContext(Dispatchers.Default) {
+        val src = if (captured.config == Bitmap.Config.HARDWARE) captured.copy(Bitmap.Config.ARGB_8888, false) else captured
+        if (src == null || src.width <= 0 || src.height <= 0) return@withContext null
+        val pixels = IntArray(src.width * src.height)
+        src.getPixels(pixels, 0, src.width, 0, 0, src.width, src.height)
+        val cells = FloatArray(GRID_COLS * GRID_ROWS)
+        var total = 0f
+        for (y in 0 until GRID_ROWS) for (x in 0 until GRID_COLS) {
+            val left = x * src.width / GRID_COLS
+            val right = (x + 1) * src.width / GRID_COLS
+            val top = y * src.height / GRID_ROWS
+            val bottom = (y + 1) * src.height / GRID_ROWS
+            var sum = 0f
+            var count = 0
+            for (py in top until bottom) for (px in left until right) {
+                val c = pixels[py * src.width + px]
+                val a = ((c ushr 24) and 0xFF) / 255f
+                val luminance = (0.2126f * ((c shr 16) and 0xFF) + 0.7152f * ((c shr 8) and 0xFF) + 0.0722f * (c and 0xFF)) / 255f
+                sum += luminance * a + baseLuma * (1f - a)
+                count++
+            }
+            val cell = if (count > 0) sum / count else baseLuma
+            cells[y * GRID_COLS + x] = cell
+            total += cell
+        }
+        Pair(total / cells.size, LumaGrid(GRID_COLS, GRID_ROWS, cells))
+    } ?: return null
+    onGrid(result.second)
+    return result.first
 }
 
 /** Brightness of the glass for a backdrop of this luminance (no lift on the bright side: milky). */
