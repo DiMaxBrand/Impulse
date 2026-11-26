@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,6 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.sync.Mutex
@@ -76,6 +78,8 @@ class GlassInk internal constructor(
     internal val measured: Float?,
     internal val adaptive: Boolean,
     internal val request: RecordRequest,
+    /** Delivers a new sampled grid. Fluid hosts use this after their shared atlas readback. */
+    internal val deliver: (Float, LumaGrid) -> Unit,
     /** What is behind the piece as a grid of brightness cells (see [InkRegion]); null until measured. */
     internal val grid: LumaGrid? = null,
 )
@@ -95,8 +99,8 @@ internal class LumaGrid(val cols: Int, val rows: Int, val data: FloatArray) {
     }
 }
 
-private const val GRID_COLS = 24
-private const val GRID_ROWS = 8
+internal const val GRID_COLS = 24
+internal const val GRID_ROWS = 8
 
 internal class GlassReadbackBudget(private val intervalMs: Long = 32L) {
     private var lastStart = Long.MIN_VALUE / 2
@@ -104,7 +108,7 @@ internal class GlassReadbackBudget(private val intervalMs: Long = 32L) {
     fun started(now: Long) { lastStart = now }
 }
 
-private object InkSampling {
+internal object InkSampling {
     var moving by mutableIntStateOf(0)
     val mutex = Mutex()
     val budget = GlassReadbackBudget()
@@ -135,7 +139,7 @@ internal fun DrawScope.recordGlassInk(ink: GlassInk, sourceSize: Size = size, dr
 }
 
 @Composable
-fun rememberGlassInk(adaptive: Boolean): GlassInk {
+fun rememberGlassInk(adaptive: Boolean, grouped: Boolean = false): GlassInk {
     val enabled = adaptive && GlassTuning.adaptiveInk
     val layer = rememberGraphicsLayer()
     val request = remember { RecordRequest() }
@@ -144,9 +148,21 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
     var lightInk by remember { mutableStateOf(themedLightInk) }
     var measured by remember { mutableStateOf<Float?>(null) }
     var grid by remember { mutableStateOf<LumaGrid?>(null) }
+    val scope = rememberCoroutineScope()
     // A transparent part of what is behind counts as the theme's background, not as black.
     val baseLuma = MaterialTheme.colorScheme.background.luminance()
-    LaunchedEffect(layer, enabled, baseLuma) {
+    val deliver: (Float, LumaGrid) -> Unit = { l, next ->
+        val old = grid
+        if (old == null || !old.data.contentEquals(next.data)) grid = next
+        measured = l
+        if (lightInk && l > 0.54f) lightInk = false
+        else if (!lightInk && l < 0.46f) lightInk = true
+        scope.launch { level.animateTo(l, tween(durationMillis = 300)) }
+    }
+    LaunchedEffect(layer, enabled, baseLuma, grouped) {
+        // A FluidGlassHost records every visible control into one packed atlas and delivers the
+        // individual tiles through [deliver]. Standalone glass keeps the old local sampler.
+        if (grouped) return@LaunchedEffect
         if (!enabled) return@LaunchedEffect
         var lastRead = -1L
         while (isActive) {
@@ -197,10 +213,10 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
             level.animateTo(l, tween(durationMillis = 300))
         }
     }
-    return GlassInk(if (enabled) lightInk else themedLightInk, level, layer, measured, enabled, request, if (enabled) grid else null)
+    return GlassInk(if (enabled) lightInk else themedLightInk, level, layer, measured, enabled, request, deliver, if (enabled) grid else null)
 }
 
-private suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float, onGrid: (LumaGrid) -> Unit): Float? {
+internal suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float, onGrid: (LumaGrid) -> Unit): Float? {
     if (layer.size.width <= 0 || layer.size.height <= 0) return null
     // Capture on the owning context; pixel conversion and grid math run off the UI thread.
     val captured = layer.toImageBitmap().asAndroidBitmap()
@@ -209,30 +225,42 @@ private suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float, onGrid: (L
         if (src == null || src.width <= 0 || src.height <= 0) return@withContext null
         val pixels = IntArray(src.width * src.height)
         src.getPixels(pixels, 0, src.width, 0, 0, src.width, src.height)
-        val cells = FloatArray(GRID_COLS * GRID_ROWS)
-        var total = 0f
-        for (y in 0 until GRID_ROWS) for (x in 0 until GRID_COLS) {
-            val left = x * src.width / GRID_COLS
-            val right = (x + 1) * src.width / GRID_COLS
-            val top = y * src.height / GRID_ROWS
-            val bottom = (y + 1) * src.height / GRID_ROWS
-            var sum = 0f
-            var count = 0
-            for (py in top until bottom) for (px in left until right) {
-                val c = pixels[py * src.width + px]
-                val a = ((c ushr 24) and 0xFF) / 255f
-                val luminance = (0.2126f * ((c shr 16) and 0xFF) + 0.7152f * ((c shr 8) and 0xFF) + 0.0722f * (c and 0xFF)) / 255f
-                sum += luminance * a + baseLuma * (1f - a)
-                count++
-            }
-            val cell = if (count > 0) sum / count else baseLuma
-            cells[y * GRID_COLS + x] = cell
-            total += cell
-        }
-        Pair(total / cells.size, LumaGrid(GRID_COLS, GRID_ROWS, cells))
+        lumaGrid(pixels, src.width, 0, src.width, src.height, baseLuma)
     } ?: return null
     onGrid(result.second)
     return result.first
+}
+
+/** Builds one existing 24 x 8 ink grid from a rectangular tile in a shared captured bitmap. */
+internal fun lumaGrid(
+    pixels: IntArray,
+    stride: Int,
+    topOffset: Int,
+    width: Int,
+    height: Int,
+    baseLuma: Float,
+): Pair<Float, LumaGrid> {
+    val cells = FloatArray(GRID_COLS * GRID_ROWS)
+    var total = 0f
+    for (y in 0 until GRID_ROWS) for (x in 0 until GRID_COLS) {
+        val left = x * width / GRID_COLS
+        val right = (x + 1) * width / GRID_COLS
+        val top = y * height / GRID_ROWS
+        val bottom = (y + 1) * height / GRID_ROWS
+        var sum = 0f
+        var count = 0
+        for (py in top until bottom) for (px in left until right) {
+            val c = pixels[(topOffset + py) * stride + px]
+            val a = ((c ushr 24) and 0xFF) / 255f
+            val luminance = (0.2126f * ((c shr 16) and 0xFF) + 0.7152f * ((c shr 8) and 0xFF) + 0.0722f * (c and 0xFF)) / 255f
+            sum += luminance * a + baseLuma * (1f - a)
+            count++
+        }
+        val cell = if (count > 0) sum / count else baseLuma
+        cells[y * GRID_COLS + x] = cell
+        total += cell
+    }
+    return Pair(total / cells.size, LumaGrid(GRID_COLS, GRID_ROWS, cells))
 }
 
 /** Brightness of the glass for a backdrop of this luminance (no lift on the bright side: milky). */

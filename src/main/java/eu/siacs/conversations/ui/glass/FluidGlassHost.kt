@@ -1,5 +1,6 @@
 package eu.siacs.conversations.ui.glass
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -26,7 +27,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -34,6 +41,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import kotlin.math.abs
@@ -45,6 +53,12 @@ import kotlin.math.sin
 import kotlin.math.tanh
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -101,6 +115,118 @@ class FluidElement(val id: Int) {
     var cornerPx = 0f
 }
 
+/**
+ * A host-wide, packed capture for adaptive ink.
+ *
+ * Each active element gets its familiar 96 x 32 source tile, but all tiles are recorded into one
+ * GraphicsLayer and read back together. This removes the GPU synchronization point per button,
+ * bubble and composer control while retaining exactly the same per-element 24 x 8 luminance grid.
+ */
+internal class FluidInkAtlas(private val layer: GraphicsLayer) {
+    private data class Tile(val element: FluidElement, val request: RecordRequest, val rect: Rect, val row: Int)
+    private data class Batch(val tiles: List<Tile>, val baseLuma: Float)
+
+    private val batches = Channel<Batch>(Channel.CONFLATED)
+    private var pending = false
+    private var inFlight = false
+    var revision by mutableIntStateOf(0)
+        private set
+
+    fun request(elements: List<FluidElement>) {
+        if (inFlight) return
+        var any = false
+        for (element in elements) {
+            val ink = element.ink
+            if (element.visible && ink?.adaptive == true) {
+                ink.request.due = true
+                any = true
+            }
+        }
+        if (any) {
+            pending = true
+            revision++ // observed by the backdrop draw node; asks it to record on its next frame.
+        }
+    }
+
+    fun capture(
+        elements: List<FluidElement>,
+        originX: Float,
+        originY: Float,
+        scope: androidx.compose.ui.graphics.drawscope.DrawScope,
+        draw: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit,
+        baseLuma: Float,
+    ) {
+        revision // keep this state observation in the draw scope
+        if (!pending || inFlight) return
+        val tiles = ArrayList<Tile>()
+        for (element in elements) {
+            val ink = element.ink ?: continue
+            val rect = element.rect
+            if (!element.visible || !ink.adaptive || rect.width < 1f || rect.height < 1f) continue
+            if (ink.request.take()) tiles += Tile(element, ink.request, rect, tiles.size)
+        }
+        pending = false
+        if (tiles.isEmpty()) return
+        val tileWidth = GRID_COLS * 4
+        val tileHeight = GRID_ROWS * 4
+        with(scope) {
+            layer.record(IntSize(tileWidth, tileHeight * tiles.size)) {
+                for (tile in tiles) {
+                    clipRect(0f, tile.row * tileHeight.toFloat(), tileWidth.toFloat(), (tile.row + 1) * tileHeight.toFloat()) {
+                        translate(0f, tile.row * tileHeight.toFloat()) {
+                            scale(tileWidth / tile.rect.width, tileHeight / tile.rect.height, Offset.Zero) {
+                                translate(originX - tile.rect.left, originY - tile.rect.top) { draw() }
+                            }
+                        }
+                    }
+                    tile.request.captured()
+                }
+            }
+        }
+        inFlight = true
+        batches.trySend(Batch(tiles, baseLuma))
+    }
+
+    suspend fun run() {
+        for (batch in batches) {
+            try {
+                if (GlassPerformance.lite || InkSampling.moving > 0) continue
+                InkSampling.mutex.withLock {
+                    val wait = InkSampling.budget.waitMillis(android.os.SystemClock.uptimeMillis())
+                    if (wait > 0L) delay(wait)
+                    if (GlassPerformance.lite || InkSampling.moving > 0) return@withLock
+                    InkSampling.budget.started(android.os.SystemClock.uptimeMillis())
+                    val captured = layer.toImageBitmap().asAndroidBitmap()
+                    val results = withContext(Dispatchers.Default) {
+                        val src = if (captured.config == Bitmap.Config.HARDWARE) captured.copy(Bitmap.Config.ARGB_8888, false) else captured
+                        if (src == null || src.width <= 0 || src.height <= 0) emptyList() else {
+                            val pixels = IntArray(src.width * src.height)
+                            src.getPixels(pixels, 0, src.width, 0, 0, src.width, src.height)
+                            batch.tiles.map { tile ->
+                                tile to lumaGrid(pixels, src.width, tile.row * GRID_ROWS * 4, GRID_COLS * 4, GRID_ROWS * 4, batch.baseLuma)
+                            }
+                        }
+                    }
+                    // We are back on Compose's owning context. Do not apply a tile that belonged to
+                    // a recycled/removed item or one which moved before this GPU readback completed.
+                    for ((tile, result) in results) {
+                        val current = tile.element.ink
+                        if (tile.element.visible && current?.request === tile.request && tile.element.rect == tile.rect) {
+                            current.deliver(result.first, result.second)
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                lastSampleError = e.javaClass.simpleName + ": " + e.message
+            } finally {
+                inFlight = false
+            }
+        }
+    }
+}
+
 @Stable
 class FluidGlassHost(
     private val density: Float,
@@ -130,6 +256,12 @@ class FluidGlassHost(
     var frostStyle by mutableStateOf<LiquidGlassStyle?>(null)
 
     private val wakeups = Channel<Unit>(Channel.CONFLATED)
+    private var inkAtlas: FluidInkAtlas? = null
+    internal var inkBaseLuma = 0.5f
+
+    internal fun attachInkAtlas(atlas: FluidInkAtlas?) { inkAtlas = atlas }
+
+    internal fun requestInkAtlas() { inkAtlas?.request(elements) }
 
     fun wake() {
         wakeups.trySend(Unit)
@@ -272,6 +404,11 @@ class FluidGlassHost(
         scope: androidx.compose.ui.graphics.drawscope.DrawScope,
         draw: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit,
     ) {
+        val atlas = inkAtlas
+        if (atlas != null) {
+            atlas.capture(elements, originX, originY, scope, draw, inkBaseLuma)
+            return
+        }
         for (e in elements) {
             val ink = e.ink ?: continue
             if (!ink.adaptive || !e.visible) continue
@@ -365,10 +502,29 @@ fun FluidGlassHost(
     content: @Composable BoxScope.() -> Unit,
 ) {
     LaunchedEffect(host) { host.run() }
+    val atlasLayer = rememberGraphicsLayer()
+    val atlas = remember(host, atlasLayer) { FluidInkAtlas(atlasLayer) }
+    DisposableEffect(host, atlas) {
+        host.attachInkAtlas(atlas)
+        onDispose { host.attachInkAtlas(null) }
+    }
+    LaunchedEffect(atlas) { atlas.run() }
+    // The atlas is deliberately a slow, host-wide refresh (rather than N component timers). It
+    // remains fully disabled by the existing developer switch and pauses for active gestures.
+    LaunchedEffect(host, atlas, GlassTuning.adaptiveInk) {
+        while (isActive) {
+            if (GlassTuning.adaptiveInk && !GlassPerformance.lite && InkSampling.moving == 0) {
+                host.requestInkAtlas()
+            }
+            delay(350)
+        }
+    }
     val density = LocalDensity.current
     val style = styleOverride ?: host.style
     val frost = host.frostStyle
     val surface = MaterialTheme.colorScheme.surface
+    val backgroundLuma = MaterialTheme.colorScheme.background.luminance()
+    SideEffect { host.inkBaseLuma = backgroundLuma }
     val look = remember(style, frost, surface) {
         with(density) {
             FluidLook(
@@ -414,7 +570,7 @@ internal fun FluidButton(
     val density = LocalDensity.current
     val element = remember(fluid) { fluid.newElement() }
     DisposableEffect(element) { onDispose { fluid.remove(element) } }
-    val ink = rememberGlassInk(adaptive)
+    val ink = rememberGlassInk(adaptive, grouped = true)
     SideEffect {
         element.ink = ink
         element.visible = recording
@@ -506,7 +662,7 @@ internal fun FluidPanel(
     val density = LocalDensity.current
     val element = remember(fluid) { fluid.newElement() }
     DisposableEffect(element) { onDispose { fluid.remove(element) } }
-    val ink = rememberGlassInk(adaptive)
+    val ink = rememberGlassInk(adaptive, grouped = true)
     SideEffect {
         element.ink = ink
         element.visible = visible
