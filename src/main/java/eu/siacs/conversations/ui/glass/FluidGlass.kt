@@ -579,7 +579,6 @@ fun FluidGlassLayer(
             Modifier
                 .matchParentSize()
                 .layerBounds(scene, marginPx, frame)
-                .glassSnapshot()
                 // Reading the scene here as well makes every step redraw the glass, whether or not
                 // the backdrop noticed the read inside its own effect block.
                 .drawBehind { scene.tick }
@@ -602,7 +601,6 @@ fun FluidGlassLayer(
                 Modifier
                     .matchParentSize()
                     .layerBounds(scene, marginPx, frame)
-                    .glassSnapshot()
                     .drawBehind { scene.tick }
                     .drawPlainBackdrop(
                         backdrop = backdrop,

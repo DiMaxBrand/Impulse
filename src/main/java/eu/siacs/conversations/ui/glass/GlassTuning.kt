@@ -19,7 +19,7 @@ object GlassTuning {
     private val saveFloats = Runnable {
         prefs?.edit()?.putFloat("blur", blur)?.putFloat("refraction", refraction)
             ?.putFloat("frost", frost)?.putFloat("jelly", jelly)
-            ?.putFloat("sampling_rate", samplingRate)?.apply()
+            ?.apply()
     }
 
     private fun persistFloatsAfterDrag() {
@@ -52,10 +52,6 @@ object GlassTuning {
     var lessOften by mutableStateOf(true)
         private set
 
-    /** Maximum backdrop-source refresh rate. Zero uses the adaptive display rule. */
-    var samplingRate by mutableFloatStateOf(0f)
-        private set
-
     /** The blurred bands under the status bar and the gesture bar. */
     var barBlur by mutableStateOf(true)
         private set
@@ -68,7 +64,6 @@ object GlassTuning {
         refraction = p.getFloat("refraction", 1f)
         frost = p.getFloat("frost", 1f)
         jelly = p.getFloat("jelly", 1f)
-        samplingRate = p.getFloat("sampling_rate", 0f).coerceIn(0f, 120f)
         fringes = p.getBoolean("fringes", true)
         lessOften = p.getBoolean("less_often", true)
         barBlur = p.getBoolean("bar_blur", true)
@@ -78,14 +73,12 @@ object GlassTuning {
     fun putRefraction(v: Float) { refraction = v; persistFloatsAfterDrag() }
     fun putFrost(v: Float) { frost = v; persistFloatsAfterDrag() }
     fun putJelly(v: Float) { jelly = v; persistFloatsAfterDrag() }
-    fun putSamplingRate(v: Float) { samplingRate = v.coerceIn(0f, 120f); persistFloatsAfterDrag() }
     fun putFringes(v: Boolean) { fringes = v; prefs?.edit()?.putBoolean("fringes", v)?.apply() }
     fun putLessOften(v: Boolean) { lessOften = v; prefs?.edit()?.putBoolean("less_often", v)?.apply() }
     fun putBarBlur(v: Boolean) { barBlur = v; prefs?.edit()?.putBoolean("bar_blur", v)?.apply() }
 
     fun reset() {
         putBlur(1f); putRefraction(1f); putFrost(1f); putJelly(1f)
-        putSamplingRate(0f)
         putFringes(true); putLessOften(true); putBarBlur(true)
     }
 }

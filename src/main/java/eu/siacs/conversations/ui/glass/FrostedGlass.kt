@@ -90,7 +90,6 @@ internal fun BoxScope.FrostedInterior(
                     )
                 }
             }
-            .glassSnapshot()
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { shape },

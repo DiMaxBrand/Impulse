@@ -5,8 +5,6 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.graphicsLayer
 import com.kyant.backdrop.backdrops.layerBackdrop
 import androidx.compose.animation.core.tween
@@ -104,7 +102,6 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import eu.siacs.conversations.ui.glass.LiquidSlider
 import eu.siacs.conversations.ui.glass.LiquidToggle
 import eu.siacs.conversations.ui.glass.LocalGlassSkin
-import eu.siacs.conversations.ui.glass.LocalGlassRateLimitEnabled
 
 /** The preference store behind the Appearance screen: every key is the one the rest of the app
  * already reads (old Interface screen) or an [AppearanceState] key. */
@@ -196,13 +193,7 @@ internal fun AppearanceScreen(
     playgroundOrigin: androidx.compose.ui.geometry.Rect? = null,
     onClosePlayground: () -> Unit = {},
 ) {
-  val playgroundVisibility = remember { MutableTransitionState(false) }
-  playgroundVisibility.targetState = page == AppearancePage.PLAYGROUND
-  // Keep every glass surface live while the playground is entering, open, or exiting. In
-  // particular, don't cache the momentary transparent shapes used at the start of its morph.
-  val playgroundOnScreen = playgroundVisibility.currentState || playgroundVisibility.targetState
   val labBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
-  CompositionLocalProvider(LocalGlassRateLimitEnabled provides !playgroundOnScreen) {
   Box(Modifier.fillMaxSize()) {
     // The playground arrives over the lab, which stays where it is underneath.
     val shownPage = if (page == AppearancePage.PLAYGROUND) AppearancePage.LAB else page
@@ -231,13 +222,12 @@ internal fun AppearanceScreen(
         }
     }
     AnimatedVisibility(
-        visibleState = playgroundVisibility,
+        visible = page == AppearancePage.PLAYGROUND,
         enter = EnterTransition.None,
         exit = fadeOut(tween(450)),
     ) {
         GlassPlayground(origin = playgroundOrigin, onBack = onClosePlayground, labBackdrop = labBackdrop)
     }
-  }
   }
 }
 
@@ -1327,7 +1317,6 @@ private fun GlassLabPage(onOpenPlayground: (androidx.compose.ui.geometry.Rect) -
             stringResource(R.string.glass_lab_less_often), stringResource(R.string.glass_lab_less_often_summary),
             GlassTuning.lessOften,
         ) { GlassTuning.putLessOften(it) }
-        LabSamplingRateSlider(GroupPosition.MIDDLE, GlassTuning.samplingRate) { GlassTuning.putSamplingRate(it) }
         SwitchRow(
             GroupPosition.BOTTOM, R.drawable.ic_touch_app_24dp,
             stringResource(R.string.glass_lab_bar_blur), stringResource(R.string.glass_lab_bar_blur_summary),
@@ -1338,43 +1327,6 @@ private fun GlassLabPage(onOpenPlayground: (androidx.compose.ui.geometry.Rect) -
             Text(stringResource(R.string.glass_lab_reset))
         }
         Spacer(Modifier.height(24.dp))
-    }
-}
-
-/** The source behind glass can be capped separately from the display presentation rate. */
-@Composable
-private fun LabSamplingRateSlider(position: GroupPosition, value: Float, onChange: (Float) -> Unit) {
-    var live by remember { mutableFloatStateOf(value) }
-    LaunchedEffect(value) { if (kotlin.math.abs(value - live) > 0.51f) live = value }
-    val rounded = live.toInt().coerceIn(0, 120)
-    val shown = if (rounded == 0) stringResource(R.string.glass_lab_sampling_auto)
-    else stringResource(R.string.glass_lab_sampling_fps, rounded)
-    ExpressiveGroupRow(position) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.glass_lab_sampling_rate))
-                    Text(
-                        stringResource(R.string.glass_lab_sampling_rate_summary),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                EditableValue(shown, rounded.toString()) { typed ->
-                    live = typed.coerceIn(0f, 120f)
-                    onChange(live)
-                }
-            }
-            SkinSlider(
-                value = live.coerceIn(0f, 120f),
-                onValueChange = {
-                    live = it
-                    onChange(it.roundToInt().toFloat())
-                },
-                valueRange = 0f..120f,
-                steps = 119,
-            )
-        }
     }
 }
 

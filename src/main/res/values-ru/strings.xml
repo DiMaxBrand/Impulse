@@ -1864,10 +1864,6 @@
     <string name="glass_lab_fringes_summary">Расщепляет цвета по краю кнопок и панелей</string>
     <string name="glass_lab_less_often">Спокойное стекло при прокрутке</string>
     <string name="glass_lab_less_often_summary">Пока список летит или двигается клавиатура, стекло — это картинка, снимаемая несколько раз в секунду</string>
-    <string name="glass_lab_sampling_rate">Частота обновления стекла</string>
-    <string name="glass_lab_sampling_rate_summary">Как часто перерисовывается стекло. В режиме «Авто» оно обновляется на 11 кадров/с медленнее экрана; остальной интерфейс сохраняет полную частоту. Ручное значение задаёт фиксированную частоту стекла.</string>
-    <string name="glass_lab_sampling_auto">Авто</string>
-    <string name="glass_lab_sampling_fps">%1$d кадр/с</string>
     <string name="glass_lab_bar_blur">Размытие под системными панелями</string>
     <string name="glass_lab_bar_blur_summary">Размытые полосы под строкой состояния и полоской жестов</string>
     <string name="glass_lab_reset">Сбросить</string>

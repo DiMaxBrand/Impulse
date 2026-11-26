@@ -162,7 +162,6 @@ fun LiquidGlassButton(
     Box(
         modifier = modifier
             .then(if (recording) Modifier.layerBackdrop(slot.record) else Modifier)
-            .glassSnapshot(shape)
             .drawBackdrop(
                 backdrop = slot.backdrop,
                 shape = { shape },
@@ -293,7 +292,6 @@ fun LiquidGlassPanel(
         if (visible) Box(
             Modifier
                 .matchParentSize()
-                .glassSnapshot(shape)
                 .drawBackdrop(
                     backdrop = slot.backdrop,
                     shape = { shape },

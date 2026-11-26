@@ -388,8 +388,7 @@ fun BackdropEffectScope.glassBlur(base: Float, useLabScale: Boolean = true) {
 }
 
 /**
- * [glassLens] as it is. (The refraction used to ease off while the keyboard moved; the glass is
- * now drawn from a picture taken a few times a second in that time instead, see glassSnapshot.)
+ * Apply the configured refraction strength and colour fringes.
  */
 fun BackdropEffectScope.glassLensEased(
     refractionHeight: Float,
