@@ -1,10 +1,12 @@
 package eu.siacs.conversations.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -94,6 +97,7 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
     val open = state.attachCardOpen.value
     val progress = state.attachProgress
     val tint = remember { Animatable(0f) }
+    val backScope = rememberCoroutineScope()
     LaunchedEffect(open) {
         coroutineScope {
             // The background colour: fast, and first.
@@ -110,9 +114,31 @@ internal fun AttachCardOverlay(state: ConversationScreenState, listener: Convers
             }
         }
     }
-    BackHandler(enabled = open) {
-        if (state.replyStatusPickerVisible.value) state.replyStatusPickerVisible.value = false
-        else state.attachCardOpen.value = false
+    // The nested picker is a distinct layer: it closes before the attachment card starts its
+    // predictive collapse, matching ordinary Back behaviour.
+    BackHandler(enabled = open && state.replyStatusPickerVisible.value) {
+        state.replyStatusPickerVisible.value = false
+    }
+    PredictiveBackHandler(enabled = open && !state.replyStatusPickerVisible.value) { backEvents ->
+        try {
+            backEvents.collect { event ->
+                val p = event.progress.coerceIn(0f, 1f)
+                val eased = p * p * (3f - 2f * p)
+                // Reuse the card's actual container-transform progress: the gesture owns its
+                // first third, and the existing close animation takes it the rest of the way.
+                progress.snapTo(1f - eased / 3f)
+            }
+            // The system committed the gesture. Finish the same transform rather than snapping
+            // the menu away at the gesture threshold.
+            progress.animateTo(0f, tween(durationMillis = 150))
+            state.attachCardOpen.value = false
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            if (open) {
+                backScope.launch {
+                    progress.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 520f))
+                }
+            }
+        }
     }
     LaunchedEffect(open) {
         if (!open) state.replyStatusPickerVisible.value = false
