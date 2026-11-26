@@ -1865,6 +1865,11 @@
     <string name="glass_lab_less_often">Спокойное стекло при прокрутке</string>
     <string name="glass_lab_less_often_summary">Пока список летит или двигается клавиатура, стекло — это картинка, снимаемая несколько раз в секунду</string>
     <string name="glass_lab_bar_blur">Размытие под системными панелями</string>
+    <string name="glass_lab_diagnostics">Сравнение производительности</string>
+    <string name="glass_lab_adaptive_ink">Адаптивные цвета стекла и текста</string>
+    <string name="glass_lab_adaptive_ink_summary">Подбирает цвета по фону. Выключите для сравнения прокрутки без считывания фона.</string>
+    <string name="glass_lab_message_backdrop">Сообщения за стеклом чата</string>
+    <string name="glass_lab_message_backdrop_summary">Выключите для сравнения прокрутки без записи сообщений для стекла. Сообщения не будут видны сквозь него.</string>
     <string name="glass_lab_bar_blur_summary">Размытые полосы под строкой состояния и полоской жестов</string>
     <string name="glass_lab_reset">Сбросить</string>
     <string name="interface_style_try">Нажми</string>

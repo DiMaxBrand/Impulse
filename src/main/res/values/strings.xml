@@ -1809,6 +1809,11 @@
     <string name="glass_lab_less_often">Calm glass while scrolling</string>
     <string name="glass_lab_less_often_summary">While a list flies past or the keyboard moves, glass is a picture taken a few times a second</string>
     <string name="glass_lab_bar_blur">Blur under the system bars</string>
+    <string name="glass_lab_diagnostics">Performance comparisons</string>
+    <string name="glass_lab_adaptive_ink">Adaptive glass and text colours</string>
+    <string name="glass_lab_adaptive_ink_summary">Samples the background to adjust glass and text colours. Turn off to compare scrolling without these readbacks.</string>
+    <string name="glass_lab_message_backdrop">Messages behind chat glass</string>
+    <string name="glass_lab_message_backdrop_summary">Turn off to compare scrolling without recording messages for the glass. Messages will not appear through it.</string>
     <string name="glass_lab_bar_blur_summary">The blurred bands under the status bar and the gesture bar</string>
     <string name="glass_lab_reset">Reset</string>
     <string name="interface_style_try">Press me</string>

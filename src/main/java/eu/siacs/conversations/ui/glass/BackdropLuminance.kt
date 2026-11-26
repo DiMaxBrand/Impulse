@@ -129,6 +129,7 @@ internal fun DrawScope.recordGlassInk(ink: GlassInk, sourceSize: Size = size, dr
 
 @Composable
 fun rememberGlassInk(adaptive: Boolean): GlassInk {
+    val enabled = adaptive && GlassTuning.adaptiveInk
     val layer = rememberGraphicsLayer()
     val request = remember { RecordRequest() }
     val level = remember { Animatable(0.5f) }
@@ -138,8 +139,8 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
     var grid by remember { mutableStateOf<LumaGrid?>(null) }
     // A transparent part of what is behind counts as the theme's background, not as black.
     val baseLuma = MaterialTheme.colorScheme.background.luminance()
-    LaunchedEffect(layer, adaptive, baseLuma) {
-        if (!adaptive) return@LaunchedEffect
+    LaunchedEffect(layer, enabled, baseLuma) {
+        if (!enabled) return@LaunchedEffect
         while (isActive) {
             // While the list flies past nobody reads the text; skip the readback and catch up after.
             if (GlassPerformance.lite || InkSampling.moving > 0) {
@@ -176,7 +177,7 @@ fun rememberGlassInk(adaptive: Boolean): GlassInk {
             level.animateTo(l, tween(durationMillis = 300))
         }
     }
-    return GlassInk(lightInk, level, layer, measured, adaptive, request, grid)
+    return GlassInk(if (enabled) lightInk else themedLightInk, level, layer, measured, enabled, request, if (enabled) grid else null)
 }
 
 private suspend fun sampleLuma(layer: GraphicsLayer, baseLuma: Float, onGrid: (LumaGrid) -> Unit): Float? {

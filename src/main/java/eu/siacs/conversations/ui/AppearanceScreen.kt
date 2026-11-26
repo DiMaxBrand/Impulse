@@ -1322,6 +1322,18 @@ private fun GlassLabPage(onOpenPlayground: (androidx.compose.ui.geometry.Rect) -
             stringResource(R.string.glass_lab_bar_blur), stringResource(R.string.glass_lab_bar_blur_summary),
             GlassTuning.barBlur,
         ) { GlassTuning.putBarBlur(it) }
+        Spacer(Modifier.height(6.dp))
+        SectionTitle(stringResource(R.string.glass_lab_diagnostics))
+        SwitchRow(
+            GroupPosition.TOP, R.drawable.ic_palette_24dp,
+            stringResource(R.string.glass_lab_adaptive_ink), stringResource(R.string.glass_lab_adaptive_ink_summary),
+            GlassTuning.adaptiveInk,
+        ) { GlassTuning.putAdaptiveInk(it) }
+        SwitchRow(
+            GroupPosition.BOTTOM, R.drawable.ic_touch_app_24dp,
+            stringResource(R.string.glass_lab_message_backdrop), stringResource(R.string.glass_lab_message_backdrop_summary),
+            GlassTuning.messageBackdrop,
+        ) { GlassTuning.putMessageBackdrop(it) }
         Spacer(Modifier.height(10.dp))
         OutlinedButton(onClick = { GlassTuning.reset() }, modifier = Modifier.padding(horizontal = 12.dp)) {
             Text(stringResource(R.string.glass_lab_reset))

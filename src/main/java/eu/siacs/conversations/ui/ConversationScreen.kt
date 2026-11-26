@@ -828,7 +828,8 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
     val mergingGlass = eu.siacs.conversations.ui.glass.rememberMergingGlass()
     val backgroundBackdrop = rememberLayerBackdrop()
     val listBackdrop = rememberLayerBackdrop()
-    val glassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
+    val combinedGlassBackdrop = rememberCombinedBackdrop(backgroundBackdrop, listBackdrop)
+    val glassBackdrop = if (eu.siacs.conversations.ui.glass.GlassTuning.messageBackdrop) combinedGlassBackdrop else backgroundBackdrop
     val replyStatusUnderlay = rememberLayerBackdrop()
     val replyStatusGlass = rememberGlassStack(rememberCombinedBackdrop(glassBackdrop, replyStatusUnderlay), adaptive = true, includeLayers = false)
     // The glass pieces of the chat look through the background, the messages and each other.
@@ -1163,7 +1164,7 @@ fun ConversationScreen(state: ConversationScreenState, listener: ConversationScr
             val keyboardVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(density) > 0
             messageList(
                 // The meter flips the glass to its cheap look while the list flies past.
-                Modifier.fillMaxSize().layerBackdrop(listBackdrop).then(rememberGlassScrollMeter()),
+                Modifier.fillMaxSize().then(if (eu.siacs.conversations.ui.glass.GlassTuning.messageBackdrop) Modifier.layerBackdrop(listBackdrop) else Modifier).then(rememberGlassScrollMeter()),
                 with(density) { glassTopHeightPx.toDp() },
                 // Keep a stable resting gap above the floating composer. This is intentionally
                 // separate from the gesture inset: the latter can change under a held chat and

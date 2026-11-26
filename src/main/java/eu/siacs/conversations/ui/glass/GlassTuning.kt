@@ -56,6 +56,14 @@ object GlassTuning {
     var barBlur by mutableStateOf(true)
         private set
 
+    /** Sample the backdrop for adaptive glass and text colours. */
+    var adaptiveInk by mutableStateOf(true)
+        private set
+
+    /** Include the scrolling messages in the chat glass backdrop. */
+    var messageBackdrop by mutableStateOf(true)
+        private set
+
     fun ensureLoaded(context: Context) {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -67,6 +75,8 @@ object GlassTuning {
         fringes = p.getBoolean("fringes", true)
         lessOften = p.getBoolean("less_often", true)
         barBlur = p.getBoolean("bar_blur", true)
+        adaptiveInk = p.getBoolean("adaptive_ink", true)
+        messageBackdrop = p.getBoolean("message_backdrop", true)
     }
 
     fun putBlur(v: Float) { blur = v; persistFloatsAfterDrag() }
@@ -76,9 +86,12 @@ object GlassTuning {
     fun putFringes(v: Boolean) { fringes = v; prefs?.edit()?.putBoolean("fringes", v)?.apply() }
     fun putLessOften(v: Boolean) { lessOften = v; prefs?.edit()?.putBoolean("less_often", v)?.apply() }
     fun putBarBlur(v: Boolean) { barBlur = v; prefs?.edit()?.putBoolean("bar_blur", v)?.apply() }
+    fun putAdaptiveInk(v: Boolean) { adaptiveInk = v; prefs?.edit()?.putBoolean("adaptive_ink", v)?.apply() }
+    fun putMessageBackdrop(v: Boolean) { messageBackdrop = v; prefs?.edit()?.putBoolean("message_backdrop", v)?.apply() }
 
     fun reset() {
         putBlur(1f); putRefraction(1f); putFrost(1f); putJelly(1f)
         putFringes(true); putLessOften(true); putBarBlur(true)
+        putAdaptiveInk(true); putMessageBackdrop(true)
     }
 }
