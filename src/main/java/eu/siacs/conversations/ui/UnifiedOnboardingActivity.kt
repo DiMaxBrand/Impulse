@@ -343,8 +343,9 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                             targetState = Triple(creating, simulatedAccountRoute, registrationDomain),
                             modifier = Modifier.weight(1f),
                             transitionSpec = {
-                                (slideInHorizontally { it / 8 } + fadeIn()) togetherWith
-                                    (slideOutHorizontally { -it / 10 } + fadeOut())
+                                // The page itself must stay put: the chosen card owns the resize
+                                // and content slide. A quiet crossfade only clears its siblings.
+                                fadeIn(tween(140)) togetherWith fadeOut(tween(100))
                             },
                             label = "account_entry_choice",
                         ) { (selectedMode, route, _) ->

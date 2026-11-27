@@ -15,10 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.Image
 import eu.siacs.conversations.R
 
 /** The unselected state of the account card transform. */
@@ -36,7 +34,7 @@ internal fun OnboardingStartOptions(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Image(painterResource(R.drawable.impulse_round_logo), contentDescription = null, modifier = Modifier.size(120.dp))
+        RotatableOnboardingLogo()
         Text(stringResource(R.string.onboarding_welcome_title), style = MaterialTheme.typography.displaySmall)
         Text(
             stringResource(R.string.welcome_intro_body),
