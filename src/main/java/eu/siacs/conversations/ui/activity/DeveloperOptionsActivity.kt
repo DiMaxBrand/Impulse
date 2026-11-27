@@ -390,7 +390,7 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                                 Intent(
                                                     this@DeveloperOptionsActivity,
                                                     UnifiedOnboardingActivity::class.java,
-                                                ).putExtra("tour_only", true),
+                                                ).putExtra("simulate_account_setup", true),
                                             )
                                         },
                                     )

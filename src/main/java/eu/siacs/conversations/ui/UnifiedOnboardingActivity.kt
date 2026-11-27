@@ -118,7 +118,10 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
     private var avatarStepAvailable by mutableStateOf(false)
     private var publishing by mutableStateOf(false)
     private var completed by mutableStateOf(false)
+    /** Developer Options can exercise the complete flow without adding or editing an account. */
+    private val simulateAccountSetup get() = intent?.getBooleanExtra("simulate_account_setup", false) == true
     private val tourOnly get() = intent?.getBooleanExtra("tour_only", false) == true
+    private val previewFlow get() = tourOnly || simulateAccountSetup
     private val session by lazy { OnboardingSession(this) }
     private val cropAvatar = registerForActivityResult(CropImageContract()) { result ->
         if (result.isSuccessful) avatarUri = result.uriContent
@@ -150,6 +153,11 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
         port = savedInstanceState?.getString("port") ?: "5222"
         if (tourOnly) {
             phase = 2
+        } else if (simulateAccountSetup && savedInstanceState == null) {
+            // A developer replay always starts at the real first screen. It must never restore a
+            // half-finished real signup or leave a simulated checkpoint behind.
+            phase = 0
+            creating = null
         } else if (savedInstanceState == null) {
             val checkpoint = session.read(selectedChannel)
             checkpoint?.let {
@@ -188,7 +196,7 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                 val progressAnimation = remember { Animatable(0f) }
                 LaunchedEffect(Unit) {
                     snapshotFlow {
-                        if (completed || tourOnly) null else OnboardingSession.Checkpoint(phase, tourPage, creating, registrationDomain, preAuth,
+                        if (completed || previewFlow) null else OnboardingSession.Checkpoint(phase, tourPage, creating, registrationDomain, preAuth,
                             address, hostname, port, pendingJid, inviteUri, selectedChannel, channelInitialized, avatarUri?.toString(), contactsOnly, privacyTouched, avatarStepAvailable)
                     }.collect { checkpoint -> if (checkpoint != null && !completed) session.save(checkpoint) }
                 }
@@ -285,6 +293,10 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                     } else if (phase == 6) {
                         Text(stringResource(R.string.welcome_get_started))
                         Button(onClick = {
+                            if (previewFlow) {
+                                finish()
+                                return@Button
+                            }
                             completed = true
                             session.clear()
                             eu.siacs.conversations.utils.OnboardingPreferences(this@UnifiedOnboardingActivity).completeWelcome()
@@ -304,9 +316,29 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                             Text(stringResource(R.string.welcome_intro_body))
                             Button(onClick = { creating = true }, modifier = Modifier.fillMaxWidth(), shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.create_account)) }
                             TextButton(onClick = { creating = false }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.log_in)) }
-                            TextButton(onClick = { restoreBackup() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.restore_backup)) }
-                            TextButton(onClick = { requestPermissionAndScanQrCode() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.scan_qr_code)) }
-                            TextButton(onClick = { chooseCertificate() }, modifier = Modifier.fillMaxWidth(), enabled = backendReady) { Text(stringResource(R.string.action_add_account_with_certificate)) }
+                            TextButton(
+                                onClick = {
+                                    // Restore and account QR routes can also add accounts. Keep
+                                    // every account-acquisition path harmless in the replay.
+                                    if (simulateAccountSetup) creating = false else restoreBackup()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(stringResource(R.string.restore_backup)) }
+                            TextButton(
+                                onClick = {
+                                    if (simulateAccountSetup) creating = false else requestPermissionAndScanQrCode()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(stringResource(R.string.scan_qr_code)) }
+                            TextButton(
+                                onClick = {
+                                    // Certificate selection creates an account too, so the replay
+                                    // keeps it inside the safe, simulated account portion.
+                                    if (simulateAccountSetup) creating = false else chooseCertificate()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = backendReady || simulateAccountSetup,
+                            ) { Text(stringResource(R.string.action_add_account_with_certificate)) }
                         }
                     } else {
                         OnboardingAccountForm(mode, registrationDomain, address, { address = it; addressError = null }, password,
@@ -328,7 +360,11 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                         Row(Modifier.fillMaxWidth()) {
                             OnboardingAction(stringResource(R.string.back), onClick = { creating = null }, secondary = true)
                             OnboardingProgress(0.1f, Modifier.weight(1f), progressAnimation)
-                            OnboardingAction(stringResource(R.string.next), onClick = { submit(mode) }, enabled = backendReady)
+                            OnboardingAction(
+                                stringResource(R.string.next),
+                                onClick = { submit(mode) },
+                                enabled = backendReady || simulateAccountSetup,
+                            )
                         }
                     }
                 }
@@ -375,6 +411,20 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
     }
 
     private fun submit(register: Boolean) {
+        if (simulateAccountSetup) {
+            // The credentials deliberately go nowhere. From the avatar page onward, however,
+            // work against the developer's real account so settings and permissions can be
+            // tested exactly as a first-run user would see them.
+            val account = xmppConnectionService?.accounts
+                ?.firstOrNull(Account::isOnlineAndConnected)
+                ?: xmppConnectionService?.accounts?.firstOrNull()
+            pending = account
+            pendingJid = account?.jid?.asBareJid()?.toString()
+            avatarStepAvailable = account != null
+            stateMessage = null
+            phase = if (account == null) 2 else 1
+            return
+        }
         val service = xmppConnectionService ?: return
         val submittedPassword = password.ifEmpty { pending?.password.orEmpty() }
         when (val result = OnboardingAccountController.submit(service, address, submittedPassword, register, registrationDomain, preAuth, pending, hostname, port) { jid ->
@@ -398,7 +448,7 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
     }
 
     private fun saveCheckpoint() {
-        if (!completed) session.save(OnboardingSession.Checkpoint(phase, tourPage, creating, registrationDomain, preAuth, address,
+        if (!completed && !previewFlow) session.save(OnboardingSession.Checkpoint(phase, tourPage, creating, registrationDomain, preAuth, address,
             hostname, port, pendingJid, inviteUri, selectedChannel, channelInitialized, avatarUri?.toString(), contactsOnly, privacyTouched, avatarStepAvailable))
     }
 
