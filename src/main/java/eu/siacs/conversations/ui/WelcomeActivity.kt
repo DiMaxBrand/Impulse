@@ -153,7 +153,7 @@ private fun WelcomeScreen(onComplete: () -> Unit) {
 }
 
 @Composable
-private fun WelcomeScreenshot(imageRes: Int) {
+internal fun WelcomeScreenshot(imageRes: Int) {
     Image(
         painter = painterResource(imageRes),
         contentDescription = null,
@@ -164,7 +164,7 @@ private fun WelcomeScreenshot(imageRes: Int) {
 
 /** A muted, control-free preview: it restarts automatically rather than behaving like media. */
 @Composable
-private fun LoopingWelcomeDemo(videoRes: Int) {
+internal fun LoopingWelcomeDemo(videoRes: Int) {
     val context = LocalContext.current
     AndroidView(
         factory = { viewContext ->

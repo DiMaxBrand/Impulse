@@ -195,8 +195,13 @@ public class ConversationsActivity extends QrCodeProcessingActivity
         if (!getIntent().getBooleanExtra("init", false)) return false;
         final var onboarding = new eu.siacs.conversations.utils.OnboardingPreferences(this);
         if (onboarding.hasCompletedWelcome()) return false;
-        onboarding.completeWelcome();
-        startActivity(new Intent(this, ImpulseWelcomeActivity.class));
+        final var intent = new Intent(this, UnifiedOnboardingActivity.class);
+        intent.putExtra("post_account", true);
+        if (xmppConnectionService != null && !xmppConnectionService.getAccounts().isEmpty()) {
+            intent.putExtra("jid", xmppConnectionService.getAccounts().get(0).getJid().asBareJid().toString());
+        }
+        getIntent().removeExtra("init");
+        startActivity(intent);
         return true;
     }
 

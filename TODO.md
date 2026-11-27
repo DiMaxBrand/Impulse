@@ -2,6 +2,7 @@
 
 ## 1.16 — in progress
 
+- [ ] Unified onboarding: device-test new and existing account setup, CAPTCHA and external registration links, certificate login, backup restore and QR invites; verify avatar publishing/privacy, interruptions and process restart, update-channel transitions and update-now, permissions, and the playful progress indicator. Test Expressive and Liquid Glass appearances before promotion.
 - [x] Update channels: one increasing unstable sequence now spans alpha, beta and RC while preserving pre-1.16 ordering compatibility. The updater and channel-transition logic are included in every 1.16 release.
 - [x] Update-channel transition option: keep receiving eligible updates while progressing toward a chosen more stable channel, never accepting older builds. Device-check the picker and installed-update progression.
 - [x] Onboarding: initial-account setup now opens an expressive welcome tour for editing, local pins, the message menu and Liquid Glass before notification setup.

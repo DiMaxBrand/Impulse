@@ -63,7 +63,7 @@ import eu.siacs.conversations.ui.ActionBarActivity
 import eu.siacs.conversations.ui.ExpressiveGroupRow
 import eu.siacs.conversations.ui.GroupPosition
 import eu.siacs.conversations.ui.ImpulseExpressiveTheme
-import eu.siacs.conversations.ui.ImpulseWelcomeActivity
+import eu.siacs.conversations.ui.UnifiedOnboardingActivity
 import eu.siacs.conversations.ui.UpdateSheetFragment
 import eu.siacs.conversations.update.InstallStatusBus
 import eu.siacs.conversations.update.SilentInstaller
@@ -389,8 +389,8 @@ class DeveloperOptionsActivity : ActionBarActivity() {
                                             startActivity(
                                                 Intent(
                                                     this@DeveloperOptionsActivity,
-                                                    ImpulseWelcomeActivity::class.java,
-                                                ),
+                                                    UnifiedOnboardingActivity::class.java,
+                                                ).putExtra("tour_only", true),
                                             )
                                         },
                                     )

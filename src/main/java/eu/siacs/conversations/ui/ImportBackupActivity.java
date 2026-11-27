@@ -382,6 +382,7 @@ public class ImportBackupActivity extends ActionBarActivity
     }
 
     private void onBackupRestored() {
+        OnboardingSession.clearForRestoredBackup(this);
         final var intent = new Intent(this, LauncherHostActivity.class);
         intent.addFlags(
                 Intent.FLAG_ACTIVITY_CLEAR_TOP

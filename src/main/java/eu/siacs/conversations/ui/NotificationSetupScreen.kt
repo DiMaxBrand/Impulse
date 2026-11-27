@@ -5,6 +5,7 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -97,6 +98,8 @@ private fun rememberRefreshOnResume(compute: () -> Boolean): Boolean {
 @Composable
 fun NotificationSetupScreen(
     onDone: () -> Unit,
+    onBack: (() -> Unit)? = null,
+    onboardingProgress: androidx.compose.animation.core.Animatable<Float, androidx.compose.animation.core.AnimationVector1D>? = null,
     // Developer Options passes true: the permission cards stay visible even once granted (just
     // with a checkmark added, same as the ringtone card), instead of disappearing -- easier to
     // toggle a permission on/off in Settings and immediately see the card react, without it
@@ -204,6 +207,7 @@ fun NotificationSetupScreen(
     // Whether tapping Done should finish immediately, or expand into a warning card first --
     // true only when at least one permission the call screen actually depends on is missing.
     var showSkipWarning by remember { mutableStateOf(false) }
+    BackHandler(enabled = showSkipWarning) { showSkipWarning = false }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -462,6 +466,11 @@ fun NotificationSetupScreen(
                     enter = EnterTransition.None,
                     exit = ExitTransition.None,
                 ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    if (onBack != null) {
+                        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+                        OnboardingProgress(0.95f, Modifier.weight(1f), onboardingProgress)
+                    }
                     Button(
                         onClick = {
                             if (!fullScreenIntentGranted || !overlayGranted) {
@@ -472,7 +481,7 @@ fun NotificationSetupScreen(
                             }
                         },
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .then(if (onBack == null) Modifier.fillMaxWidth() else Modifier)
                             .sharedBounds(
                                 rememberSharedContentState("doneButtonOrWarning"),
                                 animatedVisibilityScope = this@AnimatedVisibility,
@@ -489,6 +498,7 @@ fun NotificationSetupScreen(
                             ),
                     ) {
                         Text(stringResource(R.string.notification_setup_done))
+                    }
                     }
                 }
 

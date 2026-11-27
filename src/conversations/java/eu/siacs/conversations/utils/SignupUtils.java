@@ -11,7 +11,8 @@ import eu.siacs.conversations.persistance.DatabaseBackend;
 import eu.siacs.conversations.ui.ConversationsActivity;
 import eu.siacs.conversations.ui.EditAccountActivity;
 import eu.siacs.conversations.ui.ManageAccountActivity;
-import eu.siacs.conversations.ui.WelcomeActivity;
+import eu.siacs.conversations.ui.OnboardingSession;
+import eu.siacs.conversations.ui.UnifiedOnboardingActivity;
 import eu.siacs.conversations.xmpp.Jid;
 import java.util.Collection;
 
@@ -23,7 +24,11 @@ public class SignupUtils {
 
     public static Intent getTokenRegistrationIntent(
             final Context context, Jid jid, String preAuth) {
-        final Intent intent = new Intent(context, EditAccountActivity.class);
+        final Intent intent = new Intent(context, UnifiedOnboardingActivity.class);
+        intent.putExtra("registration_domain", jid.getDomain().toString());
+        if (preAuth != null) {
+            intent.putExtra("pre_auth", preAuth);
+        }
         if (!jid.isDomainJid()) {
             intent.putExtra("jid", jid.asBareJid().toString());
         }
@@ -37,18 +42,22 @@ public class SignupUtils {
     }
 
     public static Intent getSignUpIntent(final Context context, final boolean toServerChooser) {
-        return new Intent(context, WelcomeActivity.class);
+        return new Intent(context, UnifiedOnboardingActivity.class);
     }
 
     public static Intent getRedirectionIntent(final Context context) {
         final var state = getSetupState(Conversations.getInstance(context).getAccounts());
         Log.d(Config.LOGTAG, "setup state: " + state);
         final Intent intent;
-        if (state instanceof Done) {
+        if (OnboardingSession.isInProgress(context)) {
+            // A signup that survived a process restart must resume even if its account is already
+            // online; the tour, update choice, and notification setup may still be unfinished.
+            intent = new Intent(context, UnifiedOnboardingActivity.class);
+        } else if (state instanceof Done) {
             intent = new Intent(context, ConversationsActivity.class);
         } else if (state instanceof Pending pending) {
             final var account = pending.account();
-            intent = new Intent(context, EditAccountActivity.class);
+            intent = new Intent(context, UnifiedOnboardingActivity.class);
             intent.putExtra("jid", account.jid().asBareJid().toString());
             intent.putExtra(
                     EditAccountActivity.EXTRA_FORCE_REGISTER,
@@ -57,7 +66,7 @@ public class SignupUtils {
             if (Config.X509_VERIFICATION) {
                 intent = new Intent(context, ManageAccountActivity.class);
             } else {
-                intent = new Intent(context, WelcomeActivity.class);
+                intent = new Intent(context, UnifiedOnboardingActivity.class);
             }
         } else {
             throw new AssertionError("Invalid setup state");
