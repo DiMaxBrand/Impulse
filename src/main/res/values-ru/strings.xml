@@ -1932,6 +1932,7 @@
     <string name="onboarding_other_start_options">Другие способы начать</string>
     <string name="onboarding_connection_host">Хост подключения</string>
     <string name="onboarding_connection_host_detail">Только если он отличается от домена в вашем адресе.</string>
+    <string name="onboarding_simulated_account_route">Повтор для разработчика: этот маршрут имитируется и не изменяет данные аккаунта.</string>
     <string name="onboarding_update_notifications_title">Узнавайте об обновлениях</string>
     <string name="onboarding_update_notifications_description">Импульс может автоматически проверять обновления и сообщать о новых версиях. Позже это можно изменить в разделе обновлений.</string>
     <string name="onboarding_show_password">Показать</string>

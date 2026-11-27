@@ -45,11 +45,14 @@ internal fun OnboardingAccountForm(
     serverError: String?,
     enabled: Boolean,
     modifier: Modifier = Modifier,
+    showHeading: Boolean = true,
+    scrollable: Boolean = true,
 ) {
     var showPassword by remember { mutableStateOf(false) }
     var showServerOptions by remember { mutableStateOf(hostname.isNotEmpty()) }
-    Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
+    val columnModifier = if (scrollable) modifier.verticalScroll(rememberScrollState()) else modifier
+    Column(columnModifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (showHeading) Text(
             stringResource(if (creating) R.string.create_account else R.string.log_in),
             style = MaterialTheme.typography.headlineMedium,
         )

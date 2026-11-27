@@ -126,6 +126,7 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
     private var avatarStepAvailable by mutableStateOf(false)
     private var publishing by mutableStateOf(false)
     private var completed by mutableStateOf(false)
+    private var simulatedAccountRoute by mutableStateOf<SimulatedAccountRoute?>(null)
     /** Developer Options can exercise the complete flow without adding or editing an account. */
     private val simulateAccountSetup get() = intent?.getBooleanExtra("simulate_account_setup", false) == true
     private val tourOnly get() = intent?.getBooleanExtra("tour_only", false) == true
@@ -139,6 +140,7 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
         else Toast.makeText(this, getString(R.string.no_storage_permission, getString(R.string.app_name)), Toast.LENGTH_LONG).show()
     }
     private data class Challenge(val account: Account, val data: Data, val image: Bitmap)
+    private enum class SimulatedAccountRoute { RESTORE, QR, CERTIFICATE }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -153,6 +155,9 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
         pendingJid = savedInstanceState?.getString("pending_jid")
         inviteUri = savedInstanceState?.getString("invite_uri") ?: intent?.getStringExtra(StartConversationActivity.EXTRA_INVITE_URI)
         creating = savedInstanceState?.getBoolean("creating")?.takeIf { savedInstanceState.containsKey("creating") }
+        simulatedAccountRoute = savedInstanceState?.getString("simulated_account_route")?.let {
+            runCatching { SimulatedAccountRoute.valueOf(it) }.getOrNull()
+        }
         registrationDomain = savedInstanceState?.getString("registration_domain") ?: intent?.getStringExtra("registration_domain") ?: "on-chat.ru"
         preAuth = intent?.getStringExtra("pre_auth")
         address = savedInstanceState?.getString("address").orEmpty()
@@ -195,6 +200,9 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
             }
             if (checkpoint == null && intent?.getBooleanExtra("post_account", false) == true) phase = 2
         }
+        // Alpha.59 had a separate update-auto-check page. Keep an interrupted installation from
+        // landing on that now-removed page after process restoration.
+        if (phase == 4) phase = 5
         setContent {
             ImpulseExpressiveTheme {
                 eu.siacs.conversations.ui.glass.GlassSkinHost(
@@ -327,6 +335,80 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                     } else if (stage == 6) {
                         Text(stringResource(R.string.welcome_get_started))
                         Button(onClick = ::completeOnboarding, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.welcome_get_started)) }
+                    } else if (stage == 0) {
+                        // The chosen decision card becomes the form in place. The surrounding
+                        // scroll area owns the transform; the navigation dock below is not part
+                        // of it, so it never jumps or stretches with the card.
+                        AnimatedContent(
+                            targetState = Triple(creating, simulatedAccountRoute, registrationDomain),
+                            modifier = Modifier.weight(1f),
+                            transitionSpec = {
+                                (slideInHorizontally { it / 8 } + fadeIn()) togetherWith
+                                    (slideOutHorizontally { -it / 10 } + fadeOut())
+                            },
+                            label = "account_entry_choice",
+                        ) { (selectedMode, route, _) ->
+                            when {
+                                selectedMode != null -> OnboardingAccountCard(
+                                    creating = selectedMode,
+                                    registrationDomain = registrationDomain,
+                                    address = address,
+                                    onAddressChange = { address = it; addressError = null },
+                                    password = password,
+                                    onPasswordChange = { password = it; passwordError = null },
+                                    addressError = addressError,
+                                    passwordError = passwordError,
+                                    hostname = hostname,
+                                    onHostnameChange = { hostname = it; serverError = null },
+                                    port = port,
+                                    onPortChange = { port = it; serverError = null },
+                                    serverError = serverError,
+                                    enabled = backendReady || simulateAccountSetup,
+                                )
+                                route != null -> OnboardingChoiceCard(
+                                    title = stringResource(
+                                        when (route) {
+                                            SimulatedAccountRoute.RESTORE -> R.string.restore_backup
+                                            SimulatedAccountRoute.QR -> R.string.scan_qr_code
+                                            SimulatedAccountRoute.CERTIFICATE -> R.string.action_add_account_with_certificate
+                                        },
+                                    ),
+                                    detail = stringResource(R.string.onboarding_simulated_account_route),
+                                    onClick = {},
+                                )
+                                else -> OnboardingStartOptions(
+                                    onCreate = { creating = true },
+                                    onLogIn = { creating = false },
+                                    onRestore = {
+                                        if (simulateAccountSetup) simulatedAccountRoute = SimulatedAccountRoute.RESTORE else restoreBackup()
+                                    },
+                                    onQr = {
+                                        if (simulateAccountSetup) simulatedAccountRoute = SimulatedAccountRoute.QR else requestPermissionAndScanQrCode()
+                                    },
+                                    onCertificate = {
+                                        if (simulateAccountSetup) simulatedAccountRoute = SimulatedAccountRoute.CERTIFICATE else chooseCertificate()
+                                    },
+                                    certificateEnabled = backendReady || simulateAccountSetup,
+                                )
+                            }
+                        }
+                        if (creating != null || simulatedAccountRoute != null) {
+                            Row(Modifier.fillMaxWidth()) {
+                                OnboardingAction(
+                                    stringResource(R.string.back),
+                                    onClick = { creating = null; simulatedAccountRoute = null },
+                                    secondary = true,
+                                )
+                                OnboardingProgress(0.1f, Modifier.weight(1f), progressAnimation)
+                                OnboardingAction(
+                                    stringResource(R.string.next),
+                                    onClick = {
+                                        creating?.let(::submit) ?: completeSimulatedAccountRoute()
+                                    },
+                                    enabled = backendReady || simulateAccountSetup,
+                                )
+                            }
+                        }
                     } else if (mode == null) {
                         // Account entry has five actions. Let this content scroll rather than
                         // clipping choices on compact screens or with large accessibility text.
@@ -465,6 +547,20 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
         inviteUri?.let { intent.putExtra(StartConversationActivity.EXTRA_INVITE_URI, it) }
         startActivity(StartConversationActivity.startOrConversationsActivity(this, pending))
         finish()
+    }
+
+    private fun completeSimulatedAccountRoute() {
+        // The route-specific developer preview stops before any filesystem, camera, KeyChain or
+        // account mutation. From the avatar page onward the replay is again attached to the
+        // developer's real account, just like the simulated address/password form.
+        val account = xmppConnectionService?.accounts
+            ?.firstOrNull(Account::isOnlineAndConnected)
+            ?: xmppConnectionService?.accounts?.firstOrNull()
+        pending = account
+        pendingJid = account?.jid?.asBareJid()?.toString()
+        avatarStepAvailable = account != null
+        simulatedAccountRoute = null
+        phase = if (account == null) 2 else 1
     }
 
     private fun submit(register: Boolean) {
@@ -735,6 +831,7 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
 
     override fun onSaveInstanceState(outState: Bundle) {
         creating?.let { outState.putBoolean("creating", it) }
+        outState.putString("simulated_account_route", simulatedAccountRoute?.name)
         outState.putString("registration_domain", registrationDomain)
         outState.putString("address", address)
         outState.putString("hostname", hostname)
