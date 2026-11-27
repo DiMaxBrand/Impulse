@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -264,7 +265,11 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                         )
                     }
                     Column(
-                        Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 20.dp),
+                        // The bottom dock must clear both gesture navigation and the taller
+                        // three-button bar. Without this inset, Back/Next are partly under the
+                        // system buttons on devices using button navigation.
+                        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
+                            .padding(horizontal = 24.dp, vertical = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                     if (stage == 1) {

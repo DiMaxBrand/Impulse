@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -268,6 +269,9 @@ fun NotificationSetupScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    // The notification step has the same Back/Done dock and must be usable
+                    // above a three-button navigation bar, not merely above the gesture handle.
+                    .navigationBarsPadding()
                     .padding(horizontal = 24.dp, vertical = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
