@@ -1927,6 +1927,11 @@
     <string name="update_transition_title">Выберите способ перехода</string>
     <string name="onboarding_updates_title">Выберите обновления</string>
     <string name="onboarding_welcome_title">Добро пожаловать в Импульс</string>
+    <string name="onboarding_create_account_detail">Впервые в Импульсе? Создайте аккаунт и начинайте общаться.</string>
+    <string name="onboarding_log_in_detail">Уже есть аккаунт? Войдите, указав его адрес.</string>
+    <string name="onboarding_other_start_options">Другие способы начать</string>
+    <string name="onboarding_connection_host">Хост подключения</string>
+    <string name="onboarding_connection_host_detail">Только если он отличается от домена в вашем адресе.</string>
     <string name="onboarding_update_notifications_title">Узнавайте об обновлениях</string>
     <string name="onboarding_update_notifications_description">Импульс может автоматически проверять обновления и сообщать о новых версиях. Позже это можно изменить в разделе обновлений.</string>
     <string name="onboarding_show_password">Показать</string>

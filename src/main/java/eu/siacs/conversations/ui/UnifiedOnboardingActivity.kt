@@ -18,6 +18,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,9 +34,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Switch
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.AnimatedContent
@@ -48,8 +55,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -97,8 +107,6 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
     private var stateMessage by mutableStateOf<String?>(null)
     private var updateMessage by mutableStateOf<String?>(null)
     private var checkingUpdate by mutableStateOf(false)
-    private var autoCheck by mutableStateOf(true)
-    private var confirmAutoCheckOff by mutableStateOf(false)
     private var confirmDowngrade by mutableStateOf(false)
     private var pending: Account? = null
     private var pendingJid by mutableStateOf<String?>(null)
@@ -134,7 +142,6 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        autoCheck = UpdatePreferences(this).autoCheck
         phase = savedInstanceState?.getInt("phase") ?: 0
         tourPage = savedInstanceState?.getInt("tour_page") ?: 0
         selectedChannel = savedInstanceState?.getString("selected_channel")?.let(UpdateChannel::fromId) ?: selectedChannel
@@ -206,31 +213,79 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                         1 -> Unit // Do not return to credentials after the account is online.
                         2 -> if (tourPage > 0) tourPage-- else if (tourOnly) finish() else if (avatarStepAvailable) phase = 1
                         3 -> phase = 2
-                        4 -> phase = 3
-                        5 -> phase = 4
+                        5 -> phase = 3
                     }
                 }
-                if (phase == 5) {
-                    NotificationSetupScreen(onDone = { phase = 6 }, onBack = { phase = 4 }, onboardingProgress = progressAnimation)
-                } else Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                AnimatedContent(
+                    targetState = phase,
+                    modifier = Modifier.fillMaxSize(),
+                    transitionSpec = {
+                        (fadeIn(tween(220)) + slideInHorizontally(tween(260)) { it / 12 }) togetherWith
+                            (fadeOut(tween(150)) + slideOutHorizontally(tween(180)) { -it / 18 })
+                    },
+                    label = "onboarding_stage",
+                ) { stage ->
+                if (stage == 5) {
+                    NotificationSetupScreen(onDone = { completeOnboarding() }, onBack = { phase = 3 }, onboardingProgress = progressAnimation)
+                } else Box(
+                    Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerLow),
+                ) {
                     val mode = creating
-                    if (phase == 1) {
-                        Text(stringResource(R.string.your_avatar))
-                        OnboardingAvatarPreview(avatarUri)
-                        Button(onClick = { pickAvatar() }, enabled = !publishing, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.touch_to_choose_picture)) }
-                        if (avatarUri != null) Text(stringResource(R.string.onboarding_avatar_selected))
-                        Row {
-                            Checkbox(checked = contactsOnly, onCheckedChange = { contactsOnly = it; privacyTouched = true }, enabled = !publishing && !privacyLoading)
-                            Text(stringResource(R.string.onboarding_avatar_contacts))
+                    if (stage != 6) {
+                        val shapes = remember { MATERIAL_SHAPE_CATALOG.map { it.second } }
+                        // A quiet, living backdrop makes the entry surface feel like a welcome
+                        // rather than an old settings page. It is decorative and never captures
+                        // taps or competes with the two account choices.
+                        AutoMorphingShape(
+                            shapes = shapes,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.09f),
+                            randomStart = true,
+                            modifier = Modifier.size(260.dp).align(Alignment.TopEnd).offset(x = 76.dp, y = 18.dp),
+                        )
+                        AutoMorphingShape(
+                            shapes = shapes,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.secondary.copy(alpha = 0.07f),
+                            randomStart = true,
+                            modifier = Modifier.size(210.dp).align(Alignment.BottomStart).offset(x = (-68).dp, y = (-76).dp),
+                        )
+                        AutoMorphingShape(
+                            shapes = shapes,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary.copy(alpha = 0.06f),
+                            randomStart = true,
+                            modifier = Modifier.size(150.dp).align(Alignment.BottomEnd).offset(x = (-20).dp, y = (-150).dp),
+                        )
+                    }
+                    Column(
+                        Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                    if (stage == 1) {
+                        Column(
+                            Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Text(stringResource(R.string.your_avatar), style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
+                            OnboardingAvatarPreview(avatarUri)
+                            OnboardingAction(
+                                stringResource(R.string.touch_to_choose_picture),
+                                onClick = { pickAvatar() },
+                                enabled = !publishing,
+                            )
+                            if (avatarUri != null) Text(stringResource(R.string.onboarding_avatar_selected))
+                            Row {
+                                Checkbox(checked = contactsOnly, onCheckedChange = { contactsOnly = it; privacyTouched = true }, enabled = !publishing && !privacyLoading)
+                                Text(stringResource(R.string.onboarding_avatar_contacts))
+                            }
+                            stateMessage?.let { Text(it) }
+                            Spacer(Modifier.weight(1f))
                         }
-                        stateMessage?.let { Text(it) }
                         Row(Modifier.fillMaxWidth()) {
                             OnboardingAction(stringResource(R.string.skip), onClick = { phase = 2 }, enabled = !publishing, secondary = true)
                             OnboardingProgress(0.2f, Modifier.weight(1f), progressAnimation)
                             OnboardingAction(stringResource(if (publishing) R.string.publishing else R.string.publish),
                                 onClick = { publishAvatar() }, enabled = avatarUri != null && !publishing && !privacyLoading)
                         }
-                    } else if (phase == 2) {
+                    } else if (stage == 2) {
                         AnimatedContent(
                             targetState = tourPage,
                             modifier = Modifier.weight(1f),
@@ -246,7 +301,7 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                             OnboardingProgress((tourPage + 3f) / (ONBOARDING_TOUR_PAGES + 5), Modifier.weight(1f), progressAnimation)
                             OnboardingAction(stringResource(if (tourOnly && tourPage == ONBOARDING_TOUR_PAGES - 1) R.string.notification_setup_done else R.string.next), onClick = { if (tourPage < ONBOARDING_TOUR_PAGES - 1) tourPage++ else if (tourOnly) finish() else openUpdates() })
                         }
-                    } else if (phase == 3) {
+                    } else if (stage == 3) {
                         OnboardingUpdateChannel(BuildConfig.VERSION_NAME, selectedChannel, onChoose = { channel, gradual ->
                             val preferences = UpdatePreferences(this@UnifiedOnboardingActivity)
                             val oldChannel = preferences.selectedChannel
@@ -267,78 +322,78 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                         Row(Modifier.fillMaxWidth()) {
                             OnboardingAction(stringResource(R.string.back), onClick = { phase = 2 }, secondary = true)
                             OnboardingProgress((ONBOARDING_TOUR_PAGES + 3f) / (ONBOARDING_TOUR_PAGES + 5), Modifier.weight(1f), progressAnimation)
-                            OnboardingAction(stringResource(R.string.next), onClick = { phase = 4 })
-                        }
-                    } else if (phase == 4) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Text(stringResource(R.string.onboarding_update_notifications_title), style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
-                            Text(stringResource(R.string.onboarding_update_notifications_description))
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                Text(stringResource(R.string.updates_auto_check_label), Modifier.weight(1f))
-                                Switch(checked = autoCheck, onCheckedChange = { enabled ->
-                                    if (!enabled && UpdatePreferences(this@UnifiedOnboardingActivity).selectedChannel != UpdateChannel.STABLE) {
-                                        confirmAutoCheckOff = true
-                                    } else {
-                                        autoCheck = enabled
-                                        UpdatePreferences(this@UnifiedOnboardingActivity).autoCheck = enabled
-                                    }
-                                })
-                            }
-                        }
-                        Row(Modifier.fillMaxWidth()) {
-                            OnboardingAction(stringResource(R.string.back), onClick = { phase = 3 }, secondary = true)
-                            OnboardingProgress(0.9f, Modifier.weight(1f), progressAnimation)
                             OnboardingAction(stringResource(R.string.next), onClick = { phase = 5 })
                         }
-                    } else if (phase == 6) {
+                    } else if (stage == 6) {
                         Text(stringResource(R.string.welcome_get_started))
-                        Button(onClick = {
-                            if (previewFlow) {
-                                finish()
-                                return@Button
-                            }
-                            completed = true
-                            session.clear()
-                            eu.siacs.conversations.utils.OnboardingPreferences(this@UnifiedOnboardingActivity).completeWelcome()
-                            inviteUri?.let { intent.putExtra(StartConversationActivity.EXTRA_INVITE_URI, it) }
-                            startActivity(StartConversationActivity.startOrConversationsActivity(this@UnifiedOnboardingActivity, pending))
-                            finish()
-                        }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.welcome_get_started)) }
+                        Button(onClick = ::completeOnboarding, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.welcome_get_started)) }
                     } else if (mode == null) {
                         // Account entry has five actions. Let this content scroll rather than
                         // clipping choices on compact screens or with large accessibility text.
                         Column(
                             Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
                         ) {
-                            Image(painterResource(R.drawable.impulse_round_logo), contentDescription = null, modifier = Modifier.size(96.dp))
-                            Text(stringResource(R.string.onboarding_welcome_title), style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
-                            Text(stringResource(R.string.welcome_intro_body))
-                            Button(onClick = { creating = true }, modifier = Modifier.fillMaxWidth(), shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.create_account)) }
-                            TextButton(onClick = { creating = false }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.log_in)) }
-                            TextButton(
-                                onClick = {
-                                    // Restore and account QR routes can also add accounts. Keep
-                                    // every account-acquisition path harmless in the replay.
-                                    if (simulateAccountSetup) creating = false else restoreBackup()
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) { Text(stringResource(R.string.restore_backup)) }
-                            TextButton(
-                                onClick = {
-                                    if (simulateAccountSetup) creating = false else requestPermissionAndScanQrCode()
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) { Text(stringResource(R.string.scan_qr_code)) }
-                            TextButton(
-                                onClick = {
-                                    // Certificate selection creates an account too, so the replay
-                                    // keeps it inside the safe, simulated account portion.
-                                    if (simulateAccountSetup) creating = false else chooseCertificate()
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = backendReady || simulateAccountSetup,
-                            ) { Text(stringResource(R.string.action_add_account_with_certificate)) }
+                            Image(painterResource(R.drawable.impulse_round_logo), contentDescription = null, modifier = Modifier.size(120.dp))
+                            Text(
+                                stringResource(R.string.onboarding_welcome_title),
+                                style = androidx.compose.material3.MaterialTheme.typography.displaySmall,
+                            )
+                            Text(
+                                stringResource(R.string.welcome_intro_body),
+                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.size(2.dp))
+                            OnboardingChoiceCard(
+                                title = stringResource(R.string.create_account),
+                                detail = stringResource(R.string.onboarding_create_account_detail),
+                                emphasized = true,
+                                onClick = { creating = true },
+                            )
+                            OnboardingChoiceCard(
+                                title = stringResource(R.string.log_in),
+                                detail = stringResource(R.string.onboarding_log_in_detail),
+                                onClick = { creating = false },
+                            )
+                            Text(
+                                stringResource(R.string.onboarding_other_start_options),
+                                style = androidx.compose.material3.MaterialTheme.typography.labelLarge,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            ExpressiveGroupRow(GroupPosition.TOP) {
+                                ListItem(
+                                    headlineContent = { Text(stringResource(R.string.restore_backup)) },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    modifier = Modifier.clickable {
+                                        // Restore and account QR routes can also add accounts. Keep
+                                        // every account-acquisition path harmless in the replay.
+                                        if (simulateAccountSetup) creating = false else restoreBackup()
+                                    },
+                                )
+                            }
+                            Spacer(Modifier.size(2.dp))
+                            ExpressiveGroupRow(GroupPosition.MIDDLE) {
+                                ListItem(
+                                    headlineContent = { Text(stringResource(R.string.scan_qr_code)) },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    modifier = Modifier.clickable {
+                                        if (simulateAccountSetup) creating = false else requestPermissionAndScanQrCode()
+                                    },
+                                )
+                            }
+                            Spacer(Modifier.size(2.dp))
+                            ExpressiveGroupRow(GroupPosition.BOTTOM) {
+                                ListItem(
+                                    headlineContent = { Text(stringResource(R.string.action_add_account_with_certificate)) },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    modifier = Modifier.clickable(enabled = backendReady || simulateAccountSetup) {
+                                        // Certificate selection creates an account too, so the replay
+                                        // keeps it inside the safe, simulated account portion.
+                                        if (simulateAccountSetup) creating = false else chooseCertificate()
+                                    },
+                                )
+                            }
                         }
                     } else {
                         OnboardingAccountForm(mode, registrationDomain, address, { address = it; addressError = null }, password,
@@ -368,6 +423,7 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                         }
                     }
                 }
+                }
                 if (confirmDowngrade) {
                     AlertDialog(
                         onDismissRequest = { confirmDowngrade = false },
@@ -383,19 +439,6 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                         dismissButton = { TextButton(onClick = { confirmDowngrade = false }) { Text(stringResource(R.string.cancel)) } },
                     )
                 }
-                if (confirmAutoCheckOff) {
-                    AlertDialog(
-                        onDismissRequest = { confirmAutoCheckOff = false },
-                        title = { Text(stringResource(R.string.updates_auto_off_title)) },
-                        text = { Text(stringResource(R.string.updates_auto_off_body)) },
-                        confirmButton = { Button(onClick = { confirmAutoCheckOff = false }) { Text(stringResource(R.string.updates_auto_off_keep)) } },
-                        dismissButton = { TextButton(onClick = {
-                            confirmAutoCheckOff = false
-                            autoCheck = false
-                            UpdatePreferences(this@UnifiedOnboardingActivity).autoCheck = false
-                        }) { Text(stringResource(R.string.updates_auto_off_anyway)) } },
-                    )
-                }
                 challenge?.let { current ->
                     OnboardingCaptcha(current.image, onAnswer = { answer ->
                         challenge = null
@@ -408,6 +451,20 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                 }
             }
         }
+    }
+    }
+
+    private fun completeOnboarding() {
+        if (previewFlow) {
+            finish()
+            return
+        }
+        completed = true
+        session.clear()
+        eu.siacs.conversations.utils.OnboardingPreferences(this).completeWelcome()
+        inviteUri?.let { intent.putExtra(StartConversationActivity.EXTRA_INVITE_URI, it) }
+        startActivity(StartConversationActivity.startOrConversationsActivity(this, pending))
+        finish()
     }
 
     private fun submit(register: Boolean) {

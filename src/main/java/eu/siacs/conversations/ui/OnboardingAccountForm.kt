@@ -8,6 +8,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -18,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -68,8 +71,11 @@ internal fun OnboardingAccountForm(
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.password)) },
             trailingIcon = {
-                TextButton(onClick = { showPassword = !showPassword }) {
-                    Text(stringResource(if (showPassword) R.string.onboarding_hide_password else R.string.onboarding_show_password))
+                IconButton(onClick = { showPassword = !showPassword }) {
+                    Icon(
+                        painter = painterResource(if (showPassword) R.drawable.ic_visibility_off else R.drawable.ic_visibility_24dp),
+                        contentDescription = stringResource(if (showPassword) R.string.onboarding_hide_password else R.string.onboarding_show_password),
+                    )
                 }
             },
             supportingText = passwordError?.let { error -> { Text(error) } },
@@ -84,7 +90,8 @@ internal fun OnboardingAccountForm(
         }
         if (showServerOptions) {
             OutlinedTextField(value = hostname, onValueChange = onHostnameChange,
-                label = { Text(stringResource(R.string.account_settings_hostname)) },
+                label = { Text(stringResource(R.string.onboarding_connection_host)) },
+                supportingText = { Text(stringResource(R.string.onboarding_connection_host_detail)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = enabled)
             OutlinedTextField(value = port, onValueChange = onPortChange,
                 label = { Text(stringResource(R.string.account_settings_port)) },

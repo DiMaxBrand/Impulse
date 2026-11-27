@@ -25,6 +25,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /** Decorative progress: dragging never changes the onboarding page. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -49,7 +50,10 @@ internal fun OnboardingProgress(progress: Float, modifier: Modifier = Modifier, 
     )
 
     LaunchedEffect(target) {
-        val wasAlreadyVisible = hasShownInitialValue
+        // The same Animatable is shared by all pages. A new composable instance therefore still
+        // sees an in-flight value from the previous page and must enter the wave before moving.
+        val wasAlreadyVisible = hasShownInitialValue ||
+            (shown.value > 0f && abs(shown.value - target) > 0.001f)
         hasShownInitialValue = true
         if (!dragging) {
             if (wasAlreadyVisible) waveActive = true
