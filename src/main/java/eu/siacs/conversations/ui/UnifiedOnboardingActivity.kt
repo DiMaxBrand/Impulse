@@ -215,7 +215,7 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                             address, hostname, port, pendingJid, inviteUri, selectedChannel, channelInitialized, avatarUri?.toString(), contactsOnly, privacyTouched, avatarStepAvailable)
                     }.collect { checkpoint -> if (checkpoint != null && !completed) session.save(checkpoint) }
                 }
-                BackHandler(enabled = phase in 1..5 || (phase == 0 && creating != null)) {
+                BackHandler(enabled = phase in 1..5 || (phase == 0 && (creating != null || simulatedAccountRoute != null))) {
                     when (phase) {
                         0 -> creating = null
                         1 -> Unit // Do not return to credentials after the account is online.
@@ -336,63 +336,42 @@ class UnifiedOnboardingActivity : QrCodeProcessingActivity(), XmppConnectionServ
                         Text(stringResource(R.string.welcome_get_started))
                         Button(onClick = ::completeOnboarding, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.welcome_get_started)) }
                     } else if (stage == 0) {
-                        // The chosen decision card becomes the form in place. The surrounding
-                        // scroll area owns the transform; the navigation dock below is not part
-                        // of it, so it never jumps or stretches with the card.
-                        AnimatedContent(
-                            targetState = Triple(creating, simulatedAccountRoute, registrationDomain),
-                            modifier = Modifier.weight(1f),
-                            transitionSpec = {
-                                // The page itself must stay put: the chosen card owns the resize
-                                // and content slide. A quiet crossfade only clears its siblings.
-                                fadeIn(tween(140)) togetherWith fadeOut(tween(100))
+                        OnboardingAccountEntryStack(
+                            creating = creating,
+                            simulatedRouteTitle = simulatedAccountRoute?.let { route ->
+                                stringResource(when (route) {
+                                    SimulatedAccountRoute.RESTORE -> R.string.restore_backup
+                                    SimulatedAccountRoute.QR -> R.string.scan_qr_code
+                                    SimulatedAccountRoute.CERTIFICATE -> R.string.action_add_account_with_certificate
+                                })
                             },
-                            label = "account_entry_choice",
-                        ) { (selectedMode, route, _) ->
-                            when {
-                                selectedMode != null -> OnboardingAccountCard(
-                                    creating = selectedMode,
-                                    registrationDomain = registrationDomain,
-                                    address = address,
-                                    onAddressChange = { address = it; addressError = null },
-                                    password = password,
-                                    onPasswordChange = { password = it; passwordError = null },
-                                    addressError = addressError,
-                                    passwordError = passwordError,
-                                    hostname = hostname,
-                                    onHostnameChange = { hostname = it; serverError = null },
-                                    port = port,
-                                    onPortChange = { port = it; serverError = null },
-                                    serverError = serverError,
-                                    enabled = backendReady || simulateAccountSetup,
-                                )
-                                route != null -> OnboardingChoiceCard(
-                                    title = stringResource(
-                                        when (route) {
-                                            SimulatedAccountRoute.RESTORE -> R.string.restore_backup
-                                            SimulatedAccountRoute.QR -> R.string.scan_qr_code
-                                            SimulatedAccountRoute.CERTIFICATE -> R.string.action_add_account_with_certificate
-                                        },
-                                    ),
-                                    detail = stringResource(R.string.onboarding_simulated_account_route),
-                                    onClick = {},
-                                )
-                                else -> OnboardingStartOptions(
-                                    onCreate = { creating = true },
-                                    onLogIn = { creating = false },
-                                    onRestore = {
-                                        if (simulateAccountSetup) simulatedAccountRoute = SimulatedAccountRoute.RESTORE else restoreBackup()
-                                    },
-                                    onQr = {
-                                        if (simulateAccountSetup) simulatedAccountRoute = SimulatedAccountRoute.QR else requestPermissionAndScanQrCode()
-                                    },
-                                    onCertificate = {
-                                        if (simulateAccountSetup) simulatedAccountRoute = SimulatedAccountRoute.CERTIFICATE else chooseCertificate()
-                                    },
-                                    certificateEnabled = backendReady || simulateAccountSetup,
-                                )
-                            }
-                        }
+                            registrationDomain = registrationDomain,
+                            address = address,
+                            onAddressChange = { address = it; addressError = null },
+                            password = password,
+                            onPasswordChange = { password = it; passwordError = null },
+                            addressError = addressError,
+                            passwordError = passwordError,
+                            hostname = hostname,
+                            onHostnameChange = { hostname = it; serverError = null },
+                            port = port,
+                            onPortChange = { port = it; serverError = null },
+                            serverError = serverError,
+                            formEnabled = backendReady || simulateAccountSetup,
+                            onCreate = { creating = true },
+                            onLogIn = { creating = false },
+                            onRestore = {
+                                if (simulateAccountSetup) simulatedAccountRoute = SimulatedAccountRoute.RESTORE else restoreBackup()
+                            },
+                            onQr = {
+                                if (simulateAccountSetup) simulatedAccountRoute = SimulatedAccountRoute.QR else requestPermissionAndScanQrCode()
+                            },
+                            onCertificate = {
+                                if (simulateAccountSetup) simulatedAccountRoute = SimulatedAccountRoute.CERTIFICATE else chooseCertificate()
+                            },
+                            certificateEnabled = backendReady || simulateAccountSetup,
+                            modifier = Modifier.weight(1f),
+                        )
                         if (creating != null || simulatedAccountRoute != null) {
                             Row(Modifier.fillMaxWidth()) {
                                 OnboardingAction(
